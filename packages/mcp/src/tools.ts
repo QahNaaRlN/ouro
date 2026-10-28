@@ -10,7 +10,7 @@ const text = z.string().min(1).max(20_000);
 const id = z.string().min(1).max(200);
 const version = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 const write = {executionId:id, requestId:z.string().min(8).max(200), expectedVersion:version};
-const report = {...write,title:text,context:text};
+const report = {...write,title:text,context:text,flowNodeId:id.optional().describe('Optional explicit process-node ID from the assigned immutable revision. Omit for unbound facts; do not infer a path or human approval.')};
 const option = z.strictObject({id,title:text,description:text});
 const define = (name:string,title:string,description:string,inputSchema:z.ZodObject,readOnlyHint=false):AgentToolDefinition => ({
   name,title,description,inputSchema,

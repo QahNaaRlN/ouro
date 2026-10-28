@@ -46,12 +46,15 @@ import {
 import Roadmap, { specLabels, Status } from "@/components/roadmap";
 import { RealityGraph } from "@/components/reality";
 import AgentsPanel, { type AgentRegistration } from "@/components/agents-panel";
+import SpecFlow from "@/components/spec-flow";
+import { StateTransitions } from "@/components/state-transitions";
 import {
   AGENT_ID,
   type DecisionRequest,
   type ProjectState,
   type Spec,
   type SpecRevision,
+  type FlowDefinition,
 } from "@/packages/core/src";
 
 type View = "roadmap" | "specs" | "decisions" | "history" | "methodology" | "agents";
@@ -127,6 +130,7 @@ export default function Home() {
     [cursor, setCursor] = useState(0);
   const [agents, setAgents] = useState<AgentRegistration[]>([]);
   const [assignmentAgentId, setAssignmentAgentId] = useState(AGENT_ID);
+  const [flowRevisionId, setFlowRevisionId] = useState<string | null>(null);
   const [view, setView] = useState<View>("roadmap"),
     [selected, setSelected] = useState<string | null>(null),
     [requestId, setRequestId] = useState<string | null>(null);
@@ -223,6 +227,7 @@ export default function Home() {
   const command = async (
     payload: Payload,
     notice = "Изменение записано в историю",
+    expectedVersionOverride?: number,
   ) => {
     if (!state || busy) return false;
     setBusy(true);
@@ -235,7 +240,7 @@ export default function Home() {
         body: JSON.stringify({
           ...payload,
           requestId: crypto.randomUUID(),
-          expectedVersion: state.version,
+          expectedVersion: expectedVersionOverride ?? state.version,
         }),
       });
       const data = await r.json();
@@ -262,6 +267,16 @@ export default function Home() {
       setBusy(false);
       pendingRef.current = false;
     }
+  };
+  const saveFlow = async (flow: FlowDefinition, base: {revisionId:string;expectedVersion:number}) => {
+    const original=state?.revisions.find(r=>r.id===base.revisionId);
+    const owner=state?.specs.find(s=>s.id===original?.specId);
+    if(!original || !owner || owner.revisionIds.at(-1)!==original.id){
+      setError('У спеки появилась другая ревизия. Черновик схемы сохранён в редакторе; проверьте новое ожидание перед продолжением.');
+      return false;
+    }
+    const {title,goal,dod,constraints,assumptions,risks,inputs,comment}=original;
+    return command({type:'proposeRevision',specId:original.specId,content:{title,goal,dod,constraints,assumptions,risks,inputs,comment,flow}},'Новая ревизия со схемой предложена. Активация выполняется отдельно.',base.expectedVersion);
   };
   const simulate = async (scenario: string) => {
     if (!state || !selected || busy) return;
@@ -742,6 +757,15 @@ export default function Home() {
                           Ожидание
                         </button>
                         <button
+                          className={detailTab==='process'?'selected':''}
+                          onClick={()=>{if(!state.revisions.some(r=>r.id===flowRevisionId&&r.specId===spec.id))setFlowRevisionId(spec.revisionIds.at(-1)??revision.id);setDetailTab('process');}}
+                        >
+                          <GitBranch size={15}/>Процесс
+                        </button>
+                        <button className={detailTab==='states'?'selected':''} onClick={()=>setDetailTab('states')}>
+                          <Network size={15}/>Состояния
+                        </button>
+                        <button
                           className={detailTab === "compare" ? "selected" : ""}
                           onClick={() => setDetailTab("compare")}
                         >
@@ -771,6 +795,17 @@ export default function Home() {
                           Ревизии<span>{spec.revisionIds.length}</span>
                         </button>
                       </div>
+                      {detailTab==='process' && (()=>{
+                        const shown=state.revisions.find(r=>r.id===flowRevisionId&&r.specId===spec.id)??state.revisions.find(r=>r.id===spec.revisionIds.at(-1))??revision;
+                        return <>
+                          <div className="run-toolbar">
+                            <label className="form-label">Ревизия схемы<select aria-label="Ревизия схемы" value={shown.id} onChange={e=>setFlowRevisionId(e.target.value)}>{state.revisions.filter(r=>r.specId===spec.id).toReversed().map(r=><option key={r.id} value={r.id}>r{r.revision} · {r.id===spec.activeRevisionId?'активная':r.id===spec.revisionIds.at(-1)?'предложена':'историческая'}</option>)}</select></label>
+                            {shown.id!==spec.activeRevisionId&&shown.id===spec.revisionIds.at(-1)&&<button className="btn" disabled={busy} onClick={()=>command({type:'activateRevision',specId:spec.id,revisionId:shown.id},'Ревизия схемы активирована. История прежних попыток сохранена.')}><Check size={14}/>Активировать ревизию {shown.revision}</button>}
+                          </div>
+                          <SpecFlow key={shown.id} revision={shown} state={state} busy={busy} onSave={saveFlow}/>
+                        </>;
+                      })()}
+                      {detailTab==='states'&&<StateTransitions state={state} specId={spec.id} executionId={execution?.id}/>}
                       {detailTab === "expectation" && (
                         <div className="expectation-content">
                           <section className="content-section">
@@ -1445,7 +1480,7 @@ export default function Home() {
                   : "Хранилище…"}
             </span>
             <span className="footer-separator" />
-            <span>0.1.0-alpha.2</span>
+            <span>0.1.0-alpha.3</span>
             <span className="small-tag">PROTOTYPE</span>
           </div>
         </footer>
@@ -2187,7 +2222,7 @@ function ModalDialog({
   );
 }
 function SpecForm({
-  revision,
+  revision: sourceRevision,
   busy,
   onSubmit,
 }: {
@@ -2195,6 +2230,8 @@ function SpecForm({
   busy: boolean;
   onSubmit: (content: Payload) => Promise<void>;
 }) {
+  const [revision] = useState(sourceRevision);
+  const baseChanged = revision?.id !== sourceRevision?.id;
   const [title, setTitle] = useState(revision?.title ?? ""),
     [goal, setGoal] = useState(revision?.goal ?? ""),
     [dod, setDod] = useState(revision?.dod.map((c) => c.text).join("\n") ?? ""),
@@ -2225,6 +2262,7 @@ function SpecForm({
           comment: revision
             ? "Новая ревизия предложена человеком через Human View"
             : "Создано через Human View",
+          ...(revision?.flow ? {flow:revision.flow} : {}),
         });
       }}
     >
@@ -2271,9 +2309,10 @@ function SpecForm({
         Содержание сохраняется неизменяемой ревизией. Активация — отдельное
         действие человека.
       </p>
+      {baseChanged && <p role="alert">Активная ревизия изменилась. Текст черновика сохранён; проверьте новое ожидание перед созданием следующей ревизии.</p>}
       <button
         className="btn btn-primary"
-        disabled={busy || !title.trim() || !goal.trim() || !dod.trim()}
+        disabled={busy || baseChanged || !title.trim() || !goal.trim() || !dod.trim()}
         type="submit"
       >
         {busy ? (

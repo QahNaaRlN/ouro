@@ -4,10 +4,15 @@ export type RequestState = 'pending' | 'resolved' | 'withdrawn' | 'superseded';
 export type RequestKind = 'Question' | 'Fork' | 'Blocker';
 export type Actor = { id: string; kind: 'human' | 'agent' | 'service'; projectIds: string[]; name?: string };
 export type Criterion = { id: string; text: string; required: boolean };
+export type FlowNodeKind = 'action' | 'condition' | 'question' | 'fork' | 'blocker' | 'wait' | 'result';
+export type FlowOwner = 'human' | 'agent' | 'system';
+export type FlowNode = { id:string; kind:FlowNodeKind; title:string; description:string; owner:FlowOwner };
+export type FlowEdge = { id:string; source:string; target:string; label:string; optionId?:string };
+export type FlowDefinition = { entryNodeId:string; nodes:FlowNode[]; edges:FlowEdge[] };
 export type SpecRevision = {
   id: string; specId: string; revision: number; title: string; goal: string; dod: Criterion[];
   constraints: string; assumptions: string; risks: string; inputs: string; comment: string;
-  parentRevisionId?: string; createdAt: string; authorId: string;
+  parentRevisionId?: string; createdAt: string; authorId: string; flow?: FlowDefinition;
 };
 export type Spec = {
   id: string; projectId: string; humanId: string; title: string; state: SpecState;
@@ -29,6 +34,7 @@ export type DecisionRequest = {
   state: RequestState; specId: string; specRevisionId: string; executionId: string;
   agentId: string; blockingScope: 'execution' | 'none'; decision?: Decision;
   clearedEvidence?: string; deferredUntil?: string; deferredReason?: string;
+  flowNodeId?: string;
 };
 export type Dependency = { id: string; from: string; to: string; type: 'depends_on' | 'derived_from' | 'replaces' | 'relates_to' };
 export type Roadmap = { id: string; title: string; goal: string; state: 'draft' | 'active' | 'frozen' | 'archived' };
@@ -42,9 +48,9 @@ export type ProjectState = {
   projectId: string; version: number; roadmap: Roadmap; specs: Spec[]; revisions: SpecRevision[];
   executions: Execution[]; requests: DecisionRequest[]; dependencies: Dependency[]; events: DomainEvent[];
 };
-export type RevisionContent = Pick<SpecRevision, 'title' | 'goal' | 'dod' | 'constraints' | 'assumptions' | 'risks' | 'inputs' | 'comment'>;
+export type RevisionContent = Pick<SpecRevision, 'title' | 'goal' | 'dod' | 'constraints' | 'assumptions' | 'risks' | 'inputs' | 'comment' | 'flow'>;
 type CommandBase = { requestId: string; expectedVersion: number; specId?: string; specRevisionId?: string };
-type ReportBase = { specId: string; specRevisionId: string; executionId: string; title: string; context: string };
+type ReportBase = { specId: string; specRevisionId: string; executionId: string; title: string; context: string; flowNodeId?: string };
 export type Command = CommandBase & (
   | { type: 'createSpec'; content: RevisionContent }
   | { type: 'proposeRevision'; specId: string; content: RevisionContent }

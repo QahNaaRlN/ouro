@@ -1,5 +1,6 @@
 import { findCycle } from './graph';
-import type { Actor, Command, DecisionRequest, DomainEvent, Execution, ProjectState, RevisionContent, Spec, SpecRevision } from './types';
+import { validateFlowDefinition as assertFlowDefinition } from './flow';
+import type { Actor, Command, DecisionRequest, DomainEvent, Execution, FlowDefinition, FlowNodeKind, ProjectState, RevisionContent, Spec, SpecRevision } from './types';
 
 export const PROJECT_ID = '6c7c62dc-694c-4c7b-9cb1-d9e605164001';
 export const AGENT_ID = 'a8f5f167-6e7a-4d18-8d2e-88466c165001';
@@ -13,6 +14,12 @@ const text = (value: unknown, label: string, minimum = 1): string => {
 };
 const terminal = new Set(['succeeded', 'failed', 'cancelled', 'skipped']);
 const copy = <T>(value: T): T => structuredClone(value);
+export function validateFlowDefinition(value:unknown):asserts value is FlowDefinition {
+  try{assertFlowDefinition(value);}catch(error){
+    if((error as {code?:string}).code==='VALIDATION_ERROR')fail('VALIDATION_ERROR',(error as Error).message);
+    throw error;
+  }
+}
 export function emptyState(projectId = PROJECT_ID): ProjectState {
   return { projectId, version: 0, roadmap: { id: '7fa3e5d0-e946-4684-9a1a-540eaa334001', title: 'Ouro · Human View', goal: 'От ожидания к проверяемому результату', state: 'active' }, specs: [], revisions: [], executions: [], requests: [], dependencies: [], events: [] };
 }
@@ -117,6 +124,7 @@ function validateContent(content: RevisionContent): void {
   text(content.title, 'Название'); text(content.goal, 'Цель');
   for (const key of ['constraints', 'assumptions', 'risks', 'inputs'] as const) text(content[key], key, 0);
   text(content.comment, 'comment', 0);
+  if(content.flow!==undefined)validateFlowDefinition(content.flow);
   if (!Array.isArray(content.dod) || !content.dod.length || content.dod.length > 50) fail('VALIDATION_ERROR', 'Нужен список критериев DoD (1–50)');
   const ids = new Set<string>();
   for (const criterion of content.dod) {
@@ -201,15 +209,25 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
     case 'reportAction': case 'reportQuestion': case 'reportFork': case 'reportBlocker': {
       const execution = getExecution(command.executionId); agent(execution);
       if (execution.specId !== command.specId || execution.specRevisionId !== command.specRevisionId) fail('REVISION_CONFLICT', 'Отчёт не соответствует контракту попытки');
+      if(command.flowNodeId!==undefined){
+        if(typeof command.flowNodeId!=='string'||!command.flowNodeId.trim()||command.flowNodeId.length>200)fail('VALIDATION_ERROR','flowNodeId должен содержать от 1 до 200 символов.');
+        const flow=state.revisions.find(revision=>revision.id===execution.specRevisionId)?.flow;
+        if(!flow)fail('VALIDATION_ERROR','Назначенная ревизия не содержит схемы процесса.');
+        validateFlowDefinition(flow);
+        const node=flow.nodes.find(node=>node.id===command.flowNodeId);
+        const allowed:FlowNodeKind[]=command.type==='reportAction'?['action','condition','wait','result']:command.type==='reportQuestion'?['question']:command.type==='reportFork'?['fork']:['blocker'];
+        if(!node||!allowed.includes(node.kind))fail('VALIDATION_ERROR','Узел схемы отсутствует в назначенной ревизии или не соответствует типу сообщения.');
+      }
       text(command.title, 'Название'); text(command.context, 'Контекст');
       if (command.type === 'reportAction') {
         text(command.actionId, 'actionId');
         if (!['started', 'completed', 'failed'].includes(command.phase)) fail('VALIDATION_ERROR', 'Некорректная фаза Action');
         if (command.phase !== 'started') text(command.evidence, 'Основание результата');
         const previous = state.events.filter(e => e.type === 'ActionReported' && e.executionId === execution.id && e.payload.actionId === command.actionId);
+        if(previous.some(event=>event.payload.flowNodeId!==command.flowNodeId))fail('VALIDATION_ERROR','Привязка actionId к узлу схемы не меняется между фазами.');
         if (previous.some(e => ['completed', 'failed'].includes(String(e.payload.phase))) || (command.phase === 'started' && previous.length)) fail('INVALID_TRANSITION', 'Фаза действия уже завершена или начата');
         if (command.phase === 'started' && (execution.state !== 'running' || execution.stopRequested)) fail('INVALID_TRANSITION', 'Новое действие нельзя начать при остановке или ожидании');
-        emit('ActionReported', { actionId: command.actionId, phase: command.phase, title: command.title, context: command.context, evidence: command.evidence ?? '', historicalContext: getSpec(execution.specId).activeRevisionId !== execution.specRevisionId }, { ...context(execution), causationId: command.phase === 'started' ? undefined : previous.find(e => e.payload.phase === 'started')?.id });
+        emit('ActionReported', { actionId: command.actionId, phase: command.phase, title: command.title, context: command.context, evidence: command.evidence ?? '', historicalContext: getSpec(execution.specId).activeRevisionId !== execution.specRevisionId,...(command.flowNodeId!==undefined?{flowNodeId:command.flowNodeId}:{}) }, { ...context(execution), causationId: command.phase === 'started' ? undefined : previous.find(e => e.payload.phase === 'started')?.id });
         break;
       }
       activeRevision(getSpec(execution.specId),execution.specRevisionId);
@@ -217,6 +235,7 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
       if (state.requests.filter(r => r.specId === execution.specId && r.agentId === execution.agentId && r.state === 'pending').length >= 10) fail('PENDING_LIMIT_EXCEEDED', 'У агента уже 10 открытых запросов по этой спеке');
       const kind = command.type === 'reportQuestion' ? 'Question' : command.type === 'reportFork' ? 'Fork' : 'Blocker';
       const request: DecisionRequest = { id: id(), kind, title: command.title, context: command.context, reason: '', options: [], state: 'pending', specId: execution.specId, specRevisionId: execution.specRevisionId, executionId: execution.id, agentId: execution.agentId, blockingScope: 'execution' };
+      if(command.flowNodeId!==undefined)request.flowNodeId=command.flowNodeId;
       if (command.type === 'reportQuestion') {
         text(command.question, 'Вопрос'); if (!['execution', 'none'].includes(command.blockingScope)) fail('VALIDATION_ERROR', 'Некорректная область блокировки');
         request.question = command.question; request.blockingScope = command.blockingScope;

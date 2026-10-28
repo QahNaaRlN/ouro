@@ -19,9 +19,9 @@ try{
   if(process.env.OURO_AGENT_TOKEN&&process.env.OURO_AGENT_TOKEN_FILE)throw new Error('Ambiguous credential');
   const token=process.env.OURO_AGENT_TOKEN_FILE?(await readFile(process.env.OURO_AGENT_TOKEN_FILE,'utf8')).trim():process.env.OURO_AGENT_TOKEN;
   if(!token)throw new Error('Credential required');
-  remote=new Client({name:'ouro-stdio-bridge',version:'0.1.0-alpha.2'});
+  remote=new Client({name:'ouro-stdio-bridge',version:'0.1.0-alpha.3'});
   await remote.connect(new StreamableHTTPClientTransport(url,{requestInit:{headers:{Authorization:`Bearer ${token}`}}}));
-  server=new Server({name:'ouro',version:'0.1.0-alpha.2'},{capabilities:{tools:{}},instructions:remote.getInstructions()??'Read ouro.get_context first. Human decisions and DoD acceptance remain in Ouro.'});
+  server=new Server({name:'ouro',version:'0.1.0-alpha.3'},{capabilities:{tools:{}},instructions:remote.getInstructions()??'Read ouro.get_context first. Human decisions and DoD acceptance remain in Ouro.'});
   server.setRequestHandler(ListToolsRequestSchema,async()=>remote.listTools());
   server.setRequestHandler(CallToolRequestSchema,async(request)=>remote.callTool(request.params));
   await server.connect(new StdioServerTransport());
