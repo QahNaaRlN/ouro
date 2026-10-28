@@ -73,6 +73,8 @@ test('L01/L03/L04/L05/L06 human curates a candidate, publishes a snapshot and re
     expect(createdSpecId).not.toBe('');
     const unrelated=await human(request,{type:'createSpec',content:specContent(`Более новая чужая спека ${Date.now()}`)});
     await expect.poll(()=>cursor(page)).toBe(unrelated.version);
+    await expect(specForm.getByRole('button',{name:'Обновить базу после проверки',exact:true})).toBeDisabled();
+    await expect(specForm.getByRole('textbox',{name:'Название новой спеки',exact:true})).toBeDisabled();
     await specForm.getByRole('button',{name:'Создать черновик спеки',exact:true}).click();
     await expect(page.getByRole('combobox',{name:'Выбрать спецификацию',exact:true})).toHaveValue(createdSpecId);
   }finally{await page.unroute('**/api/commands');}
@@ -126,4 +128,54 @@ test('L02/L06 lesson curation preserves draft focus and requires explicit rebase
   await editor.getByRole('button',{name:'Обновить базу после проверки',exact:true}).click();
   await editor.getByRole('button',{name:'Сохранить черновик урока',exact:true}).click();await expect(editor).toHaveCount(0);
   const saved=(await project(request)).lessonRevisions.find(r=>r.title===draft)!;expect(saved.sourceEventIds).toEqual([source.id]);
+  const detail=page.getByRole('article',{name:'Выбранный урок'});
+  await detail.getByRole('button',{name:'Предложить ревизию урока',exact:true}).click();
+  await editor.getByRole('textbox',{name:'Вывод урока',exact:true}).fill('Вторая редакция сохраняется один раз, даже если ответ потерян.');
+  let lost=false,requestId='';
+  await page.route('**/api/commands',async route=>{
+    const payload=route.request().postDataJSON();
+    if(payload.type==='reviseLesson'&&!lost){lost=true;requestId=payload.requestId;const response=await route.fetch();expect(response.ok(),await response.text()).toBeTruthy();await route.abort('failed');}
+    else{if(payload.type==='reviseLesson')expect(payload.requestId).toBe(requestId);await route.continue();}
+  });
+  try{
+    await editor.getByRole('button',{name:'Сохранить черновик урока',exact:true}).click();
+    await expect(page.locator('.lesson-error')).toBeVisible();
+    const committed=await project(request);await expect.poll(()=>cursor(page)).toBe(committed.version);
+    await expect(editor.getByRole('button',{name:'Обновить базу после проверки',exact:true})).toBeDisabled();
+    await expect(editor.getByRole('button',{name:'Сохранить черновик урока',exact:true})).toBeEnabled();
+    await editor.getByRole('button',{name:'Сохранить черновик урока',exact:true}).click();await expect(editor).toHaveCount(0);
+    expect((await project(request)).lessonRevisions.filter(r=>r.lessonId===saved.lessonId)).toHaveLength(2);
+  }finally{await page.unroute('**/api/commands');}
+});
+
+test('L06 an exact retry proving no receipt unlocks a lost uncommitted edit for explicit rebase',async({page,request})=>{
+  test.setTimeout(60000);expect((await request.get('/api/session')).ok()).toBeTruthy();
+  const source=(await project(request)).events[0],title=`Неполученная редакция ${Date.now()}`;
+  const state=await human(request,{type:'createLesson',content:{title,context:'Проверка запроса, не дошедшего до сервера.',conclusion:'Первый вывод.',applicability:'Локальная проверка сохранения.',evidence:'Событие проекта и проверяемые HTTP-ответы.',tags:[],sourceEventIds:[source.id]}});
+  const lesson=state.lessons.find(l=>state.lessonRevisions.some(r=>r.id===l.latestRevisionId&&r.title===title))!;
+  await open(page);await page.getByRole('button',{name:'Уроки',exact:true}).click();
+  await page.getByRole('searchbox',{name:'Поиск уроков',exact:true}).fill(title);
+  await page.locator('.lesson-list').getByRole('button').filter({hasText:title}).click();
+  await page.getByRole('button',{name:'Предложить ревизию урока',exact:true}).click();
+  const editor=page.getByRole('region',{name:'Редактор урока'}),conclusion=editor.getByRole('textbox',{name:'Вывод урока',exact:true});
+  await conclusion.fill('Повтор подтвердит отсутствие receipt, затем человек обновит базу.');
+  let attempts=0,firstRequestId='';
+  await page.route('**/api/commands',async route=>{
+    const payload=route.request().postDataJSON();
+    if(payload.type==='reviseLesson'){
+      attempts++;
+      if(attempts===1){firstRequestId=payload.requestId;await route.abort('failed');return;}
+      if(attempts===2)expect(payload.requestId).toBe(firstRequestId);else expect(payload.requestId).not.toBe(firstRequestId);
+    }
+    await route.continue();
+  });
+  try{
+    await editor.getByRole('button',{name:'Сохранить черновик урока',exact:true}).click();await expect(page.locator('.lesson-error')).toBeVisible();await expect(conclusion).toBeDisabled();
+    const external=await human(request,{type:'createSpec',content:specContent(`Событие после недоставленного урока ${Date.now()}`)});await expect.poll(()=>cursor(page)).toBe(external.version);
+    const rejected=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/commands'&&response.request().method()==='POST');
+    await editor.getByRole('button',{name:'Сохранить черновик урока',exact:true}).click();const response=await rejected;expect(response.status()).toBe(409);expect((await response.json()).error.code).toBe('VERSION_CONFLICT');
+    await expect(conclusion).toBeEnabled();await expect(editor.getByRole('button',{name:'Обновить базу после проверки',exact:true})).toBeEnabled();
+    await editor.getByRole('button',{name:'Обновить базу после проверки',exact:true}).click();await editor.getByRole('button',{name:'Сохранить черновик урока',exact:true}).click();await expect(editor).toHaveCount(0);
+    expect((await project(request)).lessonRevisions.filter(r=>r.lessonId===lesson.id)).toHaveLength(2);
+  }finally{await page.unroute('**/api/commands');}
 });

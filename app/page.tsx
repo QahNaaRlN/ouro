@@ -47,6 +47,7 @@ import Roadmap, { specLabels, Status } from "@/components/roadmap";
 import { RealityGraph } from "@/components/reality";
 import AgentsPanel, { type AgentRegistration } from "@/components/agents-panel";
 import GitHubPanel from '@/components/github-panel';
+import LessonsPanel from '@/components/lessons-panel';
 import SpecFlow from "@/components/spec-flow";
 import { StateTransitions } from "@/components/state-transitions";
 import { createProjectSnapshotAdopter, type ProjectSnapshot } from '@/lib/project-snapshot';
@@ -63,7 +64,7 @@ import {
   type FlowDefinition,
 } from "@/packages/core/src";
 
-type View = "roadmap" | "specs" | "decisions" | "history" | "methodology" | "agents" | "integrations";
+type View = "roadmap" | "specs" | "decisions" | "history" | "methodology" | "agents" | "integrations" | "lessons";
 type Modal = "create" | "revision" | "accept" | "dependency" | null;
 type ProjectResponse = { state: ProjectState; cursor: number; storage: string };
 type Payload = Record<string, unknown>;
@@ -103,6 +104,9 @@ const eventLabels: Record<string, string> = {
   DependencyAdded: "Добавлена зависимость",
   BlockerCleared: "Устранение блокера подтверждено",
   RemediationAuthorized: "Разрешено устранение блокера",
+  LessonCreated: "Создан черновик урока",
+  LessonRevisionProposed: "Предложена редакция урока",
+  LessonPublished: "Опубликован урок",
   GitHubBindingCreated: "GitHub привязан к попытке",
   GitHubBindingRevoked: "Привязка GitHub отозвана",
 };
@@ -355,6 +359,7 @@ export default function Home() {
     revision =
       state?.revisions.find((r) => r.id === spec?.activeRevisionId) ??
       state?.revisions.find((r) => r.specId === selected);
+  const originLessonRevision=spec?.origin?.kind==='lesson'?state?.lessonRevisions.find(item=>item.id===spec.origin?.lessonRevisionId):undefined;
   const pending = state?.requests.filter((r) => r.state === "pending") ?? [];
   const selectedRequests =
     state?.requests.filter((r) => r.specId === selected) ?? [];
@@ -379,6 +384,7 @@ export default function Home() {
     { id: "history" as View, label: "История", icon: History },
     { id: "agents" as View, label: "Агенты", icon: Bot },
     { id: 'integrations' as View, label:'Интеграции',icon:GitBranch },
+    { id: 'lessons' as View, label:'Уроки',icon:BookOpen },
   ];
   const exportHistory = () => {
     if (!state) return;
@@ -829,6 +835,10 @@ export default function Home() {
                       {detailTab==='states'&&<StateTransitions state={state} specId={spec.id} executionId={execution?.id}/>}
                       {detailTab === "expectation" && (
                         <div className="expectation-content">
+                          {spec.origin?.kind==='lesson'&&<section className="content-section small-section" aria-label="Происхождение спеки">
+                            <h3>Происхождение спеки</h3>
+                            {originLessonRevision?<><p>Урок «{originLessonRevision.title}» · r{originLessonRevision.revision}</p><p>Спека создана из этой опубликованной редакции. Новые публикации урока не меняют её источник.</p></>:<p>Редакция урока-источника недоступна в текущем снимке.</p>}
+                          </section>}
                           <section className="content-section">
                             <div className="section-heading">
                               <h3>Что должно измениться</h3>
@@ -1316,8 +1326,9 @@ export default function Home() {
               {view === "methodology" && <Methodology />}
               {view === "agents" && <AgentsPanel onAgentsChange={setAgents}/>}
               {view==='integrations'&&<GitHubPanel state={state} onSnapshot={adoptMutation}/>}
+              {view==='lessons'&&<LessonsPanel state={state} onSnapshot={adoptMutation} onOpenSpec={id=>{pick(id);setView('specs');setDetailTab('expectation');}}/>}
             </main>
-            {view !== 'agents' && view!=='integrations' && <aside className="context-panel">
+            {view !== 'agents' && view!=='integrations' && view!=='lessons' && <aside className="context-panel">
               <div className="context-panel-heading">
                 <span>Требует внимания</span>
                 <span className="attention-counter">{pending.length}</span>
@@ -1501,7 +1512,7 @@ export default function Home() {
                   : "Хранилище…"}
             </span>
             <span className="footer-separator" />
-            <span>0.1.0-alpha.5</span>
+            <span>0.1.0-alpha.6</span>
             <span className="small-tag">PROTOTYPE</span>
           </div>
         </footer>
