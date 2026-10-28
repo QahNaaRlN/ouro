@@ -41,6 +41,7 @@ npm start
 - [Прочитанные первоисточники, решения и ограничения](docs/methodology-research.md).
 - [Реализованная архитектура хранения](docs/implementation.md).
 - [Соответствие ТЗ/ТС и границы прототипа](docs/prototype-scope.md).
+- [Результаты выполненных проверок](docs/validation.md).
 - [Проверенные данные дизайна](docs/design-reference.md).
 
 - [ТЗ: продукт и Human View](docs/TZ-Ouro-OS.md)
