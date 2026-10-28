@@ -1,0 +1,37 @@
+{
+  "name": "ouro",
+  "version": "0.1.0-alpha.1",
+  "private": true,
+  "scripts": {
+    "dev": "OURO_LOCAL_DEMO=1 next dev --hostname 127.0.0.1",
+    "build": "next build --webpack",
+    "start": "OURO_LOCAL_DEMO=1 next start --hostname 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "test:e2e": "playwright test",
+    "db:check": "tsx scripts/check-db.ts"
+  },
+  "dependencies": {
+    "@dagrejs/dagre": "^1.1.8",
+    "@electric-sql/pglite": "^0.3.14",
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@xyflow/react": "^12.10.0",
+    "lucide-react": "^0.468.0",
+    "next": "16.4.3",
+    "pg": "^8.16.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@types/dagre": "^0.7.53",
+    "@types/node": "^24.10.0",
+    "@types/pg": "^8.15.6",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
