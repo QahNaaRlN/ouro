@@ -1,5 +1,25 @@
 # Реализация прототипа и границы проверки
 
+## Текущий срез `0.1.0-alpha.11`
+
+Исполняемый domain/store отделён от HTTP/MCP и интерфейса. [Дорожная карта](roadmap.md) и [валидация](validation.md) связывают текущие функции с SDD/TDD; далее сохранены датированные описания ранних срезов.
+
+| Миграция | Текущий объём |
+|---|---|
+| [001_initial.sql](../db/migrations/001_initial.sql) | Immutable доменные события, identity/revisions/receipts/outbox и проектная версия |
+| [002_agents.sql](../db/migrations/002_agents.sql) | Отдельные регистрации/хеши ключей/отзывы агентов и техническая presence-проекция |
+| [003_github.sql](../db/migrations/003_github.sql) | Технические delivery/queue/lease для проверяемого GitHub commit → Action |
+| [004_participants.sql](../db/migrations/004_participants.sql) | Реестр отдельных human participants, хеши credentials и отзывы |
+| [005_drafts.sql](../db/migrations/005_drafts.sql) | Технические Yjs-документы, updates, версии и receipts совместных черновиков |
+
+Авторитетная бизнес-история остаётся append-only. Техническая presence, lease, SQL-head черновика и проектный cursor имеют отдельную политику обновления. Yjs updates не меняют domain cursor; публикация атомарно создаёт новую immutable ревизию и закрывает технический черновик, а активация остаётся отдельной человеческой командой. Human revocation повторно проверяется под project lock перед записью. [Участники](participants-guide.md), [черновики](collaboration-guide.md), [GitHub](github-guide.md).
+
+Сводки/предложения внешнего MCP-агента, уроки и происхождение новых idea-спек хранятся доменными событиями, без отдельной новой миграции. Meridian импорт проходит выделенный серверный маршрут с повторной строгой проверкой, точным raw JSON/SHA-256 и статусом `unverified_import`; обычная команда не может выдать себя за подтверждённый импорт. [Предложения](agent-proposals-guide.md), [Meridian](meridian-guide.md).
+
+Проверки выполнены на PGlite. Адаптер `pg` и `DATABASE_URL` предусмотрены, но внешний PostgreSQL и многопроцессное развёртывание отдельно не приняты. Один настроенный проект, ограниченные графы/документы, отсутствие production SSO/RBAC/tenancy и нативного Meridian host остаются явными границами.
+
+## История реализации
+
 Дополнение `0.1.0-alpha.9`: миграции004/005 добавляют immutable реестр отдельных человеческих участников/хешей/отзывов и технические Yjs-черновики. Async проверка человеческой сессии действует на HTTP/SSE и повторяется под project lock внутри записи; доверенный локальный оператор управляет реестром. Shared updates и SQL receipts не изменяют domain cursor или active revision. Публикация через общий in-transaction command helper атомарно создаёт immutable RevisionProposed/outbox/receipt и закрывает черновик; Flow сохраняется, активация отдельно. [Контракт и RED/GREEN](plans/collaborative-drafts.md), [инструкция](collaboration-guide.md). Внешний SSO и долговременное хранение неотправленного текста в браузере не заявляются.
 
 Дополнение `0.1.0-alpha.3`: optional Flow хранится в том же immutable JSON snapshot ревизии и защищается его hash, без переписывания legacy-данных и отдельной SQL-миграции. Reports могут явно ссылаться на flowNodeId назначенной ревизии; фазы одного actionId сохраняют привязку. Процессный редактор создаёт новую ревизию, а граф четырёх статусных осей строит фактические переходы авторитетным replay. [SDD/TDD](plans/flow-visualization.md), [инструкция](flow-guide.md).

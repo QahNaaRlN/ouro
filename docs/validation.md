@@ -1,6 +1,8 @@
-# Проверка прототипа · 28.10.2026
+# Проверка прототипа
 
-Исторический отчёт `0.1.0-alpha.1`. Последующие результаты: [alpha.2 MCP](plans/agent-connect.md#итоговая-проверка-28102026), [alpha.3 Flow](plans/flow-visualization.md), [alpha.4 realtime](plans/live-updates.md), [alpha.5 GitHub](plans/github-evidence.md), [alpha.6 уроки](plans/lessons.md), [alpha.7 показатели](plans/drift-metric.md), [alpha.8 история и восстановление](plans/methodology-recovery.md), [alpha.9 совместные черновики и участники](plans/collaborative-drafts.md), [alpha.10 предложения агента с источниками](plans/agent-proposals.md).
+Текущий интегрированный срез `0.1.0-alpha.11`: 245/245 unit/integration, 57/57 production E2E, typecheck и production build успешны. Трассировка SDD/RED/GREEN и границы каждого пакета: [alpha.2 MCP](plans/agent-connect.md#итоговая-проверка-28102026), [alpha.3 Flow](plans/flow-visualization.md), [alpha.4 realtime](plans/live-updates.md), [alpha.5 GitHub](plans/github-evidence.md), [alpha.6 уроки](plans/lessons.md), [alpha.7 показатели](plans/drift-metric.md), [alpha.8 история и восстановление](plans/methodology-recovery.md), [alpha.9 совместные черновики и участники](plans/collaborative-drafts.md), [alpha.10 предложения агента](plans/agent-proposals.md), [alpha.11 Meridian import](plans/meridian-context.md).
+
+Далее сохранён исторический отчёт `0.1.0-alpha.1` от 28.10.2026. Его версии зависимостей, результаты 24/24 и 4/4, а также ограничения относятся к исходному срезу и не заменяют последующие журналы.
 
 Проверено на Node.js 24.19.0, Next.js 16.4.3, React 19.3.1, PGlite 0.3.16 / PostgreSQL 17.5, системном Chromium.
 

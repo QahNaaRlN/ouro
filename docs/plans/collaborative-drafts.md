@@ -20,7 +20,7 @@ Identity browser gate: 2/2 на отдельном CI-сервере, порт 3
 
 Независимое ревью Yjs fixed types: скрытый list на Y.Map и скрытый map на Y.Text/Y.Array принимались при неизменном visible JSON — наблюдаемый RED; строгие constructor/internal-shape guards →11/11 SQL/draft GREEN. Метаданные head выделены из прежнего UI-правила: RED1/5 (закрытый draft вновь открывался равноверсионным GET) →GREEN5/5; observed publication теперь монотонна, несовместимый higher open head отклоняется.
 
-UI intent RED: два реальных сценария lost response →401 ошибочно теряли receipt intent/разрешали менять основу. Исправление и повторные проверки выполняются отдельно; до GREEN готовность не заявляется.
+UI intent RED: два реальных сценария lost response →401 ошибочно теряли receipt intent/разрешали менять основу. Исправлены сохранение metadata и повтор точного запроса исходного участника; оба сценария входят в успешный итоговый production gate 46/46 ниже.
 
 Ограниченная Unicode-сверка по независимому ревью: RED0/5 — Yjs NUL принимался, Lesson JSONB22P05, Agent TEXT22021, participant lone-surrogate принимался. GREEN5/5 после guards plainText/criterion ID/local edit, lesson fields/tags, registration names. `isWellFormedUnicode` совпадает с общим helper Meridian; валидный emoji сохраняется точно, invalid input не выдаёт ключ и не создаёт запись. Итоговый merged unit gate206/206 и typecheck GREEN.
 
@@ -39,3 +39,6 @@ UI intent RED: два реальных сценария lost response →401 о�
 Не заявляются внешний SSO/RBAC/tenancy, долговременный browser storage неотправленного текста, внешний PostgreSQL/нагрузочный аудит или одновременное редактирование самой Flow. Flow закрепляется и сохраняется; клавиатурные updates остаются техническими данными.
 
 Production preview3007 использует собственную `/workspace/ouro-collab/.ouro/preview-postgres`. Browser smoke:0 page errors, создание/сохранение общего текста подтверждено, техническая версия1/hasPendingUpdates=false; project cursor остался35→35. Проверены dark desktop1440×1000 и light mobile390×844, мобильная навигация и отсутствие горизонтального overflow. Снимки: `/tmp/ouro-alpha9-collaboration-dark.png`, `/tmp/ouro-alpha9-collaboration-light-mobile.png`. Исходная alpha.2/её process/data не изменялись.
+
+
+Последующая интеграция alpha.11 добавляет явную проверку ожидаемого участника перед записью/receipt lookup: смена общей cookie не приписывает queued Yjs update, создание или публикацию другому человеку. Исходный автор очереди закреплён при открытии редактора, отказ сохраняет локальный ввод и pending. Эти регрессии входят в отдельный итоговый gate 245/57 [общего стека](meridian-context.md); исторические результаты alpha.9 выше сохранены.
