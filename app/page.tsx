@@ -48,10 +48,15 @@ import { RealityGraph } from "@/components/reality";
 import AgentsPanel, { type AgentRegistration } from "@/components/agents-panel";
 import SpecFlow from "@/components/spec-flow";
 import { StateTransitions } from "@/components/state-transitions";
+import { createProjectSnapshotAdopter, type ProjectSnapshot } from '@/lib/project-snapshot';
+import { startProjectSubscription, type ProjectSubscriptionStatus } from '@/lib/project-subscription';
+import { getRoadmapFilterOptions, matchesRoadmapFilter } from '@/packages/core/src/roadmap-filter';
 import {
   AGENT_ID,
+  PROJECT_ID,
   type DecisionRequest,
   type ProjectState,
+  type DomainEvent,
   type Spec,
   type SpecRevision,
   type FlowDefinition,
@@ -130,6 +135,9 @@ export default function Home() {
     [cursor, setCursor] = useState(0);
   const [agents, setAgents] = useState<AgentRegistration[]>([]);
   const [assignmentAgentId, setAssignmentAgentId] = useState(AGENT_ID);
+  const [snapshotAdopter] = useState(()=>createProjectSnapshotAdopter(PROJECT_ID));
+  const [streamStatus,setStreamStatus] = useState<ProjectSubscriptionStatus>('connecting');
+  const [agentFilter,setAgentFilter] = useState(''),[requestFilter,setRequestFilter] = useState('');
   const [flowRevisionId, setFlowRevisionId] = useState<string | null>(null);
   const [view, setView] = useState<View>("roadmap"),
     [selected, setSelected] = useState<string | null>(null),
@@ -139,7 +147,6 @@ export default function Home() {
     [graphView, setGraphView] = useState(true),
     [layoutKey, setLayoutKey] = useState(0);
   const [loading, setLoading] = useState(true),
-    [connected, setConnected] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [toast, setToast] = useState("");
@@ -151,22 +158,28 @@ export default function Home() {
   const cursorRef = useRef(0);
   const hasInitialSelection = useRef(false);
   const pendingRef = useRef(false);
+  const presentSnapshot=useCallback((snapshot:ProjectSnapshot)=>{
+    setState(snapshot.state);
+    if(snapshot.storage)setStorage(snapshot.storage);
+    setCursor(snapshot.cursor);cursorRef.current=snapshot.cursor;
+  },[]);
+  const adoptSnapshot=useCallback((value:unknown)=>{
+    const result=snapshotAdopter.adopt(value);
+    if(result.status==='invalid')throw new Error(`Невозможно подтвердить историю: ${result.reason}. Обновите страницу после проверки сервера.`);
+    presentSnapshot(result.snapshot);return result.snapshot;
+  },[snapshotAdopter,presentSnapshot]);
   const refresh = useCallback(async () => {
     const response = await fetch("/api/project", { cache: "no-store" });
     const data = await response.json();
     if (!response.ok)
       throw new Error(data.error?.message ?? "Не удалось прочитать проект");
-    setState(data.state);
-    setStorage(data.storage);
-    setCursor(data.cursor ?? data.state.version);
-    cursorRef.current = data.cursor ?? data.state.version;
-    setConnected(true);
+    const adopted=adoptSnapshot(data);
     if (!hasInitialSelection.current) {
-      setSelected(data.state.specs[0]?.id ?? null);
+      setSelected(adopted.state.specs[0]?.id ?? null);
       hasInitialSelection.current = true;
     }
-    return data as ProjectResponse;
-  }, []);
+    return adopted as ProjectResponse;
+  }, [adoptSnapshot]);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -202,23 +215,22 @@ export default function Home() {
     localStorage.setItem("ouro-theme", theme);
   }, [theme]);
   useEffect(() => {
-    const timer = setInterval(async () => {
-      if (pendingRef.current) return;
-      try {
-        const r = await fetch(`/api/events?after=${cursorRef.current}`, {
-          cache: "no-store",
-        });
-        if (!r.ok) throw new Error();
-        const data = await r.json();
-        setConnected(true);
-        if (data.events?.length || data.cursor > cursorRef.current)
-          await refresh();
-      } catch {
-        setConnected(false);
-      }
-    }, 3000);
-    return () => clearInterval(timer);
-  }, [refresh]);
+    if(loading||!snapshotAdopter.getSnapshot())return;
+    const subscription=startProjectSubscription({adopter:snapshotAdopter,onSnapshot:presentSnapshot,onStatus:setStreamStatus,reconcile:async()=>{
+      const response=await fetch('/api/project',{cache:'no-store'});
+      if(!response.ok)throw new Error('Не удалось сверить историю');return response.json();
+    }});
+    const offline=()=>{subscription.reconnect();setStreamStatus(current=>current==='reload-required'?current:'reconnecting');};
+    const online=()=>subscription.reconnect();
+    window.addEventListener('offline',offline);window.addEventListener('online',online);
+    if(!navigator.onLine)offline();
+    return ()=>{window.removeEventListener('offline',offline);window.removeEventListener('online',online);subscription.close();};
+  }, [loading,snapshotAdopter,presentSnapshot]);
+  useEffect(()=>{
+    if(loading)return;let live=true;
+    const timer=setInterval(()=>{void fetch('/api/agents',{cache:'no-store'}).then(async response=>{if(response.ok){const data=await response.json();if(live)setAgents(data.agents);}}).catch(()=>{});},8000);
+    return()=>{live=false;clearInterval(timer);};
+  },[loading]);
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(""), 4500);
@@ -228,6 +240,7 @@ export default function Home() {
     payload: Payload,
     notice = "Изменение записано в историю",
     expectedVersionOverride?: number,
+    onCommitted?: (events:DomainEvent[])=>void,
   ) => {
     if (!state || busy) return false;
     setBusy(true);
@@ -245,7 +258,7 @@ export default function Home() {
       });
       const data = await r.json();
       if (!r.ok) {
-        if (data.state) setState(data.state);
+        if (data.state) adoptSnapshot(data);
         else await refresh();
         throw new Error(
           `${data.error?.code ?? "ERROR"}: ${data.error?.message ?? "Команда не выполнена"}`,
@@ -254,10 +267,9 @@ export default function Home() {
       if (data.replayed) {
         await refresh();
       } else if (data.state) {
-        setState(data.state);
-        setCursor(data.cursor ?? data.state.version);
-        cursorRef.current = data.cursor ?? data.state.version;
+        adoptSnapshot(data);
       } else await refresh();
+      onCommitted?.(Array.isArray(data.events)?data.events:[]);
       setToast(notice);
       return true;
     } catch (e) {
@@ -351,15 +363,9 @@ export default function Home() {
   const simulatorAvailable = simulationExecution?.agentId===AGENT_ID;
   const selectedAgentName = execution ? execution.agentId===AGENT_ID ? 'Симулятор агента' : agents.find(a=>a.id===execution.agentId)?.name??'Назначенный MCP-агент' : 'MCP и симулятор';
   const assignmentValid=assignmentAgentId===AGENT_ID || agents.some(a=>a.id===assignmentAgentId&&!a.revokedAt);
-  const visibleSpecs =
-    state?.specs.filter(
-      (s) =>
-        (!query ||
-          `${s.title} ${s.humanId}`
-            .toLocaleLowerCase()
-            .includes(query.toLocaleLowerCase())) &&
-        (!status || s.state === status),
-    ) ?? [];
+  const visibleSpecs = state?.specs.filter(s=>matchesRoadmapFilter(s,state,{query,status,agentId:agentFilter,requestKind:requestFilter}))??[];
+  const filterOptions=state?getRoadmapFilterOptions(state):{agentIds:[],requestKinds:[]};
+  const connected=streamStatus==='connected';
   const nav = [
     { id: "roadmap" as View, label: "Дорожная карта", icon: Network },
     { id: "specs" as View, label: "Спецификации", icon: FileText },
@@ -637,6 +643,12 @@ export default function Home() {
                           </option>
                         ))}
                       </select>
+                      <select aria-label="Фильтр по агенту" className="filter-select" value={agentFilter} onChange={e=>setAgentFilter(e.target.value)}>
+                        <option value="">Все агенты</option>{[...new Set([...filterOptions.agentIds,...(agentFilter?[agentFilter]:[])])].map(id=><option key={id} value={id}>{id===AGENT_ID?'Симулятор агента':`${agents.find(a=>a.id===id)?.name??id.slice(0,8)}${agents.find(a=>a.id===id)?.revokedAt?' · ключ отозван':''}`}</option>)}
+                      </select>
+                      <select aria-label="Фильтр по открытому запросу" className="filter-select" value={requestFilter} onChange={e=>setRequestFilter(e.target.value)}>
+                        <option value="">Все открытые запросы</option>{Object.entries(kinds).map(([kind,label])=><option key={kind} value={kind}>{label}</option>)}
+                      </select>
                       <button
                         className="icon-btn"
                         title="Новая зависимость"
@@ -666,6 +678,7 @@ export default function Home() {
                         query={query}
                         status={status}
                         layoutKey={layoutKey}
+                        visibleIds={visibleSpecs.map(s=>s.id)}
                       />
                     ) : (
                       <SpecTable
@@ -679,6 +692,7 @@ export default function Home() {
                       />
                     )}
                   </div>
+                  {selected&&!visibleSpecs.some(s=>s.id===selected)&&<p className="helper-note" role="status">Выбранная спека вне фильтра. Выбор и контекст сохранены.</p>}
                   <div className="canvas-bottom">
                     <span>
                       <span className="legend-line" />
@@ -1220,7 +1234,7 @@ export default function Home() {
                     <div className="decision-detail">
                       {currentRequest ? (
                         <DecisionForm
-                          key={`${currentRequest.id}:${currentRequest.state}`}
+                          key={currentRequest.id}
                           request={currentRequest}
                           spec={state.specs.find(
                             (s) => s.id === currentRequest.specId,
@@ -1228,6 +1242,7 @@ export default function Home() {
                           busy={busy}
                           command={command}
                           agents={agents}
+                          version={state.version}
                         />
                       ) : (
                         <Empty icon={<MessageCircle size={30} />}>
@@ -1463,11 +1478,9 @@ export default function Home() {
           </div>
         )}
         <footer className="statusbar">
-          <div>
+          <div role="status" aria-live="polite">
             <span className={`connection-dot ${connected ? "online" : ""}`} />
-            {connected
-              ? "История синхронизирована"
-              : "Нет связи · показаны последние данные"}
+            {connected?'Живые обновления подключены':streamStatus==='reload-required'?'История сервера изменилась · требуется проверка и перезагрузка':streamStatus==='connecting'?'Подключаем живые обновления…':'Нет связи · переподключаемся, показаны последние данные'}
             <span className="footer-separator" />
             <span className="mono">cursor {cursor}</span>
           </div>
@@ -1480,7 +1493,7 @@ export default function Home() {
                   : "Хранилище…"}
             </span>
             <span className="footer-separator" />
-            <span>0.1.0-alpha.3</span>
+            <span>0.1.0-alpha.4</span>
             <span className="small-tag">PROTOTYPE</span>
           </div>
         </footer>
@@ -1501,22 +1514,25 @@ export default function Home() {
           {(modal === "create" || modal === "revision") && (
             <SpecForm
               revision={modal === "revision" ? revision : undefined}
+              version={state.version}
               busy={busy}
-              onSubmit={async (content) => {
+              onSubmit={async (content,base) => {
+                let createdId:string|undefined;
                 const ok = await command(
                   modal === "create"
                     ? { type: "createSpec", content }
-                    : { type: "proposeRevision", specId: selected, content },
+                    : { type: "proposeRevision", specId: base.revision?.specId, content },
                   modal === "create"
                     ? "Спецификация создана"
                     : "Новая ревизия предложена. Активируйте её отдельно",
+                  base.expectedVersion,
+                  events=>{createdId=(events.find(event=>event.type==='SpecCreated')?.payload.spec as Spec|undefined)?.id;},
                 );
                 if (ok) {
                   setModal(null);
                   setView("specs");
                   if (modal === "create") {
-                    const fresh = await refresh();
-                    setSelected(fresh.state.specs.at(-1)?.id ?? null);
+                    if(createdId)setSelected(createdId);
                   } else setDetailTab("revisions");
                 }
               }}
@@ -1526,17 +1542,19 @@ export default function Home() {
             <AcceptanceForm
               spec={spec}
               revision={revision}
+              version={state.version}
               busy={busy}
-              onSubmit={async (evidence) => {
+              onSubmit={async (evidence,base) => {
                 if (
                   await command(
                     {
                       type: "acceptSpec",
-                      specId: spec.id,
-                      specRevisionId: revision.id,
+                      specId: base.specId,
+                      specRevisionId: base.revisionId,
                       evidence,
                     },
                     "DoD принят человеком. Спецификация завершена",
+                    base.expectedVersion,
                   )
                 )
                   setModal(null);
@@ -1647,21 +1665,26 @@ function DecisionForm({
   busy,
   command,
   agents,
+  version,
 }: {
   request: DecisionRequest;
   spec?: Spec;
   busy: boolean;
-  command: (p: Payload, n?: string) => Promise<boolean>;
+  command: (p: Payload, n?: string, expectedVersion?:number) => Promise<boolean>;
   agents: AgentRegistration[];
+  version:number;
 }) {
   const [text, setText] = useState(""),
     [option, setOption] = useState(""),
     [mode, setMode] = useState<"decide" | "reject" | "defer">("decide");
   const [remediationAgentId,setRemediationAgentId]=useState(r.agentId);
+  const [baseVersion,setBaseVersion]=useState(version);
+  const closed=r.state!=='pending';
   const remediationValid=remediationAgentId===AGENT_ID||agents.some(a=>a.id===remediationAgentId&&!a.revokedAt);
   const outcome = r.decision?.outcome;
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    if(closed||busy)return;
     if (mode === "defer") {
       await command(
         {
@@ -1671,6 +1694,7 @@ function DecisionForm({
           until: new Date(Date.now() + 86400000).toISOString(),
         },
         "Запрос отложен на сутки. Решение по-прежнему требуется",
+        baseVersion,
       );
       return;
     }
@@ -1687,6 +1711,7 @@ function DecisionForm({
               : { kind: "approve", chosenOptionId: option },
       },
       "Решение записано. Применение подтверждается отдельно",
+      baseVersion,
     );
   };
   return (
@@ -1729,11 +1754,14 @@ function DecisionForm({
           <p className="blocker-impact">Влияние: {r.impact}</p>
         </div>
       )}
-      {r.state === "pending" ? (
+      {(r.state === 'pending'||text.length>0||option.length>0) && (
         <form onSubmit={submit}>
+          {closed&&<p className="helper-note">Запрос уже закрыт. Ваш введённый текст сохранён для сравнения; повторная запись недоступна.</p>}
+          {!closed&&version!==baseVersion&&<p className="helper-note">Проект изменился после начала ответа. <button type="button" className="text-btn" onClick={()=>setBaseVersion(version)}>Обновить версию после проверки</button></p>}
           <div className="decision-mode">
             <button
               type="button"
+              disabled={closed||busy}
               className={mode === "decide" ? "active" : ""}
               onClick={() => {
                 setMode("decide");
@@ -1744,6 +1772,7 @@ function DecisionForm({
             </button>
             <button
               type="button"
+              disabled={closed||busy}
               className={mode === "reject" ? "active" : ""}
               onClick={() => {
                 setMode("reject");
@@ -1754,6 +1783,7 @@ function DecisionForm({
             </button>
             <button
               type="button"
+              disabled={closed||busy}
               className={mode === "defer" ? "active" : ""}
               onClick={() => {
                 setMode("defer");
@@ -1775,6 +1805,7 @@ function DecisionForm({
                 >
                   <input
                     type="radio"
+                    disabled={closed||busy}
                     name="decision-option"
                     value={o.id}
                     checked={option === o.id}
@@ -1806,6 +1837,7 @@ function DecisionForm({
                   ? "Почему откладываем на сутки"
                   : "Ваш ответ"}
               <textarea
+                readOnly={closed}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder={
@@ -1833,6 +1865,7 @@ function DecisionForm({
             className={`btn ${mode === "reject" ? "btn-danger" : "btn-primary"}`}
             disabled={
               busy ||
+              closed ||
               (mode === "decide" && r.kind !== "Question" && !option) ||
               ((mode !== "decide" || r.kind === "Question") && !text.trim())
             }
@@ -1856,7 +1889,8 @@ function DecisionForm({
                     : "Зафиксировать выбор"}
           </button>
         </form>
-      ) : (
+      )}
+      {r.state!=='pending' && (
         <div className="recorded-decision">
           <div className="section-heading">
             <h3>Решение человека</h3>
@@ -2162,6 +2196,7 @@ function ModalDialog({
   children: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const closeRef=useRef(onClose);closeRef.current=onClose;
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     const focusable = () =>
@@ -2172,7 +2207,7 @@ function ModalDialog({
       );
     focusable()[0]?.focus();
     const key = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") closeRef.current();
       if (e.key === "Tab") {
         const all = focusable(),
           first = all[0],
@@ -2191,7 +2226,7 @@ function ModalDialog({
       document.removeEventListener("keydown", key);
       previous?.focus();
     };
-  }, [onClose]);
+  }, []);
   return (
     <div
       className="modal-backdrop"
@@ -2223,14 +2258,17 @@ function ModalDialog({
 }
 function SpecForm({
   revision: sourceRevision,
+  version,
   busy,
   onSubmit,
 }: {
   revision?: SpecRevision;
+  version:number;
   busy: boolean;
-  onSubmit: (content: Payload) => Promise<void>;
+  onSubmit: (content: Payload,base:{revision?:SpecRevision;expectedVersion:number}) => Promise<void>;
 }) {
   const [revision] = useState(sourceRevision);
+  const [baseVersion,setBaseVersion]=useState(version);
   const baseChanged = revision?.id !== sourceRevision?.id;
   const [title, setTitle] = useState(revision?.title ?? ""),
     [goal, setGoal] = useState(revision?.goal ?? ""),
@@ -2241,6 +2279,7 @@ function SpecForm({
       className="modal-form"
       onSubmit={(e) => {
         e.preventDefault();
+        if(baseChanged||busy)return;
         void onSubmit({
           title,
           goal,
@@ -2263,7 +2302,7 @@ function SpecForm({
             ? "Новая ревизия предложена человеком через Human View"
             : "Создано через Human View",
           ...(revision?.flow ? {flow:revision.flow} : {}),
-        });
+        },{revision,expectedVersion:baseVersion});
       }}
     >
       <label className="form-label">
@@ -2309,7 +2348,8 @@ function SpecForm({
         Содержание сохраняется неизменяемой ревизией. Активация — отдельное
         действие человека.
       </p>
-      {baseChanged && <p role="alert">Активная ревизия изменилась. Текст черновика сохранён; проверьте новое ожидание перед созданием следующей ревизии.</p>}
+      {baseChanged && <p role="alert">Ревизия изменилась. Текст черновика сохранён; проверьте новое ожидание перед созданием следующей ревизии.</p>}
+      {!baseChanged&&baseVersion!==version&&<p className="helper-note">Проект изменился после начала ввода. <button type="button" className="text-btn" onClick={()=>setBaseVersion(version)}>Обновить версию после проверки</button></p>}
       <button
         className="btn btn-primary"
         disabled={busy || baseChanged || !title.trim() || !goal.trim() || !dod.trim()}
@@ -2326,23 +2366,30 @@ function SpecForm({
   );
 }
 function AcceptanceForm({
-  spec,
-  revision,
+  spec: sourceSpec,
+  revision: sourceRevision,
+  version,
   busy,
   onSubmit,
 }: {
   spec: Spec;
   revision: SpecRevision;
+  version:number;
   busy: boolean;
-  onSubmit: (evidence: Record<string, string>) => Promise<void>;
+  onSubmit: (evidence: Record<string, string>,base:{specId:string;revisionId:string;expectedVersion:number}) => Promise<void>;
 }) {
+  const [base]=useState(()=>({spec:sourceSpec,revision:sourceRevision}));
+  const [baseVersion,setBaseVersion]=useState(version);
+  const {spec,revision}=base;
+  const baseChanged=sourceSpec.id!==spec.id||sourceRevision.id!==revision.id||sourceSpec.activeRevisionId!==revision.id;
   const [evidence, setEvidence] = useState<Record<string, string>>({});
   return (
     <form
       className="modal-form"
       onSubmit={(e) => {
         e.preventDefault();
-        void onSubmit(evidence);
+        if(baseChanged||busy)return;
+        void onSubmit(evidence,{specId:spec.id,revisionId:revision.id,expectedVersion:baseVersion});
       }}
     >
       <p className="helper-note">
@@ -2356,6 +2403,7 @@ function AcceptanceForm({
             {i + 1}. {c.text}
           </span>
           <textarea
+            readOnly={baseChanged}
             required={c.required}
             value={evidence[c.id] ?? ""}
             onChange={(e) =>
@@ -2366,11 +2414,14 @@ function AcceptanceForm({
           />
         </label>
       ))}
+      {baseChanged&&<p role="alert">Ревизия изменилась. Основания по r{revision.revision} сохранены для проверки и не перенесены на новое ожидание.</p>}
+      {!baseChanged&&baseVersion!==version&&<p className="helper-note">Проект изменился после открытия приёмки. <button type="button" className="text-btn" onClick={()=>setBaseVersion(version)}>Обновить версию после проверки</button></p>}
       <button
         className="btn btn-primary"
         type="submit"
         disabled={
           busy ||
+          baseChanged ||
           revision.dod.some((c) => c.required && !evidence[c.id]?.trim())
         }
       >

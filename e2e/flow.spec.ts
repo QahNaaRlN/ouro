@@ -27,10 +27,10 @@ test('F04/F07 process editor preserves its draft during updates and proposes an 
   const title=`Проверить длинное русское название шага без потери смысла ${Date.now()}`;
   await flow.getByLabel('Название узла',{exact:true}).fill(title);
   const version=(await project(page)).version;
-  const poll=page.waitForResponse(r=>r.url().includes('/api/project')&&r.request().method()==='GET');
   const concurrent=await page.request.post('/api/commands',{data:{type:'createSpec',requestId:crypto.randomUUID(),expectedVersion:version,content:{title:`Параллельное изменение ${Date.now()}`,goal:'Внешнее изменение проекта должно сохранить локальный черновик схемы.',dod:[{id:'external',text:'Не потерять черновик',required:true}],constraints:'',assumptions:'',risks:'',inputs:'',comment:''}}});
   expect(concurrent.ok(),await concurrent.text()).toBeTruthy();
-  await poll;
+  const externalVersion=((await concurrent.json()).state as ProjectState).version;
+  await expect.poll(async()=>Number((await page.locator('footer').innerText()).match(/cursor\s+(\d+)/)?.[1])).toBe(externalVersion);
   await expect(flow.getByLabel('Название узла',{exact:true})).toHaveValue(title);
   await flow.getByRole('button',{name:'Предложить новую ревизию',exact:true}).click();
   await expect(flow.getByRole('alert')).toContainText('Черновик сохранён на экране');

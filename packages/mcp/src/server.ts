@@ -10,7 +10,7 @@ export type McpDependencies = {
 
 export function createOuroMcpServer(dependencies: McpDependencies) {
   const service=createAgentService(dependencies);
-  const server=new McpServer({name:'ouro',version:'0.1.0-alpha.3'},{instructions:'Read ouro.get_context first. Work only on human-assigned executions and their immutable revisions. Question/Fork/Blocker require a human. Preserve requestId on retry; read context after version conflicts. Report actual evidence; human accepts DoD separately.'});
+  const server=new McpServer({name:'ouro',version:'0.1.0-alpha.4'},{instructions:'Read ouro.get_context first. Work only on human-assigned executions and their immutable revisions. Question/Fork/Blocker require a human. Preserve requestId on retry; read context after version conflicts. Report actual evidence; human accepts DoD separately.'});
   for(const tool of service.listTools()) {
     server.registerTool(tool.name,{title:tool.title,description:tool.description,inputSchema:tool.inputSchema,annotations:tool.annotations},async(args)=>({...await service.callTool(tool.name,args)}));
   }

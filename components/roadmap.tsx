@@ -106,6 +106,7 @@ export default function Roadmap({
   query,
   status,
   layoutKey,
+  visibleIds,
 }: {
   state: ProjectState;
   selected: string | null;
@@ -113,6 +114,7 @@ export default function Roadmap({
   query: string;
   status: string;
   layoutKey: number;
+  visibleIds?: string[];
 }) {
   // Positions depend only on the structural graph. Incoming events never move the canvas.
   const structuralKey =
@@ -150,6 +152,7 @@ export default function Roadmap({
     setMoved({});
   }, [layoutKey]);
   const visible = (s: Spec) =>
+    visibleIds ? visibleIds.includes(s.id) :
     (!query ||
       `${s.title} ${s.humanId}`
         .toLocaleLowerCase()

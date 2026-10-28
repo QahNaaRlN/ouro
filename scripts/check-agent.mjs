@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-const client=new Client({name:'ouro-connection-check',version:'0.1.0-alpha.3'});
+const client=new Client({name:'ouro-connection-check',version:'0.1.0-alpha.4'});
 try{
   const url=new URL(process.env.OURO_URL??'http://127.0.0.1:3000/api/mcp');
   const local=['localhost','127.0.0.1','[::1]'].includes(url.hostname);

@@ -53,9 +53,12 @@ test('human flow creates a revision, answers a question and accepts DoD only aft
   await simulate(page,'question');
   state=await project(page);const question=state.requests.findLast(r=>r.specId===spec.id)!;
   expect(question.state).toBe('pending');expect(state.executions.findLast(e=>e.specId===spec.id)?.state).toBe('waiting_for_human');
-  await page.getByRole('button',{name:/Какой критерий считать обязательным/}).first().click();
-  await page.getByLabel('Ваш ответ').fill('При отсутствии данных показывать пустой список и явную подпись.');
+  await page.getByRole('button',{name:/^Решения/}).first().click();
+  await page.locator('.decision-list').getByRole('button').filter({hasText:spec.humanId}).click();
+  await page.getByRole('textbox',{name:'Ваш ответ',exact:true}).fill('При отсутствии данных показывать пустой список и явную подпись.');
+  const answered=page.waitForResponse(response=>response.url().includes('/api/commands')&&response.request().method()==='POST'&&response.request().postDataJSON().type==='resolveDecision');
   await page.getByRole('button',{name:'Записать ответ'}).click();
+  expect((await answered).ok()).toBeTruthy();
   state=await project(page);expect(state.requests.find(r=>r.id===question.id)?.state).toBe('resolved');
   expect(state.executions.findLast(e=>e.specId===spec.id)?.state).toBe('waiting_for_human');
   await page.getByRole('button',{name:'Разрешить продолжение',exact:true}).first().click();
