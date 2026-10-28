@@ -192,6 +192,7 @@ export async function createStore(options: StoreOptions = {}) {
   };
   const assertLease=(row:GitHubJobRow|null,leaseToken:string)=>{
     if(!row||row.status!=='processing'||row.lease_token!==leaseToken)throw new StoreError('LEASE_LOST','Попытка обработки очереди больше не владеет lease.');
+    if(!row.lease_until||!(new Date(row.lease_until).getTime()>Date.now()))throw new StoreError('LEASE_LOST','Срок обработки очереди истёк; нужен новый lease.');
     return row;
   };
   return {
@@ -238,8 +239,10 @@ export async function createStore(options: StoreOptions = {}) {
       if(duplicate.rows[0]){
         if(duplicate.rows[0].payload_hash!==payloadHash)throw new StoreError('IDEMPOTENCY_CONFLICT','Конфликт происхождения коммита.');
         // A retry may revisit already imported SHAs before reaching the remainder.
-        // Renew only the caller's still-current lease; a replay must not steal one.
-        await tx.query(`UPDATE ouro_github_jobs SET lease_until=$3,updated_at=now() WHERE delivery_id=$1 AND status='processing' AND lease_token=$2`,[input.jobId,input.leaseToken,new Date(Date.now()+60_000).toISOString()]);
+        // Renew only a still-current, unexpired lease. Reading an old receipt
+        // remains idempotent, but it cannot revive ownership after its deadline.
+        const now=Date.now();
+        await tx.query(`UPDATE ouro_github_jobs SET lease_until=$3,updated_at=now() WHERE delivery_id=$1 AND status='processing' AND lease_token=$2 AND lease_until>$4`,[input.jobId,input.leaseToken,new Date(now+60_000).toISOString(),new Date(now).toISOString()]);
         return {...duplicate.rows[0].response,replayed:true};
       }
       const row=assertLease(await jobById(tx,input.jobId),input.leaseToken);

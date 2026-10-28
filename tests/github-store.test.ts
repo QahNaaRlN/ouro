@@ -52,9 +52,10 @@ test('G04: semantic receipt survives later human writes and another delivery wit
     const job=await claimed(f),input={jobId:job.id,leaseToken:job.leaseToken,bindingId:f.binding.id,commit:proof};
     const results=await Promise.all(Array.from({length:3},()=>f.store.ingestVerifiedGitHubCommit(input)));assert.equal(results.filter(r=>!r.replayed).length,1);assert.equal(new Set(results.map(r=>r.event.id)).size,1);
     await f.command({type:'proposeRevision',specId:f.spec.id,content:{...f.revision,title:'Более поздняя человеческая запись'}});
-    await f.store.inspect("UPDATE ouro_github_jobs SET lease_until='2000-01-01T00:00:00Z' WHERE delivery_id=$1",[job.id]);
+    const activeDeadline=new Date(Date.now()+5000).toISOString();
+    await f.store.inspect('UPDATE ouro_github_jobs SET lease_until=$2 WHERE delivery_id=$1',[job.id,activeDeadline]);
     const replay=await f.store.ingestVerifiedGitHubCommit(input);assert.equal(replay.replayed,true);assert.equal(replay.cursor,results[0].cursor);
-    const lease=(await f.store.inspect<{lease_until:Date|string}>('SELECT lease_until FROM ouro_github_jobs WHERE delivery_id=$1',[job.id])).rows[0].lease_until;assert(new Date(lease).getTime()>Date.now(),'semantic replay renews only its current lease so a large retry makes progress');
+    const lease=(await f.store.inspect<{lease_until:Date|string}>('SELECT lease_until FROM ouro_github_jobs WHERE delivery_id=$1',[job.id])).rows[0].lease_until;assert(new Date(lease).getTime()>new Date(activeDeadline).getTime(),'semantic replay renews its still-valid lease so a large retry makes progress');
     await f.store.finishGitHubDelivery(job.id,job.leaseToken);
     const second=await claimed(f);const other=await f.store.ingestVerifiedGitHubCommit({...input,jobId:second.id,leaseToken:second.leaseToken});assert.equal(other.event.id,replay.event.id);
     const state=await f.store.getProject();assert.equal(state.events.filter(e=>(e.payload.source as any)?.kind==='github_commit').length,1);assert.notEqual(state.specs.find(s=>s.id===f.spec.id)!.state,'done');
