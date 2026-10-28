@@ -76,6 +76,9 @@ test('L01/L03/L04/L05/L06 human curates a candidate, publishes a snapshot and re
     await specForm.getByRole('button',{name:'Создать черновик спеки',exact:true}).click();
     await expect(page.getByRole('combobox',{name:'Выбрать спецификацию',exact:true})).toHaveValue(createdSpecId);
   }finally{await page.unroute('**/api/commands');}
+  await page.getByRole('button',{name:'Ожидание',exact:true}).click();
+  const origin=page.getByRole('region',{name:'Происхождение спеки'});
+  await expect(origin).toContainText(lessonTitle);await expect(origin).toContainText('r1');
   state=await project(request);
   const created=state.specs.find(s=>s.id===createdSpecId)!;
   expect(created.activeRevisionId).toBeNull();expect(created.state).toBe('idea');
