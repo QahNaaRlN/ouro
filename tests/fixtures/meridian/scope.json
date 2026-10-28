@@ -1,0 +1,187 @@
+{
+  "contract": "meridian-work-scope-view",
+  "contract_version": 1,
+  "snapshot_id": "owned-scope-1",
+  "ordinary_writer": false,
+  "actions_authorized": false,
+  "facts": {
+    "project_id": "synthetic-project",
+    "repository_id": "synthetic-repository",
+    "subject_ref": {
+      "provider_id": "synthetic-provider",
+      "workspace_id": "synthetic-workspace",
+      "record_key": {
+        "record_type": "task-specification",
+        "id": "synthetic-work",
+        "scope": {
+          "type": "project-workspace",
+          "id": "synthetic-workspace",
+          "workspace_id": "synthetic-workspace",
+          "organization_profile_id": null
+        }
+      }
+    },
+    "run_ref": {
+      "provider_id": "synthetic-provider",
+      "workspace_id": "synthetic-workspace",
+      "run": {
+        "key": {
+          "record_type": "execution-run",
+          "id": "synthetic-attempt",
+          "scope": {
+            "type": "run-state",
+            "id": "synthetic-attempt",
+            "workspace_id": "synthetic-workspace",
+            "organization_profile_id": null
+          }
+        },
+        "revision": "1",
+        "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+      },
+      "specification": {
+        "key": {
+          "record_type": "task-specification",
+          "id": "synthetic-work",
+          "scope": {
+            "type": "project-workspace",
+            "id": "synthetic-workspace",
+            "workspace_id": "synthetic-workspace",
+            "organization_profile_id": null
+          }
+        },
+        "revision": "1",
+        "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+      },
+      "scope_revision": "1"
+    },
+    "goal": {
+      "source_pin": {
+        "key": {
+          "record_type": "task-specification",
+          "id": "synthetic-work",
+          "scope": {
+            "type": "project-workspace",
+            "id": "synthetic-workspace",
+            "workspace_id": "synthetic-workspace",
+            "organization_profile_id": null
+          }
+        },
+        "revision": "1",
+        "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+      },
+      "goal": "Historical goal A",
+      "initial_state": "Initial A",
+      "target_model": "Target A",
+      "constraints": [
+        "Original constraint A"
+      ],
+      "acceptance_criteria": [
+        {
+          "id": "criterion-a",
+          "statement": "Preserve exact facts",
+          "verification": {
+            "method": "comparison",
+            "expected_result": "Same pinned facts"
+          }
+        }
+      ]
+    },
+    "task_specification_pin": {
+      "key": {
+        "record_type": "task-specification",
+        "id": "synthetic-work",
+        "scope": {
+          "type": "project-workspace",
+          "id": "synthetic-workspace",
+          "workspace_id": "synthetic-workspace",
+          "organization_profile_id": null
+        }
+      },
+      "revision": "1",
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    "context_manifest_pin": {
+      "key": {
+        "record_type": "context-manifest",
+        "id": "context-a",
+        "scope": {
+          "type": "run-state",
+          "id": "synthetic-attempt",
+          "workspace_id": "synthetic-workspace",
+          "organization_profile_id": null
+        }
+      },
+      "revision": "1",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    "authoritative_sources": [
+      {
+        "id": "source-a",
+        "reference": "source:historical-a",
+        "purpose": "Independent pinned source",
+        "mutable": false,
+        "revision": "old-edition",
+        "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "resolution": "not_checked"
+      }
+    ],
+    "applicable_norms": [
+      {
+        "id": "norm-a",
+        "reference": "norm:historical-a",
+        "origin": "fixture owner",
+        "revision": "old-norm",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "applicability_rationale": "Declared rationale A",
+        "resolution": "not_checked"
+      }
+    ],
+    "decisions": [
+      {
+        "id": "decision-a",
+        "text": "Keep the original scope"
+      }
+    ],
+    "declared_scope": {
+      "declared_paths": [
+        "src/a.ts",
+        "tests/a.test.ts"
+      ],
+      "decision_pin": {
+        "source_id": "scope-owner",
+        "relative_path": "scope/decision.json",
+        "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "field_locator": "/declaration"
+      },
+      "authority": "declared_fixture_scope_only"
+    },
+    "resolution": {
+      "applicable_norms": [
+        {
+          "norm": "standards/a.md",
+          "activation_reason": "always",
+          "source": "kernel",
+          "digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "delivery": "kernel-doc"
+        }
+      ],
+      "applicable_protocols": [],
+      "required_verification": [
+        "tests/a.test.ts"
+      ],
+      "conflicts": [],
+      "unresolved_applicability": [],
+      "unresolved_items": [],
+      "requires_reresolution": false,
+      "decomposition_required": false,
+      "applicable_initiative_protocol": null,
+      "pre_decomposition_norms": []
+    },
+    "coverage": {
+      "scope": "declared_fixture_input_set_only",
+      "internal_pins": "verified",
+      "external_sources": "not_checked",
+      "action_readiness": "not_confirmed"
+    }
+  }
+}
