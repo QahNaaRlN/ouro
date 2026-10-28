@@ -21,6 +21,10 @@ A pending-only clarification is not an editable copy of a request. If new altern
 
 Withdrawing a Question or Fork leaves an execution in waiting_for_human until a separate human resume authorization and agent ACK. Withdrawing a Blocker leaves its physical barrier intact. No command in this package silently resumes work.
 
+To avoid an unresolvable withdrawn obstacle, human `reopenBlockerPlan {decisionRequestId,reason}` creates a new pending request for the same root on the same active, nonterminal context. Its `supersedesRequestId` links the withdrawn request without editing that terminal state. The new plan still needs human approval and separate successful remediation/evidence.
+
+An uncleared physical Blocker remains a guard across revision activation, including when the old request is superseded. Human `retireHistoricalBlocker {decisionRequestId,reason,evidence}` can end its applicability only when its contract is no longer active and all attempts of the spec are terminal with no unknown physical stop. `BlockerApplicabilityEnded` records the explicit context/evidence judgment; it is not `BlockerCleared` and does not assert physical remediation. A Blocker in the current active contract must be reopened/remediated instead. A new revision alone never erases its barrier.
+
 ## Recovery after emergency revocation
 
 `forceCancelRevokedExecution {executionId,reason,evidence}` is human-only. The store checks the assigned registration and append-only revocation under the same project lock and transaction as the cancellation. Simulator/unknown/active registrations and terminal attempts are rejected. The core receives server-supplied proof in its environment, never trusts a payload claim about revocation, and emits `ExecutionOperatorCancelled` with the proof and operator evidence.
