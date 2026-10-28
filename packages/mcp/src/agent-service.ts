@@ -49,11 +49,16 @@ export function createAgentService({ store, actor }: {store:AgentStore; actor:Ac
   };
   const workItem=(state:ProjectState,execution:Execution)=>{
     const spec=state.specs.find(s=>s.id===execution.specId)!;
+    const requests=requestsFor(state,execution),requestIds=new Set(requests.map(request=>request.id));
+    const clarifications=state.events.filter(event=>event.type==='DecisionClarificationRequested'&&requestIds.has(String(event.payload.decisionRequestId))).map(event=>{
+      const response=state.events.find(candidate=>candidate.type==='DecisionClarificationSubmitted'&&candidate.payload.clarificationEventId===event.id);
+      return {eventId:event.id,decisionRequestId:event.payload.decisionRequestId,question:event.payload.question,actorId:event.actor.id,at:event.occurredAt,...(response?{response:{eventId:response.id,text:response.payload.response,actorId:response.actor.id,at:response.occurredAt}}:{})};
+    });
     return {
       execution,
       spec:{id:spec.id,humanId:spec.humanId,title:spec.title,state:spec.state,activeRevisionId:spec.activeRevisionId},
       revision:state.revisions.find(r=>r.id===execution.specRevisionId),
-      requests:requestsFor(state,execution),
+      requests,clarifications,
       permissions:permissions(state,execution),
     };
   };

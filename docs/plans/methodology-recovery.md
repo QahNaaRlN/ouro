@@ -19,3 +19,13 @@ State-history measurement: the same deterministic 350-event synthetic fixture to
 Desktop dark and 390px mobile light historical views were captured and visually reviewed. The historical mode mounts no mutation forms; the live snapshot adopter continues independently. New execution and roadmap archive guards retain an unknown physical-stop barrier even after operator cancellation is terminal.
 
 Sources actually revisited for this package: [W3C SCXML §3.5](https://www.w3.org/TR/scxml/#transition) (events and guard conditions), [Fowler Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html) (Complete Rebuild, Temporal Query, external update separation). Historical replay has no external side effects; corrective decisions are new source-linked facts and cannot rewrite completed work.
+
+## Stacked alpha.8 integration
+
+Rebased onto alpha.7 `c12a223` with GitHub, published lesson provenance and the approved expectation-impact calculator preserved. Conflicts were resolved by keeping all upstream panels inside the historical-mode conditional and retaining both lesson domain types and decision-lineage guards. `npm test`: **172/172**; typecheck and production build PASS. MCP HTTP server and stdio metadata identify this version as alpha.8, with 14 strict tools.
+
+The first attempted full browser run on port3206 was discarded after another package's reservation was identified. The trusted rerun uses a new server (`CI=1`), port3216 and its own PostgreSQL directory; setup/collision results are not counted as product regressions.
+
+Trusted dev E2E: **39/39 PASS**. Final review then found a reconnect gap: `get_context` returned the latest cursor without older outstanding human clarifications. An extended existing test observed the missing clarification (RED), then verified recovery of its exact question/event ID, response source, and absence from another assignment's context (GREEN). Follow-up MCP suite: **13/13 PASS**.
+
+Final rebuilt production artifact E2E: **39/39 PASS**, 1.2 minutes, using `next start` on port3216 with a separate production-test PostgreSQL directory; States took 3.7s on the accumulated fixture. This run includes the clarification reconnect read fix. Production preview on port3006 uses only `.ouro/preview-postgres`; read-only smoke reported **0 page errors**, alpha.8, cursor35 unchanged, matching committed SSE cursor/version/Last-Event-ID35, and all three upstream panels mounted correctly outside historical mode. Historical mode excludes write controls. Desktop dark and fresh 390px mobile light screenshots were visually reviewed with no horizontal overflow.

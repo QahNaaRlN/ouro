@@ -81,6 +81,10 @@ test('MCP-M04: explicit human clarification receives a source-linked author resp
     const r=(await f.store.getProject()).requests.find(r=>r.kind==='Fork')!;
     const clarified=await f.command({type:'requestDecisionClarification',decisionRequestId:r.id,question:'Как подтверждено сохранение позиции?'});
     const source=clarified.events.find(event=>event.type==='DecisionClarificationRequested')!;assert.ok(source);
+    const reconnect=await f.service.callTool('ouro.get_context',{executionId:r.executionId});
+    const recovered=(reconnect.structuredContent.work as any[])[0].clarifications;
+    assert.equal(recovered?.length,1,'a freshly connected agent must recover an outstanding human clarification before polling from the latest cursor');
+    assert.equal(recovered[0].eventId,source.id);assert.equal(recovered[0].question,'Как подтверждено сохранение позиции?');assert.equal(recovered[0].response,undefined);
     const before=await f.store.getProject();
     const invalid=await f.call('ouro.submit_decision_clarification',r.executionId,{decisionRequestId:r.id,clarificationEventId:before.events[0].id,response:'Это ссылка на другой факт.'});assert.equal(invalid.isError,true);
     const foreign=before.requests.find(request=>request.id!==r.id)!;
@@ -95,6 +99,11 @@ test('MCP-M04: explicit human clarification receives a source-linked author resp
     const replayed=await f.service.callTool('ouro.submit_decision_clarification',args);assert.equal(replayed.structuredContent.replayed,true);
     const second=await f.call('ouro.submit_decision_clarification',r.executionId,{decisionRequestId:r.id,clarificationEventId:source.id,response:'Двойной ответ по новому requestId.'});assert.equal(second.isError,true);
     const updates=await f.service.callTool('ouro.get_updates',{afterCursor:before.version});assert((updates.structuredContent.events as any[]).some(item=>item.id===event.id&&item.type==='DecisionClarificationSubmitted'));
+    const afterContext=await f.service.callTool('ouro.get_context',{executionId:r.executionId});
+    const completed=(afterContext.structuredContent.work as any[])[0].clarifications[0];
+    assert.equal(completed.response.eventId,event.id);assert.equal(completed.response.text,args.response);
+    const foreignContext=await f.service.callTool('ouro.get_context',{executionId:foreign.executionId});
+    assert.equal((foreignContext.structuredContent.work as any[])[0].clarifications.length,0,'another assignment must not receive this request clarification');
   }finally{await f.store.close();}
 });
 
