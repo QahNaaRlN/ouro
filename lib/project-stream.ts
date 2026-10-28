@@ -1,6 +1,6 @@
-import type { ProjectState } from '../packages/core/src';
+import type { Actor,ProjectState } from '../packages/core/src';
 import { AGENT_ID, PROJECT_ID } from '../packages/core/src';
-import { AccessError, assertHuman, authenticatedActor } from './auth';
+import { AccessError, assertHuman, authenticatedParticipant } from './auth';
 import { requestOrigin } from './connection-config';
 import { apiError } from './http';
 
@@ -19,6 +19,7 @@ export type ProjectStreamOptions = {
   pollIntervalMs?: number;
   heartbeatMs?: number;
   lifetimeMs?: number;
+  authenticateHuman?:(request:Request)=>Actor|Promise<Actor>;
 };
 
 const clock: ProjectStreamClock = {
@@ -43,7 +44,7 @@ function cursorFrom(request: Request) {
   return after;
 }
 
-function authorize(request: Request) {
+async function authorize(request: Request,authenticateHuman?:(request:Request)=>Actor|Promise<Actor>) {
   let origin: string;
   try { origin = requestOrigin(request); }
   catch (error) {
@@ -52,7 +53,7 @@ function authorize(request: Request) {
   }
   const suppliedOrigin = request.headers.get('origin');
   if (suppliedOrigin && suppliedOrigin !== origin) throw new AccessError('FORBIDDEN', 'Origin не разрешён для потока проекта.');
-  assertHuman(authenticatedActor(request, PROJECT_ID, AGENT_ID));
+  assertHuman(await (authenticateHuman?authenticateHuman(request):authenticatedParticipant(request, PROJECT_ID, AGENT_ID)));
 }
 
 /** SQL remains authoritative; a demand-driven subscription holds at most one frame. */
@@ -65,9 +66,10 @@ export function createProjectStreamHandler(options: ProjectStreamOptions) {
 
   return async (request: Request): Promise<Response> => {
     try {
-      authorize(request);
+      await authorize(request,options.authenticateHuman);
       const after = cursorFrom(request);
       const initial = await options.store.getProject();
+      await authorize(request,options.authenticateHuman);
       if (after > initial.version) throw new AccessError('CURSOR_AHEAD', 'Курсор клиента опережает историю проекта. Перезагрузите снимок.', 409);
 
       let closed = false;
@@ -115,10 +117,16 @@ export function createProjectStreamHandler(options: ProjectStreamOptions) {
             while (!closed) {
               await pause(Math.min(pollInterval, Math.max(1, heartbeat - (timing.now() - lastFrameAt))));
               if (closed) return;
+              await authorize(request,options.authenticateHuman);
+              if (closed) return;
               const committed = await options.store.getEvents(lastVersion);
+              if (closed) return;
+              await authorize(request,options.authenticateHuman);
               if (closed) return;
               if (committed.cursor > lastVersion) {
                 const state = await options.store.getProject();
+                if (closed) return;
+                await authorize(request,options.authenticateHuman);
                 if (closed) return;
                 if (state.version < committed.cursor) throw new Error('Snapshot does not include its committed cursor');
                 // The snapshot can include commits newer than the change check.

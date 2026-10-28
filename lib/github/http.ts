@@ -1,7 +1,7 @@
 import type { Actor, GitHubBinding } from '../../packages/core/src';
 import { AGENT_ID,PROJECT_ID } from '../../packages/core/src';
 import { z } from 'zod';
-import { AccessError,authenticatedActor,assertHuman,readCommandBody } from '../auth';
+import { AccessError,authenticatedParticipant,assertHuman,readCommandBody } from '../auth';
 import { apiError } from '../http';
 import { requestOrigin } from '../connection-config';
 import { createGitHubClient,normalizeGitHubPush,verifyGitHubSignature,type GitHubRepository,type NormalizedGitHubPush } from './verification';
@@ -18,7 +18,7 @@ export type GitHubHttpStore={
 export type GitHubHttpDependencies={
   getStore?:()=>Promise<GitHubHttpStore>;
   client?:{resolveRepository(fullName:string):Promise<GitHubRepository>};
-  authenticateHuman?:(request:Request)=>Actor;
+  authenticateHuman?:(request:Request)=>Actor|Promise<Actor>;
   env?:()=>{secret?:string;token?:string};
   afterResponse?:(task:()=>Promise<void>)=>void;
   kick?:()=>Promise<void>;
@@ -51,31 +51,31 @@ export function createGitHubHandlers(dependencies:GitHubHttpDependencies={}){
   const getStore=dependencies.getStore??(async()=>(await import('../store')).getGitHubStore());
   const env=dependencies.env??(()=>({secret:process.env.OURO_GITHUB_WEBHOOK_SECRET,token:process.env.OURO_GITHUB_TOKEN}));
   const client=dependencies.client??createGitHubClient({token:env().token});
-  const human=(request:Request)=>{const actor=dependencies.authenticateHuman?dependencies.authenticateHuman(request):authenticatedActor(request,PROJECT_ID,AGENT_ID);assertHuman(actor);return actor;};
+  const human=async(request:Request)=>{const actor=await(dependencies.authenticateHuman?dependencies.authenticateHuman(request):authenticatedParticipant(request,PROJECT_ID,AGENT_ID));assertHuman(actor);return actor;};
   const kick=dependencies.kick??kickGitHubWorker;
   const schedule=()=>dependencies.afterResponse?.(async()=>{
     try{await kick();}catch{/* The durable queue/lease recovers on the next tick. Never pass upstream exceptions to Next's logger. */}
   });
   return {
     async list(request:Request){try{
-      const actor=human(request),store=await getStore();
+      const actor=await human(request),store=await getStore();
       const [state,deliveries]=await Promise.all([store.getProject(),store.listGitHubDeliveries(actor)]);
       return json({bindings:state.githubBindings,deliveries,setup:{webhookSecretConfigured:!!env().secret,apiTokenConfigured:!!env().token,webhookUrl:`${requestOrigin(request)}/api/github/webhook`,verification:'github-api-sha'}});
     }catch(error){return failure(error);}},
     async create(request:Request){try{
-      const actor=human(request),parsed=bindingInput.safeParse(await readCommandBody(request));
+      const actor=await human(request),parsed=bindingInput.safeParse(await readCommandBody(request));
       if(!parsed.success)throw new AccessError('VALIDATION_ERROR','Нужны executionId, repositoryFullName, ref, requestId и expectedVersion без посторонних полей.',422);
       const repository=await client.resolveRepository(parsed.data.repositoryFullName);
       const store=await getStore();const result=await store.createGitHubBinding({...parsed.data,repositoryId:repository.id,repositoryFullName:repository.fullName},actor);
       return json(result,201);
     }catch(error){return failure(error);}},
     async revoke(request:Request,bindingId:string){try{
-      const actor=human(request),parsed=revokeInput.safeParse(await readCommandBody(request));
+      const actor=await human(request),parsed=revokeInput.safeParse(await readCommandBody(request));
       if(!parsed.success||!id.safeParse(bindingId).success)throw new AccessError('VALIDATION_ERROR','Нужны bindingId, requestId и expectedVersion.',422);
       return json(await(await getStore()).executeCommand({...parsed.data,type:'revokeGitHubBinding',bindingId},actor));
     }catch(error){return failure(error);}},
     async retry(request:Request,deliveryId:string){try{
-      const actor=human(request);if(!emptyInput.safeParse(await readCommandBody(request)).success||!id.safeParse(deliveryId).success)throw new AccessError('VALIDATION_ERROR','Повтор принимает только ID доставки и пустое JSON-тело.',422);
+      const actor=await human(request);if(!emptyInput.safeParse(await readCommandBody(request)).success||!id.safeParse(deliveryId).success)throw new AccessError('VALIDATION_ERROR','Повтор принимает только ID доставки и пустое JSON-тело.',422);
       const delivery=await(await getStore()).retryGitHubDelivery(deliveryId,actor);schedule();return json({delivery});
     }catch(error){return failure(error);}},
     async webhook(request:Request){try{

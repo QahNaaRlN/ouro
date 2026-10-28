@@ -6,6 +6,8 @@ import { Pool } from 'pg';
 import { applyCommand, createSeedEvents, replay, AGENT_ID, GITHUB_SERVICE_ID, PROJECT_ID } from '../packages/core/src';
 import type { Actor, Command, DomainEvent, GitHubVerifiedCommit, ProjectState } from '../packages/core/src';
 import type { NormalizedGitHubPush } from './github/verification';
+import { createParticipantRegistry,assertRegisteredHumanActive } from './participant-registry';
+import { createCollaborativeDraftService } from './collaborative-drafts';
 
 export class StoreError extends Error {
   constructor(public code: string, message: string, public details?: Record<string, unknown>) {
@@ -93,6 +95,8 @@ async function registerActor(tx: Connection, actor: Actor) {
 async function assertHumanActor(tx:Connection,actor:Actor) {
   assertActor(actor);
   if(actor.kind!=='human')throw new StoreError('FORBIDDEN','Регистрацией и доступом агентов управляет человек.');
+  await tx.query('SELECT version FROM ouro_projects WHERE id=$1 FOR UPDATE',[PROJECT_ID]);
+  await assertRegisteredHumanActive(tx,actor);
   await registerActor(tx,actor);
 }
 
@@ -142,7 +146,7 @@ async function append(tx: Connection, events: DomainEvent[], state: ProjectState
 
 export async function createStore(options: StoreOptions = {}) {
   const db = await openDatabase(options);
-  const migrations = await Promise.all(['001_initial.sql','002_agents.sql','003_github.sql'].map(file=>readFile(path.join(process.cwd(),'db','migrations',file),'utf8')));
+  const migrations = await Promise.all(['001_initial.sql','002_agents.sql','003_github.sql','004_participants.sql','005_drafts.sql'].map(file=>readFile(path.join(process.cwd(),'db','migrations',file),'utf8')));
   await db.transaction(async tx => {
     // External PostgreSQL may have multiple app processes initializing together.
     if (options.databaseUrl) await tx.query('SELECT pg_advisory_xact_lock(187652019)');
@@ -162,16 +166,16 @@ export async function createStore(options: StoreOptions = {}) {
   function serialize<T>(fn: () => Promise<T>): Promise<T> {
     const run = tail.then(fn, fn); tail = run.catch(() => undefined); return run;
   }
-  function commitCommand(body:unknown,actor:Actor,internal=false):Promise<CommandResult>{return serialize(async()=>{
+  async function commitCommandInTransaction(tx:Connection,body:unknown,actor:Actor,internal=false):Promise<CommandResult>{
     assertActor(actor);
     if(!body||typeof body!=='object'||Array.isArray(body))throw new StoreError('VALIDATION_ERROR','Ожидается JSON-команда.');
     const command=body as Command;
     if(!internal&&['createGitHubBinding','recordGitHubCommit'].includes(command.type))throw new StoreError('FORBIDDEN','Проверяемые GitHub-команды доступны только серверному адаптеру.');
     if(typeof command.requestId!=='string'||command.requestId.length<8||command.requestId.length>200||!Number.isSafeInteger(command.expectedVersion)||command.expectedVersion<0)throw new StoreError('VALIDATION_ERROR','Нужны requestId и неотрицательная expectedVersion.');
     const payloadHash=hash(body);
-    return db.transaction(async tx=>{
       await tx.query('SELECT version FROM ouro_projects WHERE id=$1 FOR UPDATE',[PROJECT_ID]);
       await registerActor(tx,actor);await assertRegisteredAgentActive(tx,actor);
+      if(actor.kind==='human')await assertRegisteredHumanActive(tx,actor);
       const duplicate=await tx.query<{payload_hash:string;response:Omit<CommandResult,'replayed'>}>('SELECT payload_hash,response FROM ouro_command_receipts WHERE project_id=$1 AND actor_id=$2 AND request_id=$3',[PROJECT_ID,actor.id,command.requestId]);
       if(duplicate.rows[0]){
         if(duplicate.rows[0].payload_hash!==payloadHash)throw new StoreError('IDEMPOTENCY_CONFLICT','Этот requestId уже использован с другим содержимым.');
@@ -193,8 +197,8 @@ export async function createStore(options: StoreOptions = {}) {
       const response={state:applied.state,events:applied.events,cursor:applied.state.version};
       await tx.query(`INSERT INTO ouro_command_receipts (actor_id,project_id,request_id,payload_hash,response,cursor) VALUES ($1,$2,$3,$4,$5::jsonb,$6)`,[actor.id,PROJECT_ID,command.requestId,payloadHash,JSON.stringify(response),response.cursor]);
       return {...response,replayed:false};
-    });
-  });}
+  }
+  function commitCommand(body:unknown,actor:Actor,internal=false):Promise<CommandResult>{return serialize(()=>db.transaction(tx=>commitCommandInTransaction(tx,body,actor,internal)));}
   const lockProject=(tx:Connection)=>tx.query('SELECT version FROM ouro_projects WHERE id=$1 FOR UPDATE',[PROJECT_ID]);
   const jobById=async(tx:Connection,id:string)=>{
     const result=await tx.query<GitHubJobRow>(`${githubJobSelection} WHERE d.project_id=$1 AND d.id=$2`,[PROJECT_ID,id]);
@@ -205,7 +209,10 @@ export async function createStore(options: StoreOptions = {}) {
     if(!row.lease_until||!(new Date(row.lease_until).getTime()>Date.now()))throw new StoreError('LEASE_LOST','Срок обработки очереди истёк; нужен новый lease.');
     return row;
   };
+  const participants=createParticipantRegistry({db,serialize,lockProject:tx=>lockProject(tx as Connection),assertHuman:(tx,actor)=>assertHumanActor(tx as Connection,actor)});
+  const drafts=createCollaborativeDraftService({db,serialize,lockProject:tx=>lockProject(tx as Connection),assertHuman:(tx,actor)=>assertHumanActor(tx as Connection,actor),state:async tx=>replay(await readEvents(tx as Connection),PROJECT_ID),commit:(tx,body,actor)=>commitCommandInTransaction(tx as Connection,body,actor),hash});
   return {
+    ...participants,...drafts,
     storage: options.databaseUrl ? 'postgres' as const : 'embedded-postgres' as const,
     createGitHubBinding: (input:{executionId:string;repositoryId:number;repositoryFullName:string;ref:string;requestId:string;expectedVersion:number},actor:Actor)=>commitCommand({...input,type:'createGitHubBinding'},actor,true),
     enqueueGitHubDelivery: (deliveryId:string,input:NormalizedGitHubPush):Promise<{delivery:PublicGitHubDelivery;duplicate:boolean}>=>serialize(()=>db.transaction(async tx=>{
@@ -349,6 +356,10 @@ function currentStore(): Promise<Store> {
   return globalStore.__ouroStore ??= createStore({ databaseUrl: process.env.DATABASE_URL, dataDir: process.env.OURO_DATA_DIR });
 }
 export const getGitHubStore=currentStore;
+export const getParticipantRegistry=currentStore;
+export const getCollaborativeDraftStore=currentStore;
+export async function resolveParticipantIdentity(id:string){return (await currentStore()).resolveParticipantIdentity(id);}
+export async function authenticateParticipantCredential(credential:string){return (await currentStore()).authenticateParticipantCredential(credential);}
 export const getStorageMode = () => process.env.DATABASE_URL ? 'postgres' as const : 'embedded-postgres' as const;
 export async function getProject() { return (await currentStore()).getProject(); }
 export async function getEvents(after = 0) { return (await currentStore()).getEvents(after); }

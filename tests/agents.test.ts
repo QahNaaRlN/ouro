@@ -109,7 +109,7 @@ test('migration upgrades an existing 001 database without replacing its committe
     assert.equal((await store.authenticateAgentToken(created.token))?.id,created.agent.id);
     assert.deepEqual((await store.getProject()).events,[first]);
     const versions=await store.inspect<{version:number}>('SELECT version FROM ouro_schema_migrations ORDER BY version');
-    assert.deepEqual(versions.rows.map(row=>row.version),[1,2,3]);
+    assert.deepEqual(versions.rows.map(row=>row.version),[1,2,3,4,5]);
   }finally {if(store)await store.close();await rm(directory,{recursive:true,force:true});}
 });
 

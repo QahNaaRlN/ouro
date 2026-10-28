@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { authenticatedActor, assertHuman, readCommandBody, AccessError, isLocalDemo } from '@/lib/auth';
+import { authenticatedParticipant, assertHuman, readCommandBody, AccessError, isLocalDemo } from '@/lib/auth';
 import { apiError } from '@/lib/http';
 import { executeCommand, getProject } from '@/lib/store';
 import { PROJECT_ID, AGENT_ID, replay } from '@/packages/core/src';
@@ -11,7 +11,8 @@ export async function POST(request: Request) {
   try {
     // The simulator is a local teaching tool; it is never an external agent credential.
     if (!isLocalDemo(request)) throw new AccessError('FORBIDDEN', 'Симулятор доступен только в локальном демо.');
-    assertHuman(authenticatedActor(request, PROJECT_ID, AGENT_ID));
+    const operator=await authenticatedParticipant(request, PROJECT_ID, AGENT_ID);assertHuman(operator);
+    if(!['local-human','human-token'].includes(operator.id))throw new AccessError('FORBIDDEN','Учебным симулятором управляет доверенный локальный оператор.');
     const parsed = input.safeParse(await readCommandBody(request));
     if (!parsed.success) throw new AccessError('VALIDATION_ERROR', 'Нужны scenario, specId, expectedVersion, requestId.', 422);
     const {scenario,specId,expectedVersion,requestId} = parsed.data;

@@ -10,6 +10,10 @@ SDD · 28.10.2026 UTC. Пакет следует после истории ре�
 
 Человеческие маршруты project/events/inbox/commands/agents/simulator/stream/GitHub используют async participant auth. MCP остаётся агентским, webhook — HMAC. Реестр проверяется также внутри транзакции записи после project lock, включая публикацию и регистрацию/отзыв. Открытая SSE-сессия проверяет действительность перед следующими чтениями/снимками. Уже отправленные байты нельзя отозвать.
 
+Уточнение границы: inbox остаётся агентским маршрутом, как MCP. Учебный simulator требует доверенного локального оператора (local-human/human-token), поскольку делегирует команду учебному агенту; именованный отзываемый участник такой delegation не получает. Все обычные human-команды, реестр агентов и общие черновики сохраняют одинаковые проектные человеческие полномочия участников. Любой локальный браузер после явного выхода может снова открыть демо-оператора: loopback рабочее место считается доверенным, это не удалённое SSO.
+
+Учебный симулятор доступен только доверенному локальному оператору: он пишет от отдельной агентской личности и не должен превращать отозванную человеческую сессию в живого агента. Участники работают через собственную человеческую идентичность и назначенных настоящих MCP-агентов.
+
 ## Технический Yjs-документ
 
 Черновик закреплён за specId и точной последней immutable baseRevisionId. В нём Y.Text для title/goal/constraints/assumptions/risks/inputs/comment и Y.Array критериев DoD с устойчивым id, Y.Text text и Boolean required. Flow сохраняется из базовой ревизии и в этом пакете доступен только для чтения. Изменение черновика не изменяет активную SpecRevision и не создаёт domain event/Action/DoD/дрейф.
@@ -18,11 +22,17 @@ SQL хранит immutable draft anchor и append-only update receipts; mutable 
 
 Принимаются только строгие known-key JSON envelopes и корректный base64 Yjs <=128KiB. Временный Y.Doc после update проверяется до сохранения: фиксированные root keys/types, текст <=20000, DoD<=50, полный encoded state<=1MiB. Повреждённый update/unknown root/type replacement/переполнение отклоняются без head/receipt. Пустой/неполный черновик может редактироваться, но publish требует полного RevisionContent с непустыми title/goal/DoD и корректной Flow. Дубли DoD ID публикацию блокируют.
 
+Доставленные вне порядка Yjs structs/delete sets сохраняются в полном encoded state до получения зависимостей, включая SQL reopen. Snapshot явно сообщает hasPendingUpdates; публикация блокируется DRAFT_CONFLICT, пока все принятые updates не интегрированы. Отсутствие видимого изменения не означает, что очередь зависимостей пуста.
+
 Доступные human endpoints: list/create/read draft, POST updates, POST publish. Обмен accepted head через ограниченный polling сохраняет same-page offline pending updates и переотправляет с теми же ID. Presence необязательна и не создаёт полномочий; UI показывает acknowledged/pending/offline состояния. Browser reload не обещает сохранность неотправленных updates: предупреждение перед уходом, SQL сохраняет все принятые.
 
 ## Публикация
 
 Publish требует requestId, expectedVersion проекта, draftVersion, contentHash и baseLatestRevisionId. В одной SQL-транзакции: human active → immutable receipt/hash replay → scope/open head/version/hash → последняя immutable revision той же спеки равна закреплённой основе → обычный proposeRevision → journal/revision/outbox + exact publication receipt + head marker. Нельзя вызывать serialized executeCommand из serialized draft-транзакции: используется общий in-transaction commit helper. Любой отказ откатывает всё. Активация отдельно. Повтор потерянного ответа возвращает ровно тот же revisionId; прежний receipt не переписывается.
+
+Неопределённый результат create/publish сохраняет прежние actorId/requestId и тело запроса. HTTP401/403/5xx не доказывают отсутствие прежнего commit: основа/редактор закрепляются до проверки receipt. Только metadata (ID, cursor, version/hash) сохраняется в sessionStorage этой вкладки, без текста и ключей, чтобы после повторного входа прежним участником проверить тот же запрос. Другая идентичность не повторяет чужой запрос. Прежний запрос очищается после успеха или явного validation/version/base/no-receipt конфликта; новое ID не выдаётся на неоднозначной ошибке.
+
+Наблюдённая публикация — монотонный признак: равноверсионный старый открытый GET не снимает publishedRevisionId; несовместимое новое открытое состояние вызывает DRAFT_HISTORY_CONFLICT. Публикация не увеличивает техническую версию, поэтому сравнения только по version недостаточно.
 
 Опубликованный черновик read-only. Если вне него предложена r2, исходный shared draft сохраняется, publish блокируется: UI показывает основу и новую последнюю ревизию, предлагает экспорт и создание отдельного нового черновика. Автоматическая смена основы/скрытое слияние immutable ревизий не выполняется.
 

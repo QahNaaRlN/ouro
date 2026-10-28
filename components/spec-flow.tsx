@@ -31,7 +31,7 @@ function ProcessNode({data,selected}:NodeProps<ProcessFlowNode>){
 }
 const nodeTypes={process:ProcessNode};
 
-export default function SpecFlow({revision,state,busy,onSave}:{revision:SpecRevision;state:ProjectState;busy:boolean;onSave:(flow:FlowDefinition,base:Base)=>Promise<boolean>}){
+export default function SpecFlow({revision,state,busy,onSave,readOnly=false}:{revision:SpecRevision;state:ProjectState;busy:boolean;onSave:(flow:FlowDefinition,base:Base)=>Promise<boolean>;readOnly?:boolean}){
   const [draft,setDraft]=useState<Draft|null>(null),[view,setView]=useState<'graph'|'table'>('graph');
   const [selectedNode,setSelectedNode]=useState<string|null>(null),[selectedEdge,setSelectedEdge]=useState<string|null>(null);
   const [newTitle,setNewTitle]=useState(''),[newKind,setNewKind]=useState<FlowNodeKind>('action');
@@ -73,7 +73,7 @@ export default function SpecFlow({revision,state,busy,onSave}:{revision:SpecRevi
     return {id:e.id,source:e.source,target:e.target,type:'smoothstep',selected:selectedEdge===e.id,label:`${e.label}${applied?' · выбор применён':chosen?' · выбран, не применён':''}`,markerEnd:{type:MarkerType.ArrowClosed,color:applied?'var(--positive)':chosen?'var(--attention)':'var(--graph-edge)'},style:{stroke:applied?'var(--positive)':chosen?'var(--attention)':'var(--graph-edge)',strokeWidth:applied||chosen?2.5:1.5,strokeDasharray:chosen&&!applied?'6 4':undefined},labelStyle:{fill:applied?'var(--positive)':chosen?'var(--attention)':'var(--text-muted)',fontSize:12},labelBgStyle:{fill:'var(--bg)'},labelBgPadding:[7,5],labelBgBorderRadius:4,ariaLabel:`${flow.nodes.find(n=>n.id===e.source)?.title} → ${flow.nodes.find(n=>n.id===e.target)?.title}: ${e.label}${applied?'. Выбор применён':chosen?'. Выбор ещё не применён':''}`};
   })??[];
   const update=useCallback((fn:(flow:FlowDefinition)=>FlowDefinition)=>{if(busy||saving)return;setDraft(d=>d?{...d,flow:fn(d.flow)}:d);setError('');},[busy,saving]);
-  const begin=()=>{setDraft({flow:structuredClone(revision.flow??emptyFlow()),base:{revisionId:revision.id,expectedVersion:state.version},activeRevisionId:spec.activeRevisionId,latestRevisionId});setError('');setSaved(false);setSelectedNode(null);setSelectedEdge(null);};
+  const begin=()=>{if(readOnly)return;setDraft({flow:structuredClone(revision.flow??emptyFlow()),base:{revisionId:revision.id,expectedVersion:state.version},activeRevisionId:spec.activeRevisionId,latestRevisionId});setError('');setSaved(false);setSelectedNode(null);setSelectedEdge(null);};
   const save=async()=>{
     if(!draft||busy||saving||baseChanged)return;
     try{validateFlowDefinition(draft.flow);setSaving(true);setError('');if(await onSave(draft.flow,draft.base)){setDraft(null);setSaved(true);setSelectedNode(null);setSelectedEdge(null);}else setError('Ревизия не сохранена. Черновик сохранён на экране. Проверьте изменения и обновите базу перед повтором.');}
@@ -87,7 +87,7 @@ export default function SpecFlow({revision,state,busy,onSave}:{revision:SpecRevi
   const changeEdges=(changes:EdgeChange[])=>{for(const c of changes)if(c.type==='select'&&c.selected)selectEdge(c.id);};
   const disabled=busy||saving;
   return <section className="spec-flow" aria-label="Процесс спецификации">
-    <div className="process-heading"><div><div className="eyebrow">ВОЗМОЖНЫЕ ПУТИ · r{revision.revision}</div><h3>Схема процесса</h3><p>План описывает возможные действия. Факты исполнения показаны отдельно.</p></div>{!draft&&!historical&&<button className="btn btn-small" onClick={begin}><Plus size={14}/>{flow?'Предложить изменение схемы':'Создать схему'}</button>}</div>
+    <div className="process-heading"><div><div className="eyebrow">ВОЗМОЖНЫЕ ПУТИ · r{revision.revision}</div><h3>Схема процесса</h3><p>План описывает возможные действия. Факты исполнения показаны отдельно.</p></div>{!readOnly&&!draft&&!historical&&<button className="btn btn-small" onClick={begin}><Plus size={14}/>{flow?'Предложить изменение схемы':'Создать схему'}</button>}</div>
     {historical&&!draft&&<p className="process-notice">Историческая ревизия доступна только для чтения. Для изменений выберите последнюю ревизию схемы.</p>}
     {saved&&!draft&&<p className="process-notice" role="status">Новая ревизия предложена без активации. Выберите её в поле «Ревизия схемы», чтобы проверить результат; активировать её можно во вкладке «Ревизии».</p>}
     {draft&&<p className="process-notice">Факты относятся к базовой r{revision.revision}, не подтверждают этот черновик. В редакторе отметки исполнения и применения решений скрыты.</p>}

@@ -50,6 +50,8 @@ import AgentsPanel, { type AgentRegistration } from "@/components/agents-panel";
 import GitHubPanel from '@/components/github-panel';
 import LessonsPanel from '@/components/lessons-panel';
 import ImpactPanel from '@/components/impact-panel';
+import ParticipantsPanel,{ParticipantLogin} from '@/components/participants-panel';
+import CollaborativeDraftsPanel from '@/components/collaborative-drafts';
 import SpecFlow from "@/components/spec-flow";
 import { StateTransitions } from "@/components/state-transitions";
 import HistoricalPanel from "@/components/historical-panel";
@@ -66,9 +68,10 @@ import {
   type Spec,
   type SpecRevision,
   type FlowDefinition,
+  type Actor,
 } from "@/packages/core/src";
 
-type View = "roadmap" | "specs" | "decisions" | "history" | "methodology" | "agents" | "integrations" | "lessons" | "impact";
+type View = "roadmap" | "specs" | "decisions" | "history" | "methodology" | "agents" | "integrations" | "lessons" | "impact" | "participants" | "drafts";
 type Modal = "create" | "revision" | "accept" | "dependency" | null;
 type ProjectResponse = { state: ProjectState; cursor: number; storage: string };
 type Payload = Record<string, unknown>;
@@ -151,6 +154,7 @@ export default function Home() {
     [storage, setStorage] = useState(""),
     [cursor, setCursor] = useState(0);
   const [agents, setAgents] = useState<AgentRegistration[]>([]);
+  const [identity,setIdentity]=useState<Actor|null>(null),[sharedPending,setSharedPending]=useState(false);
   const [assignmentAgentId, setAssignmentAgentId] = useState(AGENT_ID);
   const [snapshotAdopter] = useState(()=>createProjectSnapshotAdopter(PROJECT_ID));
   const [streamStatus,setStreamStatus] = useState<ProjectSubscriptionStatus>('connecting');
@@ -209,13 +213,14 @@ export default function Home() {
     (async () => {
       try {
         const session = await fetch("/api/session");
+        const sessionData=await session.json();
         if (!session.ok) {
-          const data = await session.json();
           throw new Error(
-            data.error?.message ?? "Не удалось открыть локальную сессию",
+            sessionData.error?.message ?? "Не удалось открыть сессию",
           );
         }
         if (!cancelled) {
+          setIdentity(sessionData.actor??null);
           await refresh();
           const agentsResponse=await fetch('/api/agents',{cache:'no-store'});
           if(agentsResponse.ok){const body=await agentsResponse.json();if(!cancelled)setAgents(body.agents);}
@@ -360,6 +365,7 @@ export default function Home() {
     setView("decisions");
   };
   const navigate = (v: View) => {
+    if(view==='drafts'&&v!=='drafts'&&sharedPending){setToast('В общем черновике есть неотправленный текст или неподтверждённая публикация. Синхронизируйте его или экспортируйте перед переходом.');return;}
     if (v === "decisions") {
       const first = state?.requests.find((r) => r.state === "pending");
       if (first) {
@@ -387,7 +393,7 @@ export default function Home() {
     state?.executions.filter((e) => e.specId === selected) ?? [];
   const execution = executions.at(-1);
   const simulationExecution = executions.filter(e=>!['succeeded','failed','cancelled','skipped'].includes(e.state)).at(-1);
-  const simulatorAvailable = simulationExecution?.agentId===AGENT_ID;
+  const simulatorAvailable = simulationExecution?.agentId===AGENT_ID&&!!identity&&['local-human','human-token'].includes(identity.id);
   const selectedAgentName = execution ? execution.agentId===AGENT_ID ? 'Симулятор агента' : agents.find(a=>a.id===execution.agentId)?.name??'Назначенный MCP-агент' : 'MCP и симулятор';
   const assignmentValid=assignmentAgentId===AGENT_ID || agents.some(a=>a.id===assignmentAgentId&&!a.revokedAt);
   const externalStopUnknown=state?.executions.some(e=>e.specId===selected&&e.stopConfirmation==='unknown')??false;
@@ -403,6 +409,8 @@ export default function Home() {
     { id: 'integrations' as View, label:'Интеграции',icon:GitBranch },
     { id: 'lessons' as View, label:'Уроки',icon:BookOpen },
     { id: 'impact' as View, label:'Показатели',icon:BarChart3 },
+    { id: 'drafts' as View,label:'Черновики',icon:FileText },
+    { id: 'participants' as View,label:'Участники',icon:ShieldCheck },
   ];
   const exportHistory = () => {
     if (!state) return;
@@ -491,8 +499,8 @@ export default function Home() {
           <div className="profile">
             <span className="avatar">ВЫ</span>
             <div>
-              <strong>Локальный исследователь</strong>
-              <small>Человек · решения и приёмка</small>
+              <strong>{identity?.name??'Вход не выполнен'}</strong>
+              <small>{identity?['local-human','human-token'].includes(identity.id)?'Локальный оператор':'Участник проекта':'Нужна сессия человека'}</small>
             </div>
             <ShieldCheck size={15} />
           </div>
@@ -570,6 +578,7 @@ export default function Home() {
             <TriangleAlert size={30} />
             <h1>Проект недоступен</h1>
             <p>{error || "Проверьте запуск сервера и локальную сессию."}</p>
+            <ParticipantLogin/>
             <button className="btn" onClick={() => location.reload()}>
               Повторить
             </button>
@@ -1363,9 +1372,11 @@ export default function Home() {
               {view==='integrations'&&<GitHubPanel state={state} onSnapshot={adoptMutation}/>}
               {view==='lessons'&&<LessonsPanel state={state} onSnapshot={adoptMutation} onOpenSpec={id=>{pick(id);setView('specs');setDetailTab('expectation');}}/>}
               {view==='impact'&&<ImpactPanel state={state}/>}
+              {view==='participants'&&<ParticipantsPanel/>}
+              {view==='drafts'&&<CollaborativeDraftsPanel state={state} actorId={identity?.id??'local-human'} onSnapshot={adoptMutation} onPendingChange={setSharedPending} onOpenSpec={id=>{pick(id);setView('specs');}}/>}
               </>}
             </main>
-            {historicalCursor===null && view !== 'agents' && view!=='integrations' && view!=='lessons' && view!=='impact' && <aside className="context-panel">
+            {historicalCursor===null && view !== 'agents' && view!=='integrations' && view!=='lessons' && view!=='impact' && view!=='participants' && view!=='drafts' && <aside className="context-panel">
               <div className="context-panel-heading">
                 <span>Требует внимания</span>
                 <span className="attention-counter">{pending.length}</span>

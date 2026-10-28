@@ -44,6 +44,41 @@ export function assertHuman(actor: Actor) {
   if (actor.kind !== 'human') throw new AccessError('FORBIDDEN', 'Решение и управление принадлежат человеку.');
 }
 
+export type ParticipantIdentityResolver=(id:string)=>Promise<Actor|null>;
+export function participantCookie(request:Request):string|undefined{
+  const values=request.headers.get('cookie')?.split(';').map(value=>value.trim()).filter(value=>value.startsWith('ouro_participant='))??[];
+  if(values.length>1)throw new AccessError('UNAUTHENTICATED','Сессия участника недействительна. Войдите повторно.',401);
+  return values[0]?.slice('ouro_participant='.length);
+}
+export function issueParticipantSession(actor:Actor,projectId:string,expires=Date.now()+12*60*60*1000):string{
+  assertHuman(actor);
+  if(!actor.id||!actor.projectIds.includes(projectId)||!Number.isSafeInteger(expires)||expires<=Date.now())throw new AccessError('FORBIDDEN','Нельзя выдать сессию для этого проекта.');
+  const claims=Buffer.from(JSON.stringify({participantId:actor.id,projectId,expires})).toString('base64url');
+  return `${claims}.${createHmac('sha256',secret).update(`participant:${claims}`).digest('hex')}`;
+}
+/** A supplied participant cookie never falls back to the shared local demo. */
+export async function authenticatedParticipant(request:Request,projectId:string,agentId:string,resolveIdentity?:ParticipantIdentityResolver):Promise<Actor>{
+  if(request.headers.has('authorization')){
+    if(!request.headers.get('authorization')?.startsWith('Bearer '))throw new AccessError('UNAUTHENTICATED','Недействительный Authorization.',401);
+    const headers=new Headers(request.headers);headers.delete('cookie');
+    return authenticatedActor(new Request(request.url,{headers}),projectId,agentId);
+  }
+  const cookie=participantCookie(request);
+  if(cookie===undefined)return authenticatedActor(request,projectId,agentId);
+  const denied=()=>new AccessError('UNAUTHENTICATED','Сессия участника недействительна или отозвана. Войдите повторно.',401);
+  if(!cookie||cookie.length>2048)throw denied();
+  const parts=cookie.split('.');if(parts.length!==2||!/^[A-Za-z0-9_-]+$/.test(parts[0])||!/^[a-f0-9]{64}$/.test(parts[1]))throw denied();
+  const expected=createHmac('sha256',secret).update(`participant:${parts[0]}`).digest('hex');if(!eq(parts[1],expected))throw denied();
+  let claims:unknown;try{claims=JSON.parse(Buffer.from(parts[0],'base64url').toString('utf8'));}catch{throw denied();}
+  if(!claims||typeof claims!=='object'||Array.isArray(claims))throw denied();
+  const data=claims as Record<string,unknown>;
+  if(Object.keys(data).sort().join(',')!=='expires,participantId,projectId'||typeof data.participantId!=='string'||!data.participantId||data.participantId.length>200||data.projectId!==projectId||!Number.isSafeInteger(data.expires)||(data.expires as number)<=Date.now())throw denied();
+  const resolve=resolveIdentity??(async id=>(await import('./store')).resolveParticipantIdentity(id));
+  const actor=await resolve(data.participantId);
+  if(!actor||actor.kind!=='human'||actor.id!==data.participantId||!actor.projectIds.includes(projectId))throw denied();
+  return actor;
+}
+
 /** MCP uses an explicit agent credential; browser cookies never grant this role. */
 export async function authenticatedAgent(request: Request, projectId: string, legacyAgentId: string): Promise<Actor> {
   const authorization=request.headers.get('authorization');
