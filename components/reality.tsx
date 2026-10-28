@@ -10,8 +10,10 @@ const titles: Record<string,string> = {
   SpecCreated:'Спека создана', RevisionProposed:'Предложена ревизия', RevisionActivated:'Ревизия активирована',
   ExecutionCreated:'Попытка разрешена',ExecutionResumed:'Продолжение подтверждено',ExecutionStarted:'Исполнение начато',
   DecisionRequested:'Запрос человеку',DecisionResolved:'Решение человека',DecisionDeferred:'Решение отложено',
+  DecisionWithdrawn:'Запрос отозван автором',DecisionClarificationRequested:'Человек запросил уточнение',DecisionClarificationSubmitted:'Уточнение агента',
+  ExecutionOperatorCancelled:'Авторизация отозванного агента отменена',ExternalStopAttested:'Свидетельство оператора об остановке',
   DecisionSuperseded:'Запрос замещён',ResumeAuthorized:'Продолжение разрешено',DecisionApplied:'Применение подтверждено',
-  BlockerCleared:'Блокер устранён',ExecutionCompleted:'Попытка завершена',StopRequested:'Остановка запрошена',
+  BlockerApplicabilityEnded:'Применимость прежнего блокера завершена',BlockerCleared:'Блокер устранён',ExecutionCompleted:'Попытка завершена',StopRequested:'Остановка запрошена',
   ExecutionPaused:'Остановка подтверждена',ExecutionCancelled:'Попытка отменена',SpecAccepted:'DoD принят человеком',
   ActionReported:'Факт действия',SpecInvalidated:'Спека неактуальна',DependencyAdded:'Зависимость добавлена',RoadmapStateChanged:'Состояние карты изменено',
 };

@@ -1,6 +1,7 @@
 import { findCycle } from './graph';
 import { getLessonSourceSpecIds, validateLessonContent as assertLessonContent } from './lessons';
 import { validateFlowDefinition as assertFlowDefinition } from './flow';
+import {currentDecisionRequests,decisionRoot,isCurrentDecisionRequest,openPhysicalBlockers} from './decision-lineage';
 import type { Actor, Command, DecisionRequest, DomainEvent, Execution, FlowDefinition, FlowNodeKind, GitHubBinding, GitHubCommitSource, Lesson, LessonContent, LessonRevision, ProjectState, RevisionContent, Spec, SpecRevision } from './types';
 
 export const PROJECT_ID = '6c7c62dc-694c-4c7b-9cb1-d9e605164001';
@@ -27,7 +28,7 @@ export function emptyState(projectId = PROJECT_ID): ProjectState {
 }
 
 /** Deterministic projection. Authoritative events and historical revisions are never updated. */
-export function replay(events: readonly DomainEvent[], projectId = PROJECT_ID): ProjectState {
+export function replay(events: readonly DomainEvent[], projectId = PROJECT_ID,onProjected?:(state:Readonly<ProjectState>,event:DomainEvent)=>void): ProjectState {
   const state = emptyState(projectId);
   for (const event of events) {
     if (event.projectId !== projectId || event.schemaVersion !== 1 || event.version !== state.version + 1) fail('INVALID_EVENT_STREAM', 'Нарушен scope, версия схемы или последовательность событий');
@@ -58,7 +59,7 @@ export function replay(events: readonly DomainEvent[], projectId = PROJECT_ID): 
         const request = p.request as DecisionRequest;
         state.requests.push(request);
         const execution = state.executions.find(e => e.id === request.executionId)!;
-        if (request.blockingScope === 'execution' && !terminal.has(execution.state)) execution.state = 'waiting_for_human';
+        if (request.blockingScope === 'execution' && !terminal.has(execution.state)){execution.state = 'waiting_for_human';execution.resumeAuthorized=false;}
         break;
       }
       case 'DecisionResolved': {
@@ -71,10 +72,31 @@ export function replay(events: readonly DomainEvent[], projectId = PROJECT_ID): 
         request.deferredUntil = p.until as string; request.deferredReason = p.reason as string;
         break;
       }
+      case 'DecisionWithdrawn': {
+        const request=state.requests.find(r=>r.id===p.decisionRequestId)!;
+        request.state='withdrawn';request.withdrawalReason=p.reason as string;break;
+      }
+      case 'DecisionClarificationRequested':case 'DecisionClarificationSubmitted':break;
       case 'DecisionSuperseded': state.requests.find(r => r.id === p.decisionRequestId)!.state = 'superseded'; break;
       case 'ResumeAuthorized': state.executions.find(e => e.id === event.executionId)!.resumeAuthorized = true; break;
       case 'DecisionApplied': state.requests.find(r => r.id === p.decisionRequestId)!.decision!.appliedAt = event.occurredAt; break;
-      case 'BlockerCleared': state.requests.find(r => r.id === p.decisionRequestId)!.clearedEvidence = p.evidence as string; break;
+      case 'BlockerCleared': {
+        const request=state.requests.find(r=>r.id===p.decisionRequestId)!;
+        state.requests.filter(r=>decisionRoot(r)===decisionRoot(request)).forEach(r=>{r.clearedEvidence=p.evidence as string;});break;
+      }
+      case 'BlockerApplicabilityEnded': {
+        const request=state.requests.find(r=>r.id===p.decisionRequestId)!;
+        state.requests.filter(r=>decisionRoot(r)===decisionRoot(request)).forEach(r=>{r.applicabilityEndedEvidence=p.evidence as string;r.applicabilityEndedReason=p.reason as string;r.applicabilityEndedForRevisionId=p.applicabilityEndedForRevisionId as string|null;});break;
+      }
+      case 'ExecutionOperatorCancelled': {
+        const execution=state.executions.find(e=>e.id===event.executionId)!;
+        execution.state='cancelled';execution.stopRequested=false;execution.resumeAuthorized=false;execution.stopConfirmation='unknown';
+        execution.operatorCancellation={actorId:event.actor.id,at:event.occurredAt,reason:p.reason as string,evidence:p.evidence as string,revokedAgentId:p.revokedAgentId as string,revokedAt:p.revokedAt as string};break;
+      }
+      case 'ExternalStopAttested': {
+        const execution=state.executions.find(e=>e.id===event.executionId)!;
+        execution.stopConfirmation='operator_attested';execution.stopAttestation={actorId:event.actor.id,at:event.occurredAt,evidence:p.evidence as string};break;
+      }
       case 'ExecutionCompleted': {
         const execution = state.executions.find(e => e.id === event.executionId)!;
         execution.state = p.result as Execution['state']; execution.resultEvidence = p.evidence as string;
@@ -124,9 +146,12 @@ export function replay(events: readonly DomainEvent[], projectId = PROJECT_ID): 
       const active = state.executions.filter(e => e.specId === spec.id && e.specRevisionId === spec.activeRevisionId && e.kind === 'primary');
       const started = state.events.some(e => ['ExecutionStarted', 'ExecutionResumed'].includes(e.type) && e.specId === spec.id && e.specRevisionId === spec.activeRevisionId);
       const unmetDependency = started && state.dependencies.some(d => d.type === 'depends_on' && d.to === spec.id && state.specs.find(s => s.id === d.from)?.state !== 'done');
-      const blocked = unmetDependency || active.some(e => ['waiting_for_human', 'paused'].includes(e.state)) || state.requests.some(r => r.specId === spec.id && r.specRevisionId === spec.activeRevisionId && ((r.blockingScope === 'execution' && r.state === 'pending') || (r.kind === 'Blocker' && r.state !== 'superseded' && !r.clearedEvidence)));
+      const blocked = unmetDependency || active.some(e => ['waiting_for_human', 'paused'].includes(e.state)) || state.executions.some(e=>e.specId===spec.id&&e.stopConfirmation==='unknown') || openPhysicalBlockers(state,spec.id).length>0 || currentDecisionRequests(state).some(r => r.specId === spec.id && r.specRevisionId === spec.activeRevisionId && r.blockingScope === 'execution' && r.state === 'pending');
       spec.state = blocked ? 'blocked' : started ? 'in_progress' : 'specified';
     }
+    // The visitor borrows this projection synchronously after every indirect
+    // lifecycle effect. It must not mutate or retain the live mutable reference.
+    onProjected?.(state,event);
   }
   return state;
 }
@@ -148,7 +173,7 @@ function validateContent(content: RevisionContent): void {
 }
 
 /** A command creates facts; only replay derives current state. No external process is executed here. */
-export function applyCommand(state: ProjectState, command: Command, actor: Actor, environment: { now?: string; id?: () => string } = {}): { state: ProjectState; events: DomainEvent[] } {
+export function applyCommand(state: ProjectState, command: Command, actor: Actor, environment: { now?: string; id?: () => string; revokedAgent?:{id:string;revokedAt:string;revokedBy:string} } = {}): { state: ProjectState; events: DomainEvent[] } {
   if (!command || typeof command !== 'object') fail('VALIDATION_ERROR', 'Команда должна быть объектом');
   text(command.requestId, 'requestId');
   if (!Number.isSafeInteger(command.expectedVersion) || command.expectedVersion < 0) fail('VALIDATION_ERROR', 'expectedVersion должен быть целым неотрицательным числом');
@@ -179,10 +204,16 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
   };
   const blockers = (execution: Execution) => {
     const targetExecutionId = execution.remediatesBlockerId ? getRequest(execution.remediatesBlockerId).executionId : undefined;
-    return state.requests.filter(r => (r.executionId === execution.id || r.executionId === targetExecutionId) && r.id !== execution.remediatesBlockerId && ((r.state === 'pending' && r.blockingScope === 'execution') || (r.kind === 'Blocker' && !r.clearedEvidence) || (r.blockingScope === 'execution' && r.state === 'resolved' && r.decision?.outcome.kind === 'reject')));
+    const targetRoot=execution.remediatesBlockerId?decisionRoot(getRequest(execution.remediatesBlockerId)):undefined;
+    const physicalRoots=new Set(openPhysicalBlockers(state,execution.specId).map(decisionRoot));
+    return currentDecisionRequests(state).filter(r => decisionRoot(r)!==targetRoot && (((r.executionId === execution.id || r.executionId === targetExecutionId) && ((r.state === 'pending' && r.blockingScope === 'execution') || (r.blockingScope === 'execution' && r.state === 'resolved' && r.decision?.outcome.kind === 'reject'))) || physicalRoots.has(decisionRoot(r))));
+  };
+  const assertExternalStopConfirmed=(specId:string)=>{
+    if(state.executions.some(e=>e.specId===specId&&e.stopConfirmation==='unknown'))fail('EXTERNAL_STOP_UNCONFIRMED','Оператор отменил разрешение, но физическая остановка прежнего агента не подтверждена. Сначала проверьте процесс и отдельно зафиксируйте подтверждение оператора.');
   };
   const context = (execution: Execution) => ({ specId: execution.specId, specRevisionId: execution.specRevisionId, executionId: execution.id });
   const canRun = (execution: Execution) => {
+    assertExternalStopConfirmed(execution.specId);
     if (state.roadmap.state !== 'active') fail('INVALID_TRANSITION', 'Дорожная карта не активна');
     activeRevision(getSpec(execution.specId), execution.specRevisionId); dependenciesReady(execution.specId);
     if (blockers(execution).length) fail('INVALID_TRANSITION', 'Остались неразрешённые блокировки');
@@ -250,6 +281,8 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
     }
     case 'startExecution': {
       human(); const spec = getSpec(command.specId); activeRevision(spec, command.specRevisionId); dependenciesReady(spec.id); text(command.agentId, 'agentId');
+      assertExternalStopConfirmed(spec.id);
+      if(openPhysicalBlockers(state,spec.id).length)fail('INVALID_TRANSITION','Физический блокер прежней или текущей ревизии ещё не устранён либо его применимость явно не пересмотрена человеком.');
       if (spec.state === 'done' || state.roadmap.state !== 'active') fail('INVALID_TRANSITION', 'Нельзя начать исполнение в текущем состоянии');
       if (state.executions.some(e => e.specId === spec.id && !terminal.has(e.state))) fail('INVALID_TRANSITION', 'У спецификации уже есть незавершённая попытка');
       if (command.retryOfExecutionId && !state.executions.some(e => e.id === command.retryOfExecutionId && e.specId === spec.id && terminal.has(e.state))) fail('VALIDATION_ERROR', 'retryOf должен ссылаться на завершённую попытку этой спеки');
@@ -332,6 +365,59 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
       if (!Number.isFinite(Date.parse(command.until)) || Date.parse(command.until) <= Date.parse(now)) fail('VALIDATION_ERROR', 'Срок отсрочки должен быть в будущем');
       emit('DecisionDeferred', { decisionRequestId: request.id, reason: command.reason, until: command.until }, { specId: request.specId, specRevisionId: request.specRevisionId, executionId: request.executionId, causationId: requestCause(request.id) }); break;
     }
+    case 'withdrawDecision': {
+      const request=getRequest(command.decisionRequestId),execution=getExecution(request.executionId);agent(execution);
+      if(actor.kind!=='agent'||actor.id!==request.agentId)fail('FORBIDDEN','Отозвать запрос может только его назначенный автор-агент.');
+      text(command.reason,'Причина отзыва');
+      if(request.state!=='pending'||!isCurrentDecisionRequest(state,request))fail('INVALID_TRANSITION','Отозвать можно только актуальный открытый запрос.');
+      emit('DecisionWithdrawn',{decisionRequestId:request.id,reason:command.reason},{...context(execution),causationId:requestCause(request.id)});break;
+    }
+    case 'requestDecisionClarification': {
+      human();const request=getRequest(command.decisionRequestId);text(command.question,'Что требуется уточнить');
+      if(request.state!=='pending'||!isCurrentDecisionRequest(state,request))fail('INVALID_TRANSITION','Уточнение относится только к актуальному открытому запросу.');
+      emit('DecisionClarificationRequested',{decisionRequestId:request.id,question:command.question},{...context(getExecution(request.executionId)),causationId:requestCause(request.id)});break;
+    }
+    case 'submitDecisionClarification': {
+      const request=getRequest(command.decisionRequestId),execution=getExecution(request.executionId);agent(execution);
+      if(actor.kind!=='agent'||actor.id!==request.agentId)fail('FORBIDDEN','Уточнение присылает назначенный автор запроса.');
+      text(command.response,'Ответ на уточнение');text(command.clarificationEventId,'ID запроса уточнения');
+      if(request.state!=='pending'||!isCurrentDecisionRequest(state,request))fail('INVALID_TRANSITION','Запрос уже закрыт или заменён.');
+      const source=state.events.find(e=>e.id===command.clarificationEventId&&e.type==='DecisionClarificationRequested'&&e.payload.decisionRequestId===request.id)??fail('VALIDATION_ERROR','Ответ должен ссылаться на зафиксированный запрос уточнения этого вопроса.');
+      if(state.events.some(e=>e.type==='DecisionClarificationSubmitted'&&e.payload.clarificationEventId===source.id))fail('INVALID_TRANSITION','На это уточнение уже получен ответ.');
+      emit('DecisionClarificationSubmitted',{decisionRequestId:request.id,clarificationEventId:source.id,response:command.response},{...context(execution),causationId:source.id});break;
+    }
+    case 'correctDecision': {
+      human();const request=getRequest(command.decisionRequestId),execution=getExecution(request.executionId),spec=getSpec(request.specId);text(command.reason,'Причина исправления');
+      if(request.state!=='resolved'||!request.decision||!isCurrentDecisionRequest(state,request))fail('INVALID_TRANSITION','Исправляется только последнее записанное решение этой цепочки.');
+      const previousDecision=request.decision!;
+      const root=decisionRoot(request),lineage=state.requests.filter(r=>decisionRoot(r)===root);
+      const resolvedEvent=state.events.find(e=>e.type==='DecisionResolved'&&e.payload.decisionRequestId===request.id);
+      if(previousDecision.appliedAt||terminal.has(execution.state)||spec.state==='done'||spec.state==='invalidated'||spec.activeRevisionId!==request.specRevisionId||
+        state.events.some(e=>e.executionId===execution.id&&((e.type==='ExecutionCompleted')||(e.type==='ActionReported'&&e.payload.phase!=='started'&&e.version>(resolvedEvent?.version??0))))||
+        state.executions.some(e=>!!e.remediatesBlockerId&&lineage.some(r=>r.id===e.remediatesBlockerId)))fail('CORRECTION_REQUIRES_REVISION','Решение уже применено, выдано разрешение на устранение, предъявлен результат или контракт изменился. Сохраните историю и создайте новую ревизию либо самостоятельную спеку.');
+      if(currentDecisionRequests(state).filter(r=>r.specId===request.specId&&r.agentId===request.agentId&&r.state==='pending').length>=10)fail('PENDING_LIMIT_EXCEEDED','У агента уже 10 открытых запросов по этой спеке.');
+      const replacement:DecisionRequest={...copy(request),id:id(),state:'pending',rootRequestId:root,supersedesDecisionId:previousDecision.id,correctionReason:command.reason};
+      delete replacement.decision;delete replacement.deferredReason;delete replacement.deferredUntil;delete replacement.withdrawalReason;
+      emit('DecisionRequested',{request:replacement},{...context(execution),causationId:resolvedEvent?.id});break;
+    }
+    case 'reopenBlockerPlan': {
+      human();const request=getRequest(command.decisionRequestId),execution=getExecution(request.executionId),spec=getSpec(request.specId);text(command.reason,'Причина повторного рассмотрения');
+      const priorContextReview=request.state==='resolved'&&!!request.applicabilityEndedEvidence&&request.applicabilityEndedForRevisionId!==spec.activeRevisionId;
+      if(request.kind!=='Blocker'||(!['withdrawn','superseded'].includes(request.state)&&!priorContextReview)||!isCurrentDecisionRequest(state,request)||request.clearedEvidence||!openPhysicalBlockers(state,request.specId).some(r=>r.id===request.id))fail('INVALID_TRANSITION','Повторно рассматривается актуальный отозванный, замещённый или ранее пересмотренный физический блокер.');
+      if(spec.state==='done'||spec.state==='invalidated'||spec.activeRevisionId!==request.specRevisionId)fail('CORRECTION_REQUIRES_REVISION','Контекст изменился. Проверьте новую ревизию и явно пересмотрите применимость исторического блокера.');
+      if(terminal.has(execution.state)&&state.executions.some(e=>e.specId===spec.id&&(!terminal.has(e.state)||e.stopConfirmation==='unknown')))fail('INVALID_TRANSITION','Повторное рассмотрение после завершённой попытки требует остановки всех работ этой спеки.');
+      if(currentDecisionRequests(state).filter(r=>r.specId===request.specId&&r.agentId===request.agentId&&r.state==='pending').length>=10)fail('PENDING_LIMIT_EXCEEDED','У агента уже 10 открытых запросов по этой спеке.');
+      const replacement:DecisionRequest={...copy(request),id:id(),state:'pending',rootRequestId:decisionRoot(request),supersedesRequestId:request.id,correctionReason:command.reason};
+      delete replacement.decision;delete replacement.withdrawalReason;delete replacement.deferredReason;delete replacement.deferredUntil;delete replacement.applicabilityEndedEvidence;delete replacement.applicabilityEndedReason;delete replacement.applicabilityEndedForRevisionId;
+      emit('DecisionRequested',{request:replacement},{...context(execution),causationId:requestCause(request.id,request.state==='withdrawn'?'DecisionWithdrawn':request.state==='resolved'?'BlockerApplicabilityEnded':'DecisionSuperseded')});break;
+    }
+    case 'retireHistoricalBlocker': {
+      human();const request=getRequest(command.decisionRequestId),spec=getSpec(request.specId);text(command.reason,'Почему старый блокер больше не применим');text(command.evidence,'Основание пересмотра применимости');
+      if(request.kind!=='Blocker'||!isCurrentDecisionRequest(state,request)||request.clearedEvidence||!openPhysicalBlockers(state,request.specId).some(r=>r.id===request.id))fail('INVALID_TRANSITION','Нужен актуальный неустранённый физический блокер.');
+      if(spec.activeRevisionId===request.specRevisionId&&spec.state!=='invalidated')fail('INVALID_TRANSITION','Блокер действующего контракта требует согласованного плана и подтверждённого устранения.');
+      if(state.executions.some(e=>e.specId===spec.id&&(!terminal.has(e.state)||e.stopConfirmation==='unknown')))fail('INVALID_TRANSITION','Сначала подтвердите остановку и завершите все попытки этой спеки; неизвестная физическая остановка не допускается.');
+      emit('BlockerApplicabilityEnded',{decisionRequestId:request.id,reason:command.reason,evidence:command.evidence,applicabilityEndedForRevisionId:spec.activeRevisionId},{specId:request.specId,specRevisionId:request.specRevisionId,executionId:request.executionId,causationId:requestCause(request.id)});break;
+    }
     case 'resumeExecution': {
       human(); const execution = getExecution(command.executionId);
       if (!['paused', 'waiting_for_human', 'queued'].includes(execution.state) || execution.resumeAuthorized) fail('INVALID_TRANSITION', 'Продолжение не требуется или уже разрешено');
@@ -347,12 +433,13 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
     case 'confirmDecisionApplied': {
       const request = getRequest(command.decisionRequestId); const execution = getExecution(request.executionId); agent(execution); text(command.evidence, 'Основание применения');
       activeRevision(getSpec(request.specId), request.specRevisionId);
-      if (request.state !== 'resolved' || !request.decision || request.decision.appliedAt || request.decision.outcome.kind === 'reject') fail('INVALID_TRANSITION', 'Нет положительного неприменённого решения');
+      if (request.state !== 'resolved' || !request.decision || request.decision.appliedAt || request.decision.outcome.kind === 'reject'||!isCurrentDecisionRequest(state,request)) fail('INVALID_TRANSITION', 'Нет актуального положительного неприменённого решения');
       emit('DecisionApplied', { decisionRequestId: request.id, evidence: command.evidence }, { ...context(execution), causationId: requestCause(request.id, 'DecisionResolved') }); break;
     }
     case 'authorizeRemediation': {
       human(); const request = getRequest(command.decisionRequestId); text(command.agentId, 'agentId');
-      if (request.kind !== 'Blocker' || request.state !== 'resolved' || request.decision?.outcome.kind !== 'approve' || request.clearedEvidence) fail('INVALID_TRANSITION', 'Для устранения нужен одобренный план открытого блокера');
+      assertExternalStopConfirmed(request.specId);
+      if (request.kind !== 'Blocker' || request.state !== 'resolved' || request.decision?.outcome.kind !== 'approve' || request.clearedEvidence||!isCurrentDecisionRequest(state,request)) fail('INVALID_TRANSITION', 'Для устранения нужен актуальный одобренный план открытого блокера');
       activeRevision(getSpec(request.specId), request.specRevisionId);
       if (state.executions.some(e => e.remediatesBlockerId === request.id && !terminal.has(e.state))) fail('INVALID_TRANSITION', 'Попытка устранения уже существует');
       const execution: Execution = { id: id(), specId: request.specId, specRevisionId: request.specRevisionId, agentId: command.agentId, state: 'queued', kind: 'remediation', remediatesBlockerId: request.id, resumeAuthorized: true };
@@ -360,7 +447,7 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
     }
     case 'clearBlocker': {
       const request = getRequest(command.decisionRequestId); const remediation = getExecution(command.remediationExecutionId); agent(remediation); text(command.evidence, 'Подтверждение устранения');
-      if (request.kind !== 'Blocker' || request.decision?.outcome.kind !== 'approve' || request.clearedEvidence || remediation.remediatesBlockerId !== request.id || remediation.state !== 'succeeded') fail('INVALID_TRANSITION', 'Снятие блокера требует завершённой разрешённой попытки устранения');
+      if (request.kind !== 'Blocker' || request.decision?.outcome.kind !== 'approve' || request.clearedEvidence || remediation.remediatesBlockerId !== request.id || remediation.state !== 'succeeded'||!isCurrentDecisionRequest(state,request)) fail('INVALID_TRANSITION', 'Снятие блокера требует завершённой разрешённой попытки устранения по актуальному плану');
       emit('BlockerCleared', { decisionRequestId: request.id, remediationExecutionId: remediation.id, evidence: command.evidence }, { ...context(remediation), causationId: cause(e => e.type === 'ExecutionCompleted' && e.executionId === remediation.id && e.payload.result === 'succeeded') }); break;
     }
     case 'completeExecution': {
@@ -385,12 +472,24 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
       if (!execution.stopRequested || terminal.has(execution.state)) fail('INVALID_TRANSITION', 'Нет ожидающего запроса остановки');
       emit('ExecutionPaused', {}, { ...context(execution), causationId: cause(e => (e.type === 'StopRequested' && e.executionId === execution.id) || (e.type === 'RevisionActivated' && e.specId === execution.specId) || (e.type === 'RoadmapStateChanged' && e.payload.state === 'frozen')) }); break;
     }
+    case 'forceCancelRevokedExecution': {
+      human();const execution=getExecution(command.executionId);text(command.reason,'Причина операторской отмены');text(command.evidence,'Основание оператора');
+      const revoked=environment.revokedAgent??fail('AGENT_NOT_REVOKED','Операторское восстановление требует подтверждённого реестром отзыва назначенного агента.');
+      if(revoked.id!==execution.agentId||!Number.isFinite(Date.parse(revoked.revokedAt))||!revoked.revokedBy)fail('AGENT_NOT_REVOKED','Операторское восстановление требует подтверждённого реестром отзыва назначенного агента.');
+      if(terminal.has(execution.state))fail('INVALID_TRANSITION','Попытка уже завершена.');
+      emit('ExecutionOperatorCancelled',{reason:command.reason,evidence:command.evidence,revokedAgentId:revoked.id,revokedAt:revoked.revokedAt,revokedBy:revoked.revokedBy},{...context(execution),causationId:cause(e=>e.executionId===execution.id&&e.type==='StopRequested')});break;
+    }
+    case 'attestExternalStop': {
+      human();const execution=getExecution(command.executionId);text(command.evidence,'Проверка фактической остановки оператором');
+      if(execution.state!=='cancelled'||execution.stopConfirmation!=='unknown'||!execution.operatorCancellation)fail('INVALID_TRANSITION','Подтверждение оператора требуется только после отмены с неизвестной фактической остановкой.');
+      emit('ExternalStopAttested',{evidence:command.evidence},{...context(execution),causationId:cause(e=>e.executionId===execution.id&&e.type==='ExecutionOperatorCancelled')});break;
+    }
     case 'acceptSpec': {
       human(); const spec = getSpec(command.specId); activeRevision(spec, command.specRevisionId);
       if (spec.state !== 'in_progress') fail('INVALID_TRANSITION', 'Спецификация не готова к приёмке');
       const executions = state.executions.filter(e => e.specId === spec.id && e.specRevisionId === command.specRevisionId);
       if (!executions.some(e => e.kind === 'primary' && e.state === 'succeeded') || executions.some(e => !terminal.has(e.state))) fail('INVALID_TRANSITION', 'Нужно завершить актуальную основную попытку и все вспомогательные работы');
-      if (state.requests.some(r => r.specId === spec.id && r.specRevisionId === command.specRevisionId && (r.state === 'pending' || (r.kind === 'Blocker' && !r.clearedEvidence)))) fail('INVALID_TRANSITION', 'Остались открытые решения или блокеры');
+      if (currentDecisionRequests(state).some(r => r.specId === spec.id && r.specRevisionId === command.specRevisionId && (r.state === 'pending' || (r.kind === 'Blocker' && !r.clearedEvidence)))) fail('INVALID_TRANSITION', 'Остались открытые решения или блокеры');
       if (!command.evidence || typeof command.evidence !== 'object' || Array.isArray(command.evidence)) fail('VALIDATION_ERROR', 'Нужны подтверждения DoD');
       const revision = state.revisions.find(r => r.id === command.specRevisionId)!;
       for (const criterion of revision.dod.filter(c => c.required)) text(command.evidence[criterion.id], `Подтверждение: ${criterion.text}`);
@@ -414,7 +513,7 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
       human(); const allowed: Record<ProjectState['roadmap']['state'], string[]> = { draft: ['active', 'archived'], active: ['frozen', 'archived'], frozen: ['active', 'archived'], archived: [] };
       if (!allowed[state.roadmap.state].includes(command.state)) fail('INVALID_TRANSITION', 'Недопустимый переход дорожной карты');
       if (command.state === 'active' && !state.specs.length) fail('INVALID_TRANSITION', 'Дорожная карта должна содержать спецификацию');
-      if (command.state === 'archived' && state.executions.some(e => !terminal.has(e.state))) fail('INVALID_TRANSITION', 'Нужно завершить все попытки перед архивацией');
+      if (command.state === 'archived' && state.executions.some(e => !terminal.has(e.state)||e.stopConfirmation==='unknown')) fail('INVALID_TRANSITION', 'Нужно завершить все попытки и подтвердить неизвестную физическую остановку перед архивацией');
       emit('RoadmapStateChanged', { state: command.state }); break;
     }
     case 'createGitHubBinding': {

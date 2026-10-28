@@ -43,7 +43,7 @@ test('F09 state diagrams expose four axes and distinguish human permission, agen
  await expect(panel.getByRole('button',{name:'Активна, текущее состояние',exact:true})).toBeVisible();
  await axes.getByRole('button',{name:'Запрос решения',exact:true}).click();
  await expect(panel.getByText('В выбранном контексте ещё нет этой сущности',{exact:true})).toBeVisible();
- await expect(panel.getByRole('button',{name:'Отозван, зарезервировано',exact:true})).toBeVisible();
+ await expect(panel.getByRole('button',{name:'Отозван',exact:true})).toBeVisible();
  await axes.getByRole('button',{name:'Исполнение',exact:true}).click();
  await page.getByRole('button',{name:'Включить светлую тему'}).click();
  await expect(page.locator('html')).toHaveAttribute('data-theme','light');

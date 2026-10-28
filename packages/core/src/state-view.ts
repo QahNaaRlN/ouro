@@ -1,4 +1,5 @@
 import { emptyState, replay } from './engine';
+import { currentDecisionRequests, isCurrentDecisionRequest } from './decision-lineage';
 import type { DomainEvent, ProjectState } from './types';
 
 export type StateAxis = 'roadmap' | 'spec' | 'execution' | 'request';
@@ -32,7 +33,7 @@ export const STATE_MODELS: Record<StateAxis,{title:string;states:StateDescriptio
     {id:'paused',label:'Приостановлено',description:'Агент подтвердил фактическую остановку.'},
     {id:'succeeded',label:'Попытка успешна',description:'Агент предъявил результат и evidence. Приёмка DoD человеком остаётся отдельной.',terminal:true},
     {id:'failed',label:'Ошибка попытки',description:'Агент сообщил неуспешный результат с evidence.',terminal:true},
-    {id:'cancelled',label:'Отменено',description:'Человек отменил ещё не начатую либо подтверждённо остановленную попытку.',terminal:true},
+    {id:'cancelled',label:'Отменено',description:'Авторизация отменена человеком. После экстренного отзыва агента физическая остановка может оставаться неподтверждённой; проверяйте отдельный индикатор.',terminal:true},
     {id:'skipped',label:'Пропущено',description:'Человек пропустил попытку до запуска, указав причину.',terminal:true},
   ],transitions:[
     edge('queued','running','ACK запуска','agent','Есть разрешение человека; карта активна, ревизия актуальна, зависимости приняты и блокировки сняты.'),
@@ -43,13 +44,14 @@ export const STATE_MODELS: Record<StateAxis,{title:string;states:StateDescriptio
     edge('running','succeeded','Результат + evidence','agent','Попытка выполняется по разрешённому актуальному контракту, без stopRequested и открытых блокировок.'),
     ...['queued','running','waiting_for_human','paused'].map(from=>edge(from,'failed','Ошибка + evidence','agent','Попытка ещё не завершена; предъявлено основание неуспеха.')),
     ...['queued','paused'].map(from=>edge(from,'cancelled','Отменить с причиной','human','Попытка не начата либо её остановка уже подтверждена.')),
+    ...['queued','running','waiting_for_human','paused'].map(from=>edge(from,'cancelled','Операторская отмена после отзыва','human','Назначенный агент отозван. Оператор указал причину и evidence; физическая остановка не подтверждается, новая работа запрещена до отдельного свидетельства.')),
     edge('queued','skipped','Пропустить с причиной','human','Попытка ещё находится в очереди.'),
   ]},
   spec:{title:'Спецификация',states:[
     {id:'idea',label:'Идея',description:'Черновик ожидания без активной ревизии.'},
     {id:'specified',label:'Специфицировано',description:'Ревизия активирована. Подтверждённого начала её основной попытки ещё нет.'},
     {id:'in_progress',label:'В работе',description:'Есть подтверждённое начало актуальной основной попытки. Даже её успех не принимает DoD.'},
-    {id:'blocked',label:'Заблокировано',description:'В актуальном контексте есть ожидание, пауза, блокер или перестала быть принятой обязательная зависимость.'},
+    {id:'blocked',label:'Заблокировано',description:'Есть ожидание, пауза, неустранённый физический блокер, неподтверждённая внешняя остановка или непринятая обязательная зависимость. Прежний блокер не исчезает при смене ревизии.'},
     {id:'done',label:'Принято',description:'Человек отдельно принял каждый обязательный критерий DoD с evidence.'},
     {id:'invalidated',label:'Неактуально',description:'Человек признал цель неактуальной; новая цель требует новой спецификации.',terminal:true},
   ],transitions:[
@@ -66,8 +68,9 @@ export const STATE_MODELS: Record<StateAxis,{title:string;states:StateDescriptio
     {id:'pending',label:'Нужно решение',description:'Ожидается явный ответ человека. Отсрочка, время и confidence не закрывают запрос.'},
     {id:'resolved',label:'Решение записано',description:'Человек ответил, выбрал вариант либо отклонил запрос. Применение и разрешение продолжения отдельны.'},
     {id:'superseded',label:'Замещён',description:'Человек активировал другую ревизию. Старый запрос сохранён и автоматически не переносится.',terminal:true},
-    {id:'withdrawn',label:'Отозван',description:'Состояние зарезервировано контрактом. Команда отзыва в текущем ядре ещё не реализована.',reserved:true},
+    {id:'withdrawn',label:'Отозван',description:'Назначенный автор отозвал открытый запрос с причиной. Отзыв не разрешает продолжение и не устраняет физический Blocker.',terminal:true},
   ],transitions:[
+    edge('pending','withdrawn','Отзыв с причиной','agent','Только назначенный автор открытого запроса; отзыв не означает согласие человека или снятие Blocker.'),
     edge('pending','resolved','Ответ / выбор / отклонение','human','Тип outcome соответствует Question/Fork/Blocker; выбранный option существует, ревизия актуальна.'),
     edge('pending','superseded','Другая активная ревизия','system','Человек активировал другую ревизию спеки; история запроса сохраняется.'),
   ]},
@@ -93,19 +96,16 @@ function histories(state:ProjectState):HistoryIndex {
   const cached=historyCache.get(state.events);if(cached)return cached;
   const result:HistoryIndex=new Map();
   let previous=new Map(stateEntries(emptyState(state.projectId)));
-  const prefix:DomainEvent[]=[];
   // The authoritative replay handles indirect changes too (e.g. a prerequisite becoming invalid).
   // No second state machine is maintained by this visualization.
-  for(const event of state.events) {
-    prefix.push(event);
-    const snapshot=replay(prefix,state.projectId);
+  replay(state.events,state.projectId,(snapshot,event)=>{
     const current=new Map(stateEntries(snapshot));
     for(const [key,to] of current) {
       const from=previous.get(key)??null;
       if(from!==to){const changes=result.get(key)??[];changes.push({from,to,eventId:event.id,eventType:event.type,version:event.version,actor:event.actor});result.set(key,changes);}
     }
     previous=current;
-  }
+  });
   historyCache.set(state.events,result);return result;
 }
 
@@ -117,20 +117,28 @@ export function buildStateView(state:ProjectState,selection:StateSelection):Stat
   const model=STATE_MODELS[selection.axis];
   const notices:StateNotice[]=[];
   if(selection.axis==='execution'&&selectedExecution) {
+    if(selectedExecution.stopConfirmation==='unknown')notices.push({code:'operator_stop_unknown',text:'Авторизация отозванного агента отменена. Фактическая остановка не подтверждена; новая работа запрещена до отдельного свидетельства оператора.'});
+    if(selectedExecution.stopConfirmation==='operator_attested')notices.push({code:'operator_stop_attested',text:`Внешняя остановка засвидетельствована оператором: ${selectedExecution.stopAttestation?.evidence??''}. Это отдельное свидетельство человека, не ACK агента.`});
     if(selectedExecution.stopRequested)notices.push({code:'awaiting_stop_ack',text:'Остановка запрошена. Фактическая остановка ожидает ACK агента.'});
     if(selectedExecution.resumeAuthorized)notices.push({code:selectedExecution.state==='queued'?'awaiting_start_ack':'awaiting_resume_ack',text:selectedExecution.state==='queued'?'Запуск разрешён человеком. Ожидается ACK фактического начала.':'Продолжение разрешено человеком. Состояние изменится только после ACK агента.'});
-    const decisions=state.requests.filter(r=>r.executionId===selectedExecution.id&&r.state==='resolved'&&r.decision?.outcome.kind!=='reject'&&!r.decision?.appliedAt);
+    const decisions=currentDecisionRequests(state).filter(r=>r.executionId===selectedExecution.id&&r.state==='resolved'&&r.decision?.outcome.kind!=='reject'&&!r.decision?.appliedAt);
     if(decisions.length)notices.push({code:'awaiting_decision_application',text:`Решений без подтверждения применения: ${decisions.length}. Запись решения не подтверждает его исполнение.`});
     if(selectedExecution.state==='succeeded')notices.push({code:'result_is_not_acceptance',text:'Успех попытки предъявлен агентом. Приёмка DoD спеки фиксируется отдельным человеческим решением.'});
   }
   if(selection.axis==='request'&&request) {
+    if(request.withdrawalReason)notices.push({code:'withdrawn',text:`Автор отозвал запрос: ${request.withdrawalReason}. Это не разрешение продолжения.`});
+    if(request.supersedesDecisionId)notices.push({code:'decision_correction',text:`Новый запрос исправляет прежнее решение ${request.supersedesDecisionId}; исходный ответ остаётся в истории.`});
     if(request.deferredUntil)notices.push({code:'deferred',text:`Запрос отложен до ${request.deferredUntil}. Отсрочка не является ответом.`});
     if(request.decision) {
       const outcome=request.decision.outcome;
       notices.push({code:'decision_outcome',text:outcome.kind==='reject'?`Отклонено: ${outcome.reason}`:outcome.kind==='answer'?`Ответ человека: ${outcome.answer}`:`Выбран вариант: ${request.options.find(o=>o.id===outcome.chosenOptionId)?.title??outcome.chosenOptionId}`});
-      if(outcome.kind!=='reject')notices.push({code:request.decision.appliedAt?'decision_applied':'awaiting_application',text:request.decision.appliedAt?'Агент отдельно подтвердил применение решения.':'Применение решения агентом ещё не подтверждено.'});
+      if(!isCurrentDecisionRequest(state,request))notices.push({code:'historical_permission',text:'Прежнее решение сохранено как исторический факт; применяться может только новое действующее решение цепочки.'});
+      else if(outcome.kind!=='reject')notices.push({code:request.decision.appliedAt?'decision_applied':'awaiting_application',text:request.decision.appliedAt?'Агент отдельно подтвердил применение решения.':'Применение решения агентом ещё не подтверждено.'});
     }
-    if(request.kind==='Blocker')notices.push({code:request.clearedEvidence?'blocker_cleared':'blocker_open',text:request.clearedEvidence?`Устранение подтверждено: ${request.clearedEvidence}`:'Одобрение плана не устраняет препятствие. Нужна отдельная успешная remediation и evidence.'});
+    if(request.kind==='Blocker'){
+      const contextMatches=request.applicabilityEndedEvidence&&request.applicabilityEndedForRevisionId===state.specs.find(spec=>spec.id===request.specId)?.activeRevisionId;
+      notices.push({code:request.clearedEvidence?'blocker_cleared':contextMatches?'blocker_applicability_ended':'blocker_open',text:request.clearedEvidence?`Устранение подтверждено: ${request.clearedEvidence}`:contextMatches?`Применимость прежнего блокера завершена человеком для текущего контракта: ${request.applicabilityEndedEvidence}. Это не свидетельство физического устранения.`:request.applicabilityEndedEvidence?'Свидетельство о неприменимости относится к другой ревизии. В текущем контракте физический барьер требует нового пересмотра.':'Одобрение плана не устраняет препятствие. Нужна отдельная успешная remediation и evidence.'});
+    }
   }
   return {axis:selection.axis,title:model.title,entityId:entity?.id??null,current:entity?.state??null,states:model.states,transitions:model.transitions,history:entity?(histories(state).get(`${selection.axis}:${entity.id}`)??[]):[],notices};
 }

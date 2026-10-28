@@ -62,11 +62,11 @@ test('stop remains a request until ACK, and only the selected execution history 
  assert.equal(buildStateView(state,{axis:'execution',executionId:'missing'}).history.length,0);
 });
 
-test('diagram metadata represents implemented roadmap and request transitions without inventing withdrawal',()=>{
+test('diagram metadata represents implemented roadmap and author withdrawal transitions',()=>{
  let {state}=fixture();
  const request=buildStateView(state,{axis:'request'});
- assert(request.states.some((s:any)=>s.id==='withdrawn'&&s.reserved));
- assert(!request.transitions.some((t:any)=>t.to==='withdrawn'));
+ assert(request.states.some((s:any)=>s.id==='withdrawn'&&!s.reserved&&s.terminal));
+ assert(request.transitions.some((t:any)=>t.from==='pending'&&t.to==='withdrawn'&&t.actor==='agent'));
  state=run(state,{type:'changeRoadmapState',state:'frozen'});
  const map=buildStateView(state,{axis:'roadmap'});
  assert.equal(map.current,'frozen');
@@ -94,4 +94,22 @@ test('indirect prerequisite revision changes appear on the affected spec with th
  assert.deepEqual([view.history.at(-1)?.from,view.history.at(-1)?.to,view.history.at(-1)?.eventType],['in_progress','blocked','RevisionActivated']);
  assert.equal(view.history.at(-1)?.eventId,state.events.at(-1)?.id);
  assert.notEqual(state.events.at(-1)?.specId,dependent.id,'The causal event belongs to the prerequisite, not the affected spec.');
+});
+
+
+test('corrected historical decisions do not inflate the current awaiting-application count',()=>{
+ let {state,spec,revision,execution}=fixture();
+ state=run(state,{type:'confirmResumed',executionId:execution.id},agent);
+ state=run(state,{type:'reportQuestion',executionId:execution.id,specId:spec.id,specRevisionId:revision.id,title:'Выбор результата',context:'Нужен человеческий ответ.',question:'Какой формат?',blockingScope:'execution'},agent);
+ const original=state.requests.at(-1)!;
+ state=run(state,{type:'resolveDecision',decisionRequestId:original.id,specRevisionId:revision.id,outcome:{kind:'answer',answer:'Первый ответ'}});
+ state=run(state,{type:'correctDecision',decisionRequestId:original.id,reason:'До применения обнаружено уточнение.'});
+ const correction=state.requests.at(-1)!;
+ state=run(state,{type:'resolveDecision',decisionRequestId:correction.id,specRevisionId:revision.id,outcome:{kind:'answer',answer:'Уточнённый ответ'}});
+ const current=buildStateView(state,{axis:'execution',executionId:execution.id});
+ assert(current.notices.some(n=>n.code==='awaiting_decision_application'&&n.text.includes('Решений без подтверждения применения: 1.')));
+ const historical=buildStateView(state,{axis:'request',requestId:original.id});
+ assert(historical.notices.some(n=>n.code==='historical_permission'));
+ assert(!historical.notices.some(n=>n.code==='awaiting_application'));
+ assert.equal(historical.current,'resolved');
 });

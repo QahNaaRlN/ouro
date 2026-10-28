@@ -5,6 +5,7 @@ import { ReactFlow, Background, Controls, Handle, Position, MarkerType, type Nod
 import dagre from '@dagrejs/dagre';
 import { ArrowRight, Bot, CircleCheck, CircleHelp, Clock3, GitBranch, List, Network, Plus, RefreshCw, Save, ShieldAlert, Square, UserRound, X } from 'lucide-react';
 import { validateFlowDefinition } from '@/packages/core/src/flow';
+import {currentDecisionRequests} from '@/packages/core/src/decision-lineage';
 import type { FlowDefinition, FlowNode, FlowNodeKind, FlowOwner, ProjectState, SpecRevision } from '@/packages/core/src';
 import './spec-flow.css';
 
@@ -67,7 +68,7 @@ export default function SpecFlow({revision,state,busy,onSave}:{revision:SpecRevi
     return {id:n.id,type:'process',position:moved[n.id]??positions[n.id]??{x:0,y:0},selected:selectedNode===n.id,data:{node:n,entry:n.id===flow.entryNodeId,facts:draft?0:linkedFacts(n.id).length,requestLabel,draft:!!draft},ariaLabel:`${kindNames[n.kind]}: ${n.title}. ${ownerNames[n.owner]}. ${draft?'Черновик':requestLabel||'Возможный шаг'}`,style:{width:248,height:172}};
   })??[];
   const edges:Edge[]=flow?.edges.map(e=>{
-    const matches=draft?[]:requests.filter(r=>r.kind==='Fork'&&r.flowNodeId===e.source&&r.decision?.outcome.kind==='approve'&&r.decision.outcome.chosenOptionId===e.optionId);
+    const matches=draft?[]:currentDecisionRequests({requests}).filter(r=>r.kind==='Fork'&&r.flowNodeId===e.source&&r.decision?.outcome.kind==='approve'&&r.decision.outcome.chosenOptionId===e.optionId);
     const applied=matches.some(r=>r.decision?.appliedAt),chosen=matches.length>0;
     return {id:e.id,source:e.source,target:e.target,type:'smoothstep',selected:selectedEdge===e.id,label:`${e.label}${applied?' · выбор применён':chosen?' · выбран, не применён':''}`,markerEnd:{type:MarkerType.ArrowClosed,color:applied?'var(--positive)':chosen?'var(--attention)':'var(--graph-edge)'},style:{stroke:applied?'var(--positive)':chosen?'var(--attention)':'var(--graph-edge)',strokeWidth:applied||chosen?2.5:1.5,strokeDasharray:chosen&&!applied?'6 4':undefined},labelStyle:{fill:applied?'var(--positive)':chosen?'var(--attention)':'var(--text-muted)',fontSize:12},labelBgStyle:{fill:'var(--bg)'},labelBgPadding:[7,5],labelBgBorderRadius:4,ariaLabel:`${flow.nodes.find(n=>n.id===e.source)?.title} → ${flow.nodes.find(n=>n.id===e.target)?.title}: ${e.label}${applied?'. Выбор применён':chosen?'. Выбор ещё не применён':''}`};
   })??[];

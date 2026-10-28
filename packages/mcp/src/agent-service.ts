@@ -92,6 +92,8 @@ export function createAgentService({ store, actor }: {store:AgentStore; actor:Ac
             'Работайте только в назначенной попытке и по её immutable revision. Отсутствие назначения не разрешает самостоятельный запуск.',
             'ACK разрешённого запуска/продолжения отправляется отдельно от решения человека. При stopRequested остановите затронутую работу и подтвердите фактическую остановку.',
             'Question/Fork/Blocker требуют человека. Пока ожидаете, читайте get_updates/get_context; отсутствие ответа и confidence не означают согласие.',
+            'Уточнение человека — отдельный запрос дополнительных фактов. Отвечайте через submit_decision_clarification с настоящим clarificationEventId; это не закрывает исходный запрос решения и не разрешает продолжение.',
+            'Свой pending-запрос можно отозвать с причиной через withdraw_decision. Отзыв не является решением человека, разрешением продолжить или доказательством устранения Blocker.',
             'Сохраняйте requestId при сетевом повторе. При VERSION_CONFLICT прочитайте контекст и осмысленно сформируйте новую команду; не подменяйте версию автоматически.',
             'Успех исполнения не является human-приёмкой DoD. Предъявляйте проверяемое evidence, не выдавайте симуляцию за реальную работу.',
           ]});
@@ -112,6 +114,14 @@ export function createAgentService({ store, actor }: {store:AgentStore; actor:Ac
           case 'ouro.report_question':command={...input,...context,type:'reportQuestion'} as Command;break;
           case 'ouro.report_fork':command={...input,...context,type:'reportFork'} as Command;break;
           case 'ouro.report_blocker':command={...input,...context,type:'reportBlocker'} as Command;break;
+          case 'ouro.withdraw_decision':{
+            const request=requestFor(state,execution,String(input.decisionRequestId));
+            command={...base,type:'withdrawDecision',decisionRequestId:request.id,reason:input.reason as string} as Command;break;
+          }
+          case 'ouro.submit_decision_clarification':{
+            const request=requestFor(state,execution,String(input.decisionRequestId));
+            command={...base,type:'submitDecisionClarification',decisionRequestId:request.id,clarificationEventId:input.clarificationEventId as string,response:input.response as string} as Command;break;
+          }
           case 'ouro.confirm_started':case 'ouro.confirm_resumed':command={...base,type:'confirmResumed',ackPhase:name==='ouro.confirm_started'?'start':'resume'};break;
           case 'ouro.confirm_stopped':command={...base,type:'confirmStopped'};break;
           case 'ouro.confirm_decision_applied':{

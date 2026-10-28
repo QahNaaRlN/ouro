@@ -52,9 +52,11 @@ import LessonsPanel from '@/components/lessons-panel';
 import ImpactPanel from '@/components/impact-panel';
 import SpecFlow from "@/components/spec-flow";
 import { StateTransitions } from "@/components/state-transitions";
+import HistoricalPanel from "@/components/historical-panel";
 import { createProjectSnapshotAdopter, type ProjectSnapshot } from '@/lib/project-snapshot';
 import { startProjectSubscription, type ProjectSubscriptionStatus } from '@/lib/project-subscription';
 import { getRoadmapFilterOptions, matchesRoadmapFilter } from '@/packages/core/src/roadmap-filter';
+import { currentDecisionRequests, decisionRoot, isCurrentDecisionRequest, openPhysicalBlockers } from '@/packages/core/src/decision-lineage';
 import {
   AGENT_ID,
   PROJECT_ID,
@@ -98,6 +100,12 @@ const eventLabels: Record<string, string> = {
   DecisionRequested: "Запрос решения",
   DecisionResolved: "Решение человека записано",
   DecisionDeferred: "Решение отложено",
+  DecisionWithdrawn: "Запрос отозван автором",
+  DecisionClarificationRequested: "Человек запросил уточнение",
+  DecisionClarificationSubmitted: "Агент представил уточнение",
+  ExecutionOperatorCancelled: "Авторизация отозванного агента отменена",
+  ExternalStopAttested: "Оператор засвидетельствовал внешнюю остановку",
+  BlockerApplicabilityEnded: "Применимость прежнего блокера завершена",
   ExecutionResumeAuthorized: "Продолжение разрешено",
   ExecutionResumed: "Продолжение подтверждено",
   DecisionApplied: "Применение подтверждено",
@@ -165,6 +173,10 @@ export default function Home() {
     [detailTab, setDetailTab] = useState("expectation"),
     [realityView, setRealityView] = useState<"history" | "graph">("history");
   const cursorRef = useRef(0);
+  const [historicalCursor,setHistoricalCursor]=useState<number|null>(null);
+  const [historicalInput,setHistoricalInput]=useState('');
+  const historicalCursorRef=useRef<number|null>(null);
+  const returnToLive=()=>{historicalCursorRef.current=null;setHistoricalCursor(null);};
   const hasInitialSelection = useRef(false);
   const pendingRef = useRef(false);
   const presentSnapshot=useCallback((snapshot:ProjectSnapshot)=>{
@@ -254,6 +266,7 @@ export default function Home() {
     expectedVersionOverride?: number,
     onCommitted?: (events:DomainEvent[])=>void,
   ) => {
+    if(historicalCursorRef.current!==null){setError('Историческое состояние доступно только для чтения. Вернитесь к текущей работе.');return false;}
     if (!state || busy) return false;
     setBusy(true);
     pendingRef.current = true;
@@ -303,6 +316,7 @@ export default function Home() {
     return command({type:'proposeRevision',specId:original.specId,content:{title,goal,dod,constraints,assumptions,risks,inputs,comment,flow}},'Новая ревизия со схемой предложена. Активация выполняется отдельно.',base.expectedVersion);
   };
   const simulate = async (scenario: string) => {
+    if(historicalCursorRef.current!==null){setError('Историческое состояние доступно только для чтения.');return;}
     if (!state || !selected || busy) return;
     const target=state.executions.filter(e=>e.specId===selected&&!['succeeded','failed','cancelled','skipped'].includes(e.state)).at(-1);
     if(target?.agentId!==AGENT_ID){setError('Подтверждение назначенного MCP-агента поступает через его подключение. Симулятор не управляет этой попыткой.');return;}
@@ -376,6 +390,7 @@ export default function Home() {
   const simulatorAvailable = simulationExecution?.agentId===AGENT_ID;
   const selectedAgentName = execution ? execution.agentId===AGENT_ID ? 'Симулятор агента' : agents.find(a=>a.id===execution.agentId)?.name??'Назначенный MCP-агент' : 'MCP и симулятор';
   const assignmentValid=assignmentAgentId===AGENT_ID || agents.some(a=>a.id===assignmentAgentId&&!a.revokedAt);
+  const externalStopUnknown=state?.executions.some(e=>e.specId===selected&&e.stopConfirmation==='unknown')??false;
   const visibleSpecs = state?.specs.filter(s=>matchesRoadmapFilter(s,state,{query,status,agentId:agentFilter,requestKind:requestFilter}))??[];
   const filterOptions=state?getRoadmapFilterOptions(state):{agentIds:[],requestKinds:[]};
   const connected=streamStatus==='connected';
@@ -416,7 +431,7 @@ export default function Home() {
   };
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${historicalCursor!==null?'historical-preview':''}`}>
       <aside className={`sidebar ${mobileNav ? "mobile-open" : ""}`}>
         <a className="brand" href="/" aria-label="Ouro — главная">
           <span className="brand-symbol">O</span>
@@ -441,6 +456,7 @@ export default function Home() {
             <button
               className={`nav-item ${view === item.id ? "active" : ""}`}
               key={item.id}
+              disabled={historicalCursor!==null}
               onClick={() => navigate(item.id)}
             >
               <item.icon size={18} />
@@ -465,6 +481,7 @@ export default function Home() {
         <div className="sidebar-bottom">
           <button
             className={`nav-item ${view === "methodology" ? "active" : ""}`}
+            disabled={historicalCursor!==null}
             onClick={() => navigate("methodology")}
           >
             <BookOpen size={18} />
@@ -560,6 +577,7 @@ export default function Home() {
         ) : (
           <div className="workspace-body">
             <main className={`main-content view-${view}`}>
+              {historicalCursor!==null?<HistoricalPanel latest={state} cursor={historicalCursor} onReturn={returnToLive}/>:<>
               {view === "roadmap" && (
                 <>
                   <div className="page-heading">
@@ -1015,6 +1033,9 @@ export default function Home() {
                                 <ExecutionPanel
                                   compact
                                   execution={execution}
+                                  agents={agents}
+                                  version={state.version}
+                                  state={state}
                                   requests={selectedRequests.filter(
                                     (r) => r.specRevisionId === revision.id,
                                   )}
@@ -1064,7 +1085,7 @@ export default function Home() {
                                 <AgentPicker agents={agents} value={assignmentAgentId} onChange={setAssignmentAgentId} disabled={busy}/>
                                 <button
                                   className="btn btn-small"
-                                  disabled={busy || !assignmentValid}
+                                  disabled={busy || !assignmentValid || externalStopUnknown}
                                   onClick={() =>
                                     command(
                                       {
@@ -1115,6 +1136,9 @@ export default function Home() {
                           </div>
                           <ExecutionPanel
                             execution={execution}
+                            agents={agents}
+                            version={state.version}
+                            state={state}
                             requests={selectedRequests}
                             busy={busy}
                             command={command}
@@ -1216,6 +1240,7 @@ export default function Home() {
                           <button
                             className={`decision-row ${r.id === currentRequest?.id ? "selected" : ""}`}
                             key={r.id}
+                            data-testid={`decision-${r.id}`}
                             onClick={() => {
                               setRequestId(r.id);
                               setSelected(r.specId);
@@ -1263,6 +1288,8 @@ export default function Home() {
                           command={command}
                           agents={agents}
                           version={state.version}
+                          state={state}
+                          onOpenRequest={openRequest}
                         />
                       ) : (
                         <Empty icon={<MessageCircle size={30} />}>
@@ -1289,6 +1316,11 @@ export default function Home() {
                       Экспорт JSON
                     </button>
                   </div>
+                  <form className="history-cursor-form" onSubmit={event=>{event.preventDefault();const value=Number(historicalInput);if(historicalInput.trim()===''||!Number.isSafeInteger(value)||value<0||value>state.version){setError(`Cursor должен быть целым числом от 0 до ${state.version}.`);return;}historicalCursorRef.current=value;setHistoricalCursor(value);setModal(null);setError('');}}>
+                    <label>Исторический cursor<input type="number" min={0} max={state.version} step={1} required value={historicalInput} onChange={event=>setHistoricalInput(event.target.value)}/></label>
+                    <button type="submit" className="btn" disabled={busy}>Открыть состояние на cursor</button>
+                    <p>Состояние из сохранённого префикса истории. В просмотре прошлой точки запись недоступна.</p>
+                  </form>
                   <div className="history-filter">
                     <label>
                       Контекст
@@ -1331,8 +1363,9 @@ export default function Home() {
               {view==='integrations'&&<GitHubPanel state={state} onSnapshot={adoptMutation}/>}
               {view==='lessons'&&<LessonsPanel state={state} onSnapshot={adoptMutation} onOpenSpec={id=>{pick(id);setView('specs');setDetailTab('expectation');}}/>}
               {view==='impact'&&<ImpactPanel state={state}/>}
+              </>}
             </main>
-            {view !== 'agents' && view!=='integrations' && view!=='lessons' && view!=='impact' && <aside className="context-panel">
+            {historicalCursor===null && view !== 'agents' && view!=='integrations' && view!=='lessons' && view!=='impact' && <aside className="context-panel">
               <div className="context-panel-heading">
                 <span>Требует внимания</span>
                 <span className="attention-counter">{pending.length}</span>
@@ -1414,7 +1447,7 @@ export default function Home() {
                       <AgentPicker agents={agents} value={assignmentAgentId} onChange={setAssignmentAgentId} disabled={busy}/>
                       <button
                         className="btn btn-small btn-full"
-                        disabled={busy || !assignmentValid}
+                        disabled={busy || !assignmentValid || externalStopUnknown}
                         onClick={() =>
                           command(
                             {
@@ -1436,6 +1469,9 @@ export default function Home() {
                     <ExecutionPanel
                       compact
                       execution={execution}
+                      agents={agents}
+                      version={state.version}
+                      state={state}
                       requests={selectedRequests}
                       busy={busy}
                       command={command}
@@ -1521,7 +1557,7 @@ export default function Home() {
           </div>
         </footer>
       </div>
-      {modal && state && (
+      {modal && state && historicalCursor===null && (
         <ModalDialog
           title={
             modal === "create"
@@ -1689,13 +1725,17 @@ function DecisionForm({
   command,
   agents,
   version,
+  state,
+  onOpenRequest,
 }: {
   request: DecisionRequest;
   spec?: Spec;
   busy: boolean;
-  command: (p: Payload, n?: string, expectedVersion?:number) => Promise<boolean>;
+  command: (p: Payload, n?: string, expectedVersion?:number, onCommitted?:(events:DomainEvent[])=>void) => Promise<boolean>;
   agents: AgentRegistration[];
   version:number;
+  state:ProjectState;
+  onOpenRequest:(request:DecisionRequest)=>void;
 }) {
   const [text, setText] = useState(""),
     [option, setOption] = useState(""),
@@ -1933,8 +1973,8 @@ function DecisionForm({
               {shortDate(r.decision.at)} · {r.decision.actorId}
             </small>
           )}
-          <div className="application-state">
-            {r.decision?.appliedAt ? (
+          {r.decision&&<div className="application-state">
+            {!isCurrentDecisionRequest(state,r)?<>Историческое решение · применение не разрешено</>:r.decision.appliedAt ? (
               <>
                 <Check size={15} />
                 Применение подтверждено {shortDate(r.decision.appliedAt)}
@@ -1945,7 +1985,7 @@ function DecisionForm({
                 Применение не подтверждено
               </>
             )}
-          </div>
+          </div>}
           {r.kind === "Blocker" && (
             <>
               <p className="helper-note">
@@ -1953,7 +1993,7 @@ function DecisionForm({
                   ? `Блокер снят: ${r.clearedEvidence}`
                   : "Одобрение плана не снимает блокер."}
               </p>
-              {r.decision?.outcome.kind === "approve" && !r.clearedEvidence && (
+              {r.decision?.outcome.kind === "approve" && !r.clearedEvidence && isCurrentDecisionRequest(state,r) && spec?.activeRevisionId===r.specRevisionId && !r.applicabilityEndedEvidence && (
                 <div className="agent-assignment-actions agent-assignment-vertical">
                 <AgentPicker agents={agents} value={remediationAgentId} onChange={setRemediationAgentId} disabled={busy}/>
                 <button
@@ -1983,6 +2023,7 @@ function DecisionForm({
           Отложено до {shortDate(r.deferredUntil!)}: {r.deferredReason}
         </p>
       )}
+      <DecisionMaintenance request={r} state={state} busy={busy} command={command} onOpenRequest={onOpenRequest}/>
       <div className="request-id">
         <span>Decision Request</span>
         <code>{r.id}</code>
@@ -1991,32 +2032,92 @@ function DecisionForm({
   );
 }
 
+function DecisionMaintenance({request:r,state,busy,command,onOpenRequest}:{request:DecisionRequest;state:ProjectState;busy:boolean;command:(payload:Payload,notice?:string,expectedVersion?:number,onCommitted?:(events:DomainEvent[])=>void)=>Promise<boolean>;onOpenRequest:(request:DecisionRequest)=>void}) {
+  const [mode,setMode]=useState<'clarify'|'correct'|'reopen'|'retire'|null>(null),[draft,setDraft]=useState(''),[evidence,setEvidence]=useState(''),[baseVersion,setBaseVersion]=useState(state.version);
+  const original=r.supersedesDecisionId?state.requests.find(item=>item.decision?.id===r.supersedesDecisionId):r.supersedesRequestId?state.requests.find(item=>item.id===r.supersedesRequestId):undefined;
+  const replacement=state.requests.find(item=>item.supersedesRequestId===r.id||(!!r.decision&&item.supersedesDecisionId===r.decision.id));
+  const execution=state.executions.find(item=>item.id===r.executionId),spec=state.specs.find(item=>item.id===r.specId);
+  const root=decisionRoot(r),lineage=state.requests.filter(item=>decisionRoot(item)===root);
+  const hasRemediation=state.executions.some(item=>lineage.some(request=>request.id===item.remediatesBlockerId));
+  const resolvedVersion=state.events.find(event=>event.type==='DecisionResolved'&&event.payload.decisionRequestId===r.id)?.version??0;
+  const resultAfterDecision=state.events.some(event=>event.executionId===r.executionId&&(event.type==='ExecutionCompleted'||event.type==='ActionReported'&&event.payload.phase!=='started'&&event.version>resolvedVersion));
+  const canCorrect=r.state==='resolved'&&!!r.decision&&!r.decision.appliedAt&&isCurrentDecisionRequest(state,r)&&!!execution&&!['succeeded','failed','cancelled','skipped'].includes(execution.state)&&spec?.activeRevisionId===r.specRevisionId&&spec.state!=='done'&&spec.state!=='invalidated'&&!spec.acceptance&&!hasRemediation&&!resultAfterDecision;
+  const clarifications=state.events.filter(event=>event.type==='DecisionClarificationRequested'&&event.payload.decisionRequestId===r.id);
+  const openPhysicalBlocker=openPhysicalBlockers(state,r.specId).some(item=>item.id===r.id);
+  const priorContextReview=r.state==='resolved'&&!!r.applicabilityEndedEvidence&&r.applicabilityEndedForRevisionId!==spec?.activeRevisionId;
+  const allWorkStopped=state.executions.filter(item=>item.specId===r.specId).every(item=>['succeeded','failed','cancelled','skipped'].includes(item.state)&&item.stopConfirmation!=='unknown');
+  const canReopen=r.kind==='Blocker'&&(['withdrawn','superseded'].includes(r.state)||priorContextReview)&&openPhysicalBlocker&&spec?.activeRevisionId===r.specRevisionId&&spec.state!=='done'&&spec.state!=='invalidated'&&!!execution&&(!['succeeded','failed','cancelled','skipped'].includes(execution.state)||allWorkStopped);
+  const canRetire=r.kind==='Blocker'&&openPhysicalBlocker&&!!spec&&(spec.activeRevisionId!==r.specRevisionId||spec.state==='invalidated')&&allWorkStopped;
+  const begin=(value:'clarify'|'correct'|'reopen'|'retire')=>{setMode(value);setDraft('');setEvidence('');setBaseVersion(state.version);};
+  const submit=async(event:FormEvent)=>{
+    event.preventDefault();if(!draft.trim()||!mode||busy)return;
+    let created:DecisionRequest|undefined;
+    const payload=mode==='clarify'?{type:'requestDecisionClarification',decisionRequestId:r.id,question:draft}:mode==='retire'?{type:'retireHistoricalBlocker',decisionRequestId:r.id,reason:draft,evidence}:{type:mode==='reopen'?'reopenBlockerPlan':'correctDecision',decisionRequestId:r.id,reason:draft};
+    if(await command(payload,mode==='clarify'?'Уточнение запрошено. Исходный запрос остаётся открытым.':mode==='retire'?'Применимость прежнего блокера завершена по свидетельству человека. Это не подтверждение его физического устранения.':'Создан связанный запрос. Прежние факты сохранены.',baseVersion,events=>{created=events.find(item=>item.type==='DecisionRequested')?.payload.request as DecisionRequest|undefined;})){
+      setMode(null);setDraft('');if(created)onOpenRequest(created);
+    }
+  };
+  return <section className="decision-maintenance" aria-label="История и уточнения решения">
+    {original&&<div className="decision-lineage"><strong>{r.supersedesDecisionId?'Исправляет прежнее решение':'Новый запрос плана для прежнего блокера'}</strong><span>{r.correctionReason}</span><p>Прежний ответ: {original.decision?.outcome.kind==='answer'?original.decision.outcome.answer:original.decision?.outcome.kind==='reject'?original.decision.outcome.reason:original.options.find(o=>o.id===(original.decision?.outcome as {chosenOptionId?:string})?.chosenOptionId)?.title??'Решение не было принято'}</p><button type="button" className="text-btn" onClick={()=>onOpenRequest(original)}>Открыть исходный запрос</button></div>}
+    {replacement&&<div className="decision-lineage"><strong>Для этого решения создан связанный запрос</strong><p>Прежнее решение сохранено. Его применение больше не разрешено.</p><button type="button" className="text-btn" onClick={()=>onOpenRequest(replacement)}>Открыть связанный запрос</button></div>}
+    {r.state==='withdrawn'&&<div className="decision-lineage"><strong>Запрос отозван автором</strong><p>{r.withdrawalReason}</p><p>Отзыв не является решением человека, разрешением продолжения или снятием физического блокера.</p></div>}
+    {clarifications.length>0&&<section className="decision-clarification-list" aria-label="Уточнения запроса"><h3>Уточнения запроса</h3>{clarifications.map(source=>{
+      const reply=state.events.find(event=>event.type==='DecisionClarificationSubmitted'&&event.payload.clarificationEventId===source.id);
+      return <article className="decision-clarification-item" key={source.id}><small>Запрос человека · #{source.version} · {source.actor.name??source.actor.id}</small><p>{String(source.payload.question)}</p>{reply?<><small>Ответ назначенного агента · #{reply.version}</small><p>{String(reply.payload.response)}</p></>:<small>Ожидается уточнение агента. Ответ человека по-прежнему требуется.</small>}<details><summary>Связи с фактами</summary><code>{source.id}</code>{reply&&<p><code>{reply.id}</code> → <code>{String(reply.payload.clarificationEventId)}</code></p>}</details></article>;
+    })}</section>}
+    {r.applicabilityEndedEvidence&&<div className="decision-lineage"><strong>Применимость прежнего блокера завершена человеком</strong><p>Контекст свидетельства: {r.applicabilityEndedForRevisionId?`r${state.revisions.find(item=>item.id===r.applicabilityEndedForRevisionId)?.revision??'?'}`:'без активной ревизии'}. {openPhysicalBlocker?'В текущем контракте физическое препятствие требует отдельного пересмотра.':'Свидетельство относится к текущему контракту.'}</p><p>{r.applicabilityEndedReason}</p><p>{r.applicabilityEndedEvidence}</p><p>Это свидетельство неприменимости в новом контракте. Физическое устранение этим действием не подтверждено.</p></div>}
+    {canReopen&&<button type="button" className="btn" disabled={busy} onClick={()=>begin('reopen')}>Запросить новый план для блокера</button>}
+    {canRetire&&<button type="button" className="btn" disabled={busy} onClick={()=>begin('retire')}>Завершить применимость прежнего блокера</button>}
+    {r.state==='pending'&&<button type="button" className="btn" disabled={busy} onClick={()=>begin('clarify')}>Запросить уточнение</button>}
+    {r.state==='resolved'&&!replacement&&(canCorrect?<button type="button" className="btn" disabled={busy} onClick={()=>begin('correct')}>Исправить отдельным запросом</button>:<p className="helper-note">Для изменения уже применённого решения или завершённой работы предложите новую ревизию или спеку. Прежнее решение и приёмка сохраняются.</p>)}
+    {mode&&<form onSubmit={submit}><label className="form-label">{mode==='clarify'?'Что нужно уточнить':mode==='retire'?'Почему прежний блокер неприменим':mode==='reopen'?'Основание нового плана':'Основание исправления'}<textarea required maxLength={20000} rows={4} value={draft} onChange={event=>setDraft(event.target.value)} readOnly={busy}/></label>{mode==='retire'&&<label className="form-label">Свидетельство неприменимости<textarea required maxLength={20000} rows={4} value={evidence} onChange={event=>setEvidence(event.target.value)} readOnly={busy}/></label>}<p className="helper-note">{mode==='clarify'?'Уточнение не закрывает запрос и не разрешает действия вне указанного уточнения.':mode==='retire'?'Завершение применимости не утверждает физическое устранение препятствия и не переносит разрешения между ревизиями.':'Новый запрос потребует отдельного решения. Исходный ответ не изменится, исполнение автоматически не продолжится.'}</p>{state.version!==baseVersion&&<p className="helper-note">Проект изменился. <button type="button" className="text-btn" onClick={()=>setBaseVersion(state.version)}>Обновить базу уточнения после проверки</button></p>}<div><button type="submit" className="btn btn-primary" disabled={busy||!draft.trim()||state.version!==baseVersion||(mode==='correct'&&!canCorrect)||(mode==='reopen'&&!canReopen)||(mode==='retire'&&(!evidence.trim()||!canRetire))}>{mode==='clarify'?'Записать запрос уточнения':mode==='retire'?'Записать неприменимость блокера':mode==='reopen'?'Создать новый запрос плана':'Создать связанный запрос'}</button><button type="button" className="text-btn" disabled={busy} onClick={()=>setMode(null)}>Отменить ввод</button></div></form>}
+  </section>;
+}
+
+function OperatorRecovery({execution:e,revoked,busy,version,command}:{execution:ProjectState['executions'][number];revoked:boolean;busy:boolean;version:number;command:(payload:Payload,notice?:string,expectedVersion?:number)=>Promise<boolean>}) {
+  const [mode,setMode]=useState<'cancel'|'attest'|null>(null),[reason,setReason]=useState(''),[evidence,setEvidence]=useState(''),[baseVersion,setBaseVersion]=useState(version);
+  const terminal=['succeeded','failed','cancelled','skipped'].includes(e.state);
+  if(!revoked&&e.stopConfirmation!=='unknown'&&!e.stopAttestation)return null;
+  const submit=async(event:FormEvent)=>{
+    event.preventDefault();if(!mode||busy||!evidence.trim()||(mode==='cancel'&&!reason.trim()))return;
+    const payload=mode==='cancel'?{type:'forceCancelRevokedExecution',executionId:e.id,reason,evidence}:{type:'attestExternalStop',executionId:e.id,evidence};
+    if(await command(payload,mode==='cancel'?'Авторизация попытки отменена. Фактическая остановка остаётся неподтверждённой.':'Свидетельство оператора о внешней остановке записано. Новая попытка разрешается отдельно.',baseVersion)){setMode(null);setReason('');setEvidence('');}
+  };
+  return <section className="operator-recovery" aria-label="Операторское завершение попытки">
+    {e.stopConfirmation==='unknown'?<><p className="recovery-unconfirmed">Фактическая остановка не подтверждена</p><p>Авторизация отменена после отзыва ключа. Новая работа в этой спеке запрещена до отдельного свидетельства оператора о внешней остановке.</p>{e.operatorCancellation&&<p>Основание отмены: {e.operatorCancellation.reason}<br/>{e.operatorCancellation.evidence}</p>}{mode!=='attest'&&<button type="button" className="btn btn-small" disabled={busy} onClick={()=>{setMode('attest');setEvidence('');setBaseVersion(version);}}>Подтвердить внешнюю остановку</button>}</>:e.stopAttestation?<><p>Внешняя остановка засвидетельствована оператором</p><p>{e.stopAttestation.evidence}</p><p className="helper-note">Свидетельство: {e.stopAttestation.actorId} · {shortDate(e.stopAttestation.at)}. Это свидетельство человека, отдельное от ACK агента.</p></>:revoked&&!terminal?<><p>Ключ назначенного агента отозван. Агент не может отправить ACK остановки.</p>{mode!=='cancel'&&<button type="button" className="btn btn-small" disabled={busy} onClick={()=>{setMode('cancel');setReason('');setEvidence('');setBaseVersion(version);}}>Завершить авторизацию отозванного агента</button>}</>:<p className="helper-note">Ключ назначенного агента отозван.</p>}
+    {mode&&<form onSubmit={submit}>{mode==='cancel'&&<label className="form-label">Причина завершения авторизации<textarea required maxLength={20000} rows={3} value={reason} onChange={event=>setReason(event.target.value)} readOnly={busy}/></label>}<label className="form-label">{mode==='cancel'?'Основание оператора':'Подтверждение внешней остановки'}<textarea required maxLength={20000} rows={3} value={evidence} onChange={event=>setEvidence(event.target.value)} readOnly={busy}/></label><p>{mode==='cancel'?'Действие отменяет разрешение попытки. Оно не останавливает внешний процесс и не подтверждает ACK.':'Записывайте свидетельство после самостоятельной проверки внешней остановки. Ouro не проверяет состояние стороннего процесса.'}</p>{version!==baseVersion&&<p>Проект изменился после начала ввода. <button type="button" className="text-btn" onClick={()=>setBaseVersion(version)}>Обновить базу восстановления после проверки</button></p>}<button type="submit" className={`btn btn-small ${mode==='cancel'?'btn-danger':'btn-primary'}`} disabled={busy||version!==baseVersion||!evidence.trim()||(mode==='cancel'&&!reason.trim())}>{mode==='cancel'?'Отменить авторизацию без ACK':'Записать свидетельство оператора'}</button><button type="button" className="text-btn" disabled={busy} onClick={()=>setMode(null)}>Отменить ввод</button></form>}
+  </section>;
+}
+
 function ExecutionPanel({
   execution: e,
   requests,
+  agents = [],
+  version,
+  state,
   busy,
   command,
   compact = false,
 }: {
   execution?: ProjectState["executions"][number];
   requests: DecisionRequest[];
+  agents?:AgentRegistration[];
+  version:number;
+  state:ProjectState;
   busy: boolean;
-  command: (p: Payload, n?: string) => Promise<boolean>;
+  command: (p: Payload, n?: string, expectedVersion?:number) => Promise<boolean>;
   compact?: boolean;
 }) {
   if (!e)
     return <div className="execution-empty">Исполнение ещё не начато.</div>;
-  const blocking = requests.some(
-    (r) =>
-      r.executionId === e.id &&
-      ((r.state === "pending" && r.blockingScope === "execution") ||
-        (r.kind === "Blocker" && !r.clearedEvidence) ||
-        (r.state === "resolved" &&
-          r.blockingScope === "execution" &&
-          r.decision?.outcome.kind === "reject")),
-  );
+  const targetRequest=e.remediatesBlockerId?state.requests.find(r=>r.id===e.remediatesBlockerId):undefined;
+  const targetRoot=targetRequest?decisionRoot(targetRequest):undefined;
+  const blocking = currentDecisionRequests(state).some(r=>
+    (r.executionId===e.id||r.executionId===targetRequest?.executionId)&&decisionRoot(r)!==targetRoot&&
+    ((r.state==='pending'&&r.blockingScope==='execution')||(r.state==='resolved'&&r.blockingScope==='execution'&&r.decision?.outcome.kind==='reject'))
+  )||openPhysicalBlockers(state,e.specId).some(r=>decisionRoot(r)!==targetRoot)||state.executions.some(item=>item.specId===e.specId&&item.stopConfirmation==='unknown');
   return (
-    <section className={`execution-panel ${compact ? "compact" : ""}`}>
+    <section className={`execution-panel ${compact ? "compact" : ""}`} aria-label="Исполнение">
       <div className="section-heading">
         <h3>Исполнение</h3>
         {!compact && <span className="small-tag">{e.agentId===AGENT_ID?'SIMULATION':'MCP AGENT'}</span>}
@@ -2036,6 +2137,7 @@ function ExecutionPanel({
           Остановка запрошена. Фактическая остановка ещё не подтверждена.
         </p>
       )}
+      <OperatorRecovery key={e.id} version={version} execution={e} revoked={agents.some(a=>a.id===e.agentId&&!!a.revokedAt)} busy={busy} command={command}/>
       {(e.state === "waiting_for_human" || e.state === "paused") &&
         !e.resumeAuthorized && (
           <button

@@ -24,6 +24,9 @@ export type Execution = {
   id: string; specId: string; specRevisionId: string; agentId: string; state: ExecutionState;
   kind: 'primary' | 'remediation'; remediatesBlockerId?: string; retryOfExecutionId?: string;
   resumeAuthorized?: boolean; stopRequested?: boolean; resultEvidence?: string;
+  stopConfirmation?: 'unknown' | 'operator_attested';
+  operatorCancellation?: {actorId:string;at:string;reason:string;evidence:string;revokedAgentId:string;revokedAt:string};
+  stopAttestation?: {actorId:string;at:string;evidence:string};
 };
 export type DecisionOption = { id: string; title: string; description: string };
 export type DecisionOutcome = { kind: 'answer'; answer: string } | { kind: 'approve'; chosenOptionId: string } | { kind: 'reject'; reason: string };
@@ -36,6 +39,9 @@ export type DecisionRequest = {
   agentId: string; blockingScope: 'execution' | 'none'; decision?: Decision;
   clearedEvidence?: string; deferredUntil?: string; deferredReason?: string;
   flowNodeId?: string;
+  rootRequestId?: string; supersedesDecisionId?: string; supersedesRequestId?:string; correctionReason?: string; withdrawalReason?: string;
+  applicabilityEndedEvidence?:string; applicabilityEndedReason?:string;
+  applicabilityEndedForRevisionId?:string|null;
 };
 export type Dependency = { id: string; from: string; to: string; type: 'depends_on' | 'derived_from' | 'replaces' | 'relates_to' };
 export type Roadmap = { id: string; title: string; goal: string; state: 'draft' | 'active' | 'frozen' | 'archived' };
@@ -83,6 +89,12 @@ export type Command = CommandBase & (
   | ({ type: 'reportBlocker'; reason: string; expected: string; actual: string; impact: string; options: DecisionOption[]; noPathReason?: string } & ReportBase)
   | { type: 'resolveDecision'; decisionRequestId: string; specRevisionId: string; outcome: DecisionOutcome; comment?: string }
   | { type: 'deferDecision'; decisionRequestId: string; reason: string; until: string }
+  | { type: 'withdrawDecision'; decisionRequestId:string; reason:string }
+  | { type: 'requestDecisionClarification'; decisionRequestId:string; question:string }
+  | { type: 'submitDecisionClarification'; decisionRequestId:string; clarificationEventId:string; response:string }
+  | { type: 'correctDecision'; decisionRequestId:string; reason:string }
+  | { type:'reopenBlockerPlan'; decisionRequestId:string; reason:string }
+  | { type:'retireHistoricalBlocker'; decisionRequestId:string; reason:string; evidence:string }
   | { type: 'resumeExecution'; executionId: string }
   | { type: 'confirmResumed'; executionId: string; ackPhase?: 'start' | 'resume' }
   | { type: 'confirmDecisionApplied'; decisionRequestId: string; evidence: string }
@@ -93,6 +105,8 @@ export type Command = CommandBase & (
   | { type: 'skipExecution'; executionId: string; reason: string }
   | { type: 'requestStop'; executionId: string; reason: string }
   | { type: 'confirmStopped'; executionId: string }
+  | { type: 'forceCancelRevokedExecution'; executionId:string; reason:string; evidence:string }
+  | { type: 'attestExternalStop'; executionId:string; evidence:string }
   | { type: 'acceptSpec'; specId: string; specRevisionId: string; evidence: Record<string, string> }
   | { type: 'invalidateSpec'; specId: string; reason: string }
   | { type: 'addDependency'; from: string; to: string; relationship?: Dependency['type'] }

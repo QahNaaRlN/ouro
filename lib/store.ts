@@ -178,7 +178,17 @@ export async function createStore(options: StoreOptions = {}) {
         return {...duplicate.rows[0].response,replayed:true};
       }
       await assertAssignmentActive(tx,command);
-      const state=replay(await readEvents(tx),PROJECT_ID),applied=applyCommand(state,command,actor);
+      const state=replay(await readEvents(tx),PROJECT_ID);
+      let revokedAgent:{id:string;revokedAt:string;revokedBy:string}|undefined;
+      if(command.type==='forceCancelRevokedExecution'){
+        await assertHumanActor(tx,actor);
+        const execution=state.executions.find(e=>e.id===command.executionId);
+        if(!execution)throw new StoreError('NOT_FOUND','Исполнение не найдено.');
+        const proof=await tx.query<{id:string;revoked_at:Date|string;revoked_by:string}>(`SELECT r.id,v.revoked_at,v.revoked_by FROM ouro_agent_registrations r JOIN ouro_agent_revocations v ON v.agent_id=r.id WHERE r.id=$1 AND r.project_id=$2`,[execution.agentId,PROJECT_ID]);
+        if(!proof.rows[0])throw new StoreError('AGENT_NOT_REVOKED','Назначенный агент должен иметь подтверждённый отзыв в реестре проекта.');
+        revokedAgent={id:proof.rows[0].id,revokedAt:dateString(proof.rows[0].revoked_at),revokedBy:proof.rows[0].revoked_by};
+      }
+      const applied=applyCommand(state,command,actor,{revokedAgent});
       await append(tx,applied.events,applied.state);
       const response={state:applied.state,events:applied.events,cursor:applied.state.version};
       await tx.query(`INSERT INTO ouro_command_receipts (actor_id,project_id,request_id,payload_hash,response,cursor) VALUES ($1,$2,$3,$4,$5::jsonb,$6)`,[actor.id,PROJECT_ID,command.requestId,payloadHash,JSON.stringify(response),response.cursor]);

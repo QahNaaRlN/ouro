@@ -9,7 +9,7 @@
 | Roadmap | draft, active, frozen, archived | Человек; freeze запрашивает остановку, не подделывает ACK |
 | Spec | idea, specified, in_progress, blocked, done, invalidated | Projection текущей ревизии; `done` только после human acceptance |
 | Execution | queued, running, waiting_for_human, paused, succeeded, failed, cancelled, skipped | Разрешение человека и отдельные факты/ACK исполнителя |
-| DecisionRequest | pending, resolved, superseded; withdrawn зарезервировано | Human outcome; activation новой ревизии явно supersede старые pending |
+| DecisionRequest | pending, resolved, superseded, withdrawn | Human outcome; author withdrawal; activation новой ревизии явно supersede старые pending |
 | Application | Не применено / подтверждено | Отдельное событие DecisionApplied |
 | Acceptance | Не принято / принято с evidence каждого обязательного критерия | Отдельное SpecAccepted от человека |
 
@@ -49,3 +49,7 @@ flowchart LR
 Fork Ouro — исключающий человеческий выбор, не параллельный gateway BPMN. Blocker approval разрешает план, но сохраняет препятствие: отдельная remediation должна успешно завершиться и предъявить evidence. Другие блокировки при remediation остаются в силе. Ответ/отклонение, запуск и DoD не сливаются в один статус.
 
 Новая активная ревизия не переписывает события: stopRequested для старой попытки, DecisionSuperseded для старых pending; после ACK человек отменяет старую попытку и разрешает новую. Связи зависимостей учитывают человеческую приёмку актуальной ревизии; координаты узлов ничего не разрешают.
+
+Пакет [OURO-ENG-000007](specs/methodology-recovery.md) добавляет уточнения и новые связанные запросы исправления без изменения прежнего outcome. Физический Blocker сохраняется при отзыве/замещении запроса и новой ревизии, пока не получено evidence устранения либо человек явно не пересмотрел применимость к конкретному новому контракту. При возвращении старого контракта требуется новый план/пересмотр.
+
+После экстренного отзыва агента человек может отменить его разрешение отдельным операторским фактом: `cancelled` с `stopConfirmation=unknown`. Это не `ExecutionPaused` и не агентский ACK. Барьер на новое исполнение и архивацию снимается только отдельным свидетельством внешней остановки с identity/evidence оператора. Исторический cursor воспроизводит те же автоматы по подтверждённому префиксу событий в отдельном read-only представлении.
