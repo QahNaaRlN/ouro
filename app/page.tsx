@@ -52,6 +52,7 @@ import LessonsPanel from '@/components/lessons-panel';
 import ImpactPanel from '@/components/impact-panel';
 import ParticipantsPanel,{ParticipantLogin} from '@/components/participants-panel';
 import CollaborativeDraftsPanel from '@/components/collaborative-drafts';
+import AgentProposalsPanel,{type ProposalReviewIntentRegistry} from '@/components/agent-proposals-panel';
 import SpecFlow from "@/components/spec-flow";
 import { StateTransitions } from "@/components/state-transitions";
 import HistoricalPanel from "@/components/historical-panel";
@@ -71,7 +72,7 @@ import {
   type Actor,
 } from "@/packages/core/src";
 
-type View = "roadmap" | "specs" | "decisions" | "history" | "methodology" | "agents" | "integrations" | "lessons" | "impact" | "participants" | "drafts";
+type View = "roadmap" | "specs" | "decisions" | "history" | "methodology" | "agents" | "integrations" | "lessons" | "impact" | "participants" | "drafts" | "proposals";
 type Modal = "create" | "revision" | "accept" | "dependency" | null;
 type ProjectResponse = { state: ProjectState; cursor: number; storage: string };
 type Payload = Record<string, unknown>;
@@ -122,6 +123,7 @@ const eventLabels: Record<string, string> = {
   LessonPublished: "Опубликован урок",
   GitHubBindingCreated: "GitHub привязан к попытке",
   GitHubBindingRevoked: "Привязка GitHub отозвана",
+  AgentProposalSubmitted:'Агент предложил сводку или спеку',AgentProposalRevisionSubmitted:'Агент уточнил предложение',AgentProposalReviewed:'Сводка рассмотрена человеком',AgentProposalDismissed:'Предложение отклонено',AgentProposalAdopted:'Из предложения создан черновик',
 };
 function shortDate(value: string) {
   return new Date(value).toLocaleString("ru-RU", {
@@ -160,6 +162,8 @@ export default function Home() {
   const [streamStatus,setStreamStatus] = useState<ProjectSubscriptionStatus>('connecting');
   const [agentFilter,setAgentFilter] = useState(''),[requestFilter,setRequestFilter] = useState('');
   const [flowRevisionId, setFlowRevisionId] = useState<string | null>(null);
+  const [proposalIntents]=useState<ProposalReviewIntentRegistry>(()=>new Map());
+  const [proposalFocus,setProposalFocus]=useState<{proposalId:string;proposalRevisionId:string}|undefined>();
   const [view, setView] = useState<View>("roadmap"),
     [selected, setSelected] = useState<string | null>(null),
     [requestId, setRequestId] = useState<string | null>(null);
@@ -366,6 +370,7 @@ export default function Home() {
   };
   const navigate = (v: View) => {
     if(view==='drafts'&&v!=='drafts'&&sharedPending){setToast('В общем черновике есть неотправленный текст или неподтверждённая публикация. Синхронизируйте его или экспортируйте перед переходом.');return;}
+    if(v==='proposals')setProposalFocus(undefined);
     if (v === "decisions") {
       const first = state?.requests.find((r) => r.state === "pending");
       if (first) {
@@ -411,6 +416,7 @@ export default function Home() {
     { id: 'impact' as View, label:'Показатели',icon:BarChart3 },
     { id: 'drafts' as View,label:'Черновики',icon:FileText },
     { id: 'participants' as View,label:'Участники',icon:ShieldCheck },
+    {id:'proposals' as View,label:'Предложения агента',icon:Bot},
   ];
   const exportHistory = () => {
     if (!state) return;
@@ -869,6 +875,7 @@ export default function Home() {
                             <h3>Происхождение спеки</h3>
                             {originLessonRevision?<><p>Урок «{originLessonRevision.title}» · r{originLessonRevision.revision}</p><p>Спека создана из этой опубликованной редакции. Новые публикации урока не меняют её источник.</p></>:<p>Редакция урока-источника недоступна в текущем снимке.</p>}
                           </section>}
+                          {spec.origin?.kind==='agent_proposal'&&(()=>{const origin=spec.origin,proposal=state.agentProposals.find(p=>p.id===origin.proposalId),source=state.agentProposalRevisions.find(r=>r.id===origin.proposalRevisionId);return <section className="content-section" aria-label="Происхождение предложения агента"><div className="section-heading"><h3>Происхождение</h3><span className="quiet-label">ПРЕДЛОЖЕНИЕ АГЕНТА · v{source?.revision??'?'}</span></div><p>{source?.content.title} · {proposal?.agentId}</p><p className="helper-note">Исходная интерпретация сохранена. Человек создал и отредактировал это ожидание; активация отдельно.</p><button className="text-btn" onClick={()=>{setProposalFocus({proposalId:origin.proposalId,proposalRevisionId:origin.proposalRevisionId});setView('proposals');}}>Прочитать предложение и источники<ArrowRight size={14}/></button></section>;})()}
                           <section className="content-section">
                             <div className="section-heading">
                               <h3>Что должно измениться</h3>
@@ -1374,9 +1381,10 @@ export default function Home() {
               {view==='impact'&&<ImpactPanel state={state}/>}
               {view==='participants'&&<ParticipantsPanel/>}
               {view==='drafts'&&<CollaborativeDraftsPanel state={state} actorId={identity?.id??'local-human'} onSnapshot={adoptMutation} onPendingChange={setSharedPending} onOpenSpec={id=>{pick(id);setView('specs');}}/>}
+              {view==='proposals'&&<AgentProposalsPanel state={state} onSnapshot={adoptMutation} intents={proposalIntents} initialSelection={proposalFocus} onOpenSpec={id=>{pick(id);setView('specs');setDetailTab('expectation');}}/>}
               </>}
             </main>
-            {historicalCursor===null && view !== 'agents' && view!=='integrations' && view!=='lessons' && view!=='impact' && view!=='participants' && view!=='drafts' && <aside className="context-panel">
+            {historicalCursor===null && view !== 'agents' && view!=='integrations' && view!=='lessons' && view!=='impact' && view!=='participants' && view!=='drafts' && view!=='proposals' && <aside className="context-panel">
               <div className="context-panel-heading">
                 <span>Требует внимания</span>
                 <span className="attention-counter">{pending.length}</span>

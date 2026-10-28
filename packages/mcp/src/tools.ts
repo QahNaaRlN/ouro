@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import {submitProposalInputSchema} from '../../core/src/agent-proposals';
 
 export type AgentToolDefinition = {
   name: string; title: string; description: string;
@@ -33,4 +34,5 @@ export const AGENT_TOOLS: AgentToolDefinition[] = [
   define('ouro.confirm_decision_applied','Confirm decision application','Supply evidence that a positive human decision for this execution was applied. This does not accept the specification DoD.',z.strictObject({...write,decisionRequestId:id,evidence:text})),
   define('ouro.complete_execution','Report an execution result','Report succeeded or failed with evidence. Success requires a running permitted execution and does not mark the specification done; human DoD acceptance is separate.',z.strictObject({...write,result:z.enum(['succeeded','failed']),evidence:text})),
   define('ouro.clear_blocker','Confirm blocker remediation','executionId must be your successful, explicitly authorized remediation execution for this blocker. Supply evidence of actual clearance; the primary execution remains stopped until authorized separately.',z.strictObject({...write,decisionRequestId:id,evidence:text})),
+  define('ouro.submit_proposal','Submit source-backed analysis','Submit your interpretation of the chosen assigned immutable execution, with exact committed source IDs per finding and sourceCursor. Only your execution sources are admissible; summaries are not facts or lessons. A spec proposal stays pending until a human explicitly edits/adopts a draft. Never claim acceptance or activation.',submitProposalInputSchema),
 ];

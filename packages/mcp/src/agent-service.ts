@@ -1,5 +1,6 @@
 import { applyCommand, DomainError, PROJECT_ID, type Actor, type Command, type DomainEvent, type ProjectState, type Execution, type DecisionRequest } from '../../core/src';
 import { AGENT_TOOLS } from './tools';
+import {isExecutionProposalSource,hasRealityProposalSource} from '../../core/src/agent-proposals';
 
 export type AgentStore = {
   getProject(): Promise<ProjectState>;
@@ -54,12 +55,17 @@ export function createAgentService({ store, actor }: {store:AgentStore; actor:Ac
       const response=state.events.find(candidate=>candidate.type==='DecisionClarificationSubmitted'&&candidate.payload.clarificationEventId===event.id);
       return {eventId:event.id,decisionRequestId:event.payload.decisionRequestId,question:event.payload.question,actorId:event.actor.id,at:event.occurredAt,...(response?{response:{eventId:response.id,text:response.payload.response,actorId:response.actor.id,at:response.occurredAt}}:{})};
     });
+    const proposalSources=state.events.filter(event=>isExecutionProposalSource(event,execution,state.projectId));
+    const proposals=state.agentProposals.filter(proposal=>proposal.executionId===execution.id);
     return {
       execution,
       spec:{id:spec.id,humanId:spec.humanId,title:spec.title,state:spec.state,activeRevisionId:spec.activeRevisionId},
       revision:state.revisions.find(r=>r.id===execution.specRevisionId),
       requests,clarifications,
-      permissions:permissions(state,execution),
+      proposals,
+      proposalRevisions:state.agentProposalRevisions.filter(revision=>proposals.some(proposal=>proposal.id===revision.proposalId)),
+      proposalSourceIds:proposalSources.map(event=>({id:event.id,version:event.version,type:event.type})),
+      permissions:{...permissions(state,execution),canSubmitProposal:hasRealityProposalSource(proposalSources)},
     };
   };
   const permittedEvent=(event:DomainEvent,state:ProjectState)=>{
@@ -127,6 +133,7 @@ export function createAgentService({ store, actor }: {store:AgentStore; actor:Ac
             const request=requestFor(state,execution,String(input.decisionRequestId));
             command={...base,type:'submitDecisionClarification',decisionRequestId:request.id,clarificationEventId:input.clarificationEventId as string,response:input.response as string} as Command;break;
           }
+          case 'ouro.submit_proposal':command={...input,...context,type:'submitAgentProposal'} as Command;break;
           case 'ouro.confirm_started':case 'ouro.confirm_resumed':command={...base,type:'confirmResumed',ackPhase:name==='ouro.confirm_started'?'start':'resume'};break;
           case 'ouro.confirm_stopped':command={...base,type:'confirmStopped'};break;
           case 'ouro.confirm_decision_applied':{
@@ -142,7 +149,14 @@ export function createAgentService({ store, actor }: {store:AgentStore; actor:Ac
         }
         const committed=await store.executeCommand(command??fail('UNKNOWN_TOOL','Инструмент не опубликован для агента.'),actor);
         const savedExecution=assigned(committed.state,execution.id);
-        return result({ok:true,execution:savedExecution,requests:requestsFor(committed.state,savedExecution),events:committed.events.filter(e=>permittedEvent(e,committed.state)),cursor:committed.cursor,replayed:committed.replayed});
+        // Immutable receipts from older releases lack fields added later. Only
+        // the new tool needs proposal arrays; never rewrite old SQL receipts.
+        let proposalResult:Record<string,unknown>={};
+        if(name==='ouro.submit_proposal'){
+          const proposals=(committed.state.agentProposals??[]).filter(proposal=>proposal.executionId===execution.id),ids=new Set(proposals.map(proposal=>proposal.id));
+          proposalResult={proposals,proposalRevisions:(committed.state.agentProposalRevisions??[]).filter(revision=>ids.has(revision.proposalId))};
+        }
+        return result({ok:true,execution:savedExecution,requests:requestsFor(committed.state,savedExecution),...proposalResult,events:committed.events.filter(e=>permittedEvent(e,committed.state)),cursor:committed.cursor,replayed:committed.replayed});
       }catch(error){
         const e=error as {code?:string;message?:string;details?:Record<string,unknown>};
         const known=typeof e.code==='string'&&/^[A-Z_]+$/.test(e.code);

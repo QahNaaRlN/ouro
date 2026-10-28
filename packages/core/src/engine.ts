@@ -2,7 +2,8 @@ import { findCycle } from './graph';
 import { getLessonSourceSpecIds, validateLessonContent as assertLessonContent } from './lessons';
 import { validateFlowDefinition as assertFlowDefinition } from './flow';
 import {currentDecisionRequests,decisionRoot,isCurrentDecisionRequest,openPhysicalBlockers} from './decision-lineage';
-import type { Actor, Command, DecisionRequest, DomainEvent, Execution, FlowDefinition, FlowNodeKind, GitHubBinding, GitHubCommitSource, Lesson, LessonContent, LessonRevision, ProjectState, RevisionContent, Spec, SpecRevision } from './types';
+import {submitProposalCommandSchema,reviewProposalCommandSchema,adoptProposalCommandSchema,deriveProposalSources} from './agent-proposals';
+import type { Actor, Command, DecisionRequest, DomainEvent, Execution, FlowDefinition, FlowNodeKind, GitHubBinding, GitHubCommitSource, Lesson, LessonContent, LessonRevision, ProjectState, RevisionContent, Spec, SpecRevision, AgentProposal, AgentProposalRevision, AgentProposalContent } from './types';
 
 export const PROJECT_ID = '6c7c62dc-694c-4c7b-9cb1-d9e605164001';
 export const AGENT_ID = 'a8f5f167-6e7a-4d18-8d2e-88466c165001';
@@ -24,7 +25,7 @@ export function validateFlowDefinition(value:unknown):asserts value is FlowDefin
   }
 }
 export function emptyState(projectId = PROJECT_ID): ProjectState {
-  return { projectId, version: 0, roadmap: { id: '7fa3e5d0-e946-4684-9a1a-540eaa334001', title: 'Ouro · Human View', goal: 'От ожидания к проверяемому результату', state: 'active' }, specs: [], revisions: [], executions: [], requests: [], dependencies: [], events: [],githubBindings:[],lessons:[],lessonRevisions:[] };
+  return { projectId, version: 0, roadmap: { id: '7fa3e5d0-e946-4684-9a1a-540eaa334001', title: 'Ouro · Human View', goal: 'От ожидания к проверяемому результату', state: 'active' }, specs: [], revisions: [], executions: [], requests: [], dependencies: [], events: [],githubBindings:[],lessons:[],lessonRevisions:[],agentProposals:[],agentProposalRevisions:[] };
 }
 
 /** Deterministic projection. Authoritative events and historical revisions are never updated. */
@@ -132,6 +133,15 @@ export function replay(events: readonly DomainEvent[], projectId = PROJECT_ID,on
       }
       case 'LessonPublished': state.lessons.find(lesson=>lesson.id===p.lessonId)!.publishedRevisionId=p.revisionId as string;break;
       case 'ActionReported': break;
+      case 'AgentProposalSubmitted':state.agentProposals.push(p.proposal as AgentProposal);state.agentProposalRevisions.push(p.revision as AgentProposalRevision);break;
+      case 'AgentProposalRevisionSubmitted':{
+        const revision=p.revision as AgentProposalRevision;state.agentProposalRevisions.push(revision);state.agentProposals.find(proposal=>proposal.id===p.proposalId)!.latestRevisionId=revision.id;break;
+      }
+      case 'AgentProposalReviewed':case 'AgentProposalDismissed':case 'AgentProposalAdopted':{
+        const proposal=state.agentProposals.find(proposal=>proposal.id===p.proposalId)!;
+        proposal.state=event.type==='AgentProposalAdopted'?'adopted':event.type==='AgentProposalDismissed'?'dismissed':'reviewed';
+        proposal.review={revisionId:String(p.proposalRevisionId),actorId:event.actor.id,at:event.occurredAt,comment:String(p.comment),...(typeof p.draftSpecId==='string'?{draftSpecId:p.draftSpecId,draftSpecRevisionId:String(p.draftSpecRevisionId)}:{})};break;
+      }
       case 'GitHubBindingCreated': state.githubBindings.push(p.binding as GitHubBinding);break;
       case 'GitHubBindingRevoked': {
         const binding=state.githubBindings.find(binding=>binding.id===p.bindingId)!;
@@ -220,6 +230,50 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
     if (state.executions.some(e => e.specId === execution.specId && e.id !== execution.id && e.stopRequested && !terminal.has(e.state))) fail('INVALID_TRANSITION', 'Остановка прежней попытки ещё не подтверждена');
   };
   switch (command.type) {
+    case 'submitAgentProposal':{
+      const execution=getExecution(command.executionId);
+      if(actor.kind!=='agent'||actor.id!==execution.agentId)fail('FORBIDDEN','Предложение может отправить только назначенный агент.');
+      const parsed=submitProposalCommandSchema.safeParse(command);if(!parsed.success)fail('VALIDATION_ERROR','Предложение не соответствует закрытой схеме или пределам размера.');
+      if(command.specId!==undefined&&command.specId!==execution.specId||command.specRevisionId!==undefined&&command.specRevisionId!==execution.specRevisionId)fail('FORBIDDEN','Контекст предложения не соответствует назначению.');
+      const content=(parsed.data??fail('VALIDATION_ERROR','Некорректное предложение.')).content as AgentProposalContent;
+      const sourceEventIds=deriveProposalSources(state,execution,command.sourceCursor,content)??fail('VALIDATION_ERROR','Источник недоступен, не относится к исполнению или находится вне окна анализа.');
+      const previous=command.proposalId?state.agentProposals.find(proposal=>proposal.id===command.proposalId&&proposal.executionId===execution.id&&proposal.agentId===actor.id)??fail('FORBIDDEN','Предложение недоступно этому агенту.'):undefined;
+      const parent=previous?state.agentProposalRevisions.find(revision=>revision.id===previous.latestRevisionId)!:undefined;
+      if(previous&&previous.state!=='pending')fail('INVALID_TRANSITION','Рассмотренное предложение неизменяемо; отправьте новое.');
+      if(previous&&parent!.id!==command.baseProposalRevisionId)fail('REVISION_CONFLICT','Базовая версия предложения изменилась.');
+      if(parent&&parent.content.kind!==content.kind)fail('VALIDATION_ERROR','Вид предложения не меняется между версиями.');
+      const proposalId=previous?.id??id();
+      const revision:AgentProposalRevision={id:id(),proposalId,revision:(parent?.revision??0)+1,...(parent?{parentRevisionId:parent.id}:{}),sourceCursor:command.sourceCursor,sourceEventIds,content:copy(content),submittedBy:actor.id,createdAt:now};
+      if(previous)emit('AgentProposalRevisionSubmitted',{proposalId,revision},{...context(execution),causationId:sourceEventIds.at(-1)});
+      else{
+        const proposal:AgentProposal={id:proposalId,projectId:state.projectId,...context(execution),agentId:actor.id,latestRevisionId:revision.id,state:'pending'};
+        emit('AgentProposalSubmitted',{proposal,revision},{...context(execution),causationId:sourceEventIds.at(-1)});
+      }break;
+    }
+    case 'reviewAgentProposal':case 'adoptAgentSpecProposal':{
+      human();const parsed=command.type==='reviewAgentProposal'?reviewProposalCommandSchema.safeParse(command):adoptProposalCommandSchema.safeParse(command);
+      if(!parsed.success)fail('VALIDATION_ERROR','Рассмотрение предложения не соответствует закрытой схеме.');
+      const proposal=state.agentProposals.find(proposal=>proposal.id===command.proposalId)??fail('NOT_FOUND','Предложение не найдено.');
+      if(proposal.latestRevisionId!==command.proposalRevisionId)fail('REVISION_CONFLICT','Появилась новая версия предложения; сначала прочитайте её.');
+      if(proposal.state!=='pending')fail('INVALID_TRANSITION','Предложение уже рассмотрено.');
+      const proposalRevision=state.agentProposalRevisions.find(revision=>revision.id===proposal.latestRevisionId)!;
+      const execution=getExecution(proposal.executionId);
+      const causationId=cause(event=>['AgentProposalSubmitted','AgentProposalRevisionSubmitted'].includes(event.type)&&(event.payload.revision as AgentProposalRevision|undefined)?.id===proposalRevision.id);
+      if(command.type==='reviewAgentProposal'){
+        if(command.outcome==='reviewed'&&proposalRevision.content.kind!=='reality_summary')fail('INVALID_TRANSITION','Для предложения спеки создайте черновик либо отклоните предложение.');
+        emit(command.outcome==='reviewed'?'AgentProposalReviewed':'AgentProposalDismissed',{proposalId:proposal.id,proposalRevisionId:proposalRevision.id,comment:command.comment},{...context(execution),causationId});break;
+      }
+      if(proposalRevision.content.kind!=='spec_proposal')fail('INVALID_TRANSITION','Сводка не содержит предложения спеки.');
+      if(command.sourceSpecId!==undefined&&command.sourceSpecId!==proposal.specId)fail('VALIDATION_ERROR','Связь происхождения может указывать только на исходную спеку предложения.');
+      validateContent(command.content);
+      const specId=id(),revisionId=id(),nextNumber=Math.max(0,...state.specs.map(spec=>Number(spec.humanId.split('-').at(-1))||0))+1;
+      const spec:Spec={id:specId,projectId:state.projectId,humanId:`OURO-S-${String(nextNumber).padStart(6,'0')}`,title:command.content.title,state:'idea',activeRevisionId:null,revisionIds:[revisionId],origin:{kind:'agent_proposal',proposalId:proposal.id,proposalRevisionId:proposalRevision.id}};
+      const revision:SpecRevision={...copy(command.content),id:revisionId,specId,revision:1,createdAt:now,authorId:actor.id};
+      emit('SpecCreated',{spec,revision},{specId,causationId});
+      emit('AgentProposalAdopted',{proposalId:proposal.id,proposalRevisionId:proposalRevision.id,comment:command.comment,draftSpecId:specId,draftSpecRevisionId:revisionId},{...context(execution),causationId});
+      if(command.sourceSpecId)emit('DependencyAdded',{dependency:{id:id(),from:command.sourceSpecId,to:specId,type:'derived_from'}},{causationId});
+      break;
+    }
     case 'createLesson': {
       human();lessonContent(command.content);
       const lessonId=id(),revisionId=id();

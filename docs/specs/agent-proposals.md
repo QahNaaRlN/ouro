@@ -23,6 +23,8 @@
 
 Строгие закрытые схемы в MCP и core; aggregate UTF-8 content<=192KiB, title1..200, findings1..12, text1..4000, IDs1..10 на observation, union1..50, interpretation1..8000, limitations1..4000. Draft obeys normal revision/Flow/DoD validation; вложенные authority/model/curated keys не допускаются.
 
+Строки обязаны сохраняться в JSONB без замены Unicode: lone UTF-16 surrogate и NUL отклоняются как VALIDATION_ERROR до append. RequestId проверяется до receipt lookup, чтобы некорректный идентификатор не доходил до SQL text-параметра.
+
 sourceCursor — safe integer от версии назначения до текущего committed cursor. Каждый ID существует в том же проекте и не позже sourceCursor. Citation predicate уже обычной get_updates visibility: только выбранное исполнение и его immutable spec/revision, setup этой ревизии и human RoadmapStateChanged. Чужое исполнение того же агента, sibling r2 и другой агент не становятся источником автоматически. Remediation не получает право приписывать себе факты parent agent.
 
 Нужен хотя бы один реальный observation/lifecycle/decision факт; одного разрешения ExecutionCreated/setup недостаточно. GitHub service Action в этом исполнении допустим с исходной атрибуцией. Lesson/Proposal/technical shared draft не являются первичными facts для сводки. Сводка не ссылается сама на себя. Ошибка источника не раскрывает скрытое содержимое или идентичность автора.
@@ -34,6 +36,8 @@ Human adoption event несёт исходный execution context и destinatio
 Раздел предложений показывает ответственного агента, исходные Human ID/rN/execution/cursor, версию и статус review; первичные цитаты раскрываются рядом с каждым observation. Simulation и GitHub verification сохраняют своё исходное значение. Нет confidence score или implied approval.
 
 Форма принятия pinned к показанной версии и project version. Remote новая версия/review сохраняют текст/focus для сравнения и блокируют устаревшую запись; rebase явный. Предложенный Flow сохраняется и показывается; его можно редактировать существующим process editor после создания спеки. При потере ответа тело/requestId сохраняются, неуверенный результат сначала выясняется повтором. Выбор новой спеки — по точному ID SpecCreated из собственного receipt.
+
+В пределах открытой страницы unresolved intent хранится выше панели, поэтому смена раздела или выбранного предложения не теряет исходный запрос. Полная перезагрузка не является обещанием локального autosave: сначала читается текущее terminal состояние предложения; домен запрещает повторную adoption отдельным новым запросом. Интерактивный переход из Spec.origin открывает точное предложение и его версию.
 
 ## Приёмка/TDD
 

@@ -31,7 +31,7 @@ async function fixture() {
 }
 
 test('agent tools publish strict schemas and expose no human decision or acceptance commands',async()=>{
-  const expected=['ouro.get_context','ouro.get_updates','ouro.report_action','ouro.report_question','ouro.report_fork','ouro.report_blocker','ouro.confirm_started','ouro.confirm_resumed','ouro.confirm_stopped','ouro.confirm_decision_applied','ouro.complete_execution','ouro.clear_blocker','ouro.withdraw_decision','ouro.submit_decision_clarification'];
+  const expected=['ouro.get_context','ouro.get_updates','ouro.report_action','ouro.report_question','ouro.report_fork','ouro.report_blocker','ouro.confirm_started','ouro.confirm_resumed','ouro.confirm_stopped','ouro.confirm_decision_applied','ouro.complete_execution','ouro.clear_blocker','ouro.withdraw_decision','ouro.submit_decision_clarification','ouro.submit_proposal'];
   assert.deepEqual(AGENT_TOOLS.map(t=>t.name).sort(),expected.sort());
   for(const tool of AGENT_TOOLS)assert(tool.inputSchema);
   assert(!AGENT_TOOLS.some(t=>/resolve|accept_spec|activate/.test(t.name)));

@@ -172,7 +172,7 @@ export async function createStore(options: StoreOptions = {}) {
     if(!body||typeof body!=='object'||Array.isArray(body))throw new StoreError('VALIDATION_ERROR','Ожидается JSON-команда.');
     const command=body as Command;
     if(!internal&&['createGitHubBinding','recordGitHubCommit'].includes(command.type))throw new StoreError('FORBIDDEN','Проверяемые GitHub-команды доступны только серверному адаптеру.');
-    if(typeof command.requestId!=='string'||command.requestId.length<8||command.requestId.length>200||!Number.isSafeInteger(command.expectedVersion)||command.expectedVersion<0)throw new StoreError('VALIDATION_ERROR','Нужны requestId и неотрицательная expectedVersion.');
+    if(typeof command.requestId!=='string'||command.requestId.length<8||command.requestId.length>200||!command.requestId.isWellFormed()||command.requestId.includes('\u0000')||!Number.isSafeInteger(command.expectedVersion)||command.expectedVersion<0)throw new StoreError('VALIDATION_ERROR','Нужны допустимый requestId и неотрицательная expectedVersion.');
     const payloadHash=hash(body);
       await tx.query('SELECT version FROM ouro_projects WHERE id=$1 FOR UPDATE',[PROJECT_ID]);
       await registerActor(tx,actor);await assertRegisteredAgentActive(tx,actor);

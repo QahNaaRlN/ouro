@@ -17,7 +17,7 @@ export type SpecRevision = {
 export type Spec = {
   id: string; projectId: string; humanId: string; title: string; state: SpecState;
   activeRevisionId: string | null; revisionIds: string[];
-  origin?: {kind:'lesson';lessonId:string;lessonRevisionId:string};
+  origin?: {kind:'lesson';lessonId:string;lessonRevisionId:string}|{kind:'agent_proposal';proposalId:string;proposalRevisionId:string};
   acceptance?: { revisionId: string; evidence: Record<string, string>; actorId: string; at: string };
 };
 export type Execution = {
@@ -66,10 +66,24 @@ export type DomainEvent = {
   requestId?: string; specId?: string; specRevisionId?: string; executionId?: string;
   payload: Record<string, unknown>;
 };
+export type ProposalFinding={text:string;sourceEventIds:string[]};
+export type AgentProposalContent={title:string;findings:ProposalFinding[];interpretation:string;limitations:string}&(
+  |{kind:'reality_summary'}|{kind:'spec_proposal';draft:RevisionContent}
+);
+export type AgentProposal={
+  id:string;projectId:string;executionId:string;specId:string;specRevisionId:string;agentId:string;latestRevisionId:string;
+  state:'pending'|'reviewed'|'dismissed'|'adopted';
+  review?:{revisionId:string;actorId:string;at:string;comment:string;draftSpecId?:string;draftSpecRevisionId?:string};
+};
+export type AgentProposalRevision={
+  id:string;proposalId:string;revision:number;parentRevisionId?:string;sourceCursor:number;sourceEventIds:string[];
+  content:AgentProposalContent;submittedBy:string;createdAt:string;
+};
 export type ProjectState = {
   projectId: string; version: number; roadmap: Roadmap; specs: Spec[]; revisions: SpecRevision[];
   executions: Execution[]; requests: DecisionRequest[]; dependencies: Dependency[]; events: DomainEvent[];
   githubBindings: GitHubBinding[]; lessons:Lesson[]; lessonRevisions:LessonRevision[];
+  agentProposals:AgentProposal[];agentProposalRevisions:AgentProposalRevision[];
 };
 export type RevisionContent = Pick<SpecRevision, 'title' | 'goal' | 'dod' | 'constraints' | 'assumptions' | 'risks' | 'inputs' | 'comment' | 'flow'>;
 type CommandBase = { requestId: string; expectedVersion: number; specId?: string; specRevisionId?: string };
@@ -114,4 +128,7 @@ export type Command = CommandBase & (
   | { type:'createGitHubBinding'; executionId:string; repositoryId:number; repositoryFullName:string; ref:string }
   | { type:'revokeGitHubBinding'; bindingId:string }
   | { type:'recordGitHubCommit'; bindingId:string; deliveryId:string; payloadDigest:string; commit:GitHubVerifiedCommit }
+  |{type:'submitAgentProposal';executionId:string;sourceCursor:number;content:AgentProposalContent;proposalId?:string;baseProposalRevisionId?:string}
+  |{type:'reviewAgentProposal';proposalId:string;proposalRevisionId:string;outcome:'reviewed'|'dismissed';comment:string}
+  |{type:'adoptAgentSpecProposal';proposalId:string;proposalRevisionId:string;content:RevisionContent;comment:string;sourceSpecId?:string}
 );
