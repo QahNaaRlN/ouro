@@ -46,3 +46,9 @@ test('M02 declared paths remain documentary names and reject aliases and Windows
  const duplicate=fixture();duplicate.facts.declared_scope.declared_paths=['src/a.ts','src/a.ts'];reject(duplicate);
  const max=fixture();max.facts.run_ref.scope_revision='18446744073709551615';assert.equal(parseMeridianScope(JSON.stringify(max)).facts.run_ref.scope_revision,'18446744073709551615');
 });
+
+test('M01 a valid source with no usable DoD is explicitly rejected by expectation mapping',()=>{
+ const empty=fixture();empty.facts.goal.acceptance_criteria=[];
+ const scope=parseMeridianScope(JSON.stringify(empty));
+ assert.throws(()=>mapMeridianExpectation(scope),e=>(e as {code?:string}).code==='VALIDATION_ERROR');
+});

@@ -3,12 +3,13 @@ import { readFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
 import { Pool } from 'pg';
-import { applyCommand, createSeedEvents, replay, AGENT_ID, GITHUB_SERVICE_ID, PROJECT_ID } from '../packages/core/src';
+import { applyCommand, createSeedEvents, replay, AGENT_ID, GITHUB_SERVICE_ID, PROJECT_ID,DomainError } from '../packages/core/src';
 import type { Actor, Command, DomainEvent, GitHubVerifiedCommit, ProjectState } from '../packages/core/src';
 import type { NormalizedGitHubPush } from './github/verification';
 import { createParticipantRegistry,assertRegisteredHumanActive } from './participant-registry';
 import { createCollaborativeDraftService } from './collaborative-drafts';
 import { isWellFormedUnicode } from '../packages/core/src/unicode';
+import {parseMeridianScope} from '../packages/meridian/src/context';
 
 export class StoreError extends Error {
   constructor(public code: string, message: string, public details?: Record<string, unknown>) {
@@ -171,8 +172,8 @@ export async function createStore(options: StoreOptions = {}) {
     assertActor(actor);
     if(!body||typeof body!=='object'||Array.isArray(body))throw new StoreError('VALIDATION_ERROR','Ожидается JSON-команда.');
     const command=body as Command;
-    if(!internal&&['createGitHubBinding','recordGitHubCommit'].includes(command.type))throw new StoreError('FORBIDDEN','Проверяемые GitHub-команды доступны только серверному адаптеру.');
-    if(typeof command.requestId!=='string'||command.requestId.length<8||command.requestId.length>200||!command.requestId.isWellFormed()||command.requestId.includes('\u0000')||!Number.isSafeInteger(command.expectedVersion)||command.expectedVersion<0)throw new StoreError('VALIDATION_ERROR','Нужны допустимый requestId и неотрицательная expectedVersion.');
+    if(!internal&&['createGitHubBinding','recordGitHubCommit','importMeridianScope'].includes(command.type))throw new StoreError('FORBIDDEN','Команды внешнего источника доступны только серверному адаптеру.');
+    if(typeof command.requestId!=='string'||command.requestId.length<8||command.requestId.length>200||!isWellFormedUnicode(command.requestId)||command.requestId.includes('\u0000')||!Number.isSafeInteger(command.expectedVersion)||command.expectedVersion<0)throw new StoreError('VALIDATION_ERROR','Нужны допустимый requestId и неотрицательная expectedVersion.');
     const payloadHash=hash(body);
       await tx.query('SELECT version FROM ouro_projects WHERE id=$1 FOR UPDATE',[PROJECT_ID]);
       await registerActor(tx,actor);await assertRegisteredAgentActive(tx,actor);
@@ -193,7 +194,18 @@ export async function createStore(options: StoreOptions = {}) {
         if(!proof.rows[0])throw new StoreError('AGENT_NOT_REVOKED','Назначенный агент должен иметь подтверждённый отзыв в реестре проекта.');
         revokedAgent={id:proof.rows[0].id,revokedAt:dateString(proof.rows[0].revoked_at),revokedBy:proof.rows[0].revoked_by};
       }
-      const applied=applyCommand(state,command,actor,{revokedAgent});
+      let meridianImport:{rawDocument:string;documentSha256:string}|undefined;
+      if(command.type==='importMeridianScope'){
+        parseMeridianScope(command.rawDocument);
+        meridianImport={rawDocument:command.rawDocument,documentSha256:createHash('sha256').update(command.rawDocument,'utf8').digest('hex')};
+      }
+      let applied:ReturnType<typeof applyCommand>;
+      try{applied=applyCommand(state,command,actor,{revokedAgent,meridianImport});}
+      catch(error){
+        // A typed conflict here occurs only after this actor's receipt lookup.
+        if(command.type==='importMeridianScope'&&error instanceof DomainError&&error.code==='VERSION_CONFLICT')throw new StoreError(error.code,error.message,{...error.details,meridianReceipt:'absent'});
+        throw error;
+      }
       await append(tx,applied.events,applied.state);
       const response={state:applied.state,events:applied.events,cursor:applied.state.version};
       await tx.query(`INSERT INTO ouro_command_receipts (actor_id,project_id,request_id,payload_hash,response,cursor) VALUES ($1,$2,$3,$4,$5::jsonb,$6)`,[actor.id,PROJECT_ID,command.requestId,payloadHash,JSON.stringify(response),response.cursor]);
@@ -215,6 +227,12 @@ export async function createStore(options: StoreOptions = {}) {
   return {
     ...participants,...drafts,
     storage: options.databaseUrl ? 'postgres' as const : 'embedded-postgres' as const,
+    importMeridianScope:(input:unknown,actor:Actor):Promise<CommandResult>=>{
+      assertActor(actor);
+      if(actor.kind!=='human')return Promise.reject(new StoreError('FORBIDDEN','Импорт черновика подтверждает человек.'));
+      if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).some(key=>!['requestId','expectedVersion','rawDocument','content'].includes(key)))return Promise.reject(new StoreError('VALIDATION_ERROR','Импорт принимает исходный документ, содержание и версию без посторонних полей.'));
+      return commitCommand({...structuredClone(input),type:'importMeridianScope'},actor,true);
+    },
     createGitHubBinding: (input:{executionId:string;repositoryId:number;repositoryFullName:string;ref:string;requestId:string;expectedVersion:number},actor:Actor)=>commitCommand({...input,type:'createGitHubBinding'},actor,true),
     enqueueGitHubDelivery: (deliveryId:string,input:NormalizedGitHubPush):Promise<{delivery:PublicGitHubDelivery;duplicate:boolean}>=>serialize(()=>db.transaction(async tx=>{
       if(typeof deliveryId!=='string'||!deliveryId.trim()||deliveryId.length>200||!input||!/^[a-f0-9]{64}$/.test(input.payloadDigest)||!Number.isSafeInteger(input.repositoryId)||input.repositoryId<1||typeof input.repositoryFullName!=='string'||typeof input.ref!=='string'||!Array.isArray(input.commitShas)||input.commitShas.length>2048||input.commitShas.some(sha=>typeof sha!=='string'||!/^[a-f0-9]{40}$/.test(sha))||!['pending','ignored','needs_review'].includes(input.disposition))throw new StoreError('VALIDATION_ERROR','Некорректная нормализованная доставка GitHub.');
@@ -365,6 +383,7 @@ export const getStorageMode = () => process.env.DATABASE_URL ? 'postgres' as con
 export async function getProject() { return (await currentStore()).getProject(); }
 export async function getEvents(after = 0) { return (await currentStore()).getEvents(after); }
 export async function executeCommand(command: unknown, actor: Actor) { return (await currentStore()).executeCommand(command, actor); }
+export async function importMeridianScope(input:unknown,actor:Actor){return (await currentStore()).importMeridianScope(input,actor);}
 export async function createAgent(name:string,actor:Actor) {return (await currentStore()).createAgent(name,actor);}
 export async function listAgents(actor:Actor) {return (await currentStore()).listAgents(actor);}
 export async function revokeAgent(agentId:string,actor:Actor) {return (await currentStore()).revokeAgent(agentId,actor);}

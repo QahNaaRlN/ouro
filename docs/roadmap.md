@@ -14,7 +14,7 @@
 | 5.1 | Уточнения/исправления решений, исторический cursor, восстановление отозванного агента | alpha.8: OURO-ENG-000007,172 unit/integration +39 production E2E; production build и browser/SSE smoke |
 | 6 | Совместное редактирование черновиков с идентичностью участников | alpha.9: OURO-ENG-000008,206 unit/integration +46 production E2E; отдельные человеческие сессии, Yjs и атомарная публикация |
 | 7 | AI-сводки Reality и предложения новых спек с источниками | alpha.10: OURO-ENG-000009,219 unit/integration +50 production E2E; реальный внешний MCP-агент, точные источники, версии и создание human-reviewed черновика; [контракт и проверки](plans/agent-proposals.md) |
-| 8 | Адаптер Meridian | Требуется изучить реальные контракты хоста, identity/workspace/theme |
+| 8 | Адаптер Meridian | OURO-ENG-000010: реальный scope DTO → human preview → черновик с source/pins/hash; статические темы. Live IPC/SSO/Windows требуют отдельного host-пакета: [RFC](proposals/meridian-native-bridge.md) |
 
 Дополнительные требования действующей методологии реализованы пакетом [OURO-ENG-000007](specs/methodology-recovery.md): отзыв/уточнение и исправление решения новыми фактами, read-only проекция на выбранном cursor, операторское восстановление после экстренного отзыва ключа. Физические Blocker и неизвестная остановка сохраняют отдельные guards; [сценарии и ограничения](methodology-guide.md).
 

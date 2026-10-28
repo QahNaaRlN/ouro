@@ -48,6 +48,8 @@ import Roadmap, { specLabels, Status } from "@/components/roadmap";
 import { RealityGraph } from "@/components/reality";
 import AgentsPanel, { type AgentRegistration } from "@/components/agents-panel";
 import GitHubPanel from '@/components/github-panel';
+import MeridianPanel,{type MeridianPendingIntent} from '@/components/meridian-panel';
+import MeridianOrigin from '@/components/meridian-origin';
 import LessonsPanel from '@/components/lessons-panel';
 import ImpactPanel from '@/components/impact-panel';
 import ParticipantsPanel,{ParticipantLogin} from '@/components/participants-panel';
@@ -162,6 +164,7 @@ export default function Home() {
   const [streamStatus,setStreamStatus] = useState<ProjectSubscriptionStatus>('connecting');
   const [agentFilter,setAgentFilter] = useState(''),[requestFilter,setRequestFilter] = useState('');
   const [flowRevisionId, setFlowRevisionId] = useState<string | null>(null);
+  const [integrationSource,setIntegrationSource]=useState<'github'|'meridian'>('github');
   const [proposalIntents]=useState<ProposalReviewIntentRegistry>(()=>new Map());
   const [proposalFocus,setProposalFocus]=useState<{proposalId:string;proposalRevisionId:string}|undefined>();
   const [view, setView] = useState<View>("roadmap"),
@@ -175,7 +178,7 @@ export default function Home() {
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [toast, setToast] = useState("");
-  const [theme, setTheme] = useState("dark"),
+  const [theme, setTheme] = useState<'light'|'dark'>("dark"),
     [mobileNav, setMobileNav] = useState(false),
     [modal, setModal] = useState<Modal>(null),
     [detailTab, setDetailTab] = useState("expectation"),
@@ -187,6 +190,22 @@ export default function Home() {
   const returnToLive=()=>{historicalCursorRef.current=null;setHistoricalCursor(null);};
   const hasInitialSelection = useRef(false);
   const pendingRef = useRef(false);
+  // An uncertain import belongs to the authenticated human and project. The raw
+  // source remains in this page's RAM across panel/history navigation only.
+  const meridianParticipantKey=identity?.id??'unauthenticated';
+  const meridianPendingIntent=useRef<MeridianPendingIntent|null>(null);
+  useEffect(()=>{
+    const saved=meridianPendingIntent.current;
+    if(saved&&(saved.participantKey!==identity?.id||saved.projectId!==state?.projectId))meridianPendingIntent.current=null;
+  },[identity?.id,state?.projectId]);
+  useEffect(()=>{
+    const guard=(event:BeforeUnloadEvent)=>{
+      if(!meridianPendingIntent.current)return;
+      event.preventDefault();event.returnValue='';
+    };
+    window.addEventListener('beforeunload',guard);
+    return()=>window.removeEventListener('beforeunload',guard);
+  },[]);
   const presentSnapshot=useCallback((snapshot:ProjectSnapshot)=>{
     setState(snapshot.state);
     if(snapshot.storage)setStorage(snapshot.storage);
@@ -872,6 +891,7 @@ export default function Home() {
                       {detailTab==='states'&&<StateTransitions state={state} specId={spec.id} executionId={execution?.id}/>}
                       {detailTab === "expectation" && (
                         <div className="expectation-content">
+                          <MeridianOrigin spec={spec} state={state}/>
                           {spec.origin?.kind==='lesson'&&<section className="content-section small-section" aria-label="Происхождение спеки">
                             <h3>Происхождение спеки</h3>
                             {originLessonRevision?<><p>Урок «{originLessonRevision.title}» · r{originLessonRevision.revision}</p><p>Спека создана из этой опубликованной редакции. Новые публикации урока не меняют её источник.</p></>:<p>Редакция урока-источника недоступна в текущем снимке.</p>}
@@ -1377,7 +1397,11 @@ export default function Home() {
               )}
               {view === "methodology" && <Methodology />}
               {view === "agents" && <AgentsPanel onAgentsChange={setAgents}/>}
-              {view==='integrations'&&<GitHubPanel state={state} onSnapshot={adoptMutation}/>}
+              {view==='integrations'&&<>
+                <div className="integration-source-switch" role="group" aria-label="Источник интеграции"><button type="button" aria-pressed={integrationSource==='github'} onClick={()=>setIntegrationSource('github')}>GitHub</button><button type="button" aria-pressed={integrationSource==='meridian'} onClick={()=>setIntegrationSource('meridian')}>Meridian</button></div>
+                <div hidden={integrationSource!=='github'}><GitHubPanel state={state} onSnapshot={adoptMutation}/></div>
+                <div hidden={integrationSource!=='meridian'}><MeridianPanel key={`${state.projectId}:${meridianParticipantKey}`} participantKey={meridianParticipantKey} pendingIntent={meridianPendingIntent} theme={theme} state={state} onSnapshot={adoptMutation} onOpenSpec={id=>{pick(id);setDetailTab('expectation');setView('specs');}}/></div>
+              </>}
               {view==='lessons'&&<LessonsPanel state={state} onSnapshot={adoptMutation} onOpenSpec={id=>{pick(id);setView('specs');setDetailTab('expectation');}}/>}
               {view==='impact'&&<ImpactPanel state={state}/>}
               {view==='participants'&&<ParticipantsPanel/>}
@@ -1572,7 +1596,7 @@ export default function Home() {
                   : "Хранилище…"}
             </span>
             <span className="footer-separator" />
-            <span>0.1.0-alpha.10</span>
+            <span>0.1.0-alpha.11</span>
             <span className="small-tag">PROTOTYPE</span>
           </div>
         </footer>
@@ -2730,7 +2754,7 @@ function Methodology() {
           className="btn"
           target="_blank"
           rel="noreferrer"
-          href="https://github.com/QahNaaRlN/ouro/tree/feat/agent-connect/docs"
+          href="https://github.com/QahNaaRlN/ouro/tree/feat/meridian-context/docs"
         >
           Открыть документацию
           <ArrowUpRight size={15} />

@@ -4,6 +4,7 @@
  * This module performs no IPC, filesystem access, network or authentication.
  */
 import type {RevisionContent} from '../../core/src/types';
+import {isWellFormedUnicode} from '../../core/src/unicode';
 export interface Scope {type:'project-workspace'|'repository-scope'|'run-state';id:string;workspace_id:string;organization_profile_id:string|null}
 export interface RecordKey {record_type:string;id:string;scope:Scope}
 export interface Pin {key:RecordKey;revision:string;sha256:string}
@@ -34,7 +35,7 @@ export interface WorkScopeView { contract: 'meridian-work-scope-view'; contract_
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const exact = (v: unknown, fields: readonly string[]): v is Record<string, unknown> => object(v) && Object.keys(v).length === fields.length && fields.every(k => Object.hasOwn(v, k));
 const bytes = (v: unknown) => new TextEncoder().encode(JSON.stringify(v)).byteLength;
-const text = (v: unknown, cap = 4096): v is string => typeof v === 'string' && v.length > 0 && new TextEncoder().encode(v).byteLength <= cap && !/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(v);
+const text = (v: unknown, cap = 4096): v is string => typeof v === 'string' && v.length > 0 && isWellFormedUnicode(v) && new TextEncoder().encode(v).byteLength <= cap && !/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(v);
 const id = (v: unknown): v is string => text(v, 256) && /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(v);
 const sha = (v: unknown): v is string => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v);
 const revision = (v: unknown): v is string => typeof v === 'string' && /^[1-9][0-9]{0,19}$/.test(v) && BigInt(v) <= 18446744073709551615n;
@@ -137,8 +138,9 @@ function checkJsonKeys(raw:string):void {
 export function parseMeridianScope(input:string|Uint8Array):WorkScopeView {
  try{
   if(typeof input!=='string'&&!(input instanceof Uint8Array))invalid();
+  if(typeof input==='string'&&!isWellFormedUnicode(input))invalid('Исходный документ содержит некорректную последовательность Unicode.');
   const data=typeof input==='string'?new TextEncoder().encode(input):input;
-  if(data.byteLength>524288)invalid('Файл превышает512KiB.');
+  if(data.byteLength>524288)invalid('Файл превышает 512 KiB.');
   const raw=typeof input==='string'?input:new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(input);
   checkJsonKeys(raw);const parsed:unknown=JSON.parse(raw);
   if(!validWorkScopeView(parsed))invalid();return parsed;
@@ -156,6 +158,7 @@ export function mapMeridianExpectation(view:WorkScopeView):RevisionContent {
   inputs:[`Проект: ${f.project_id}; репозиторий: ${f.repository_id}; workspace: ${f.subject_ref.workspace_id}`,`Run: ${f.run_ref.run.key.id} @${f.run_ref.run.revision}`,`Исходное состояние: ${f.goal.initial_state}`,`Целевая модель: ${f.goal.target_model}`,...f.authoritative_sources.map(s=>`Источник ${s.id}: ${s.reference} — ${s.purpose} [${s.resolution}]`),...f.applicable_norms.map(n=>`Норма ${n.id}: ${n.reference} — ${n.applicability_rationale} [${n.resolution}]`),...f.decisions.map(d=>`Решение ${d.id}: ${d.text}`),`Объявленные пути (данные): ${f.declared_scope.declared_paths.join(', ')}`,...f.resolution.required_verification.map(v=>`Заявленная проверка (не выполнялась): ${v}`)].join('\n'),
   comment:'Черновик из импортированного Meridian work-scope v1; активация отдельно.',
  };
+ if(!content.dod.length)invalid('Документ корректен, но не содержит критериев приёмки для черновика спеки. Подготовьте контекст с DoD.');
  if(content.dod.length>50||new Set(content.dod.map(c=>c.id)).size!==content.dod.length||Object.values(content).some(v=>typeof v==='string'&&v.length>20000)||content.dod.some(c=>c.text.length>20000))invalid('Документ корректен, но автоматическое ожидание превышает ограничения спеки. Сначала подготовьте меньший контекст.');
  return content;
 }

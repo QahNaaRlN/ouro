@@ -3,6 +3,8 @@ import { getLessonSourceSpecIds, validateLessonContent as assertLessonContent } 
 import { validateFlowDefinition as assertFlowDefinition } from './flow';
 import {currentDecisionRequests,decisionRoot,isCurrentDecisionRequest,openPhysicalBlockers} from './decision-lineage';
 import {submitProposalCommandSchema,reviewProposalCommandSchema,adoptProposalCommandSchema,deriveProposalSources} from './agent-proposals';
+import {parseMeridianScope,mapMeridianExpectation} from '../../meridian/src/context';
+import {isWellFormedUnicode} from './unicode';
 import type { Actor, Command, DecisionRequest, DomainEvent, Execution, FlowDefinition, FlowNodeKind, GitHubBinding, GitHubCommitSource, Lesson, LessonContent, LessonRevision, ProjectState, RevisionContent, Spec, SpecRevision, AgentProposal, AgentProposalRevision, AgentProposalContent } from './types';
 
 export const PROJECT_ID = '6c7c62dc-694c-4c7b-9cb1-d9e605164001';
@@ -13,6 +15,7 @@ export class DomainError extends Error {
 }
 const fail = (code: string, message: string, details?: Record<string, unknown>): never => { throw new DomainError(code, message, details); };
 const text = (value: unknown, label: string, minimum = 1): string => {
+  if(typeof value==='string'&&(!isWellFormedUnicode(value)||value.includes('\0')))fail('VALIDATION_ERROR',`${label}: текст содержит непредставимые символы Unicode или NUL.`);
   if (typeof value !== 'string' || value.trim().length < minimum || value.length > 20000) fail('VALIDATION_ERROR', `${label}: требуется текст от ${minimum} до 20000 символов`);
   return value as string;
 };
@@ -182,8 +185,12 @@ function validateContent(content: RevisionContent): void {
   }
 }
 
+function rejectClaimedAdapterOrigin(command:Command,content:RevisionContent):void{
+  if(['origin','meridianSource','documentSha256'].some(key=>key in command||key in content))fail('FORBIDDEN','Происхождение импорта добавляет только серверный адаптер.');
+}
+
 /** A command creates facts; only replay derives current state. No external process is executed here. */
-export function applyCommand(state: ProjectState, command: Command, actor: Actor, environment: { now?: string; id?: () => string; revokedAgent?:{id:string;revokedAt:string;revokedBy:string} } = {}): { state: ProjectState; events: DomainEvent[] } {
+export function applyCommand(state: ProjectState, command: Command, actor: Actor, environment: { now?: string; id?: () => string; revokedAgent?:{id:string;revokedAt:string;revokedBy:string};meridianImport?:{rawDocument:string;documentSha256:string} } = {}): { state: ProjectState; events: DomainEvent[] } {
   if (!command || typeof command !== 'object') fail('VALIDATION_ERROR', 'Команда должна быть объектом');
   text(command.requestId, 'requestId');
   if (!Number.isSafeInteger(command.expectedVersion) || command.expectedVersion < 0) fail('VALIDATION_ERROR', 'expectedVersion должен быть целым неотрицательным числом');
@@ -293,9 +300,22 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
       if(lesson.publishedRevisionId===revision.id)fail('INVALID_TRANSITION','Эта редакция уже опубликована.');
       emit('LessonPublished',{lessonId:lesson.id,revisionId:revision.id},{causationId:cause(event=>['LessonCreated','LessonRevisionProposed'].includes(event.type)&&(event.payload.revision as LessonRevision)?.id===revision.id)});break;
     }
-    case 'createSpec': case 'createSpecFromLesson': {
+    case 'createSpec': case 'createSpecFromLesson': case 'importMeridianScope': {
       human();validateContent(command.content);
+      if(command.type!=='importMeridianScope')rejectClaimedAdapterOrigin(command,command.content);
       let origin:Spec['origin'],publicationCause:string|undefined,sourceSpecId:string|undefined;
+      if(command.type==='importMeridianScope'){
+        const proof=environment.meridianImport??fail('FORBIDDEN','Импорт требует проверку исходного документа серверным адаптером.');
+        if(proof.rawDocument!==command.rawDocument||!/^[a-f0-9]{64}$/.test(proof.documentSha256))fail('FORBIDDEN','Импорт требует проверку исходного документа серверным адаптером.');
+        const allowed=['type','requestId','expectedVersion','rawDocument','content'];
+        if(Object.keys(command).some(key=>!allowed.includes(key)))fail('VALIDATION_ERROR','Команда импорта содержит неизвестные поля.');
+        const contentFields=['title','goal','dod','constraints','assumptions','risks','inputs','comment','flow'];
+        if(Object.keys(command.content).some(key=>!contentFields.includes(key))||command.content.dod.some(c=>Object.keys(c).some(key=>!['id','text','required'].includes(key))))fail('VALIDATION_ERROR','Содержание импорта содержит неизвестные поля.');
+        if(command.content.title.length>200)fail('VALIDATION_ERROR','Название импортированного черновика должно быть не длиннее 200 символов.');
+        const scope=parseMeridianScope(command.rawDocument);mapMeridianExpectation(scope);
+        const f=scope.facts;
+        origin={kind:'meridian_import',contract:scope.contract,contractVersion:scope.contract_version,snapshotId:scope.snapshot_id,documentSha256:proof.documentSha256,projectId:f.project_id,repositoryId:f.repository_id,providerId:f.subject_ref.provider_id,workspaceId:f.subject_ref.workspace_id,subjectRef:copy(f.subject_ref),runRef:copy(f.run_ref),taskSpecificationPin:copy(f.task_specification_pin),contextManifestPin:copy(f.context_manifest_pin),criterionBindings:f.goal.acceptance_criteria.flatMap(c=>command.content.dod.some(mapped=>mapped.id===`meridian:${c.id}`)?[{criterionId:`meridian:${c.id}`,sourceCriterionId:c.id}]:[]),transportVerification:'unverified_import'};
+      }
       if(command.type==='createSpecFromLesson'){
         const lesson=getLesson(command.lessonId);
         if(!lesson.publishedRevisionId)fail('INVALID_TRANSITION','Для новой спеки нужно сначала опубликовать урок.');
@@ -312,12 +332,13 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
       const nextNumber = Math.max(0, ...state.specs.map(s => Number(s.humanId.split('-').at(-1)) || 0)) + 1;
       const spec: Spec = { id: specId, projectId: state.projectId, humanId: `OURO-S-${String(nextNumber).padStart(6, '0')}`, title: command.content.title, state: 'idea', activeRevisionId: null, revisionIds: [revisionId],...(origin?{origin}:{}) };
       const revision: SpecRevision = { ...copy(command.content), id: revisionId, specId, revision: 1, createdAt: now, authorId: actor.id };
-      const created=emit('SpecCreated', { spec, revision }, { specId,...(publicationCause?{causationId:publicationCause}:{}) });
+      const created=emit('SpecCreated', { spec, revision,...(command.type==='importMeridianScope'?{meridianSource:{rawDocument:command.rawDocument}}:{}) }, { specId,...(publicationCause?{causationId:publicationCause}:{}) });
       if(sourceSpecId)emit('DependencyAdded',{dependency:{id:id(),from:sourceSpecId,to:specId,type:'derived_from'}},{specId,specRevisionId:revisionId,causationId:created.id});
       break;
     }
     case 'proposeRevision': {
       const spec = getSpec(command.specId); validateContent(command.content);
+      rejectClaimedAdapterOrigin(command,command.content);
       if (spec.state === 'invalidated') fail('INVALID_TRANSITION', 'Неактуальная цель требует новой спецификации');
       const revision: SpecRevision = { ...copy(command.content), id: id(), specId: spec.id, revision: spec.revisionIds.length + 1, parentRevisionId: spec.revisionIds.at(-1), createdAt: now, authorId: actor.id };
       emit('RevisionProposed', { revision }, { specId: spec.id, specRevisionId: revision.id }); break;

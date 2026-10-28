@@ -96,7 +96,7 @@ export async function authenticatedAgent(request: Request, projectId: string, le
   if(!actor||!actor.projectIds.includes(projectId))throw new AccessError('UNAUTHENTICATED','Ключ агента недействителен или отозван.',401);
   return actor;
 }
-export function assertJsonWrite(request: Request) {
+export function assertJsonWrite(request: Request,maxBytes=256_000) {
   if (!request.headers.get('content-type')?.startsWith('application/json')) throw new AccessError('UNSUPPORTED_MEDIA_TYPE', 'Используйте application/json.', 415);
   const origin = request.headers.get('origin');
   // Next's internal request URL may use localhost while the browser uses 127.0.0.1.
@@ -105,7 +105,7 @@ export function assertJsonWrite(request: Request) {
   const expectedOrigin=`${url.protocol}//${request.headers.get('host') ?? url.host}`;
   if (origin && origin !== expectedOrigin) throw new AccessError('FORBIDDEN', 'Межсайтовая запись запрещена.');
   const length = Number(request.headers.get('content-length') ?? 0);
-  if (length > 256_000) throw new AccessError('PAYLOAD_TOO_LARGE', 'Команда превышает 256 КБ.', 413);
+  if (length > maxBytes) throw new AccessError('PAYLOAD_TOO_LARGE', `Команда превышает ${maxBytes} байт.`, 413);
 }
 export async function readCommandBody(request: Request): Promise<unknown> {
   assertJsonWrite(request);

@@ -1,3 +1,5 @@
+import type {ManagedSubject,Pin,RunRef} from '../../meridian/src/context';
+
 export type SpecState = 'idea' | 'specified' | 'in_progress' | 'blocked' | 'done' | 'invalidated';
 export type ExecutionState = 'queued' | 'running' | 'waiting_for_human' | 'paused' | 'succeeded' | 'failed' | 'cancelled' | 'skipped';
 export type RequestState = 'pending' | 'resolved' | 'withdrawn' | 'superseded';
@@ -17,8 +19,15 @@ export type SpecRevision = {
 export type Spec = {
   id: string; projectId: string; humanId: string; title: string; state: SpecState;
   activeRevisionId: string | null; revisionIds: string[];
-  origin?: {kind:'lesson';lessonId:string;lessonRevisionId:string}|{kind:'agent_proposal';proposalId:string;proposalRevisionId:string};
+  origin?: {kind:'lesson';lessonId:string;lessonRevisionId:string}|{kind:'agent_proposal';proposalId:string;proposalRevisionId:string}|MeridianSpecOrigin;
   acceptance?: { revisionId: string; evidence: Record<string, string>; actorId: string; at: string };
+};
+export type MeridianSpecOrigin = {
+  kind:'meridian_import';contract:'meridian-work-scope-view';contractVersion:1;
+  snapshotId:string;documentSha256:string;projectId:string;repositoryId:string;providerId:string;workspaceId:string;
+  subjectRef:ManagedSubject;runRef:RunRef;taskSpecificationPin:Pin;contextManifestPin:Pin;
+  criterionBindings:{criterionId:string;sourceCriterionId:string}[];
+  transportVerification:'unverified_import';
 };
 export type Execution = {
   id: string; specId: string; specRevisionId: string; agentId: string; state: ExecutionState;
@@ -90,6 +99,7 @@ type CommandBase = { requestId: string; expectedVersion: number; specId?: string
 type ReportBase = { specId: string; specRevisionId: string; executionId: string; title: string; context: string; flowNodeId?: string };
 export type Command = CommandBase & (
   | { type: 'createSpec'; content: RevisionContent }
+  | { type:'importMeridianScope';rawDocument:string;content:RevisionContent }
   | { type:'createLesson'; content:LessonContent }
   | { type:'reviseLesson'; lessonId:string; content:LessonContent }
   | { type:'publishLesson'; lessonId:string; revisionId:string }

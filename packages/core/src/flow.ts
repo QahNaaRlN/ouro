@@ -1,4 +1,5 @@
 import type { FlowDefinition } from './types';
+import {isWellFormedUnicode} from './unicode';
 
 const invalid=(message:string):never=>{throw Object.assign(new Error(message),{code:'VALIDATION_ERROR'});};
 const record=(value:unknown,label:string,keys:readonly string[]):Record<string,unknown>=>{
@@ -8,6 +9,7 @@ const record=(value:unknown,label:string,keys:readonly string[]):Record<string,u
   return object;
 };
 const text=(value:unknown,label:string,minimum=1,maximum=20_000):string=>{
+  if(typeof value==='string'&&(!isWellFormedUnicode(value)||value.includes('\0')))invalid(`${label}: текст содержит непредставимые символы Unicode или NUL.`);
   if(typeof value!=='string'||value.trim().length<minimum||value.length>maximum)invalid(`${label}: требуется текст от ${minimum} до ${maximum} символов.`);
   return value as string;
 };
