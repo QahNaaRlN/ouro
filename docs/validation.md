@@ -1,6 +1,6 @@
 # Проверка прототипа · 28.10.2026
 
-Исторический отчёт `0.1.0-alpha.1`. Текущие результаты `0.1.0-alpha.2`, включая настоящий MCP HTTP/stdio: [журнал agent-connect](plans/agent-connect.md#итоговая-проверка-28102026).
+Исторический отчёт `0.1.0-alpha.1`. Последующие результаты: [alpha.2 MCP](plans/agent-connect.md#итоговая-проверка-28102026), [alpha.3 Flow](plans/flow-visualization.md), [alpha.4 realtime](plans/live-updates.md), [alpha.5 GitHub](plans/github-evidence.md).
 
 Проверено на Node.js 24.19.0, Next.js 16.4.3, React 19.3.1, PGlite 0.3.16 / PostgreSQL 17.5, системном Chromium.
 

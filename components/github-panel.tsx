@@ -18,7 +18,7 @@ const date=(value:string)=>new Date(value).toLocaleString('ru-RU',{day:'2-digit'
 const repositoryPattern='[A-Za-z0-9][A-Za-z0-9\\-]*/[A-Za-z0-9_.\\-]+';
 const commitUrl=(source:GitHubCommitSource)=>`https://github.com/${source.repositoryFullName.split('/').map(encodeURIComponent).join('/')}/commit/${encodeURIComponent(source.fullSha)}`;
 
-export default function GitHubPanel({state,onSnapshot}:{state:ProjectState;onSnapshot?:(data:unknown)=>void}){
+export default function GitHubPanel({state,onSnapshot}:{state:ProjectState;onSnapshot?:(data:unknown)=>void|Promise<void>}){
   const [info,setInfo]=useState<GitHubInfo|null>(null),[loading,setLoading]=useState(true),[loadError,setLoadError]=useState('');
   const [error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[copied,setCopied]=useState(false);
   const [executionId,setExecutionId]=useState(''),[repository,setRepository]=useState(''),[ref,setRef]=useState('refs/heads/main');
@@ -44,7 +44,7 @@ export default function GitHubPanel({state,onSnapshot}:{state:ProjectState;onSna
     try{
       const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}),body=await response.json();
       if(!response.ok)throw new Error(body.error?.message??'Изменение не принято.');
-      if(body.state)onSnapshot?.(body);
+      if(body.state)await onSnapshot?.(body);
       await reload();return true;
     }catch(e){setError(e instanceof Error?e.message:'Не удалось выполнить действие.');return false;}finally{setBusy(false);}
   };

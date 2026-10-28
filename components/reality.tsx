@@ -5,6 +5,7 @@ import dagre from '@dagrejs/dagre';
 import type { DomainEvent } from '@/packages/core/src/types';
 
 const titles: Record<string,string> = {
+  GitHubBindingCreated:'Привязан репозиторий GitHub',GitHubBindingRevoked:'Отозвана привязка GitHub',
   SpecCreated:'Спека создана', RevisionProposed:'Предложена ревизия', RevisionActivated:'Ревизия активирована',
   ExecutionCreated:'Попытка разрешена',ExecutionResumed:'Продолжение подтверждено',ExecutionStarted:'Исполнение начато',
   DecisionRequested:'Запрос человеку',DecisionResolved:'Решение человека',DecisionDeferred:'Решение отложено',

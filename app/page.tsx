@@ -46,6 +46,7 @@ import {
 import Roadmap, { specLabels, Status } from "@/components/roadmap";
 import { RealityGraph } from "@/components/reality";
 import AgentsPanel, { type AgentRegistration } from "@/components/agents-panel";
+import GitHubPanel from '@/components/github-panel';
 import SpecFlow from "@/components/spec-flow";
 import { StateTransitions } from "@/components/state-transitions";
 import { createProjectSnapshotAdopter, type ProjectSnapshot } from '@/lib/project-snapshot';
@@ -62,7 +63,7 @@ import {
   type FlowDefinition,
 } from "@/packages/core/src";
 
-type View = "roadmap" | "specs" | "decisions" | "history" | "methodology" | "agents";
+type View = "roadmap" | "specs" | "decisions" | "history" | "methodology" | "agents" | "integrations";
 type Modal = "create" | "revision" | "accept" | "dependency" | null;
 type ProjectResponse = { state: ProjectState; cursor: number; storage: string };
 type Payload = Record<string, unknown>;
@@ -102,6 +103,8 @@ const eventLabels: Record<string, string> = {
   DependencyAdded: "Добавлена зависимость",
   BlockerCleared: "Устранение блокера подтверждено",
   RemediationAuthorized: "Разрешено устранение блокера",
+  GitHubBindingCreated: "GitHub привязан к попытке",
+  GitHubBindingRevoked: "Привязка GitHub отозвана",
 };
 function shortDate(value: string) {
   return new Date(value).toLocaleString("ru-RU", {
@@ -180,6 +183,9 @@ export default function Home() {
     }
     return adopted as ProjectResponse;
   }, [adoptSnapshot]);
+  const adoptMutation=async(data:unknown)=>{
+    if((data as {replayed?:boolean})?.replayed)await refresh();else adoptSnapshot(data);
+  };
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -372,6 +378,7 @@ export default function Home() {
     { id: "decisions" as View, label: "Решения", icon: CircleDot },
     { id: "history" as View, label: "История", icon: History },
     { id: "agents" as View, label: "Агенты", icon: Bot },
+    { id: 'integrations' as View, label:'Интеграции',icon:GitBranch },
   ];
   const exportHistory = () => {
     if (!state) return;
@@ -1308,8 +1315,9 @@ export default function Home() {
               )}
               {view === "methodology" && <Methodology />}
               {view === "agents" && <AgentsPanel onAgentsChange={setAgents}/>}
+              {view==='integrations'&&<GitHubPanel state={state} onSnapshot={adoptMutation}/>}
             </main>
-            {view !== 'agents' && <aside className="context-panel">
+            {view !== 'agents' && view!=='integrations' && <aside className="context-panel">
               <div className="context-panel-heading">
                 <span>Требует внимания</span>
                 <span className="attention-counter">{pending.length}</span>
@@ -1493,7 +1501,7 @@ export default function Home() {
                   : "Хранилище…"}
             </span>
             <span className="footer-separator" />
-            <span>0.1.0-alpha.4</span>
+            <span>0.1.0-alpha.5</span>
             <span className="small-tag">PROTOTYPE</span>
           </div>
         </footer>
