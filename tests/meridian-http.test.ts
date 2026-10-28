@@ -57,3 +57,14 @@ test('M03 an unexpected SQL exception is not echoed or logged with imported sour
   assert.equal(logged.length,0);
  }finally{console.error=original;}
 });
+
+test('M06 a pending import cannot check a different human receipt after the browser cookie changes',async()=>{
+ const {createMeridianImportHandler}=await import('../lib/meridian/http');
+ let calls=0;
+ const handler=createMeridianImportHandler({authenticateHuman:()=>human,importScope:async()=>{calls++;throw Object.assign(new Error('absence belongs only to the authenticated actor'),{code:'VERSION_CONFLICT',details:{meridianReceipt:'absent'}});}});
+ const mismatch=await handler(request(input(),{'X-Ouro-Expected-Participant':'previous-human'}));
+ assert.equal(mismatch.status,401);assert.equal(calls,0);
+ const denied=await mismatch.json();assert.equal(denied.error.code,'PARTICIPANT_CHANGED');assert.equal(denied.error.details?.meridianReceipt,undefined);
+ const matching=await handler(request(input(),{'X-Ouro-Expected-Participant':human.id}));
+ assert.equal(matching.status,409);assert.equal(calls,1);assert.equal((await matching.json()).error.details.meridianReceipt,'absent');
+});

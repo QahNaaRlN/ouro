@@ -9,10 +9,11 @@ import './agent-proposals-panel.css';
 
 const statusNames={pending:'Ожидает человека',reviewed:'Рассмотрено человеком',dismissed:'Отклонено человеком',adopted:'Создан черновик спеки'};
 const sourceNames:Record<string,string>={ActionReported:'Действие',ExecutionCreated:'Разрешение попытки',ExecutionStarted:'ACK начала',ExecutionResumed:'ACK продолжения',ExecutionPaused:'ACK остановки',ExecutionCompleted:'Результат попытки',DecisionRequested:'Запрос решения',DecisionResolved:'Решение человека',DecisionApplied:'Подтверждение применения',BlockerCleared:'Устранение Blocker',RoadmapStateChanged:'Состояние дорожной карты',StopRequested:'Запрос остановки',ResumeAuthorized:'Разрешение продолжения'};
-export type ProposalReviewIntentRegistry=Map<string,{body:Record<string,unknown>}>;
-type Props={state:ProjectState;onSnapshot:(data:unknown)=>void|Promise<void>;onOpenSpec?:(id:string)=>void;intents:ProposalReviewIntentRegistry;initialSelection?:{proposalId:string;proposalRevisionId:string}};
+type Pending={actorId:string;body:Record<string,unknown>};
+export type ProposalReviewIntentRegistry=Map<string,Pending>;
+type Props={state:ProjectState;actorId:string;onSnapshot:(data:unknown)=>void|Promise<void>;onOpenSpec?:(id:string)=>void;intents:ProposalReviewIntentRegistry;initialSelection?:{proposalId:string;proposalRevisionId:string}};
 
-export default function AgentProposalsPanel({state,onSnapshot,onOpenSpec,intents,initialSelection}:Props){
+export default function AgentProposalsPanel({state,actorId,onSnapshot,onOpenSpec,intents,initialSelection}:Props){
  const [selectedId,setSelectedId]=useState<string|null>(initialSelection?.proposalId??null),[query,setQuery]=useState('');
  const proposals=state.agentProposals??[],selected=proposals.find(proposal=>proposal.id===selectedId)??proposals.at(-1);
  const visible=proposals.filter(proposal=>{const latest=state.agentProposalRevisions.find(revision=>revision.id===proposal.latestRevisionId);return `${latest?.content.title??''} ${proposal.agentId} ${proposal.specId}`.toLocaleLowerCase().includes(query.toLocaleLowerCase());}).toReversed();
@@ -23,12 +24,12 @@ export default function AgentProposalsPanel({state,onSnapshot,onOpenSpec,intents
     {!visible.length&&<p className="proposal-empty">Предложений пока нет. Попросите назначенного MCP-агента прочитать источники и вызвать ouro.submit_proposal.</p>}
     {visible.map(proposal=>{const latest=state.agentProposalRevisions.find(revision=>revision.id===proposal.latestRevisionId)!;return <button key={proposal.id} className={`proposal-list-item ${proposal.id===selected?.id?'selected':''}`} aria-label={`Открыть предложение ${latest.content.title}`} onClick={()=>setSelectedId(proposal.id)}><span className="proposal-kind">{latest.content.kind==='spec_proposal'?<FilePlus2 size={14}/>:<MessageSquareText size={14}/>} {latest.content.kind==='spec_proposal'?'Новая спека':'Сводка Reality'}</span><strong>{latest.content.title}</strong><span className="proposal-list-meta">v{latest.revision}<span>{statusNames[proposal.state]}</span></span></button>;})}
    </section>
-   {selected?<ProposalDetail key={selected.id} proposal={selected} state={state} onSnapshot={onSnapshot} onOpenSpec={onOpenSpec} intents={intents} initialSelection={initialSelection}/>:<div className="proposal-empty proposal-detail-empty"><Bot size={30}/><p>Здесь появятся источники, интерпретация и решение человека.</p></div>}
+   {selected?<ProposalDetail key={selected.id} proposal={selected} state={state} actorId={actorId} onSnapshot={onSnapshot} onOpenSpec={onOpenSpec} intents={intents} initialSelection={initialSelection}/>:<div className="proposal-empty proposal-detail-empty"><Bot size={30}/><p>Здесь появятся источники, интерпретация и решение человека.</p></div>}
   </div>
  </div>;
 }
 
-function ProposalDetail({proposal,state,onSnapshot,onOpenSpec,intents,initialSelection}:Props&{proposal:AgentProposal}){
+function ProposalDetail({proposal,state,actorId,onSnapshot,onOpenSpec,intents,initialSelection}:Props&{proposal:AgentProposal}){
  const versions=state.agentProposalRevisions.filter(revision=>revision.proposalId===proposal.id),[shownId,setShownId]=useState(initialSelection?.proposalId===proposal.id?initialSelection.proposalRevisionId:proposal.latestRevisionId),shown=versions.find(revision=>revision.id===shownId)??versions.at(-1)!;
  const initial=useRef(shown).current,latest=versions.find(revision=>revision.id===proposal.latestRevisionId)!;
  const spec=state.specs.find(spec=>spec.id===proposal.specId),revision=state.revisions.find(revision=>revision.id===proposal.specRevisionId);
@@ -42,7 +43,7 @@ function ProposalDetail({proposal,state,onSnapshot,onOpenSpec,intents,initialSel
   <section className="proposal-findings" aria-label="Наблюдения и первичные источники"><div className="section-heading"><h3>Наблюдения агента</h3><span className="quiet-label">ТОЧНЫЕ ССЫЛКИ НА ФАКТЫ</span></div>{shown.content.findings.map((finding,index)=><article className="proposal-finding" key={index}><div className="proposal-finding-title"><span>{String(index+1).padStart(2,'0')}</span><p>{finding.text}</p></div><div className="proposal-sources">{finding.sourceEventIds.map(id=><SourceFact key={id} event={state.events.find(event=>event.id===id)!}/>)}</div></article>)}</section>
   <section className="proposal-interpretation"><h3>Интерпретация</h3><p>{shown.content.interpretation}</p><h3>Ограничения вывода</h3><p>{shown.content.limitations}</p><p className="proposal-evidence-note"><ShieldCheck size={14}/>Ссылки проверены на принадлежность исполнению. Смысл вывода проверяет человек.</p></section>
   {shown.content.kind==='spec_proposal'&&<section className="proposal-suggested-expectation"><div className="section-heading"><h3>Предложенное ожидание</h3><span className="quiet-label">ТЕКСТ АГЕНТА · v{shown.revision}</span></div><strong>{shown.content.draft.title}</strong><p>{shown.content.draft.goal}</p><ul>{shown.content.draft.dod.map(criterion=><li key={criterion.id}>{criterion.text}</li>)}</ul>{shown.content.draft.flow&&<ProposalFlowPreview flow={shown.content.draft.flow}/>}</section>}
-  <ProposalReviewForm proposal={proposal} initial={initial} latest={latest} shown={shown} state={state} onSnapshot={onSnapshot} onOpenSpec={onOpenSpec} intents={intents}/>
+  <ProposalReviewForm proposal={proposal} initial={initial} latest={latest} shown={shown} state={state} actorId={actorId} onSnapshot={onSnapshot} onOpenSpec={onOpenSpec} intents={intents}/>
   {proposal.review&&<div className="proposal-review-record"><strong>{statusNames[proposal.state]}</strong><p>Комментарий агенту: {proposal.review.comment}</p><small>Человек {proposal.review.actorId} · v{versions.find(version=>version.id===proposal.review!.revisionId)?.revision??'?'} · {new Date(proposal.review.at).toLocaleString('ru-RU')}</small>{proposal.review.draftSpecId&&<button className="text-btn" onClick={()=>onOpenSpec?.(proposal.review!.draftSpecId!)}>Открыть созданный черновик<ChevronRight size={14}/></button>}</div>}
  </section>;
 }
@@ -52,17 +53,16 @@ function SourceFact({event}:{event:DomainEvent}){
  return <details className="proposal-source"><summary><span>{sourceNames[event.type]??event.type}</span><code>#{event.version}</code><span>{event.actor.name??event.actor.id}</span></summary><div><strong>{String(event.payload.title??sourceNames[event.type]??event.type)}</strong><code>{event.id}</code>{event.specRevisionId&&<small>Ревизия {event.specRevisionId}</small>}{event.payload.evidence!==undefined&&<p>{String(event.payload.evidence)}</p>}{event.payload.simulation===true&&<span className="proposal-source-tag">Учебная симуляция</span>}{source?.kind==='github_commit'&&<span className="proposal-source-tag">GitHub · {source.verificationMethod}</span>}<details><summary>Полная исходная запись</summary><pre>{JSON.stringify(event,null,2)}</pre></details></div></details>;
 }
 
-type Pending={body:Record<string,unknown>};
-function ProposalReviewForm({proposal,initial,latest,shown,state,onSnapshot,onOpenSpec,intents}:Props&{proposal:AgentProposal;initial:AgentProposalRevision;latest:AgentProposalRevision;shown:AgentProposalRevision}){
- const intentKey=`${state.projectId}:${proposal.id}`,held=intents.get(intentKey)?.body;
+function ProposalReviewForm({proposal,initial,latest,shown,state,actorId,onSnapshot,onOpenSpec,intents}:Props&{proposal:AgentProposal;initial:AgentProposalRevision;latest:AgentProposalRevision;shown:AgentProposalRevision}){
+ const intentKey=`${state.projectId}:${proposal.id}`,heldIntent=intents.get(intentKey),held=heldIntent?.body;
  const [content,setContent]=useState<RevisionContent|null>(()=>held?.type==='adoptAgentSpecProposal'?structuredClone(held.content as RevisionContent):initial.content.kind==='spec_proposal'?structuredClone(initial.content.draft):null),[comment,setComment]=useState(typeof held?.comment==='string'?held.comment:''),[derived,setDerived]=useState(held?.sourceSpecId===proposal.specId);
  const [base,setBase]=useState({proposalRevisionId:typeof held?.proposalRevisionId==='string'?held.proposalRevisionId:initial.id,version:typeof held?.expectedVersion==='number'?held.expectedVersion:state.version}),[busy,setBusy]=useState(false),[uncertain,setUncertain]=useState(!!held),[error,setError]=useState(''),[notice,setNotice]=useState('');
- const pending=useRef<Pending|null>(held?{body:held}:null),closed=proposal.state!=='pending',stale=base.proposalRevisionId!==proposal.latestRevisionId,viewingHistory=shown.id!==latest.id,readonly=closed||uncertain||viewingHistory;
+ const pending=useRef<Pending|null>(heldIntent??null),closed=proposal.state!=='pending',stale=base.proposalRevisionId!==proposal.latestRevisionId,viewingHistory=shown.id!==latest.id,readonly=closed||uncertain||viewingHistory;
  const clearIntent=(body:Record<string,unknown>)=>{if(intents.get(intentKey)?.body.requestId===body.requestId)intents.delete(intentKey);pending.current=null;};
- const request=async(body:Record<string,unknown>)=>{
-  if(busy)return;pending.current={body};intents.set(intentKey,{body});setBusy(true);setError('');setNotice('');
+ const request=async(body:Record<string,unknown>,expectedActorId=actorId)=>{
+  if(busy)return;pending.current={actorId:expectedActorId,body};intents.set(intentKey,pending.current);setBusy(true);setError('');setNotice('');
   try{
-   const response=await fetch('/api/commands',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),data=await response.json();
+   const response=await fetch('/api/commands',{method:'POST',headers:{'Content-Type':'application/json','X-Ouro-Expected-Participant':expectedActorId},body:JSON.stringify(body)}),data=await response.json();
    if(!response.ok){
     // Auth/rate failures happen before receipt lookup and cannot settle a
     // previously ambiguous write. A domain conflict follows receipt lookup.
@@ -98,7 +98,7 @@ function ProposalReviewForm({proposal,initial,latest,shown,state,onSnapshot,onOp
   </>}
   <label>Комментарий агенту<textarea aria-label="Комментарий агенту" required rows={2} maxLength={20000} value={comment} readOnly={readonly} disabled={busy} onChange={event=>setComment(event.target.value)}/><small>Будет виден назначенному агенту в исходном исполнении.</small></label>
   {error&&<p className="proposal-error" role="alert">{error}</p>}{notice&&<p className="proposal-success" role="status">{notice}</p>}
-  {uncertain?<div className="proposal-attention" role="status">Результат записи неизвестен. Сначала повторите тот же запрос, чтобы выяснить сохранённый результат.<button type="button" className="btn" disabled={busy} onClick={()=>{if(pending.current)void request(pending.current.body);}}><RefreshCw size={14}/>Повторить сохранение</button></div>:!closed&&<div className="proposal-review-actions"><button className="btn btn-primary" type="submit" disabled={busy||stale||viewingHistory}>{content?<FilePlus2 size={15}/>:<Check size={15}/>} {content?'Создать черновик спеки':'Отметить рассмотренным'}</button><button className="btn" type="button" disabled={busy||stale||viewingHistory||!comment.trim()} onClick={()=>submit('dismissed')}><X size={15}/>Отклонить предложение</button></div>}
+  {uncertain?<div className="proposal-attention" role="status">Результат записи неизвестен. Сначала повторите тот же запрос, чтобы выяснить сохранённый результат.<button type="button" className="btn" disabled={busy} onClick={()=>{if(pending.current)void request(pending.current.body,pending.current.actorId);}}><RefreshCw size={14}/>Повторить сохранение</button></div>:!closed&&<div className="proposal-review-actions"><button className="btn btn-primary" type="submit" disabled={busy||stale||viewingHistory}>{content?<FilePlus2 size={15}/>:<Check size={15}/>} {content?'Создать черновик спеки':'Отметить рассмотренным'}</button><button className="btn" type="button" disabled={busy||stale||viewingHistory||!comment.trim()} onClick={()=>submit('dismissed')}><X size={15}/>Отклонить предложение</button></div>}
  </form>;
 }
 

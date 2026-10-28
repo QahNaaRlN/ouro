@@ -35,3 +35,23 @@ test('C01 explicit Authorization takes precedence and invalid bearer cannot borr
     assert.equal((await authenticatedParticipant(request('ouro_participant=broken','Bearer participant-auth-human-fixture'),PROJECT_ID,AGENT_ID,resolve)).id,'human-token');
   }finally{if(previous===undefined)delete process.env.OURO_HUMAN_TOKEN;else process.env.OURO_HUMAN_TOKEN=previous;}
 });
+
+test('C07 expected participant guards cookie, local-demo and human-token identities before a receipt lookup',async()=>{
+  const previousDemo=process.env.OURO_LOCAL_DEMO,previousHuman=process.env.OURO_HUMAN_TOKEN;
+  process.env.OURO_LOCAL_DEMO='1';process.env.OURO_HUMAN_TOKEN='expected-participant-fixture';
+  try{
+    const cases:[Request,string,Actor?][]=[
+      [request(`ouro_participant=${issueParticipantSession(bob,PROJECT_ID)}`),bob.id,bob],
+      [request(`ouro_session=${issueLocalSession(request(''))}`),'local-human'],
+      [request('','Bearer expected-participant-fixture'),'human-token'],
+    ];
+    for(const [original,id,resolved] of cases){
+      const call=(expected:string)=>{const headers=new Headers(original.headers);headers.set('X-Ouro-Expected-Participant',expected);return authenticatedParticipant(new Request(original.url,{headers}),PROJECT_ID,AGENT_ID,async()=>resolved??null);};
+      await assert.rejects(call(alice.id),error=>error instanceof AccessError&&error.code==='PARTICIPANT_CHANGED'&&error.status===401);
+      assert.equal((await call(id)).id,id);
+    }
+  }finally{
+    if(previousDemo===undefined)delete process.env.OURO_LOCAL_DEMO;else process.env.OURO_LOCAL_DEMO=previousDemo;
+    if(previousHuman===undefined)delete process.env.OURO_HUMAN_TOKEN;else process.env.OURO_HUMAN_TOKEN=previousHuman;
+  }
+});

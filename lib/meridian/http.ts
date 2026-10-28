@@ -1,4 +1,4 @@
-import {AccessError,assertHuman,assertJsonWrite,authenticatedParticipant} from '../auth';
+import {AccessError,assertHuman,assertJsonWrite,authenticatedParticipant,assertExpectedParticipant} from '../auth';
 import {apiError} from '../http';
 import {importMeridianScope,type CommandResult} from '../store';
 import {AGENT_ID,PROJECT_ID,type Actor} from '../../packages/core/src';
@@ -29,6 +29,8 @@ export function createMeridianImportHandler(dependencies:MeridianImportDependenc
  return async(request:Request)=>{
   try{
    const actor=await authenticate(request);assertHuman(actor);
+   // Keep this check for injected authentication adapters as well.
+   assertExpectedParticipant(request,actor);
    const result=await ingest(await readImportBody(request),actor);
    return Response.json(result,{status:201,headers:{'Cache-Control':'no-store'}});
   }catch(error){

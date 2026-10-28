@@ -103,3 +103,23 @@ test('P07 light mobile summary review is attributed and never creates a Lesson, 
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();expect(errors).toEqual([]);
  }finally{await f.client.close();}
 });
+
+test('P07 cross-tab participant changes preserve the original author\'s uncertain adoption receipt',async({page,baseURL})=>{
+ test.setTimeout(90000);const f=await fixture(page,baseURL!);
+ try{
+  const a=await(await page.request.post('/api/participants',{data:{name:`Proposal author A ${Date.now()}`}})).json(),b=await(await page.request.post('/api/participants',{data:{name:`Proposal author B ${Date.now()}`}})).json();
+  expect(a.participant).toBeTruthy();expect(b.participant).toBeTruthy();
+  expect((await page.request.post('/api/participants/session',{data:{credential:a.credential}})).ok()).toBeTruthy();
+  await f.open();const form=page.getByRole('form',{name:'Рассмотрение предложения'}),title=form.getByRole('textbox',{name:'Название новой спеки',exact:true});
+  const adoptedTitle=`Исходный автор сохраняется ${Date.now()}`;await title.fill(adoptedTitle);await form.getByRole('textbox',{name:'Комментарий агенту',exact:true}).fill('Автор А проверил исходные факты.');
+  let lost=true;const requests:unknown[]=[];
+  await page.route('**/api/commands',async route=>{const body=route.request().postDataJSON();if(body.type!=='adoptAgentSpecProposal'){await route.continue();return;}requests.push(body);if(lost){lost=false;const response=await route.fetch();expect(response.ok()).toBeTruthy();await route.abort('failed');}else await route.continue();});
+  await form.getByRole('button',{name:'Создать черновик спеки',exact:true}).click();await expect(form).toContainText('Результат записи неизвестен');
+  expect((await page.request.post('/api/participants/session',{data:{credential:b.credential}})).ok()).toBeTruthy();
+  const switched=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/commands'&&response.request().postDataJSON()?.type==='adoptAgentSpecProposal');await form.getByRole('button',{name:'Повторить сохранение',exact:true}).click();const denied=await switched;
+  expect(denied.status()).toBe(401);expect((await denied.json()).error.code).toBe('PARTICIPANT_CHANGED');await expect(form).toContainText('Результат записи неизвестен');await expect(title).toHaveJSProperty('readOnly',true);
+  expect((await page.request.post('/api/participants/session',{data:{credential:a.credential}})).ok()).toBeTruthy();
+  const recovered=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/commands'&&response.request().postDataJSON()?.type==='adoptAgentSpecProposal');await form.getByRole('button',{name:'Повторить сохранение',exact:true}).click();const replay=await recovered;expect(replay.ok(),await replay.text()).toBeTruthy();expect((await replay.json()).replayed).toBe(true);
+  await expect(page.getByRole('heading',{name:adoptedTitle,exact:true})).toBeVisible();const current=await state(page),drafts=current.specs.filter(spec=>spec.origin?.kind==='agent_proposal'&&spec.origin.proposalId===f.proposal.id);expect(drafts).toHaveLength(1);expect(current.events.find(event=>event.type==='SpecCreated'&&event.specId===drafts[0].id)!.actor.id).toBe(a.participant.id);expect(requests).toHaveLength(3);expect(requests[1]).toEqual(requests[0]);expect(requests[2]).toEqual(requests[0]);
+ }finally{await f.client.close();}
+});

@@ -43,6 +43,14 @@ export function authenticatedActor(request: Request, projectId: string, agentId:
 export function assertHuman(actor: Actor) {
   if (actor.kind !== 'human') throw new AccessError('FORBIDDEN', 'Решение и управление принадлежат человеку.');
 }
+/** Client expectation only: authority always comes from the authenticated actor.
+ * Shared cookies can change in another tab while an earlier write is uncertain;
+ * a different author's missing receipt cannot resolve that original outcome.
+ */
+export function assertExpectedParticipant(request:Request,actor:Actor):void{
+  const expected=request.headers.get('X-Ouro-Expected-Participant');
+  if(actor.kind==='human'&&expected!==null&&expected!==actor.id)throw new AccessError('PARTICIPANT_CHANGED','Участник сессии изменился. Вернитесь к исходному участнику для повтора этой операции.',401);
+}
 
 export type ParticipantIdentityResolver=(id:string)=>Promise<Actor|null>;
 export function participantCookie(request:Request):string|undefined{
@@ -61,10 +69,11 @@ export async function authenticatedParticipant(request:Request,projectId:string,
   if(request.headers.has('authorization')){
     if(!request.headers.get('authorization')?.startsWith('Bearer '))throw new AccessError('UNAUTHENTICATED','Недействительный Authorization.',401);
     const headers=new Headers(request.headers);headers.delete('cookie');
-    return authenticatedActor(new Request(request.url,{headers}),projectId,agentId);
+    const actor=authenticatedActor(new Request(request.url,{headers}),projectId,agentId);
+    assertExpectedParticipant(request,actor);return actor;
   }
   const cookie=participantCookie(request);
-  if(cookie===undefined)return authenticatedActor(request,projectId,agentId);
+  if(cookie===undefined){const actor=authenticatedActor(request,projectId,agentId);assertExpectedParticipant(request,actor);return actor;}
   const denied=()=>new AccessError('UNAUTHENTICATED','Сессия участника недействительна или отозвана. Войдите повторно.',401);
   if(!cookie||cookie.length>2048)throw denied();
   const parts=cookie.split('.');if(parts.length!==2||!/^[A-Za-z0-9_-]+$/.test(parts[0])||!/^[a-f0-9]{64}$/.test(parts[1]))throw denied();
@@ -76,7 +85,7 @@ export async function authenticatedParticipant(request:Request,projectId:string,
   const resolve=resolveIdentity??(async id=>(await import('./store')).resolveParticipantIdentity(id));
   const actor=await resolve(data.participantId);
   if(!actor||actor.kind!=='human'||actor.id!==data.participantId||!actor.projectIds.includes(projectId))throw denied();
-  return actor;
+  assertExpectedParticipant(request,actor);return actor;
 }
 
 /** MCP uses an explicit agent credential; browser cookies never grant this role. */

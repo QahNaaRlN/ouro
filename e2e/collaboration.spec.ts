@@ -141,3 +141,39 @@ test('C05 delayed pre-publication GET cannot reopen the editor after publication
     await expect(editor(f.pa)).toContainText('Черновик опубликован');await expect(editor(f.pa).getByRole('button',{name:'Опубликовать новую ревизию',exact:true})).toBeDisabled();
   }finally{release();await f.ca.close();await f.cb.close();}
 });
+
+test('C05 a cross-tab participant switch cannot repeat another author\'s committed create or publication',async({page,browser,baseURL})=>{
+  test.setTimeout(90000);const f=await setup(page,browser,baseURL);
+  try{
+    const aCookie=(await f.ca.cookies()).find(cookie=>cookie.name==='ouro_participant')!,bCookie=(await f.cb.cookies()).find(cookie=>cookie.name==='ouro_participant')!;
+    let createdId='',lostCreate=true;const createRequests:unknown[]=[];
+    await f.pa.getByRole('combobox',{name:'Спецификация для черновика',exact:true}).selectOption(f.spec.id);
+    await f.pa.route('**/api/drafts',async route=>{
+      if(route.request().method()!=='POST'){await route.continue();return;}
+      createRequests.push(route.request().postDataJSON());
+      if(lostCreate){lostCreate=false;const response=await route.fetch();expect(response.ok()).toBeTruthy();createdId=(await response.json()).draft.id;await route.abort('failed');}else await route.continue();
+    });
+    await f.pa.getByRole('button',{name:'Создать общий черновик',exact:true}).click();await expect(f.pa.getByRole('button',{name:'Проверить создание черновика',exact:true})).toBeEnabled();
+    await f.ca.addCookies([bCookie]);
+    const deniedCreate=f.pa.waitForResponse(response=>new URL(response.url()).pathname==='/api/drafts'&&response.request().method()==='POST');
+    await f.pa.getByRole('button',{name:'Проверить создание черновика',exact:true}).click();const denied=await deniedCreate;
+    expect(denied.status()).toBe(401);expect((await denied.json()).error.code).toBe('PARTICIPANT_CHANGED');
+    await expect(f.pa.getByRole('combobox',{name:'Спецификация для черновика',exact:true})).toBeDisabled();
+    expect((await(await f.pa.request.get(`/api/drafts?specId=${f.spec.id}`)).json()).drafts).toHaveLength(1);
+    await f.ca.addCookies([aCookie]);await f.pa.getByRole('button',{name:'Проверить создание черновика',exact:true}).click();
+    await expect(editor(f.pa)).toHaveAttribute('data-draft-id',createdId);await saved(f.pa);expect(createRequests).toHaveLength(3);expect(createRequests[1]).toEqual(createRequests[0]);expect(createRequests[2]).toEqual(createRequests[0]);
+    const beforeUpdate=(await(await f.pa.request.get(`/api/drafts/${createdId}`)).json()).draft;
+    await f.ca.addCookies([bCookie]);const deniedUpdate=f.pa.waitForResponse(response=>new URL(response.url()).pathname===`/api/drafts/${createdId}/updates`&&response.request().method()==='POST');
+    const localGoal='Правка исходного участника остаётся в его очереди';await goal(f.pa).fill(localGoal);const rejectedUpdate=await deniedUpdate;expect(rejectedUpdate.status()).toBe(401);expect((await rejectedUpdate.json()).error.code).toBe('PARTICIPANT_CHANGED');
+    await expect(goal(f.pa)).toHaveValue(localGoal);await expect(goal(f.pa)).toHaveJSProperty('readOnly',true);expect((await(await f.pa.request.get(`/api/drafts/${createdId}`)).json()).draft.version).toBe(beforeUpdate.version);
+    await f.ca.addCookies([aCookie]);await editor(f.pa).getByRole('button',{name:'Синхронизировать',exact:true}).click();await saved(f.pa);expect((await(await f.pa.request.get(`/api/drafts/${createdId}`)).json()).draft.content.goal).toBe(localGoal);expect((await project(page.request)).version).toBe(f.cursor);
+    let lostPublish=true;const publishRequests:unknown[]=[];
+    await f.pa.route(`**/api/drafts/${createdId}/publish`,async route=>{publishRequests.push(route.request().postDataJSON());if(lostPublish){lostPublish=false;const response=await route.fetch();expect(response.ok()).toBeTruthy();await route.abort('failed');}else await route.continue();});
+    await editor(f.pa).getByRole('button',{name:'Опубликовать новую ревизию',exact:true}).click();await expect(editor(f.pa).getByRole('button',{name:'Проверить публикацию',exact:true})).toBeEnabled();
+    await f.ca.addCookies([bCookie]);const deniedPublish=f.pa.waitForResponse(response=>new URL(response.url()).pathname===`/api/drafts/${createdId}/publish`&&response.request().method()==='POST');
+    await editor(f.pa).getByRole('button',{name:'Проверить публикацию',exact:true}).click();const rejected=await deniedPublish;expect(rejected.status()).toBe(401);expect((await rejected.json()).error.code).toBe('PARTICIPANT_CHANGED');
+    await expect(editor(f.pa).getByRole('button',{name:'Проверить публикацию',exact:true})).toBeEnabled();
+    await f.ca.addCookies([aCookie]);const replayed=f.pa.waitForResponse(response=>new URL(response.url()).pathname===`/api/drafts/${createdId}/publish`&&response.request().method()==='POST');await editor(f.pa).getByRole('button',{name:'Проверить публикацию',exact:true}).click();const response=await replayed;expect(response.ok(),await response.text()).toBeTruthy();expect((await response.json()).replayed).toBe(true);
+    const revisions=(await project(page.request)).events.filter(event=>event.type==='RevisionProposed'&&event.specId===f.spec.id);expect(revisions).toHaveLength(1);expect(revisions[0].actor.id).toBe(f.a.id);expect(publishRequests).toHaveLength(3);expect(publishRequests[1]).toEqual(publishRequests[0]);expect(publishRequests[2]).toEqual(publishRequests[0]);
+  }finally{await f.ca.close();await f.cb.close();}
+});

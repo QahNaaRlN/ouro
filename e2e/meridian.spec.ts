@@ -148,3 +148,51 @@ test('M05 a proven absent receipt releases an uncommitted import only for explic
   expect(result.state.specs.find((spec:{title:string})=>spec.title===revisedTitle).activeRevisionId).toBeNull();
   expect(await guarded()).toBe(false);
 });
+
+test('M06 a named participant owns import receipts across cookie switches; revocation cannot fall back to demo',async({page,browser,baseURL})=>{
+  test.setTimeout(60000);
+  await page.goto('/');await expect(page.getByRole('heading',{name:/^Дорожная карта/})).toBeVisible();
+  const createdA=await page.request.post('/api/participants',{data:{name:`Meridian Alice ${crypto.randomUUID()}`}}),createdB=await page.request.post('/api/participants',{data:{name:`Meridian Boris ${crypto.randomUUID()}`}});
+  expect(createdA.ok()).toBeTruthy();expect(createdB.ok()).toBeTruthy();
+  const a=await createdA.json(),b=await createdB.json(),context=await browser.newContext({baseURL});
+  try{
+    const participant=await context.newPage();
+    const login=async(credential:string)=>{const response=await context.request.post('/api/participants/session',{data:{credential}});expect(response.ok(),await response.text()).toBeTruthy();};
+    await login(a.credential);await openImport(participant);await loadFile(participant);
+    const panel=importRegion(participant),title=`Named Meridian ${crypto.randomUUID()}`;
+    await panel.getByRole('textbox',{name:'Название черновика',exact:true}).fill(title);
+    let committedId='';const sent:unknown[]=[];
+    await participant.route('**/api/meridian/import',async route=>{
+      sent.push(route.request().postDataJSON());
+      if(sent.length===1){const response=await route.fetch(),body=await response.json();expect(response.ok()).toBeTruthy();const created=body.events.find((event:{type:string})=>event.type==='SpecCreated');expect(created.actor.id).toBe(a.participant.id);committedId=created.specId;await route.abort('failed');}
+      else await route.continue();
+    });
+    await panel.getByRole('button',{name:'Создать черновик спеки',exact:true}).click();
+    await expect(panel.getByRole('alert')).toContainText('не подтверждён');
+    // A different tab changes the shared cookie while this Home still belongs to A.
+    await login(b.credential);
+    const rejected=participant.waitForResponse(response=>response.url().endsWith('/api/meridian/import')&&response.request().method()==='POST');
+    await panel.getByRole('button',{name:'Повторить тот же импорт',exact:true}).click();
+    const mismatch=await rejected,denied=await mismatch.json();
+    expect(mismatch.status()).toBe(401);expect(denied.error.code).toBe('PARTICIPANT_CHANGED');expect(denied.error.details?.meridianReceipt).toBeUndefined();
+    await expect(panel.getByRole('textbox',{name:'Название черновика',exact:true})).toHaveJSProperty('readOnly',true);
+    await participant.getByRole('button',{name:'История',exact:true}).click();
+    await participant.getByRole('spinbutton',{name:'Исторический cursor',exact:true}).fill('0');
+    await participant.getByRole('button',{name:'Открыть состояние на cursor',exact:true}).click();
+    await expect(participant.getByRole('region',{name:'Историческое состояние',exact:true})).toBeVisible();
+    await participant.getByRole('button',{name:'Вернуться к текущей работе',exact:true}).click();
+    await participant.getByRole('button',{name:'Интеграции',exact:true}).click();
+    await participant.getByRole('button',{name:'Meridian',exact:true}).click();
+    await expect(panel.getByRole('textbox',{name:'Название черновика',exact:true})).toHaveValue(title);
+    await expect(panel.getByRole('textbox',{name:'Название черновика',exact:true})).toHaveJSProperty('readOnly',true);
+    await login(a.credential);
+    await panel.getByRole('button',{name:'Повторить тот же импорт',exact:true}).click();
+    await expect(participant.getByRole('heading',{name:title,exact:true})).toBeVisible();
+    expect(sent).toHaveLength(3);expect(sent[1]).toEqual(sent[0]);expect(sent[2]).toEqual(sent[0]);
+    const before=(await(await page.request.get('/api/project')).json()).state;
+    expect(before.specs.filter((spec:{title:string})=>spec.title===title)).toHaveLength(1);expect(before.specs.find((spec:{title:string})=>spec.title===title).id).toBe(committedId);
+    const revoke=await page.request.post(`/api/participants/${a.participant.id}/revoke`,{data:{}});expect(revoke.ok(),await revoke.text()).toBeTruthy();
+    const blocked=await context.request.post('/api/meridian/import',{headers:{'X-Ouro-Expected-Participant':a.participant.id},data:sent[0]});expect(blocked.status()).toBe(401);
+    expect((await(await page.request.get('/api/project')).json()).state.version).toBe(before.version);
+  }finally{await context.close();}
+});

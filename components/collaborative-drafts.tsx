@@ -12,8 +12,8 @@ import { readCollabIntent,saveCollabIntent,clearCollabIntent,definitiveIntentFai
 import './collaborative-drafts.css';
 
 const names:Record<DraftTextField,string>={title:'Название черновика',goal:'Цель черновика',constraints:'Ограничения черновика',assumptions:'Предположения черновика',risks:'Риски черновика',inputs:'Входы черновика',comment:'Комментарий черновика'};
-async function requestJSON(url:string,body?:unknown){
-  const response=await fetch(url,body===undefined?{cache:'no-store'}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+async function requestJSON(url:string,body?:unknown,expectedActorId?:string){
+  const response=await fetch(url,body===undefined?{cache:'no-store'}:{method:'POST',headers:{'Content-Type':'application/json',...(expectedActorId?{'X-Ouro-Expected-Participant':expectedActorId}:{})},body:JSON.stringify(body)});
   let data;try{data=await response.json();}catch{throw Object.assign(new Error('Ответ сервера не подтверждён. Проверьте прежний запрос.'),{code:'INVALID_RESPONSE',status:response.status});}
   if(!response.ok)throw Object.assign(new Error(data.error?.message??'Операция не подтверждена.'),{code:data.error?.code,status:response.status});return data;
 }
@@ -41,7 +41,7 @@ export default function CollaborativeDraftsPanel({state,actorId,onSnapshot,onOpe
     try{
       if(intent.actorId!==actorId)throw new Error('Войдите как участник, отправивший исходный запрос.');
       saveCollabIntent(state.projectId,'create',intent);
-      const body=await requestJSON('/api/drafts',intent.request);
+      const body=await requestJSON('/api/drafts',intent.request,intent.actorId);
       if(!body.draft||typeof body.draft.id!=='string'||body.draft.specId!==intent.request.specId||body.draft.baseRevisionId!==intent.request.baseRevisionId||body.draft.createdBy!==intent.actorId)throw new Error('Полученный черновик не подтверждает исходный запрос. Повторите его проверку.');
       forgetCreate(intent);setDenied(false);setSelected(body.draft);await reload();
     }catch(e){if(definitiveIntentFailure(e))forgetCreate(intent);if([401,403].includes((e as {status?:number}).status??0))setDenied(true);setError((e as Error).message);}finally{setBusy(false);}
@@ -59,7 +59,7 @@ export default function CollaborativeDraftsPanel({state,actorId,onSnapshot,onOpe
 
 type PendingUpdate={updateId:string;clientId:string;updateBase64:string};
 function SharedEditor({initial,state,actorId,onSnapshot,onOpenSpec,onPendingChange}:{initial:CollaborativeDraft;state:ProjectState;actorId:string;onSnapshot:(value:unknown)=>void|Promise<void>;onOpenSpec?:(id:string)=>void;onPendingChange:(value:boolean)=>void}){
-  const [doc]=useState(()=>loadDraftDocument(initial.stateUpdate)),[clientId]=useState(()=>crypto.randomUUID());
+  const [doc]=useState(()=>loadDraftDocument(initial.stateUpdate)),[clientId]=useState(()=>crypto.randomUUID()),[editorActorId]=useState(actorId);
   const [head,setHead]=useState(initial),[render,setRender]=useState(0),[pending,setPending]=useState(0),[status,setStatus]=useState<'connecting'|'saved'|'pending'|'offline'|'conflict'|'denied'>('connecting');
   const [storedPublish]=useState(()=>readCollabIntent(state.projectId,'publish',initial.id));
   const [error,setError]=useState(''),[notice,setNotice]=useState(''),[publishing,setPublishing]=useState(false),[projectBase,setProjectBase]=useState(storedPublish?.request.expectedVersion??state.version),[publishIntent,setPublishIntent]=useState(storedPublish),[intentDenied,setIntentDenied]=useState(false);
@@ -92,7 +92,7 @@ function SharedEditor({initial,state,actorId,onSnapshot,onOpenSpec,onPendingChan
         if(rejectedUpdate.current){setStatus('conflict');return;}
         if(headRef.current.publishedRevisionId&&queue.current.length){setStatus('conflict');setError('Другой участник уже опубликовал черновик. Локальные изменения не приняты; экспортируйте их для нового черновика.');return;}
         while(queue.current.length&&alive.current){
-          const item=queue.current[0],body=await requestJSON(`/api/drafts/${encodeURIComponent(initial.id)}/updates`,item);if(!alive.current)return;
+          const item=queue.current[0],body=await requestJSON(`/api/drafts/${encodeURIComponent(initial.id)}/updates`,item,editorActorId);if(!alive.current)return;
           if(queue.current[0]?.updateId===item.updateId)queue.current.shift();merge(body.draft);announce();
         }
         if(alive.current){setStatus(queue.current.length||headRef.current.hasPendingUpdates?'pending':'saved');setError(headRef.current.hasPendingUpdates?'Принятые изменения ожидают связанных updates. Публикация доступна после их получения.':'');}
@@ -120,12 +120,12 @@ function SharedEditor({initial,state,actorId,onSnapshot,onOpenSpec,onPendingChan
         const shown=headRef.current;await sync();
         if(queue.current.length||headRef.current.hasPendingUpdates)throw new Error('Сначала отправьте локальные и недостающие связанные изменения.');
         if(shown.version!==headRef.current.version||shown.contentHash!==headRef.current.contentHash)throw new Error('Текст изменился после нажатия. Проверьте новую версию и опубликуйте повторно.');
-        intent={actorId,request:{requestId:crypto.randomUUID(),expectedVersion:projectBase,draftVersion:shown.version,contentHash:shown.contentHash,baseLatestRevisionId:initial.baseRevisionId}};
+        intent={actorId:editorActorId,request:{requestId:crypto.randomUUID(),expectedVersion:projectBase,draftVersion:shown.version,contentHash:shown.contentHash,baseLatestRevisionId:initial.baseRevisionId}};
         pendingPublish.current=intent;setPublishIntent(intent);announce();
       }
       if(intent.actorId!==actorId)throw new Error('Войдите как участник, отправивший исходную публикацию.');
       saveCollabIntent(state.projectId,'publish',intent,initial.id);
-      const body=await requestJSON(`/api/drafts/${encodeURIComponent(initial.id)}/publish`,intent.request);if(!alive.current)return;
+      const body=await requestJSON(`/api/drafts/${encodeURIComponent(initial.id)}/publish`,intent.request,intent.actorId);if(!alive.current)return;
       await onSnapshot(body);if(!alive.current)return;merge(body.draft);forget();setNotice('Новая ревизия предложена. Активация и разрешение исполнения выполняются отдельно.');
     }catch(e){if(definitiveIntentFailure(e))forget();const code=(e as {code?:string}).code;if([401,403].includes((e as {status?:number}).status??0)){setStatus('denied');setIntentDenied(true);}if(code==='DRAFT_HISTORY_CONFLICT'){rejectedUpdate.current=true;setStatus('conflict');}setError((e as Error).message);}finally{if(alive.current)setPublishing(false);}
   };

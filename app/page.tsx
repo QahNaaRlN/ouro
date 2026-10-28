@@ -1406,7 +1406,7 @@ export default function Home() {
               {view==='impact'&&<ImpactPanel state={state}/>}
               {view==='participants'&&<ParticipantsPanel/>}
               {view==='drafts'&&<CollaborativeDraftsPanel state={state} actorId={identity?.id??'local-human'} onSnapshot={adoptMutation} onPendingChange={setSharedPending} onOpenSpec={id=>{pick(id);setView('specs');}}/>}
-              {view==='proposals'&&<AgentProposalsPanel state={state} onSnapshot={adoptMutation} intents={proposalIntents} initialSelection={proposalFocus} onOpenSpec={id=>{pick(id);setView('specs');setDetailTab('expectation');}}/>}
+              {view==='proposals'&&<AgentProposalsPanel state={state} actorId={identity?.id??'unauthenticated'} onSnapshot={adoptMutation} intents={proposalIntents} initialSelection={proposalFocus} onOpenSpec={id=>{pick(id);setView('specs');setDetailTab('expectation');}}/>}
               </>}
             </main>
             {historicalCursor===null && view !== 'agents' && view!=='integrations' && view!=='lessons' && view!=='impact' && view!=='participants' && view!=='drafts' && view!=='proposals' && <aside className="context-panel">
@@ -2744,8 +2744,9 @@ function Methodology() {
         <h3>Границы прототипа</h3>
         <p>
           MCP-совместимые агенты подключаются через stdio или Streamable HTTP;
-          симулятор доступен отдельно для учебных попыток. Интеграция Meridian и
-          полноценный SSO остаются следующим этапом. Структура интерфейса основана на
+          симулятор доступен отдельно для учебных попыток. Контекст Meridian
+          загружается из JSON; нативный мост и SSO остаются отдельным этапом.
+          Структура интерфейса основана на
           Ouro.pen, визуальные токены — на Meridian в Figma. Разобранные
           источники, компромиссы и критерии проверки находятся в документации
           репозитория.

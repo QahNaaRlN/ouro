@@ -16,6 +16,7 @@
 - Сохраняется неизменяемое происхождение новой Spec: kind meridian_import, contract/version, snapshot ID, document SHA256, project/repository/provider/workspace, subject/run/spec/context pins, transportVerification unverified_import. Полный исходный JSON сохраняется в append-only факте; digest можно воспроизвести.
 - Контент черновика включает goal, initial/target context, constraints, required DoD с verification и исходными external criterion IDs в provenance. Mapping виден до записи; человек может изменить поля без подмены исходного документа. Непригодный для Spec контент явно отклоняется, не обрезается молча.
 - Устойчивые requestId/body сохраняются при потере ответа. Receipt идёт до expectedVersion, SQL append/revision/outbox/receipt атомарны. Успех выбирает точный SpecCreated ID из receipt.
+- При интеграции с участниками панель фиксирует ID исходного автора в `X-Ouro-Expected-Participant`; сервер сверяет его с аутентифицированным автором до receipt lookup. Смена общей cookie в другой вкладке не позволяет проверить отсутствие чужой квитанции и снять неопределённость исходного импорта. Header не является credential. RAM-пакет остаётся закрытым до возврата исходного участника и получения его квитанции.
 - Статические токены light/dark сверяются с реальным workbench-tokens.css; адаптер принимает только enum темы. Standalone использует явный выбор пользователя. Автоматическая синхронизация с несуществующим host connection не заявляется.
 
 ## Приёмка/TDD

@@ -55,7 +55,7 @@ export default function MeridianPanel({state,onSnapshot,onOpenSpec,theme,pending
     const wasUncertain=uncertain;
     let definitiveRejection=false,confirmedNoReceipt=false;
     try{
-      const response=await fetch('/api/meridian/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      const response=await fetch('/api/meridian/import',{method:'POST',headers:{'Content-Type':'application/json','X-Ouro-Expected-Participant':participantKey},body:JSON.stringify(body)});
       const result=await response.json();
       if(!response.ok){
         definitiveRejection=response.status>=400&&response.status<500;
