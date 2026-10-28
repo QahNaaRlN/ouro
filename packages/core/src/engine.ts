@@ -1,9 +1,10 @@
 import { findCycle } from './graph';
 import { validateFlowDefinition as assertFlowDefinition } from './flow';
-import type { Actor, Command, DecisionRequest, DomainEvent, Execution, FlowDefinition, FlowNodeKind, ProjectState, RevisionContent, Spec, SpecRevision } from './types';
+import type { Actor, Command, DecisionRequest, DomainEvent, Execution, FlowDefinition, FlowNodeKind, GitHubBinding, GitHubCommitSource, ProjectState, RevisionContent, Spec, SpecRevision } from './types';
 
 export const PROJECT_ID = '6c7c62dc-694c-4c7b-9cb1-d9e605164001';
 export const AGENT_ID = 'a8f5f167-6e7a-4d18-8d2e-88466c165001';
+export const GITHUB_SERVICE_ID = 'ouro-github-webhook';
 export class DomainError extends Error {
   constructor(public code: string, message: string, public details?: Record<string, unknown>) { super(message); this.name = 'DomainError'; }
 }
@@ -21,7 +22,7 @@ export function validateFlowDefinition(value:unknown):asserts value is FlowDefin
   }
 }
 export function emptyState(projectId = PROJECT_ID): ProjectState {
-  return { projectId, version: 0, roadmap: { id: '7fa3e5d0-e946-4684-9a1a-540eaa334001', title: 'Ouro · Human View', goal: 'От ожидания к проверяемому результату', state: 'active' }, specs: [], revisions: [], executions: [], requests: [], dependencies: [], events: [] };
+  return { projectId, version: 0, roadmap: { id: '7fa3e5d0-e946-4684-9a1a-540eaa334001', title: 'Ouro · Human View', goal: 'От ожидания к проверяемому результату', state: 'active' }, specs: [], revisions: [], executions: [], requests: [], dependencies: [], events: [],githubBindings:[] };
 }
 
 /** Deterministic projection. Authoritative events and historical revisions are never updated. */
@@ -103,6 +104,11 @@ export function replay(events: readonly DomainEvent[], projectId = PROJECT_ID): 
         break;
       }
       case 'ActionReported': break;
+      case 'GitHubBindingCreated': state.githubBindings.push(p.binding as GitHubBinding);break;
+      case 'GitHubBindingRevoked': {
+        const binding=state.githubBindings.find(binding=>binding.id===p.bindingId)!;
+        binding.revokedAt=event.occurredAt;binding.revokedBy=event.actor.id;break;
+      }
       default: fail('INVALID_EVENT_STREAM', `Неизвестный тип события: ${event.type}`);
     }
     state.version = event.version; state.events.push(copy(event));
@@ -207,6 +213,7 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
       emit('ExecutionCreated', { execution }, context(execution)); break;
     }
     case 'reportAction': case 'reportQuestion': case 'reportFork': case 'reportBlocker': {
+      if('source' in command)fail('FORBIDDEN','Проверенный внешний источник добавляет только серверный адаптер.');
       const execution = getExecution(command.executionId); agent(execution);
       if (execution.specId !== command.specId || execution.specRevisionId !== command.specRevisionId) fail('REVISION_CONFLICT', 'Отчёт не соответствует контракту попытки');
       if(command.flowNodeId!==undefined){
@@ -365,6 +372,30 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
       if (command.state === 'active' && !state.specs.length) fail('INVALID_TRANSITION', 'Дорожная карта должна содержать спецификацию');
       if (command.state === 'archived' && state.executions.some(e => !terminal.has(e.state))) fail('INVALID_TRANSITION', 'Нужно завершить все попытки перед архивацией');
       emit('RoadmapStateChanged', { state: command.state }); break;
+    }
+    case 'createGitHubBinding': {
+      human();const execution=getExecution(command.executionId);
+      if(!Number.isSafeInteger(command.repositoryId)||command.repositoryId<1||typeof command.repositoryFullName!=='string'||!/^[-\w.]+\/[-\w.]+$/.test(command.repositoryFullName)||command.repositoryFullName.split('/').some(part=>['.','..'].includes(part)))fail('VALIDATION_ERROR','Нужен проверенный репозиторий GitHub.');
+      if(typeof command.ref!=='string'||!command.ref.startsWith('refs/heads/')||command.ref.length>250||/[\s~^:?*\[\\]/.test(command.ref)||command.ref.includes('..')||command.ref.includes('@{')||command.ref.endsWith('/')||command.ref.endsWith('.')||command.ref.endsWith('.lock')||command.ref==='refs/heads/')fail('VALIDATION_ERROR','Нужна полная ссылка refs/heads/<ветка>.');
+      if(state.githubBindings.some(binding=>!binding.revokedAt&&binding.repositoryId===command.repositoryId&&binding.ref===command.ref))fail('BINDING_CONFLICT','Репозиторий и ветка уже связаны с разрешённой попыткой.');
+      const binding:GitHubBinding={id:id(),projectId:state.projectId,executionId:execution.id,specId:execution.specId,specRevisionId:execution.specRevisionId,repositoryId:command.repositoryId,repositoryFullName:command.repositoryFullName,ref:command.ref,createdAt:now,createdBy:actor.id};
+      emit('GitHubBindingCreated',{binding},context(execution));break;
+    }
+    case 'revokeGitHubBinding': {
+      human();const binding=state.githubBindings.find(binding=>binding.id===command.bindingId)??fail('NOT_FOUND','Подключение GitHub не найдено.');
+      if(binding.revokedAt)fail('BINDING_REVOKED','Подключение уже отозвано.');
+      emit('GitHubBindingRevoked',{bindingId:binding.id},{specId:binding.specId,specRevisionId:binding.specRevisionId,executionId:binding.executionId});break;
+    }
+    case 'recordGitHubCommit': {
+      if(actor.kind!=='service'||actor.id!==GITHUB_SERVICE_ID)fail('FORBIDDEN','Проверенный коммит регистрирует только серверный GitHub-адаптер.');
+      const binding=state.githubBindings.find(binding=>binding.id===command.bindingId)??fail('NOT_FOUND','Подключение GitHub не найдено.');
+      if(binding.revokedAt)fail('BINDING_REVOKED','Подключение GitHub отозвано.');
+      const commit=command.commit;
+      if(!commit||commit.repositoryId!==binding.repositoryId||typeof commit.repositoryFullName!=='string'||!/^[-\w.]+\/[-\w.]+$/.test(commit.repositoryFullName)||!commit.fullSha||!/^[a-f0-9]{40}$/.test(commit.fullSha)||commit.url!==`https://github.com/${commit.repositoryFullName}/commit/${commit.fullSha}`||commit.verificationMethod!=='github-api-sha'||!Number.isFinite(Date.parse(commit.verifiedAt)))fail('VERIFICATION_FAILED','GitHub API не подтвердил ожидаемый репозиторий и полный SHA.');
+      text(commit.title,'Описание коммита');text(command.deliveryId,'ID доставки');
+      if(command.deliveryId.length>200||!/^[a-f0-9]{64}$/.test(command.payloadDigest))fail('VALIDATION_ERROR','Некорректные метаданные доставки GitHub.');
+      const source:GitHubCommitSource={kind:'github_commit',bindingId:binding.id,repositoryId:binding.repositoryId,repositoryFullName:commit.repositoryFullName,ref:binding.ref,fullSha:commit.fullSha,url:commit.url,deliveryId:command.deliveryId,payloadDigest:command.payloadDigest,verifiedAt:commit.verifiedAt,verificationMethod:'github-api-sha'};
+      emit('ActionReported',{actionId:`github:${binding.id}:${commit.fullSha}`,phase:'completed',title:commit.title,context:`GitHub commit в ${binding.ref}. Подтверждён объект коммита, а не качество кода или DoD.`,evidence:commit.url,historicalContext:getSpec(binding.specId).activeRevisionId!==binding.specRevisionId,source},{specId:binding.specId,specRevisionId:binding.specRevisionId,executionId:binding.executionId});break;
     }
     default: fail('VALIDATION_ERROR', 'Неизвестная команда');
   }

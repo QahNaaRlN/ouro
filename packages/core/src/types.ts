@@ -38,6 +38,18 @@ export type DecisionRequest = {
 };
 export type Dependency = { id: string; from: string; to: string; type: 'depends_on' | 'derived_from' | 'replaces' | 'relates_to' };
 export type Roadmap = { id: string; title: string; goal: string; state: 'draft' | 'active' | 'frozen' | 'archived' };
+export type GitHubBinding = {
+  id:string; projectId:string; executionId:string; specId:string; specRevisionId:string;
+  repositoryId:number; repositoryFullName:string; ref:string; createdAt:string; createdBy:string;
+  revokedAt?:string; revokedBy?:string;
+};
+export type GitHubVerifiedCommit = {
+  repositoryId:number; repositoryFullName:string; fullSha:string; url:string; title:string;
+  verifiedAt:string; verificationMethod:'github-api-sha';
+};
+export type GitHubCommitSource = Omit<GitHubVerifiedCommit,'title'> & {
+  kind:'github_commit'; bindingId:string; ref:string; deliveryId:string; payloadDigest:string;
+};
 export type DomainEvent = {
   id: string; type: string; schemaVersion: 1; version: number; projectId: string; occurredAt: string; actor: Actor;
   correlationId: string; causationId?: string;
@@ -47,6 +59,7 @@ export type DomainEvent = {
 export type ProjectState = {
   projectId: string; version: number; roadmap: Roadmap; specs: Spec[]; revisions: SpecRevision[];
   executions: Execution[]; requests: DecisionRequest[]; dependencies: Dependency[]; events: DomainEvent[];
+  githubBindings: GitHubBinding[];
 };
 export type RevisionContent = Pick<SpecRevision, 'title' | 'goal' | 'dod' | 'constraints' | 'assumptions' | 'risks' | 'inputs' | 'comment' | 'flow'>;
 type CommandBase = { requestId: string; expectedVersion: number; specId?: string; specRevisionId?: string };
@@ -76,4 +89,7 @@ export type Command = CommandBase & (
   | { type: 'invalidateSpec'; specId: string; reason: string }
   | { type: 'addDependency'; from: string; to: string; relationship?: Dependency['type'] }
   | { type: 'changeRoadmapState'; state: Roadmap['state'] }
+  | { type:'createGitHubBinding'; executionId:string; repositoryId:number; repositoryFullName:string; ref:string }
+  | { type:'revokeGitHubBinding'; bindingId:string }
+  | { type:'recordGitHubCommit'; bindingId:string; deliveryId:string; payloadDigest:string; commit:GitHubVerifiedCommit }
 );
