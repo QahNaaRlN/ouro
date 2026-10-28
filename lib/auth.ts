@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Actor } from '@/packages/core/src/types';
+import { authenticateAgentToken } from './store';
 
 const authGlobal = globalThis as unknown as { ouroSessionSecret?: string };
 const secret = authGlobal.ouroSessionSecret ??= randomBytes(32).toString('hex');
@@ -41,6 +42,24 @@ export function authenticatedActor(request: Request, projectId: string, agentId:
 }
 export function assertHuman(actor: Actor) {
   if (actor.kind !== 'human') throw new AccessError('FORBIDDEN', 'Решение и управление принадлежат человеку.');
+}
+
+/** MCP uses an explicit agent credential; browser cookies never grant this role. */
+export async function authenticatedAgent(request: Request, projectId: string, legacyAgentId: string): Promise<Actor> {
+  const authorization=request.headers.get('authorization');
+  if(!authorization?.startsWith('Bearer ')) throw new AccessError('UNAUTHENTICATED','Нужен отдельный ключ агента в Authorization: Bearer.',401);
+  const bearer=authorization.slice(7);
+  const headers=new Headers(request.headers);headers.delete('cookie');
+  try {
+    const actor=authenticatedActor(new Request(request.url,{headers}),projectId,legacyAgentId);
+    if(actor.kind!=='agent') throw new AccessError('FORBIDDEN','MCP доступен только агенту.');
+    return actor;
+  }catch(error){
+    if(!(error instanceof AccessError)||error.code!=='UNAUTHENTICATED')throw error;
+  }
+  const actor=await authenticateAgentToken(bearer);
+  if(!actor||!actor.projectIds.includes(projectId))throw new AccessError('UNAUTHENTICATED','Ключ агента недействителен или отозван.',401);
+  return actor;
 }
 export function assertJsonWrite(request: Request) {
   if (!request.headers.get('content-type')?.startsWith('application/json')) throw new AccessError('UNSUPPORTED_MEDIA_TYPE', 'Используйте application/json.', 415);

@@ -1,0 +1,66 @@
+import { test, expect } from '@playwright/test';
+import type { ProjectState } from '../packages/core/src/types';
+
+test('agent onboarding provides one-time MCP config, truthful presence and persistent revocation', async ({page}) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading',{name:'Дорожная карта'})).toBeVisible();
+  await page.getByRole('button',{name:'Агенты',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Подключить агента',exact:true})).toBeVisible();
+  const name=`MCP browser agent ${Date.now()}`;
+  await page.getByLabel('Имя агента').fill(name);
+  await page.getByRole('button',{name:'Создать ключ подключения',exact:true}).click();
+  const config=page.getByLabel('Конфигурация MCP');
+  await expect(config).toBeVisible();
+  const parsed=JSON.parse(await config.inputValue());
+  const entry=parsed.mcpServers.ouro;
+  expect(typeof entry.command).toBe('string');
+  expect(entry.args.some((x:string)=>x.endsWith('/packages/mcp/bin/ouro-mcp.mjs'))).toBe(true);
+  expect(entry.env.OURO_URL.endsWith('/api/mcp')).toBe(true);
+  const token=entry.env.OURO_AGENT_TOKEN as string;
+  expect(token.startsWith('ouro_agent_')).toBe(true);
+  await page.getByRole('button',{name:'Cursor · HTTP',exact:true}).click();
+  const http=JSON.parse(await config.inputValue()).mcpServers.ouro;
+  expect(http.headers.Authorization===`Bearer ${token}`).toBe(true);
+  await page.getByRole('button',{name:'Claude · HTTP',exact:true}).click();
+  expect(JSON.parse(await config.inputValue()).mcpServers.ouro.type).toBe('http');
+  const listing=await (await page.request.get('/api/agents')).json();
+  expect(JSON.stringify(listing).includes(token)).toBe(false);
+  const agent=listing.agents.find((a:{name:string})=>a.name===name);
+  const row=page.getByTestId(`agent-${agent.id}`);
+  await expect(row.getByText('Ещё не обращался')).toBeVisible();
+  await page.getByRole('button',{name:'Я сохранил конфигурацию — скрыть ключ',exact:true}).click();
+  await expect(config).toHaveCount(0);
+  await row.getByRole('button',{name:'Отозвать ключ',exact:true}).click();
+  await expect(row.getByText('Ключ отозван', {exact:true})).toBeVisible();
+  await page.reload();
+  await page.getByRole('button',{name:'Агенты',exact:true}).click();
+  await expect(page.getByTestId(`agent-${agent.id}`).getByText('Ключ отозван',{exact:true})).toBeVisible();
+  await expect(config).toHaveCount(0);
+});
+
+test('human assigns a registered agent and simulator cannot acknowledge its execution',async({page})=>{
+  await page.goto('/');await expect(page.getByRole('heading',{name:'Дорожная карта'})).toBeVisible();
+  const response=await page.request.post('/api/agents',{data:{name:`Assigned MCP agent ${Date.now()}`}});
+  expect(response.ok()).toBe(true);const {agent}=await response.json();
+  const getState=async()=> (await (await page.request.get('/api/project')).json()).state as ProjectState;
+  const command=async(payload:Record<string,unknown>)=>{
+    const state=await getState();const result=await page.request.post('/api/commands',{data:{...payload,requestId:crypto.randomUUID(),expectedVersion:state.version}});
+    expect(result.ok()).toBe(true);return (await result.json()).state as ProjectState;
+  };
+  let state=await command({type:'createSpec',content:{title:`Назначение агенту ${Date.now()}`,goal:'Дать подключённому агенту разрешённый контекст.',dod:[{id:'agent-assignment',text:'Исполнитель соответствует назначению человека',required:true}],constraints:'',assumptions:'',risks:'',inputs:'',comment:''}});
+  const spec=state.specs.at(-1)!;
+  await command({type:'activateRevision',specId:spec.id,revisionId:spec.revisionIds[0]});
+  await page.reload();await expect(page.getByRole('heading',{name:'Дорожная карта'})).toBeVisible();
+  await page.getByRole('button',{name:'Спецификации',exact:true}).click();
+  await page.getByLabel('Выбрать спецификацию').selectOption(spec.id);
+  await page.getByLabel('Исполнитель попытки').first().selectOption(agent.id);
+  await page.getByRole('button',{name:'Разрешить одну попытку',exact:true}).click();
+  state=await getState();const execution=state.executions.findLast(e=>e.specId===spec.id)!;
+  expect(execution.agentId).toBe(agent.id);expect(execution.state).toBe('queued');
+  await expect(page.getByLabel('Сценарий симулятора')).toBeDisabled();
+  await page.getByRole('button',{name:/Реальность/}).first().click();
+  await expect(page.getByLabel('Симулятор в контексте спецификации')).toBeDisabled();
+  const forbidden=await page.request.post('/api/simulator',{data:{scenario:'apply',specId:spec.id,expectedVersion:state.version,requestId:crypto.randomUUID()}});
+  expect(forbidden.status()).toBe(403);
+  expect((await getState()).executions.find(e=>e.id===execution.id)?.state).toBe('queued');
+});

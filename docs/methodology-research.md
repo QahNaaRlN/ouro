@@ -1,5 +1,7 @@
 # Литература и решения, применённые в прототипе Ouro
 
+Дополнение `0.1.0-alpha.2`: при разработке agent-connect изучены [MCP transports 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports), [официальный SDK server guide](https://github.com/modelcontextprotocol/typescript-sdk/blob/v1.x/docs/server.md), [authorization](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization), [Claude Code](https://code.claude.com/docs/en/mcp) и [Cursor](https://cursor.com/docs/mcp). Проверены фактические API npm `@modelcontextprotocol/sdk@1.32.2`. Выбраны stateless Streamable HTTP с новым server/transport на запрос и stdio bridge к тому же backend; это сохраняет единственного владельца PGlite и позволяет подключать разные MCP-клиенты. Применены publishable runtime tool schemas, отдельный агентский bearer и явные ACK. OAuth authorization-server/discovery, прямой запуск LLM и постоянная UI SSE-подписка в пакет не включены. Совместимость подтверждается независимыми официальными SDK Clients обоих transport, не заявлением о полном испытании всех IDE.
+
 Дата исследования: 2026-10-28. Документ дополняет [ТЗ](TZ-Ouro-OS.md), [ТС](TS-Ouro-OS.md), [статусную методологию](status-methodology.md) и [правила диаграмм](diagram-methodology.md). Это обоснование выбранного подхода, а не заявление о реализации всего стандарта или сравнении всех доступных продуктов. Точный объём работающего прототипа и результаты проверок фиксируются отдельно в README и отчёте реализации.
 
 ## 1. Как выбирались ориентиры

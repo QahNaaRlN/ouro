@@ -13,6 +13,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   BookOpen,
+  Bot,
   Box,
   Check,
   ChevronDown,
@@ -44,6 +45,7 @@ import {
 } from "lucide-react";
 import Roadmap, { specLabels, Status } from "@/components/roadmap";
 import { RealityGraph } from "@/components/reality";
+import AgentsPanel, { type AgentRegistration } from "@/components/agents-panel";
 import {
   AGENT_ID,
   type DecisionRequest,
@@ -52,7 +54,7 @@ import {
   type SpecRevision,
 } from "@/packages/core/src";
 
-type View = "roadmap" | "specs" | "decisions" | "history" | "methodology";
+type View = "roadmap" | "specs" | "decisions" | "history" | "methodology" | "agents";
 type Modal = "create" | "revision" | "accept" | "dependency" | null;
 type ProjectResponse = { state: ProjectState; cursor: number; storage: string };
 type Payload = Record<string, unknown>;
@@ -123,6 +125,8 @@ export default function Home() {
   const [state, setState] = useState<ProjectState | null>(null),
     [storage, setStorage] = useState(""),
     [cursor, setCursor] = useState(0);
+  const [agents, setAgents] = useState<AgentRegistration[]>([]);
+  const [assignmentAgentId, setAssignmentAgentId] = useState(AGENT_ID);
   const [view, setView] = useState<View>("roadmap"),
     [selected, setSelected] = useState<string | null>(null),
     [requestId, setRequestId] = useState<string | null>(null);
@@ -170,7 +174,11 @@ export default function Home() {
             data.error?.message ?? "Не удалось открыть локальную сессию",
           );
         }
-        if (!cancelled) await refresh();
+        if (!cancelled) {
+          await refresh();
+          const agentsResponse=await fetch('/api/agents',{cache:'no-store'});
+          if(agentsResponse.ok){const body=await agentsResponse.json();if(!cancelled)setAgents(body.agents);}
+        }
       } catch (e) {
         if (!cancelled) setError((e as Error).message);
       } finally {
@@ -257,6 +265,8 @@ export default function Home() {
   };
   const simulate = async (scenario: string) => {
     if (!state || !selected || busy) return;
+    const target=state.executions.filter(e=>e.specId===selected&&!['succeeded','failed','cancelled','skipped'].includes(e.state)).at(-1);
+    if(target?.agentId!==AGENT_ID){setError('Подтверждение назначенного MCP-агента поступает через его подключение. Симулятор не управляет этой попыткой.');return;}
     setBusy(true);
     pendingRef.current = true;
     setError("");
@@ -322,6 +332,10 @@ export default function Home() {
   const executions =
     state?.executions.filter((e) => e.specId === selected) ?? [];
   const execution = executions.at(-1);
+  const simulationExecution = executions.filter(e=>!['succeeded','failed','cancelled','skipped'].includes(e.state)).at(-1);
+  const simulatorAvailable = simulationExecution?.agentId===AGENT_ID;
+  const selectedAgentName = execution ? execution.agentId===AGENT_ID ? 'Симулятор агента' : agents.find(a=>a.id===execution.agentId)?.name??'Назначенный MCP-агент' : 'MCP и симулятор';
+  const assignmentValid=assignmentAgentId===AGENT_ID || agents.some(a=>a.id===assignmentAgentId&&!a.revokedAt);
   const visibleSpecs =
     state?.specs.filter(
       (s) =>
@@ -336,6 +350,7 @@ export default function Home() {
     { id: "specs" as View, label: "Спецификации", icon: FileText },
     { id: "decisions" as View, label: "Решения", icon: CircleDot },
     { id: "history" as View, label: "История", icon: History },
+    { id: "agents" as View, label: "Агенты", icon: Bot },
   ];
   const exportHistory = () => {
     if (!state) return;
@@ -450,7 +465,7 @@ export default function Home() {
           <div className="topbar-actions">
             <span className="demo-label">
               <span className="tiny-dot" />
-              Симулятор агента
+              {selectedAgentName}
             </span>
             <button
               className="icon-btn"
@@ -963,8 +978,8 @@ export default function Home() {
                             <div>
                               <h3>Управление попыткой</h3>
                               <p>
-                                Сначала человек разрешает попытку, затем
-                                симулятор подтверждает запуск.
+                                Выберите исполнителя и разрешите одну попытку.
+                                Назначенный агент отдельно подтверждает запуск.
                               </p>
                             </div>
                             {(!execution ||
@@ -976,29 +991,32 @@ export default function Home() {
                               ].includes(execution.state)) &&
                               spec.activeRevisionId &&
                               spec.state !== "done" && (
+                                <div className="agent-assignment-actions">
+                                <AgentPicker agents={agents} value={assignmentAgentId} onChange={setAssignmentAgentId} disabled={busy}/>
                                 <button
                                   className="btn btn-small"
-                                  disabled={busy}
+                                  disabled={busy || !assignmentValid}
                                   onClick={() =>
                                     command(
                                       {
                                         type: "startExecution",
                                         specId: spec.id,
                                         specRevisionId: spec.activeRevisionId,
-                                        agentId: AGENT_ID,
+                                        agentId: assignmentAgentId,
                                       },
-                                      "Попытка разрешена. Подтвердите запуск в симуляторе",
+                                      "Попытка разрешена. Ожидается подтверждение назначенного исполнителя",
                                     )
                                   }
                                 >
                                   <Play size={13} />
                                   Разрешить попытку
                                 </button>
+                                </div>
                               )}
                             <select
                               aria-label="Симулятор в контексте спецификации"
                               defaultValue=""
-                              disabled={busy}
+                              disabled={busy || !simulatorAvailable}
                               onChange={(e) => {
                                 if (e.target.value)
                                   void simulate(e.target.value);
@@ -1160,7 +1178,7 @@ export default function Home() {
                         ))
                       ) : (
                         <Empty icon={<CircleDot size={28} />}>
-                          Открытых запросов нет. Создайте запрос в симуляторе.
+                          Открытых запросов нет. Запрос появится, когда назначенный агент сообщит вопрос, развилку или блокер.
                         </Empty>
                       )}
                     </div>
@@ -1174,6 +1192,7 @@ export default function Home() {
                           )}
                           busy={busy}
                           command={command}
+                          agents={agents}
                         />
                       ) : (
                         <Empty icon={<MessageCircle size={30} />}>
@@ -1238,8 +1257,9 @@ export default function Home() {
                 </>
               )}
               {view === "methodology" && <Methodology />}
+              {view === "agents" && <AgentsPanel onAgentsChange={setAgents}/>}
             </main>
-            <aside className="context-panel">
+            {view !== 'agents' && <aside className="context-panel">
               <div className="context-panel-heading">
                 <span>Требует внимания</span>
                 <span className="attention-counter">{pending.length}</span>
@@ -1317,24 +1337,27 @@ export default function Home() {
                     spec.activeRevisionId &&
                     spec.state !== "done" &&
                     spec.state !== "invalidated" && (
+                      <div className="agent-assignment-actions agent-assignment-vertical">
+                      <AgentPicker agents={agents} value={assignmentAgentId} onChange={setAssignmentAgentId} disabled={busy}/>
                       <button
                         className="btn btn-small btn-full"
-                        disabled={busy}
+                        disabled={busy || !assignmentValid}
                         onClick={() =>
                           command(
                             {
                               type: "startExecution",
                               specId: spec.id,
                               specRevisionId: spec.activeRevisionId,
-                              agentId: AGENT_ID,
+                              agentId: assignmentAgentId,
                             },
-                            "Попытка разрешена человеком. Ожидается подтверждение симулятора",
+                            "Попытка разрешена человеком. Ожидается подтверждение назначенного исполнителя",
                           )
                         }
                       >
                         <Play size={13} />
                         Разрешить одну попытку
                       </button>
+                      </div>
                     )}
                   {execution && (
                     <ExecutionPanel
@@ -1362,13 +1385,13 @@ export default function Home() {
                   </h3>
                   <span className="small-tag">DEMO</span>
                 </div>
-                <p>Локальные сценарии. Внешний агент не подключён.</p>
+                <p>{execution?.agentId && execution.agentId!==AGENT_ID ? 'Эта попытка назначена MCP-агенту. Его факты и подтверждения поступают через подключение.' : 'Учебные сценарии работают только для попыток, назначенных симулятору.'}</p>
                 <label>
                   Сообщение агента
                   <select
                     aria-label="Сценарий симулятора"
                     defaultValue=""
-                    disabled={busy || !selected}
+                    disabled={busy || !selected || !simulatorAvailable}
                     onChange={(e) => {
                       if (e.target.value) void simulate(e.target.value);
                       e.target.value = "";
@@ -1401,7 +1424,7 @@ export default function Home() {
                 <ShieldCheck size={15} />
                 <span>Решение ≠ исполнение ≠ приёмка</span>
               </div>
-            </aside>
+            </aside>}
           </div>
         )}
         <footer className="statusbar">
@@ -1422,7 +1445,7 @@ export default function Home() {
                   : "Хранилище…"}
             </span>
             <span className="footer-separator" />
-            <span>0.1.0-alpha.1</span>
+            <span>0.1.0-alpha.2</span>
             <span className="small-tag">PROTOTYPE</span>
           </div>
         </footer>
@@ -1578,20 +1601,29 @@ function SpecTable({
   );
 }
 
+function AgentPicker({agents,value,onChange,disabled=false}:{agents:AgentRegistration[];value:string;onChange:(id:string)=>void;disabled?:boolean}){
+  const valid=value===AGENT_ID||agents.some(a=>a.id===value&&!a.revokedAt);
+  return <label className="agent-picker">Исполнитель попытки<select aria-label="Исполнитель попытки" value={valid?value:''} onChange={e=>onChange(e.target.value)} disabled={disabled}><option value="" disabled>Выберите исполнителя</option><option value={AGENT_ID}>Симулятор · учебный режим</option>{agents.filter(a=>!a.revokedAt).map(a=><option value={a.id} key={a.id}>{a.name} · MCP</option>)}</select></label>;
+}
+
 function DecisionForm({
   request: r,
   spec,
   busy,
   command,
+  agents,
 }: {
   request: DecisionRequest;
   spec?: Spec;
   busy: boolean;
   command: (p: Payload, n?: string) => Promise<boolean>;
+  agents: AgentRegistration[];
 }) {
   const [text, setText] = useState(""),
     [option, setOption] = useState(""),
     [mode, setMode] = useState<"decide" | "reject" | "defer">("decide");
+  const [remediationAgentId,setRemediationAgentId]=useState(r.agentId);
+  const remediationValid=remediationAgentId===AGENT_ID||agents.some(a=>a.id===remediationAgentId&&!a.revokedAt);
   const outcome = r.decision?.outcome;
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -1830,15 +1862,17 @@ function DecisionForm({
                   : "Одобрение плана не снимает блокер."}
               </p>
               {r.decision?.outcome.kind === "approve" && !r.clearedEvidence && (
+                <div className="agent-assignment-actions agent-assignment-vertical">
+                <AgentPicker agents={agents} value={remediationAgentId} onChange={setRemediationAgentId} disabled={busy}/>
                 <button
                   className="btn"
-                  disabled={busy}
+                  disabled={busy || !remediationValid}
                   onClick={() =>
                     command(
                       {
                         type: "authorizeRemediation",
                         decisionRequestId: r.id,
-                        agentId: r.agentId,
+                        agentId: remediationAgentId,
                       },
                       "Разрешена отдельная попытка устранения блокера",
                     )
@@ -1846,6 +1880,7 @@ function DecisionForm({
                 >
                   Разрешить remediation-попытку
                 </button>
+                </div>
               )}
             </>
           )}
@@ -1892,7 +1927,7 @@ function ExecutionPanel({
     <section className={`execution-panel ${compact ? "compact" : ""}`}>
       <div className="section-heading">
         <h3>Исполнение</h3>
-        {!compact && <span className="small-tag">SIMULATION</span>}
+        {!compact && <span className="small-tag">{e.agentId===AGENT_ID?'SIMULATION':'MCP AGENT'}</span>}
       </div>
       <Status state={e.state} />
       {!compact && <code>{e.id}</code>}
@@ -2449,8 +2484,9 @@ function Methodology() {
       <div className="methodology-footnote">
         <h3>Границы прототипа</h3>
         <p>
-          Агент симулируется локально; интеграция Meridian и внешняя
-          идентификация не реализованы. Структура интерфейса основана на
+          MCP-совместимые агенты подключаются через stdio или Streamable HTTP;
+          симулятор доступен отдельно для учебных попыток. Интеграция Meridian и
+          полноценный SSO остаются следующим этапом. Структура интерфейса основана на
           Ouro.pen, визуальные токены — на Meridian в Figma. Разобранные
           источники, компромиссы и критерии проверки находятся в документации
           репозитория.
@@ -2459,7 +2495,7 @@ function Methodology() {
           className="btn"
           target="_blank"
           rel="noreferrer"
-          href="https://github.com/QahNaaRlN/ouro/tree/feat/ouro-prototype/docs"
+          href="https://github.com/QahNaaRlN/ouro/tree/feat/agent-connect/docs"
         >
           Открыть документацию
           <ArrowUpRight size={15} />

@@ -212,6 +212,7 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
         emit('ActionReported', { actionId: command.actionId, phase: command.phase, title: command.title, context: command.context, evidence: command.evidence ?? '', historicalContext: getSpec(execution.specId).activeRevisionId !== execution.specRevisionId }, { ...context(execution), causationId: command.phase === 'started' ? undefined : previous.find(e => e.payload.phase === 'started')?.id });
         break;
       }
+      activeRevision(getSpec(execution.specId),execution.specRevisionId);
       if (terminal.has(execution.state) || !['running', 'waiting_for_human'].includes(execution.state)) fail('INVALID_TRANSITION', 'Новый запрос не относится к активному исполнению');
       if (state.requests.filter(r => r.specId === execution.specId && r.agentId === execution.agentId && r.state === 'pending').length >= 10) fail('PENDING_LIMIT_EXCEEDED', 'У агента уже 10 открытых запросов по этой спеке');
       const kind = command.type === 'reportQuestion' ? 'Question' : command.type === 'reportFork' ? 'Fork' : 'Blocker';
@@ -268,6 +269,8 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
     }
     case 'confirmResumed': {
       const execution = getExecution(command.executionId); agent(execution);
+      if(command.ackPhase!==undefined&&!['start','resume'].includes(command.ackPhase))fail('VALIDATION_ERROR','Неизвестная фаза подтверждения.');
+      if((command.ackPhase==='start'&&execution.state!=='queued')||(command.ackPhase==='resume'&&execution.state==='queued'))fail('INVALID_TRANSITION','Подтверждение не соответствует фазе исполнения.');
       if (!execution.resumeAuthorized || terminal.has(execution.state)) fail('INVALID_TRANSITION', 'Нет разрешения человека на продолжение');
       canRun(execution); emit(execution.state === 'queued' ? 'ExecutionStarted' : 'ExecutionResumed', {}, { ...context(execution), causationId: cause(e => e.executionId === execution.id && ['ResumeAuthorized', 'ExecutionCreated'].includes(e.type)) }); break;
     }
@@ -294,7 +297,7 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
       const execution = getExecution(command.executionId); agent(execution); text(command.evidence, 'Подтверждение результата');
       if (!['succeeded', 'failed'].includes(command.result) || terminal.has(execution.state)) fail('INVALID_TRANSITION', 'Попытка уже завершена или некорректен результат');
       if (command.result === 'succeeded') { canRun(execution); if (execution.state !== 'running' || execution.stopRequested) fail('INVALID_TRANSITION', 'Для успеха требуется выполняющаяся разрешённая попытка'); }
-      emit('ExecutionCompleted', { result: command.result, evidence: command.evidence, simulation: true }, context(execution)); break;
+      emit('ExecutionCompleted', { result: command.result, evidence: command.evidence, simulation: actor.id === AGENT_ID }, context(execution)); break;
     }
     case 'cancelExecution': case 'skipExecution': {
       human(); const execution = getExecution(command.executionId); text(command.reason, 'Причина');

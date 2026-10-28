@@ -24,7 +24,7 @@
 - Report tools: `ouro.report_action`, `ouro.report_question`, `ouro.report_fork`, `ouro.report_blocker`.
 - Lifecycle tools: `ouro.confirm_started`, `ouro.confirm_resumed`, `ouro.confirm_stopped`, `ouro.confirm_decision_applied`, `ouro.complete_execution`, `ouro.clear_blocker`.
 - Запись требует `requestId` и `expectedVersion`. Контекст спеки/ревизии связывается сервером с назначенным execution. Человек отвечает/разрешает продолжение/принимает DoD отдельно. Конфликт возвращается без автоматической подмены версии или решения. Повтор принятой команды сохраняет исходный результат.
-- Tool schemas публикуются через `tools/list`, вход проверяется runtime. Ошибки tools возвращают `isError` и структурированный доменный code; транспортные ошибки и 401/403 отделены от предметных. Секрет не входит в domain payload/receipts/конфигурационные логи.
+- Tool schemas публикуются через `tools/list`, вход проверяется runtime. Доменные ошибки facade возвращают `isError` и структурированный code; SDK schema/unknown-tool ошибки могут возвращаться стандартным MCP text error с `isError`. Транспортные ошибки и 401/403 отделены от предметных. Секрет не входит в domain payload/receipts/конфигурационные логи.
 
 ## Критерии приёмки
 

@@ -57,7 +57,7 @@ export type Command = CommandBase & (
   | { type: 'resolveDecision'; decisionRequestId: string; specRevisionId: string; outcome: DecisionOutcome; comment?: string }
   | { type: 'deferDecision'; decisionRequestId: string; reason: string; until: string }
   | { type: 'resumeExecution'; executionId: string }
-  | { type: 'confirmResumed'; executionId: string }
+  | { type: 'confirmResumed'; executionId: string; ackPhase?: 'start' | 'resume' }
   | { type: 'confirmDecisionApplied'; decisionRequestId: string; evidence: string }
   | { type: 'authorizeRemediation'; decisionRequestId: string; agentId: string }
   | { type: 'clearBlocker'; decisionRequestId: string; remediationExecutionId: string; evidence: string }

@@ -1,9 +1,9 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { readFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
 import { Pool } from 'pg';
-import { applyCommand, createSeedEvents, replay, PROJECT_ID } from '../packages/core/src';
+import { applyCommand, createSeedEvents, replay, AGENT_ID, PROJECT_ID } from '../packages/core/src';
 import type { Actor, Command, DomainEvent, ProjectState } from '../packages/core/src';
 
 export class StoreError extends Error {
@@ -18,6 +18,7 @@ type Connection = { query: Query; exec(sql: string): Promise<unknown> };
 type Database = Connection & { transaction<T>(fn: (connection: Connection) => Promise<T>): Promise<T>; close(): Promise<void> };
 export type CommandResult = { state: ProjectState; events: DomainEvent[]; cursor: number; replayed: boolean };
 export type StoreOptions = { dataDir?: string; databaseUrl?: string; seedEvents?: DomainEvent[] };
+export type AgentRegistration = { id:string; projectId:string; name:string; createdAt:string; createdBy:string; lastSeenAt:string|null; revokedAt:string|null };
 
 /** Stable JSON encoding: object order cannot evade an idempotency key. */
 export function canonicalJSON(value: unknown): string {
@@ -31,6 +32,14 @@ export function canonicalJSON(value: unknown): string {
   return JSON.stringify(value);
 }
 const hash = (value: unknown) => createHash('sha256').update(canonicalJSON(value)).digest('hex');
+const tokenHash = (token:string) => createHash('sha256').update(token).digest('hex');
+type AgentRow = { id:string; project_id:string; name:string; created_at:Date|string; created_by:string; last_seen_at:Date|string|null; revoked_at:Date|string|null };
+const dateString=(value:Date|string)=>new Date(value).toISOString();
+const publicAgent=(row:AgentRow):AgentRegistration=>({id:row.id,projectId:row.project_id,name:row.name,createdAt:dateString(row.created_at),createdBy:row.created_by,lastSeenAt:row.last_seen_at ? dateString(row.last_seen_at) : null,revokedAt:row.revoked_at ? dateString(row.revoked_at) : null});
+const agentSelection=`SELECT r.id,r.project_id,r.name,r.created_at,r.created_by,p.last_seen_at,v.revoked_at
+  FROM ouro_agent_registrations r
+  LEFT JOIN ouro_agent_presence p ON p.agent_id=r.id
+  LEFT JOIN ouro_agent_revocations v ON v.agent_id=r.id`;
 
 async function openDatabase(options: StoreOptions): Promise<Database> {
   if (options.databaseUrl) {
@@ -75,6 +84,30 @@ async function registerActor(tx: Connection, actor: Actor) {
   if (found.rows[0]?.kind !== actor.kind) throw new StoreError('FORBIDDEN', 'Нельзя изменить тип зарегистрированного участника.');
 }
 
+async function assertHumanActor(tx:Connection,actor:Actor) {
+  assertActor(actor);
+  if(actor.kind!=='human')throw new StoreError('FORBIDDEN','Регистрацией и доступом агентов управляет человек.');
+  await registerActor(tx,actor);
+}
+
+async function assertRegisteredAgentActive(tx:Connection,actor:Actor) {
+  if(actor.kind!=='agent')return;
+  const revoked=await tx.query('SELECT agent_id FROM ouro_agent_revocations WHERE agent_id=$1',[actor.id]);
+  if(revoked.rows.length)throw new StoreError('FORBIDDEN','Доступ агента отозван человеком.');
+}
+
+async function assertAssignmentActive(tx:Connection,command:Command) {
+  if(command.type!=='startExecution'&&command.type!=='authorizeRemediation')return;
+  if(typeof command.agentId!=='string'||!command.agentId)throw new StoreError('VALIDATION_ERROR','Нужен agentId исполнителя.');
+  // The seed simulator remains an explicit separate choice. All external
+  // assignments require a live registration in the current project.
+  if(command.agentId===AGENT_ID)return;
+  const found=await tx.query<{id:string}>(`SELECT r.id FROM ouro_agent_registrations r
+    LEFT JOIN ouro_agent_revocations v ON v.agent_id=r.id
+    WHERE r.id=$1 AND r.project_id=$2 AND v.agent_id IS NULL`,[command.agentId,PROJECT_ID]);
+  if(!found.rows.length)throw new StoreError('FORBIDDEN','Назначение требует действующего зарегистрированного агента этого проекта.');
+}
+
 async function readEvents(tx: Connection, after = 0): Promise<DomainEvent[]> {
   const result = await tx.query<{ event: DomainEvent }>('SELECT event FROM ouro_domain_events WHERE project_id=$1 AND version>$2 ORDER BY version', [PROJECT_ID, after]);
   return result.rows.map(row => row.event);
@@ -103,11 +136,11 @@ async function append(tx: Connection, events: DomainEvent[], state: ProjectState
 
 export async function createStore(options: StoreOptions = {}) {
   const db = await openDatabase(options);
-  const migration = await readFile(path.join(process.cwd(), 'db', 'migrations', '001_initial.sql'), 'utf8');
+  const migrations = await Promise.all(['001_initial.sql','002_agents.sql'].map(file=>readFile(path.join(process.cwd(),'db','migrations',file),'utf8')));
   await db.transaction(async tx => {
     // External PostgreSQL may have multiple app processes initializing together.
     if (options.databaseUrl) await tx.query('SELECT pg_advisory_xact_lock(187652019)');
-    await tx.exec(migration);
+    for(const migration of migrations)await tx.exec(migration);
     await tx.query('INSERT INTO ouro_projects (id,version) VALUES ($1,0) ON CONFLICT DO NOTHING', [PROJECT_ID]);
     const row = await tx.query<{ version: string | number }>('SELECT version FROM ouro_projects WHERE id=$1 FOR UPDATE', [PROJECT_ID]);
     if (Number(row.rows[0]?.version) === 0) {
@@ -125,6 +158,48 @@ export async function createStore(options: StoreOptions = {}) {
   }
   return {
     storage: options.databaseUrl ? 'postgres' as const : 'embedded-postgres' as const,
+    createAgent: (name:string,actor:Actor):Promise<{agent:AgentRegistration;token:string}> => serialize(async()=>{
+      assertActor(actor);
+      if(actor.kind!=='human')throw new StoreError('FORBIDDEN','Регистрацией агентов управляет человек.');
+      if(typeof name!=='string'||!name.trim()||name.length>120)throw new StoreError('VALIDATION_ERROR','Имя агента должно содержать от 1 до 120 символов.');
+      return db.transaction(async tx=>{
+        await assertHumanActor(tx,actor);
+        const id=randomUUID();
+        const token=`ouro_agent_${randomBytes(32).toString('base64url')}`;
+        await registerActor(tx,{id,kind:'agent',name:name.trim(),projectIds:[PROJECT_ID]});
+        await tx.query('INSERT INTO ouro_agent_registrations (id,project_id,name,created_by) VALUES ($1,$2,$3,$4)',[id,PROJECT_ID,name.trim(),actor.id]);
+        await tx.query('INSERT INTO ouro_agent_credentials (agent_id,token_hash) VALUES ($1,$2)',[id,tokenHash(token)]);
+        const result=await tx.query<AgentRow>(`${agentSelection} WHERE r.id=$1 AND r.project_id=$2`,[id,PROJECT_ID]);
+        return {agent:publicAgent(result.rows[0]),token};
+      });
+    }),
+    listAgents: (actor:Actor):Promise<AgentRegistration[]> => serialize(()=>db.transaction(async tx=>{
+      await assertHumanActor(tx,actor);
+      const result=await tx.query<AgentRow>(`${agentSelection} WHERE r.project_id=$1 ORDER BY r.created_at,r.id`,[PROJECT_ID]);
+      return result.rows.map(publicAgent);
+    })),
+    revokeAgent: (id:string,actor:Actor):Promise<AgentRegistration> => serialize(()=>db.transaction(async tx=>{
+      await assertHumanActor(tx,actor);
+      await tx.query('SELECT version FROM ouro_projects WHERE id=$1 FOR UPDATE',[PROJECT_ID]);
+      const found=await tx.query<AgentRow>(`${agentSelection} WHERE r.id=$1 AND r.project_id=$2`,[id,PROJECT_ID]);
+      if(!found.rows.length)throw new StoreError('NOT_FOUND','Агент не найден.');
+      await tx.query('INSERT INTO ouro_agent_revocations (agent_id,revoked_by) VALUES ($1,$2) ON CONFLICT DO NOTHING',[id,actor.id]);
+      const result=await tx.query<AgentRow>(`${agentSelection} WHERE r.id=$1 AND r.project_id=$2`,[id,PROJECT_ID]);
+      return publicAgent(result.rows[0]);
+    })),
+    authenticateAgentToken: (token:string):Promise<Actor|null> => serialize(async()=>{
+      if(typeof token!=='string'||!/^ouro_agent_[A-Za-z0-9_-]{43}$/.test(token))return null;
+      return db.transaction(async tx=>{
+        await tx.query('SELECT version FROM ouro_projects WHERE id=$1 FOR SHARE',[PROJECT_ID]);
+        const result=await tx.query<{id:string;name:string;project_id:string}>(`SELECT r.id,r.name,r.project_id FROM ouro_agent_credentials c
+          JOIN ouro_agent_registrations r ON r.id=c.agent_id
+          LEFT JOIN ouro_agent_revocations v ON v.agent_id=r.id
+          WHERE c.token_hash=$1 AND r.project_id=$2 AND v.agent_id IS NULL`,[tokenHash(token),PROJECT_ID]);
+        const found=result.rows[0];if(!found)return null;
+        await tx.query('INSERT INTO ouro_agent_presence (agent_id,last_seen_at) VALUES ($1,now()) ON CONFLICT (agent_id) DO UPDATE SET last_seen_at=excluded.last_seen_at',[found.id]);
+        return {id:found.id,kind:'agent',name:found.name,projectIds:[found.project_id]};
+      });
+    }),
     getProject: () => serialize(async () => replay(await readEvents(db), PROJECT_ID)),
     getEvents: (after = 0) => serialize(async () => {
       if (!Number.isSafeInteger(after) || after < 0) throw new StoreError('VALIDATION_ERROR', 'Некорректный курсор событий.');
@@ -146,12 +221,14 @@ export async function createStore(options: StoreOptions = {}) {
       return db.transaction(async tx => {
         await tx.query('SELECT version FROM ouro_projects WHERE id=$1 FOR UPDATE', [PROJECT_ID]);
         await registerActor(tx, actor);
+        await assertRegisteredAgentActive(tx,actor);
         const duplicate = await tx.query<{ payload_hash: string; response: Omit<CommandResult, 'replayed'> }>(
           'SELECT payload_hash,response FROM ouro_command_receipts WHERE project_id=$1 AND actor_id=$2 AND request_id=$3', [PROJECT_ID, actor.id, command.requestId]);
         if (duplicate.rows[0]) {
           if (duplicate.rows[0].payload_hash !== payloadHash) throw new StoreError('IDEMPOTENCY_CONFLICT', 'Этот requestId уже использован с другим содержимым.');
           return { ...duplicate.rows[0].response, replayed: true };
         }
+        await assertAssignmentActive(tx,command);
         const state = replay(await readEvents(tx), PROJECT_ID);
         const applied = applyCommand(state, command, actor);
         await append(tx, applied.events, applied.state);
@@ -176,3 +253,7 @@ export const getStorageMode = () => process.env.DATABASE_URL ? 'postgres' as con
 export async function getProject() { return (await currentStore()).getProject(); }
 export async function getEvents(after = 0) { return (await currentStore()).getEvents(after); }
 export async function executeCommand(command: unknown, actor: Actor) { return (await currentStore()).executeCommand(command, actor); }
+export async function createAgent(name:string,actor:Actor) {return (await currentStore()).createAgent(name,actor);}
+export async function listAgents(actor:Actor) {return (await currentStore()).listAgents(actor);}
+export async function revokeAgent(agentId:string,actor:Actor) {return (await currentStore()).revokeAgent(agentId,actor);}
+export async function authenticateAgentToken(token:string) {return (await currentStore()).authenticateAgentToken(token);}
