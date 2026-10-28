@@ -1563,7 +1563,7 @@ export default function Home() {
                   : "Хранилище…"}
             </span>
             <span className="footer-separator" />
-            <span>0.1.0-alpha.8</span>
+            <span>0.1.0-alpha.9</span>
             <span className="small-tag">PROTOTYPE</span>
           </div>
         </footer>

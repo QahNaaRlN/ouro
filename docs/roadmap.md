@@ -12,7 +12,7 @@
 | 4 | Архив основанных на фактах уроков и связанные черновики спек | alpha.6: OURO-ENG-000005, 134 unit/integration +32 E2E; production build |
 | 5 | Объяснимые показатели расхождений и метрика дрейфа | alpha.7: OURO-ENG-000006,147 unit/integration +34 E2E; production build; [правила и примеры](proposals/drift-metric.md) |
 | 5.1 | Уточнения/исправления решений, исторический cursor, восстановление отозванного агента | alpha.8: OURO-ENG-000007,172 unit/integration +39 production E2E; production build и browser/SSE smoke |
-| 6 | Совместное редактирование черновиков с идентичностью участников | Далее; immutable активные ревизии не редактируются |
+| 6 | Совместное редактирование черновиков с идентичностью участников | alpha.9: OURO-ENG-000008,206 unit/integration +46 production E2E; отдельные человеческие сессии, Yjs и атомарная публикация |
 | 7 | AI-сводки Reality и предложения новых спек с источниками | Далее; нужен реальный provider, human activation отдельно |
 | 8 | Адаптер Meridian | Требуется изучить реальные контракты хоста, identity/workspace/theme |
 

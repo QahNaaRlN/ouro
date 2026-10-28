@@ -8,6 +8,7 @@ import type { Actor, Command, DomainEvent, GitHubVerifiedCommit, ProjectState } 
 import type { NormalizedGitHubPush } from './github/verification';
 import { createParticipantRegistry,assertRegisteredHumanActive } from './participant-registry';
 import { createCollaborativeDraftService } from './collaborative-drafts';
+import { isWellFormedUnicode } from '../packages/core/src/unicode';
 
 export class StoreError extends Error {
   constructor(public code: string, message: string, public details?: Record<string, unknown>) {
@@ -293,7 +294,7 @@ export async function createStore(options: StoreOptions = {}) {
     createAgent: (name:string,actor:Actor):Promise<{agent:AgentRegistration;token:string}> => serialize(async()=>{
       assertActor(actor);
       if(actor.kind!=='human')throw new StoreError('FORBIDDEN','Регистрацией агентов управляет человек.');
-      if(typeof name!=='string'||!name.trim()||name.length>120)throw new StoreError('VALIDATION_ERROR','Имя агента должно содержать от 1 до 120 символов.');
+      if(typeof name!=='string'||!name.trim()||name.length>120||name.includes('\0')||!isWellFormedUnicode(name))throw new StoreError('VALIDATION_ERROR','Имя агента должно содержать от 1 до 120 корректных символов.');
       return db.transaction(async tx=>{
         await assertHumanActor(tx,actor);
         const id=randomUUID();

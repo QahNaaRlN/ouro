@@ -1,6 +1,6 @@
 # Проверка прототипа · 28.10.2026
 
-Исторический отчёт `0.1.0-alpha.1`. Последующие результаты: [alpha.2 MCP](plans/agent-connect.md#итоговая-проверка-28102026), [alpha.3 Flow](plans/flow-visualization.md), [alpha.4 realtime](plans/live-updates.md), [alpha.5 GitHub](plans/github-evidence.md), [alpha.6 уроки](plans/lessons.md), [alpha.7 показатели](plans/drift-metric.md), [alpha.8 история и восстановление](plans/methodology-recovery.md).
+Исторический отчёт `0.1.0-alpha.1`. Последующие результаты: [alpha.2 MCP](plans/agent-connect.md#итоговая-проверка-28102026), [alpha.3 Flow](plans/flow-visualization.md), [alpha.4 realtime](plans/live-updates.md), [alpha.5 GitHub](plans/github-evidence.md), [alpha.6 уроки](plans/lessons.md), [alpha.7 показатели](plans/drift-metric.md), [alpha.8 история и восстановление](plans/methodology-recovery.md), [alpha.9 совместные черновики и участники](plans/collaborative-drafts.md).
 
 Проверено на Node.js 24.19.0, Next.js 16.4.3, React 19.3.1, PGlite 0.3.16 / PostgreSQL 17.5, системном Chromium.
 

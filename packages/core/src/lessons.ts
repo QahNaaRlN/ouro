@@ -1,4 +1,5 @@
 import type { DecisionOutcome, LessonContent, LessonRevision, ProjectState } from './types';
+import { isWellFormedUnicode } from './unicode';
 
 export type LessonCandidate = {
   id:string; kind:'rejected_decision'|'unchosen_fork_option'; sourceEventId:string;
@@ -18,12 +19,12 @@ export function validateLessonContent(value:unknown,state:ProjectState):asserts 
   if(Object.keys(content).some(key=>!(fields as readonly string[]).includes(key)))invalid('Содержание урока содержит неизвестное поле.');
   for(const field of ['title','context','conclusion','applicability','evidence'] as const){
     const item=content[field],maximum=field==='title'?200:20_000;
-    if(typeof item!=='string'||!item.trim()||item.length>maximum)invalid(`${field}: требуется непустой текст до ${maximum} символов.`);
+    if(typeof item!=='string'||!item.trim()||item.length>maximum||item.includes('\0')||!isWellFormedUnicode(item))invalid(`${field}: требуется непустой корректный текст до ${maximum} символов.`);
   }
   if(!Array.isArray(content.tags)||content.tags.length>20)invalid('У урока не более 20 тегов.');
   const tags=new Set<string>();
   for(const tag of content.tags as unknown[]){
-    if(typeof tag!=='string'||!tag.trim()||tag.length>60)invalid('Тег содержит от 1 до 60 символов.');
+    if(typeof tag!=='string'||!tag.trim()||tag.length>60||tag.includes('\0')||!isWellFormedUnicode(tag))invalid('Тег содержит от 1 до 60 корректных символов.');
     const identity=(tag as string).trim().toLocaleLowerCase('ru-RU');
     if(tags.has(identity))invalid('Теги урока должны различаться.');tags.add(identity);
   }

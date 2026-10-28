@@ -1,5 +1,6 @@
 import { createHash,randomBytes,randomUUID } from 'node:crypto';
 import { PROJECT_ID,type Actor } from '../packages/core/src';
+import { isWellFormedUnicode } from '../packages/core/src/unicode';
 
 export type ParticipantConnection={query:<T=Record<string,unknown>>(sql:string,values?:unknown[])=>Promise<{rows:T[]}>;exec(sql:string):Promise<unknown>};
 export type ParticipantDatabase=ParticipantConnection&{transaction<T>(fn:(tx:ParticipantConnection)=>Promise<T>):Promise<T>};
@@ -36,7 +37,7 @@ export function createParticipantRegistry(options:ParticipantRegistryOptions){
   return {
     createParticipant:(name:string,actor:Actor):Promise<{participant:ParticipantRegistration;credential:string}>=>serialize(()=>db.transaction(async tx=>{
       await lockProject(tx);operator(actor);await human(tx,actor);
-      if(typeof name!=='string'||!name.trim()||name.trim().length>120||/[\x00-\x1f\x7f]/.test(name))fail('VALIDATION_ERROR','Имя участника должно содержать1–120 символов без управляющих знаков.');
+      if(typeof name!=='string'||!name.trim()||name.trim().length>120||/[\x00-\x1f\x7f]/.test(name)||!isWellFormedUnicode(name))fail('VALIDATION_ERROR','Имя участника должно содержать1–120 корректных символов без управляющих знаков.');
       const id=randomUUID(),credential=`ouro_human_${randomBytes(32).toString('base64url')}`;
       await tx.query('INSERT INTO ouro_principals (id,kind) VALUES ($1,$2)',[id,'human']);
       await tx.query('INSERT INTO ouro_participant_registrations (id,project_id,name,created_by) VALUES ($1,$2,$3,$4)',[id,PROJECT_ID,name.trim(),actor.id]);

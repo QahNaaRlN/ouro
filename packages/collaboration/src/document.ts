@@ -1,6 +1,7 @@
 import * as Y from 'yjs';
 import { createDecoder,hasContent } from 'lib0/decoding';
 import type { FlowDefinition, RevisionContent } from '../../core/src/types';
+import { isWellFormedUnicode } from '../../core/src/unicode';
 
 export { Y };
 export const DRAFT_TEXT_FIELDS=['title','goal','constraints','assumptions','risks','inputs','comment'] as const;
@@ -38,7 +39,7 @@ export function applyDraftUpdate(doc:Y.Doc,bytes:Uint8Array):void{
 function plainText(value:unknown,label:string):string{
   if(!(value instanceof Y.Text)||value.constructor!==Y.Text||value._map.size||value.length>20_000)return invalid(`${label}: нужен обычный Y.Text до 20000 символов без скрытых свойств.`);
   if(value.toDelta().some((part:{insert:unknown;attributes?:Record<string,unknown>})=>typeof part.insert!=='string'||part.attributes&&Object.keys(part.attributes).length))return invalid(`${label}: допускается обычный текст без встроенных объектов.`);
-  return value.toString();
+  const result=value.toString();if(result.includes('\0')||!isWellFormedUnicode(result))return invalid(`${label}: текст содержит неподдерживаемые символы.`);return result;
 }
 /** Structural validation allows empty draft fields. Domain validation runs on publication. */
 export function readDraftContent(doc:Y.Doc,flow?:FlowDefinition):RevisionContent{
@@ -51,7 +52,7 @@ export function readDraftContent(doc:Y.Doc,flow?:FlowDefinition):RevisionContent
   const dod=criteria.toArray().map((criterion:unknown)=>{
     if(!(criterion instanceof Y.Map)||criterion.constructor!==Y.Map||criterion._start!==null||criterion._length!==0||criterion.size!==3||[...criterion.keys()].some(key=>!['id','text','required'].includes(key)))return invalid('Некорректная структура критерия DoD.');
     const id=criterion.get('id'),required=criterion.get('required');
-    if(typeof id!=='string'||!id.trim()||id.length>200||typeof required!=='boolean')return invalid('Нужны ID и обязательность критерия DoD.');
+    if(typeof id!=='string'||!id.trim()||id.length>200||id.includes('\0')||!isWellFormedUnicode(id)||typeof required!=='boolean')return invalid('Нужны ID и обязательность критерия DoD.');
     return {id,text:plainText(criterion.get('text'),'DoD'),required};
   });
   return {...text,dod,...(flow?{flow:structuredClone(flow)}:{})};
@@ -59,6 +60,7 @@ export function readDraftContent(doc:Y.Doc,flow?:FlowDefinition):RevisionContent
 
 /** Minimal UTF-16 edit; keep surrogate pairs together when the changed glyph differs. */
 export function replaceDraftText(text:Y.Text,next:string):void{
+  if(next.includes('\0')||!isWellFormedUnicode(next))invalid('Текст содержит неподдерживаемые символы.');
   const previous=text.toString();if(previous===next)return;
   let start=0;while(start<previous.length&&start<next.length&&previous[start]===next[start])start++;
   const high=(code:number)=>code>=0xd800&&code<=0xdbff,low=(code:number)=>code>=0xdc00&&code<=0xdfff;
