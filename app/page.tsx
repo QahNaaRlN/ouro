@@ -13,6 +13,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   BookOpen,
+  BarChart3,
   Bot,
   Box,
   Check,
@@ -48,6 +49,7 @@ import { RealityGraph } from "@/components/reality";
 import AgentsPanel, { type AgentRegistration } from "@/components/agents-panel";
 import GitHubPanel from '@/components/github-panel';
 import LessonsPanel from '@/components/lessons-panel';
+import ImpactPanel from '@/components/impact-panel';
 import SpecFlow from "@/components/spec-flow";
 import { StateTransitions } from "@/components/state-transitions";
 import { createProjectSnapshotAdopter, type ProjectSnapshot } from '@/lib/project-snapshot';
@@ -64,7 +66,7 @@ import {
   type FlowDefinition,
 } from "@/packages/core/src";
 
-type View = "roadmap" | "specs" | "decisions" | "history" | "methodology" | "agents" | "integrations" | "lessons";
+type View = "roadmap" | "specs" | "decisions" | "history" | "methodology" | "agents" | "integrations" | "lessons" | "impact";
 type Modal = "create" | "revision" | "accept" | "dependency" | null;
 type ProjectResponse = { state: ProjectState; cursor: number; storage: string };
 type Payload = Record<string, unknown>;
@@ -385,6 +387,7 @@ export default function Home() {
     { id: "agents" as View, label: "Агенты", icon: Bot },
     { id: 'integrations' as View, label:'Интеграции',icon:GitBranch },
     { id: 'lessons' as View, label:'Уроки',icon:BookOpen },
+    { id: 'impact' as View, label:'Показатели',icon:BarChart3 },
   ];
   const exportHistory = () => {
     if (!state) return;
@@ -1327,8 +1330,9 @@ export default function Home() {
               {view === "agents" && <AgentsPanel onAgentsChange={setAgents}/>}
               {view==='integrations'&&<GitHubPanel state={state} onSnapshot={adoptMutation}/>}
               {view==='lessons'&&<LessonsPanel state={state} onSnapshot={adoptMutation} onOpenSpec={id=>{pick(id);setView('specs');setDetailTab('expectation');}}/>}
+              {view==='impact'&&<ImpactPanel state={state}/>}
             </main>
-            {view !== 'agents' && view!=='integrations' && view!=='lessons' && <aside className="context-panel">
+            {view !== 'agents' && view!=='integrations' && view!=='lessons' && view!=='impact' && <aside className="context-panel">
               <div className="context-panel-heading">
                 <span>Требует внимания</span>
                 <span className="attention-counter">{pending.length}</span>
@@ -1512,7 +1516,7 @@ export default function Home() {
                   : "Хранилище…"}
             </span>
             <span className="footer-separator" />
-            <span>0.1.0-alpha.6</span>
+            <span>0.1.0-alpha.7</span>
             <span className="small-tag">PROTOTYPE</span>
           </div>
         </footer>

@@ -10,7 +10,7 @@
 | 2 | Realtime с cursor/reconnect и фильтры по агенту/запросу | alpha.4: OURO-ENG-000003, 88 unit/integration +22 E2E |
 | 3 | Проверяемый GitHub commit → Action с явным контекстом | alpha.5: OURO-ENG-000004, 129 unit/integration;25 прежних +3 controlled UI E2E; production build |
 | 4 | Архив основанных на фактах уроков и связанные черновики спек | alpha.6: OURO-ENG-000005, 134 unit/integration +32 E2E; production build |
-| 5 | Объяснимые показатели расхождений и метрика дрейфа | Формула согласована 29.10.2026: [правила и примеры](proposals/drift-metric.md); реализация далее |
+| 5 | Объяснимые показатели расхождений и метрика дрейфа | alpha.7: OURO-ENG-000006,147 unit/integration +34 E2E; production build; [правила и примеры](proposals/drift-metric.md) |
 | 6 | Совместное редактирование черновиков с идентичностью участников | Далее; immutable активные ревизии не редактируются |
 | 7 | AI-сводки Reality и предложения новых спек с источниками | Далее; нужен реальный provider, human activation отдельно |
 | 8 | Адаптер Meridian | Требуется изучить реальные контракты хоста, identity/workspace/theme |
