@@ -41,6 +41,8 @@ Use authoritative replay of a validated complete committed prefix at integer cur
 
 A dedicated historical panel in History shows roadmap/spec/execution/request state and immutable revision contents, source events and state diagrams at the selected cursor. It mounts no mutation forms. Main application command entry points reject writes while historical preview is selected; nested write panels are not mounted in this mode. A clear banner identifies the pinned and latest cursors, and an explicit button returns to live work. Export includes the selected prefix and cursor. An invalid/out-of-range cursor fails visibly, never falls back to latest silently.
 
+State diagrams currently rebuild every event prefix to discover transitions. This becomes costly as history grows. Add one optional read-only replay visitor invoked once after each fully projected event (including indirect dependency/spec effects), and collect transition history in that single authoritative traversal. No second state machine is introduced. Equivalence tests compare visitor-derived histories with independent ordinary prefix replay, including indirect dependency changes; a structural test counts one visitor call per event. Wall-clock results are recorded as measurements, not flaky pass/fail thresholds.
+
 ## Acceptance criteria and meaningful checks
 
 1. Author-only withdrawal appends exactly one event, remains replayable, rejects closed/foreign requests and preserves waiting/physical Blocker guards.
