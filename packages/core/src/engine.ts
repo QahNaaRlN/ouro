@@ -1,6 +1,7 @@
 import { findCycle } from './graph';
+import { getLessonSourceSpecIds, validateLessonContent as assertLessonContent } from './lessons';
 import { validateFlowDefinition as assertFlowDefinition } from './flow';
-import type { Actor, Command, DecisionRequest, DomainEvent, Execution, FlowDefinition, FlowNodeKind, GitHubBinding, GitHubCommitSource, ProjectState, RevisionContent, Spec, SpecRevision } from './types';
+import type { Actor, Command, DecisionRequest, DomainEvent, Execution, FlowDefinition, FlowNodeKind, GitHubBinding, GitHubCommitSource, Lesson, LessonContent, LessonRevision, ProjectState, RevisionContent, Spec, SpecRevision } from './types';
 
 export const PROJECT_ID = '6c7c62dc-694c-4c7b-9cb1-d9e605164001';
 export const AGENT_ID = 'a8f5f167-6e7a-4d18-8d2e-88466c165001';
@@ -22,7 +23,7 @@ export function validateFlowDefinition(value:unknown):asserts value is FlowDefin
   }
 }
 export function emptyState(projectId = PROJECT_ID): ProjectState {
-  return { projectId, version: 0, roadmap: { id: '7fa3e5d0-e946-4684-9a1a-540eaa334001', title: 'Ouro · Human View', goal: 'От ожидания к проверяемому результату', state: 'active' }, specs: [], revisions: [], executions: [], requests: [], dependencies: [], events: [],githubBindings:[] };
+  return { projectId, version: 0, roadmap: { id: '7fa3e5d0-e946-4684-9a1a-540eaa334001', title: 'Ouro · Human View', goal: 'От ожидания к проверяемому результату', state: 'active' }, specs: [], revisions: [], executions: [], requests: [], dependencies: [], events: [],githubBindings:[],lessons:[],lessonRevisions:[] };
 }
 
 /** Deterministic projection. Authoritative events and historical revisions are never updated. */
@@ -103,6 +104,11 @@ export function replay(events: readonly DomainEvent[], projectId = PROJECT_ID): 
         if (p.state === 'frozen') state.executions.filter(e => !terminal.has(e.state)).forEach(e => { e.stopRequested = true; e.resumeAuthorized = false; });
         break;
       }
+      case 'LessonCreated': state.lessons.push(p.lesson as Lesson);state.lessonRevisions.push(p.revision as LessonRevision);break;
+      case 'LessonRevisionProposed': {
+        const revision=p.revision as LessonRevision;state.lessonRevisions.push(revision);state.lessons.find(lesson=>lesson.id===revision.lessonId)!.latestRevisionId=revision.id;break;
+      }
+      case 'LessonPublished': state.lessons.find(lesson=>lesson.id===p.lessonId)!.publishedRevisionId=p.revisionId as string;break;
       case 'ActionReported': break;
       case 'GitHubBindingCreated': state.githubBindings.push(p.binding as GitHubBinding);break;
       case 'GitHubBindingRevoked': {
@@ -159,6 +165,10 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
   const cause = (predicate: (event: DomainEvent) => boolean) => state.events.findLast(predicate)?.id;
   const requestCause = (requestId: string, eventType = 'DecisionRequested') => cause(e => e.type === eventType && (eventType === 'DecisionRequested' ? (e.payload.request as DecisionRequest)?.id === requestId : e.payload.decisionRequestId === requestId));
   const human = () => { if (actor.kind !== 'human') fail('FORBIDDEN', 'Требуется подтверждённое действие человека'); };
+  const getLesson = (lessonId:string) => state.lessons.find(lesson=>lesson.id===lessonId&&lesson.projectId===state.projectId)??fail('NOT_FOUND','Урок не найден.');
+  const lessonContent = (content:LessonContent) => {
+    try{assertLessonContent(content,state);}catch(error){const e=error as {code?:string;message:string};if(e.code==='VALIDATION_ERROR'||e.code==='FORBIDDEN')fail(e.code,e.message);throw error;}
+  };
   const getSpec = (specId: string) => state.specs.find(s => s.id === specId) ?? fail('NOT_FOUND', 'Спецификация не найдена');
   const getExecution = (executionId: string) => state.executions.find(e => e.id === executionId) ?? fail('NOT_FOUND', 'Исполнение не найдено');
   const getRequest = (requestId: string) => state.requests.find(r => r.id === requestId) ?? fail('NOT_FOUND', 'Запрос решения не найден');
@@ -179,13 +189,47 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
     if (state.executions.some(e => e.specId === execution.specId && e.id !== execution.id && e.stopRequested && !terminal.has(e.state))) fail('INVALID_TRANSITION', 'Остановка прежней попытки ещё не подтверждена');
   };
   switch (command.type) {
-    case 'createSpec': {
-      human(); validateContent(command.content);
+    case 'createLesson': {
+      human();lessonContent(command.content);
+      const lessonId=id(),revisionId=id();
+      const lesson:Lesson={id:lessonId,projectId:state.projectId,latestRevisionId:revisionId};
+      const revision:LessonRevision={...copy(command.content),id:revisionId,lessonId,revision:1,createdBy:actor.id,createdAt:now};
+      emit('LessonCreated',{lesson,revision});break;
+    }
+    case 'reviseLesson': {
+      human();const lesson=getLesson(command.lessonId);lessonContent(command.content);
+      const parent=state.lessonRevisions.find(revision=>revision.id===lesson.latestRevisionId)!;
+      const revision:LessonRevision={...copy(command.content),id:id(),lessonId:lesson.id,revision:parent.revision+1,parentRevisionId:parent.id,createdBy:actor.id,createdAt:now};
+      emit('LessonRevisionProposed',{revision},{causationId:cause(event=>event.type==='LessonCreated'?(event.payload.lesson as Lesson)?.id===lesson.id:event.type==='LessonRevisionProposed'&&(event.payload.revision as LessonRevision)?.id===parent.id)});break;
+    }
+    case 'publishLesson': {
+      human();const lesson=getLesson(command.lessonId);
+      const revision=state.lessonRevisions.find(revision=>revision.id===command.revisionId&&revision.lessonId===lesson.id)??fail('VALIDATION_ERROR','Редакция не принадлежит выбранному уроку.');
+      if(lesson.publishedRevisionId===revision.id)fail('INVALID_TRANSITION','Эта редакция уже опубликована.');
+      emit('LessonPublished',{lessonId:lesson.id,revisionId:revision.id},{causationId:cause(event=>['LessonCreated','LessonRevisionProposed'].includes(event.type)&&(event.payload.revision as LessonRevision)?.id===revision.id)});break;
+    }
+    case 'createSpec': case 'createSpecFromLesson': {
+      human();validateContent(command.content);
+      let origin:Spec['origin'],publicationCause:string|undefined,sourceSpecId:string|undefined;
+      if(command.type==='createSpecFromLesson'){
+        const lesson=getLesson(command.lessonId);
+        if(!lesson.publishedRevisionId)fail('INVALID_TRANSITION','Для новой спеки нужно сначала опубликовать урок.');
+        if(command.lessonRevisionId!==lesson.publishedRevisionId)fail('REVISION_CONFLICT','Опубликованная редакция урока изменилась. Проверьте новый snapshot перед созданием спеки.');
+        const lessonRevision=state.lessonRevisions.find(revision=>revision.id===command.lessonRevisionId&&revision.lessonId===lesson.id)??fail('VALIDATION_ERROR','Редакция не принадлежит выбранному уроку.');
+        if(command.sourceSpecId!==undefined){
+          if(typeof command.sourceSpecId!=='string'||!getLessonSourceSpecIds(state,lessonRevision).includes(command.sourceSpecId))fail('VALIDATION_ERROR','Связать можно только реальную спеку из источников урока.');
+          sourceSpecId=command.sourceSpecId;
+        }
+        origin={kind:'lesson',lessonId:lesson.id,lessonRevisionId:lessonRevision.id};
+        publicationCause=cause(event=>event.type==='LessonPublished'&&event.payload.lessonId===lesson.id&&event.payload.revisionId===lessonRevision.id);
+      }
       const specId = id(); const revisionId = id();
       const nextNumber = Math.max(0, ...state.specs.map(s => Number(s.humanId.split('-').at(-1)) || 0)) + 1;
-      const spec: Spec = { id: specId, projectId: state.projectId, humanId: `OURO-S-${String(nextNumber).padStart(6, '0')}`, title: command.content.title, state: 'idea', activeRevisionId: null, revisionIds: [revisionId] };
+      const spec: Spec = { id: specId, projectId: state.projectId, humanId: `OURO-S-${String(nextNumber).padStart(6, '0')}`, title: command.content.title, state: 'idea', activeRevisionId: null, revisionIds: [revisionId],...(origin?{origin}:{}) };
       const revision: SpecRevision = { ...copy(command.content), id: revisionId, specId, revision: 1, createdAt: now, authorId: actor.id };
-      emit('SpecCreated', { spec, revision }, { specId }); break;
+      const created=emit('SpecCreated', { spec, revision }, { specId,...(publicationCause?{causationId:publicationCause}:{}) });
+      if(sourceSpecId)emit('DependencyAdded',{dependency:{id:id(),from:sourceSpecId,to:specId,type:'derived_from'}},{specId,specRevisionId:revisionId,causationId:created.id});
+      break;
     }
     case 'proposeRevision': {
       const spec = getSpec(command.specId); validateContent(command.content);

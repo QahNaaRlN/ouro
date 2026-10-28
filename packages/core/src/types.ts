@@ -17,6 +17,7 @@ export type SpecRevision = {
 export type Spec = {
   id: string; projectId: string; humanId: string; title: string; state: SpecState;
   activeRevisionId: string | null; revisionIds: string[];
+  origin?: {kind:'lesson';lessonId:string;lessonRevisionId:string};
   acceptance?: { revisionId: string; evidence: Record<string, string>; actorId: string; at: string };
 };
 export type Execution = {
@@ -50,6 +51,9 @@ export type GitHubVerifiedCommit = {
 export type GitHubCommitSource = Omit<GitHubVerifiedCommit,'title'> & {
   kind:'github_commit'; bindingId:string; ref:string; deliveryId:string; payloadDigest:string;
 };
+export type LessonContent = {title:string;context:string;conclusion:string;applicability:string;evidence:string;tags:string[];sourceEventIds:string[]};
+export type LessonRevision = LessonContent & {id:string;lessonId:string;revision:number;parentRevisionId?:string;createdBy:string;createdAt:string};
+export type Lesson = {id:string;projectId:string;latestRevisionId:string;publishedRevisionId?:string};
 export type DomainEvent = {
   id: string; type: string; schemaVersion: 1; version: number; projectId: string; occurredAt: string; actor: Actor;
   correlationId: string; causationId?: string;
@@ -59,13 +63,17 @@ export type DomainEvent = {
 export type ProjectState = {
   projectId: string; version: number; roadmap: Roadmap; specs: Spec[]; revisions: SpecRevision[];
   executions: Execution[]; requests: DecisionRequest[]; dependencies: Dependency[]; events: DomainEvent[];
-  githubBindings: GitHubBinding[];
+  githubBindings: GitHubBinding[]; lessons:Lesson[]; lessonRevisions:LessonRevision[];
 };
 export type RevisionContent = Pick<SpecRevision, 'title' | 'goal' | 'dod' | 'constraints' | 'assumptions' | 'risks' | 'inputs' | 'comment' | 'flow'>;
 type CommandBase = { requestId: string; expectedVersion: number; specId?: string; specRevisionId?: string };
 type ReportBase = { specId: string; specRevisionId: string; executionId: string; title: string; context: string; flowNodeId?: string };
 export type Command = CommandBase & (
   | { type: 'createSpec'; content: RevisionContent }
+  | { type:'createLesson'; content:LessonContent }
+  | { type:'reviseLesson'; lessonId:string; content:LessonContent }
+  | { type:'publishLesson'; lessonId:string; revisionId:string }
+  | { type:'createSpecFromLesson'; lessonId:string; lessonRevisionId:string; content:RevisionContent; sourceSpecId?:string }
   | { type: 'proposeRevision'; specId: string; content: RevisionContent }
   | { type: 'activateRevision'; specId: string; revisionId: string }
   | { type: 'startExecution'; specId: string; specRevisionId: string; agentId: string; retryOfExecutionId?: string }
