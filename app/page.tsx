@@ -386,7 +386,8 @@ export default function Home() {
     revision =
       state?.revisions.find((r) => r.id === spec?.activeRevisionId) ??
       state?.revisions.find((r) => r.specId === selected);
-  const originLessonRevision=spec?.origin?.kind==='lesson'?state?.lessonRevisions.find(item=>item.id===spec.origin?.lessonRevisionId):undefined;
+  const selectedOrigin=spec?.origin;
+  const originLessonRevision=selectedOrigin?.kind==='lesson'?state?.lessonRevisions.find(item=>item.id===selectedOrigin.lessonRevisionId):undefined;
   const pending = state?.requests.filter((r) => r.state === "pending") ?? [];
   const selectedRequests =
     state?.requests.filter((r) => r.specId === selected) ?? [];
@@ -1571,7 +1572,7 @@ export default function Home() {
                   : "Хранилище…"}
             </span>
             <span className="footer-separator" />
-            <span>0.1.0-alpha.9</span>
+            <span>0.1.0-alpha.10</span>
             <span className="small-tag">PROTOTYPE</span>
           </div>
         </footer>

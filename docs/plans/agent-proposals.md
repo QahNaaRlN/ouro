@@ -34,3 +34,11 @@ Reviewer также указал на потерю локального unresolv
 Четвёртый browser scenario доказывает второй исход неуверенного сохранения: запрос не дошёл до сервера → повтор с тем же ID получает VERSION_CONFLICT без receipt → только тогда форма разрешает явный rebase и новый requestId. Создаётся ровно одна спека. Финальные32/32 выполнены на отдельном /tmp/ouro-proposals-final-e2e; прежние test fixtures сохранены, пользовательские данные не менялись.
 
 Итог изолированного пакета на базе239d6de:142/142 unit/integration,32/32 E2E, typecheck и повторная production build успешны. Нативный модельный runner/качество всех LLM не проверялись и не заявляются. Rebase поверх предыдущих пакетов дорожной карты и финальный version bump выполняются отдельным gate перед публикацией draft PR.
+
+## Объединение с collaboration
+
+Предварительный rebase на f6ec28f сохранил Lesson origin, метрику, decision lineage, replay visitor, исторический read-only guard и participant auth/transaction helper. AI panel монтируется только в live fragment; инвентарь объединён до15 инструментов, metadata берётся из package.json. Typecheck выявил три прежних lesson-only обращения к origin; добавлен явный discriminator без ослабления assertions. Targeted AI/старые tools/Lessons/metric/history/maintenance46/46 успешны.
+
+Новый интеграционный browser RED: после неуверенной записи ответ401 на повтор очищал сохранённый intent, хотя auth выполняется до receipt lookup. Теперь auth/rate failures сохраняют прежнее тело/requestId; переосмысление основы разрешается после receipt-aware domain rejection. Сценарий проверяет lost response→навигация→auth denial→тот же retry→точный черновик. Финальный collaboration head и общий gate ожидаются отдельно.
+
+После исправления интеграционного RED все4/4 proposal browser scenarios прошли на f6ec28f. Это targeted gate, не заявление о завершённой проверке ещё не полученного final collaboration head.

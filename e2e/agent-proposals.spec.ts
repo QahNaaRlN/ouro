@@ -38,16 +38,19 @@ test('P06/P07 real HTTP and stdio proposals show sources and human adoption retr
   await expect(page.getByRole('region',{name:'Схема предлагаемого черновика',exact:true})).toContainText('фактов исполнения нет');
   const form=page.getByRole('form',{name:'Рассмотрение предложения'}),title=form.getByRole('textbox',{name:'Название новой спеки',exact:true});
   const adoptedTitle=`Отредактировано человеком ${Date.now()}`;await title.fill(adoptedTitle);await form.getByRole('textbox',{name:'Комментарий агенту',exact:true}).fill('Прочитал источники, уточнил ожидание.');
-  let requestId='',lost=true;await page.route('**/api/commands',async route=>{
+  let requestId='',lost=true,authDenied=false;await page.route('**/api/commands',async route=>{
    const body=route.request().postDataJSON();if(body.type!=='adoptAgentSpecProposal'){await route.continue();return;}
    if(!requestId)requestId=body.requestId;expect(body.requestId).toBe(requestId);
-   if(lost){lost=false;const response=await route.fetch();expect(response.ok()).toBeTruthy();await route.abort('failed');}else await route.continue();
+   if(lost){lost=false;const response=await route.fetch();expect(response.ok()).toBeTruthy();await route.abort('failed');}
+   else if(!authDenied){authDenied=true;await route.fulfill({status:401,contentType:'application/json',body:JSON.stringify({error:{code:'UNAUTHENTICATED',message:'Нужна действующая сессия исходного участника.'}})});}
+   else await route.continue();
   });
   await form.getByRole('button',{name:'Создать черновик спеки',exact:true}).click();
   await expect(form).toContainText('Результат записи неизвестен');await expect(title).toHaveJSProperty('readOnly',true);
   await expect(form.getByRole('button',{name:'Обновить основу, сохранив мой текст',exact:true})).toHaveCount(0);
   await page.getByRole('button',{name:'История',exact:true}).click();await page.getByRole('button',{name:'Предложения агента',exact:true}).click();await page.getByRole('button',{name:`Открыть предложение ${f.title}`,exact:true}).click();
   await expect(form).toContainText('Результат записи неизвестен');await expect(title).toHaveValue(adoptedTitle);await expect(title).toHaveJSProperty('readOnly',true);
+  await form.getByRole('button',{name:'Повторить сохранение',exact:true}).click();await expect(form.getByRole('alert')).toContainText('Нужна действующая сессия');await expect(form).toContainText('Результат записи неизвестен');await expect(form.getByRole('button',{name:'Повторить сохранение',exact:true})).toBeVisible();
   await human(page,{type:'createSpec',content:content(`Другая более новая спека ${Date.now()}`)});
   await form.getByRole('button',{name:'Повторить сохранение',exact:true}).click();
   await expect(page.getByRole('heading',{name:adoptedTitle,exact:true})).toBeVisible();

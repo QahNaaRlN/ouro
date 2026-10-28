@@ -1,4 +1,4 @@
-# Подключить агента · 0.1.0-alpha.4
+# Подключить агента · 0.1.0-alpha.10
 
 Пакет [OURO-ENG-000001](specs/agent-connect.md), разработан по SDD/TDD. Поддерживается MCP-клиент с tools и stdio либо Streamable HTTP с настраиваемым bearer-заголовком. LLM, аккаунт провайдера и установка IDE остаются на стороне пользователя.
 
@@ -68,6 +68,6 @@ Claude Code HTTP (`.mcp.json` либо пользовательская конф
 
 Получив `DecisionClarificationRequested` через `get_updates` либо `clarifications` назначенной работы в `get_context`, агент отвечает `ouro.submit_decision_clarification` с `clarificationEventId` исходного факта. Контекст содержит и ранее записанные уточнения/ответы, поэтому переподключение не теряет открытый вопрос человека. Ответ не закрывает запрос и не разрешает исполнение. Отзыв собственного pending-запроса также не возобновляет работу; физический Blocker остаётся до проверяемого устранения либо явного пересмотра его применимости к другому контракту.
 
-MCP сам не запускает LLM и не контролирует внешние процессы. Начиная с alpha.4 Human View получает committed snapshots через SSE с восстановлением после разрыва; MCP get_updates остаётся scoped чтением, а техническая presence регистраций обновляется отдельно. Один проект/локальный человек; без OAuth server, SSO и multi-tenancy. Для внешнего адреса нужен `OURO_PUBLIC_URL=https://…` и реальная human-авторизация; loopback demo не становится production identity через reverse proxy.
+MCP сам не запускает LLM и не контролирует внешние процессы. Начиная с alpha.4 Human View получает committed snapshots через SSE с восстановлением после разрыва; MCP get_updates остаётся scoped чтением, а техническая presence регистраций обновляется отдельно. Один проект; доступны отдельные зарегистрированные участники с HttpOnly-сессиями, без внешнего SSO/OAuth server и multi-tenancy. Для внешнего адреса нужен `OURO_PUBLIC_URL=https://…` и реальная human-авторизация; loopback demo не становится production identity через reverse proxy.
 
 Трассировка тестов и наблюдавшиеся RED/GREEN: [журнал пакета](plans/agent-connect.md).

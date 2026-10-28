@@ -63,7 +63,13 @@ function ProposalReviewForm({proposal,initial,latest,shown,state,onSnapshot,onOp
   if(busy)return;pending.current={body};intents.set(intentKey,{body});setBusy(true);setError('');setNotice('');
   try{
    const response=await fetch('/api/commands',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),data=await response.json();
-   if(!response.ok){if(response.status<500){clearIntent(body);setUncertain(false);}throw new Error(data.error?.message??'Рассмотрение не записано.');}
+   if(!response.ok){
+    // Auth/rate failures happen before receipt lookup and cannot settle a
+    // previously ambiguous write. A domain conflict follows receipt lookup.
+    const receiptAwareRejection=['VERSION_CONFLICT','REVISION_CONFLICT','INVALID_TRANSITION','VALIDATION_ERROR','NOT_FOUND','DEPENDENCY_CYCLE'].includes(data.error?.code);
+    if(response.status<500&&(!uncertain||receiptAwareRejection)){clearIntent(body);setUncertain(false);}
+    throw new Error(data.error?.message??'Рассмотрение не записано.');
+   }
    await onSnapshot(data);clearIntent(body);setUncertain(false);setNotice('Рассмотрение записано. Активация новой спеки выполняется отдельно.');
    const created=(data.events as DomainEvent[]).find(event=>event.type==='SpecCreated');if(created?.specId)onOpenSpec?.(created.specId);
   }catch(e){if(pending.current)setUncertain(true);setError(e instanceof Error?e.message:'Не удалось определить результат записи.');}finally{setBusy(false);}

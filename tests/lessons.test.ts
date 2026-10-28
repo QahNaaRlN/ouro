@@ -85,12 +85,12 @@ test('L05 a spec is a human-created draft from the exact current publication, wi
  state=run(state,{type:'reviseLesson',lessonId:lesson.id,content:lessonContent([fixture.source.id],'Новая редакция')});
  const second=state.lessonRevisions.at(-1)!;
  state=run(state,{type:'createSpecFromLesson',lessonId:lesson.id,lessonRevisionId:first.id,content:specContent('Проверить опубликованную r1 при черновике r2')});
- assert.equal(state.specs.at(-1)!.origin?.lessonRevisionId,first.id);
+ const firstOrigin=state.specs.at(-1)!.origin;assert.equal(firstOrigin?.kind==='lesson'?firstOrigin.lessonRevisionId:undefined,first.id);
  state=run(state,{type:'publishLesson',lessonId:lesson.id,revisionId:second.id});
  assert.throws(()=>run(state,{type:'createSpecFromLesson',lessonId:lesson.id,lessonRevisionId:first.id,content:specContent()}),errorCode('REVISION_CONFLICT'));
  assert.deepEqual(state.specs.find(spec=>spec.id===derived.id)!.origin,derived.origin);
  state=run(state,{type:'createSpecFromLesson',lessonId:lesson.id,lessonRevisionId:second.id,content:specContent('Проверить опубликованную r2')});
- assert.equal(state.specs.at(-1)!.origin?.lessonRevisionId,second.id);
+ const secondOrigin=state.specs.at(-1)!.origin;assert.equal(secondOrigin?.kind==='lesson'?secondOrigin.lessonRevisionId:undefined,second.id);
 });
 
 test('L03/L05 SQL receipts, two-event spec derivation rollback, append-only sources and reopen remain durable',async()=>{
