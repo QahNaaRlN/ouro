@@ -91,6 +91,9 @@ function checkedStream(events:readonly DomainEvent[],projectId:string,c1:number)
     const event=prefix[index];
     if(!record(event)||event.projectId!==projectId||event.schemaVersion!==1||event.version!==index+1||!record(event.payload)||!record(event.actor))unknown('invalid-history');
     const eventId=identity(event.id),causationId=event.causationId===undefined?undefined:identity(event.causationId);identity(event.type);identity(event.occurredAt);
+    const actor=event.actor;
+    identity(actor.id);
+    if(typeof actor.kind!=='string'||!['human','agent','service'].includes(actor.kind)||!Array.isArray(actor.projectIds)||!actor.projectIds.every(id=>typeof id==='string'&&!!id.trim())||!actor.projectIds.includes(projectId))unknown('invalid-history');
     if(ids.has(eventId)||causationId!==undefined&&!ids.has(causationId))unknown('invalid-history');ids.add(eventId);
   }
   return prefix;

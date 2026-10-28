@@ -95,6 +95,16 @@ test('M05 incomplete, contradictory, foreign/schema history and invalid cursor/s
   for(const [input,parameters] of invalid){const report=calculateExpectationImpact(input,{projectId:PROJECT_ID,c0:f.c0,c1:f.state.version,...parameters} as never);assert.equal(report.status,'unknown');assert.equal(report.percent,null);assert.equal(report.N,null);assert.deepEqual(report.counts,{});}
 });
 
+test('M05 malformed actor provenance cannot produce a confirmed zero-percent report',()=>{
+  const f=fixture();
+  const malformedActors=[{}, {...human,id:''}, {...human,kind:'unknown'}, {...human,projectIds:[]}, {...human,projectIds:['foreign']}];
+  for(const actor of malformedActors){
+    const events=structuredClone(f.state.events);events[1].actor=actor as Actor;
+    const report=calculateExpectationImpact(events,{projectId:PROJECT_ID,c0:f.c0,c1:events.length});
+    assert.equal(report.status,'unknown');assert.equal(report.reason,'invalid-history');assert.equal(report.percent,null);assert.equal(report.K,null);assert.equal(report.N,null);
+  }
+});
+
 test('M06 cursor window and baseline remain historical; future events do not leak into an earlier report',()=>{
   const f=fixture();const earlier=f.state.version;f.revise(f.a,{...revisionContent(f.original()),goal:'Будущее изменение'});
   const historical=f.report(earlier);assert.equal(historical.K,0);assert.equal(historical.c1,earlier);assert.equal(historical.counts.revisionChanges,0);
