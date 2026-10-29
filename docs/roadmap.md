@@ -17,7 +17,7 @@
 | 8 | Адаптер Meridian на стороне Ouro | alpha.11: OURO-ENG-000010,245 unit/integration +57 production E2E; строгий pinned import, человеческий idea-черновик, статические light/dark tokens; [инструкция](meridian-guide.md). Native IPC/SSO/theme sync и Windows-приёмка остаются отдельным [RFC](proposals/meridian-native-bridge.md) |
 | 9 | Подготовка полной версии к локальному запуску | OURO-ENG-000011:247 unit/integration +57 dev E2E; чистый клон с GitHub, переносимые npm-команды, build/start с сохранением БД; [инструкция и проверки](plans/local-start.md) |
 
-Исправление входа в детальный процесс из дорожной карты — [OURO-ENG-000012](plans/roadmap-process-navigation.md): точная активная ревизия по клику/Enter/пробелу, явное пустое состояние,2 новых +10 прежних browser-сценариев; без изменения доменной истории.
+Исправление входа в детальный процесс из дорожной карты — [OURO-ENG-000012](plans/roadmap-process-navigation.md): точная активная ревизия по клику/Enter/пробелу, явное пустое состояние, 2 новых + 10 прежних browser-сценариев; без изменения доменной истории.
 
 Дополнительные требования действующей методологии реализованы пакетом [OURO-ENG-000007](specs/methodology-recovery.md): отзыв/уточнение и исправление решения новыми фактами, read-only проекция на выбранном cursor, операторское восстановление после экстренного отзыва ключа. Физические Blocker и неизвестная остановка сохраняют отдельные guards; [сценарии и ограничения](methodology-guide.md).
 
