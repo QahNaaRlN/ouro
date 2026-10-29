@@ -109,6 +109,7 @@ test('FR02/FR07 human explicitly enables enforced flow tracking and can skip onl
   expect(premature.isError).toBe(true);expect((await project(page)).version).toBe(beforeAck.version);
   await write('ouro.confirm_started');await page.getByRole('button',{name:'Процесс',exact:true}).click();await inspectNode(page,'Прочитать назначенное ожидание');
   await expect(runsPanel(page)).toHaveAttribute('data-step-run-id',initial.runs[0].id);
+  await expect(runsPanel(page)).toContainText('Запуск подтверждён');
   await humanStep(page,'skip','В учебном примере шаг намеренно исключён человеком.','test://flow-runtime/human-skip');
   await expect(runsPanel(page)).toContainText('Пропущен');
   const after=runtime(await project(page),execution.id);expect(after.runs.find(run=>run.id===initial.runs[0].id)?.state).toBe('skipped');

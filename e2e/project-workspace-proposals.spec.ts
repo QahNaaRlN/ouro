@@ -21,6 +21,9 @@ async function openProject(page:Page,project:Project){await page.locator(`a[href
 
 test('PW09/PW10 a standard MCP proposal becomes a human-edited draft and exact roadmap Flow through the live project dashboard',async({page,baseURL})=>{
  test.setTimeout(120000);
+ page.setDefaultTimeout(15000);
+ page.on('pageerror',error=>console.info('[proposal page error]',error.message));
+ page.on('request',request=>{if(request.method()==='POST'&&new URL(request.url()).pathname.endsWith('/commands'))console.info('[proposal command sent]',String(request.postDataJSON()?.type));});
  const folderA=await mkdtemp(join(tmpdir(),'ouro-proposal-dashboard-a-')),folderB=await mkdtemp(join(tmpdir(),'ouro-proposal-dashboard-b-'));
  await writeFile(join(folderA,'README.md'),'# Proposal acceptance fixture\nThis is an SDK integration check, not an LLM run.\n');
  let client:Client|undefined,projectA:Project|undefined,registration:Registration|undefined,executionId:string|undefined;
@@ -104,11 +107,14 @@ test('PW09/PW10 a standard MCP proposal becomes a human-edited draft and exact r
   // Adoption remains separate from activation, assignment, a real ACK and
   // human-owned step evidence, all through the same scoped dashboard.
   const selected=page.locator('[aria-label="Выбранная задача"]');await expect(selected).toHaveAttribute('data-spec-id',draftId);
-  await selected.getByRole('button',{name:'Активировать новую ревизию',exact:true}).click();
+  await test.step('Explicitly activate the adopted draft revision',async()=>{await selected.getByRole('button',{name:'Активировать новую ревизию',exact:true}).click();});
   const assign=selected.getByRole('region',{name:'Назначить попытку по ревизии',exact:true});await expect(assign).toBeVisible();
-  await assign.getByLabel('Агент для новой попытки',{exact:true}).selectOption(registration.agent.id);await assign.getByRole('checkbox',{name:'Строгий учёт проходов',exact:true}).check();
-  const strictAssigned=page.waitForResponse(response=>new URL(response.url()).pathname===`${scope(projectA!.id)}/commands`&&response.request().method()==='POST'&&response.request().postDataJSON().type==='startExecution');
-  await assign.getByRole('button',{name:'Назначить попытку',exact:true}).click();const assignedResponse=await strictAssigned;expect(assignedResponse.ok(),await assignedResponse.text()).toBe(true);expect(assignedResponse.request().postDataJSON().flowTracking).toBe('enforced');
+  await test.step('Select the registered agent for the active revision',async()=>{await assign.getByRole('combobox',{name:'Агент для новой попытки',exact:true}).selectOption(registration!.agent.id);});
+  await test.step('Enable strict tracking without submitting the form',async()=>{const checkbox=assign.getByRole('checkbox',{name:'Строгий учёт проходов',exact:true});await checkbox.check();await expect(checkbox).toBeChecked();});
+  await test.step('Assign the strict attempt and observe its scoped receipt',async()=>{
+   const [response]=await Promise.all([page.waitForResponse(response=>new URL(response.url()).pathname===`${scope(projectA!.id)}/commands`&&response.request().method()==='POST'&&response.request().postDataJSON().type==='startExecution',{timeout:15000}),assign.getByRole('button',{name:'Назначить попытку',exact:true}).click()]);
+   expect(response.ok(),await response.text()).toBe(true);expect(response.request().postDataJSON().flowTracking).toBe('enforced');return response;
+  });
   const assignedState=(await snapshot(page,projectA.id)).state,strict=assignedState.executions.find(attempt=>attempt.specId===draftId)!;expect(strict.state).toBe('queued');expect(strict.flowRuntime!.runs).toHaveLength(1);
   expect(assignedState.events.some(event=>event.type==='ExecutionStarted'&&event.executionId===strict.id)).toBe(false);
   const strictCall=(name:string,args:Record<string,unknown>={})=>call(name,{executionId:strict.id,...args});
@@ -130,8 +136,8 @@ test('PW09/PW10 a standard MCP proposal becomes a human-edited draft and exact r
   const forbidden=await client.callTool({name:'ouro.report_flow_step',arguments:{executionId:strict.id,runId:humanRunId,phase:'start',requestId:crypto.randomUUID(),expectedVersion:(await snapshot(page,projectA.id)).cursor}});expect(forbidden.isError).toBe(true);expect((forbidden.structuredContent as {error:{code:string}}).error.code).toBe('FORBIDDEN');
   const currentStep=page.getByRole('region',{name:'Текущий проход процесса',exact:true});await expect(currentStep).toContainText(`Ручная проверка ${suffix}`);await expect(currentStep).toContainText(humanRunId);
   const humanStep=async(phase:'start'|'complete')=>{
-   const form=currentStep.getByRole('form',{name:'Действие человека в текущем проходе',exact:true});await form.getByLabel('Действие на шаге',{exact:true}).selectOption(phase);
-   await form.getByLabel('Основание действия',{exact:true}).fill(`Человек подтвердил ${phase} ручной проверки по точному проходу ${humanRunId}.`);
+   const form=currentStep.getByRole('form',{name:'Действие человека в текущем проходе',exact:true});await form.getByRole('combobox',{name:'Действие на шаге',exact:true}).selectOption(phase);
+   await form.getByRole('textbox',{name:'Основание действия',exact:true}).fill(`Человек подтвердил ${phase} ручной проверки по точному проходу ${humanRunId}.`);
    const refreshBasis=form.getByRole('button',{name:'Проверил события текущего прохода',exact:true});if(await refreshBasis.count())await refreshBasis.click();
    const committedStep=page.waitForResponse(response=>new URL(response.url()).pathname===`${scope(projectA!.id)}/commands`&&response.request().method()==='POST'&&response.request().postDataJSON().type==='reportFlowStep'&&response.request().postDataJSON().phase===phase);
    await form.getByRole('button',{name:'Записать действие на шаге',exact:true}).click();const saved=await committedStep;expect(saved.ok(),await saved.text()).toBe(true);expect(saved.request().postDataJSON()).toMatchObject({executionId:strict.id,runId:humanRunId,phase});
@@ -145,7 +151,8 @@ test('PW09/PW10 a standard MCP proposal becomes a human-edited draft and exact r
   expect(reported.events.find(event=>event.id===source.id)).toEqual(source);expect(await page.evaluate(()=>(window as Window&{__ouroProposalDocument?:string}).__ouroProposalDocument)).toBe(documentMarker);
   await call('ouro.complete_execution',{result:'succeeded',evidence:`test://project-proposal/${suffix}/analysis-complete`});
  }finally{
-  await client?.close();if(projectA&&registration)await page.request.post(`${scope(projectA.id)}/agents/${registration.agent.id}/revoke`,{data:{}});
+  if(client)await Promise.race([client.close().catch(()=>{}),new Promise<void>(resolve=>{const timer=setTimeout(resolve,2000);timer.unref();})]);
+  if(projectA&&registration)await page.request.post(`${scope(projectA.id)}/agents/${registration.agent.id}/revoke`,{data:{},timeout:3000}).catch(()=>{});
   await rm(folderA,{recursive:true,force:true});await rm(folderB,{recursive:true,force:true});
  }
 });
