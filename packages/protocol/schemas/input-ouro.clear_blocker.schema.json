@@ -36,5 +36,5 @@
     "evidence"
   ],
   "additionalProperties": false,
-  "$id": "urn:ouro:protocol:0.1.0:input:ouro.clear_blocker"
+  "$id": "urn:ouro:protocol:0.1.1:input:ouro.clear_blocker"
 }

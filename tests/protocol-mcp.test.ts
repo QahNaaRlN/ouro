@@ -12,6 +12,7 @@ import type {AgentStore} from '../packages/mcp/src/agent-service';
 import {createStore} from '../lib/store';
 import {PROJECT_ID,type Actor} from '../packages/core/src';
 import {z} from 'zod';
+import {AGENT_TOOLS,PROTOCOL_VERSION} from '@ouro/protocol';
 
 const actor:Actor={id:'protocol-schema-agent',kind:'agent',projectIds:[PROJECT_ID]};
 const human:Actor={id:'protocol-integration-human',kind:'human',projectIds:[PROJECT_ID]};
@@ -52,10 +53,10 @@ async function httpFixture(create:()=>McpServer){
  return {client,close:async()=>{await client.close();await new Promise<void>(resolve=>listener.close(()=>resolve()));}};
 }
 
-test('P03 official MCP discovery publishes concrete Flow and response schemas for all fifteen tools',async()=>{
+test('P03 official MCP discovery publishes concrete Flow and response schemas for every advertised tool',async()=>{
  const f=await connect();
  try{
-  const inventory=await f.client.listTools();assert.equal(inventory.tools.length,15);
+  const inventory=await f.client.listTools();assert.equal(inventory.tools.length,AGENT_TOOLS.length);
   for(const tool of inventory.tools)assert(tool.outputSchema,`Missing outputSchema for ${tool.name}`);
   const proposal=inventory.tools.find(tool=>tool.name==='ouro.submit_proposal')!;
   const schema=proposal.inputSchema as any;
@@ -70,7 +71,7 @@ test('P05 MCP resources expose static versioned contracts without reading a proj
  try{
   const {resources}=await f.client.listResources();
   assert.deepEqual(resources.map(resource=>resource.uri).sort(),[manifestUri,bundleUri].sort());
-  const manifest=resourceJson(await f.client.readResource({uri:manifestUri}));assert.equal(manifest.version,'0.1.0');
+  const manifest=resourceJson(await f.client.readResource({uri:manifestUri}));assert.equal(manifest.version,PROTOCOL_VERSION);
   const bundle=resourceJson(await f.client.readResource({uri:bundleUri}));assert.deepEqual(bundle.manifest,manifest);
   assert(Array.isArray(bundle.schemas)&&bundle.schemas.length>0);
   for(const schema of bundle.schemas){assert.equal(schema.$schema,'https://json-schema.org/draft/2020-12/schema');assert.match(schema.$id,/^urn:ouro:/);}
@@ -127,9 +128,11 @@ test('P04 malformed output after SQL commit keeps an unknown outcome and replays
 test('P05 official stdio bridge forwards the same static resources as the HTTP server',async()=>{
  const f=await httpFixture(()=>createOuroMcpServer({store:noProjectAccess,actor}));
  try{
+  const inventory=await f.client.listTools();assert.equal(inventory.tools.length,AGENT_TOOLS.length);
+  const step=inventory.tools.find(tool=>tool.name==='ouro.report_flow_step');assert(step?.outputSchema);assert.equal((step.inputSchema.properties?.runId as {type?:string})?.type,'string');
   const {resources}=await f.client.listResources();assert.deepEqual(resources.map(item=>item.uri).sort(),[manifestUri,bundleUri].sort());
-  assert.equal(resourceJson(await f.client.readResource({uri:manifestUri})).version,'0.1.0');
-  assert.equal(resourceJson(await f.client.readResource({uri:bundleUri})).manifest.version,'0.1.0');
+  assert.equal(resourceJson(await f.client.readResource({uri:manifestUri})).version,PROTOCOL_VERSION);
+  assert.equal(resourceJson(await f.client.readResource({uri:bundleUri})).manifest.version,PROTOCOL_VERSION);
  }finally{await f.close();}
 });
 

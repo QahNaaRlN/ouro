@@ -15,6 +15,7 @@ export const adoptProposalCommandSchema=z.strictObject({type:z.literal('adoptAge
 const observationTypes=new Set([
  'ActionReported','DecisionRequested','DecisionResolved','DecisionDeferred','DecisionApplied','DecisionWithdrawn','DecisionClarificationRequested','DecisionClarificationSubmitted','DecisionSuperseded',
  'BlockerCleared','BlockerApplicabilityEnded','ExecutionStarted','ExecutionResumed','ExecutionPaused','ExecutionCompleted','ExecutionCancelled','ExecutionSkipped','StopRequested','ResumeAuthorized','ExecutionOperatorCancelled','ExternalStopAttested',
+ 'FlowStepStarted','FlowStepCompleted','FlowStepFailed','FlowStepSkipped','FlowStepRetried','FlowEdgeTraversed',
 ]);
 export function isExecutionProposalSource(event:DomainEvent,execution:Execution,projectId:string):boolean {
  if(event.projectId!==projectId||event.actor.kind==='agent'&&event.actor.id!==execution.agentId)return false;

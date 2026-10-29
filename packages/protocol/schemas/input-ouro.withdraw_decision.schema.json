@@ -36,5 +36,5 @@
     "reason"
   ],
   "additionalProperties": false,
-  "$id": "urn:ouro:protocol:0.1.0:input:ouro.withdraw_decision"
+  "$id": "urn:ouro:protocol:0.1.1:input:ouro.withdraw_decision"
 }

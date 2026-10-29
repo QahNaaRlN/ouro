@@ -3,8 +3,10 @@ import { useMemo } from 'react';
 import { ReactFlow, Background, Controls, MarkerType, type Node, type Edge } from '@xyflow/react';
 import dagre from '@dagrejs/dagre';
 import type { DomainEvent } from '@/packages/core/src/types';
+import {runtimeEventNames} from './flow-runtime-ui';
 
 const titles: Record<string,string> = {
+  ...runtimeEventNames,
   AgentProposalSubmitted:'Предложение агента',AgentProposalRevisionSubmitted:'Уточнение предложения',AgentProposalReviewed:'Сводка рассмотрена',AgentProposalDismissed:'Предложение отклонено',AgentProposalAdopted:'Создан черновик из предложения',
   GitHubBindingCreated:'Привязан репозиторий GitHub',GitHubBindingRevoked:'Отозвана привязка GitHub',
   LessonCreated:'Черновик урока создан',LessonRevisionProposed:'Предложена редакция урока',LessonPublished:'Урок опубликован',

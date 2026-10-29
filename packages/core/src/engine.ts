@@ -5,7 +5,8 @@ import {currentDecisionRequests,decisionRoot,isCurrentDecisionRequest,openPhysic
 import {submitProposalCommandSchema,reviewProposalCommandSchema,adoptProposalCommandSchema,deriveProposalSources} from './agent-proposals';
 import {parseMeridianScope,mapMeridianExpectation} from '../../meridian/src/context';
 import {isWellFormedUnicode} from './unicode';
-import type { Actor, Command, DecisionRequest, DomainEvent, Execution, FlowDefinition, FlowNodeKind, GitHubBinding, GitHubCommitSource, Lesson, LessonContent, LessonRevision, ProjectState, RevisionContent, Spec, SpecRevision, AgentProposal, AgentProposalRevision, AgentProposalContent } from './types';
+import {createFlowRuntime,createFlowRun,currentFlowRun,requireFlowRuntime,flowForExecution,flowNode,assertFlowStepActor,selectFlowEdge,assertFlowHumanFacts,assertFlowInterruptFacts,currentFlowRequest,projectFlowRuntimeEvent} from './flow-runtime';
+import type { Actor, Command, DecisionRequest, DomainEvent, Execution, FlowDefinition, FlowNodeKind, FlowStepRun, GitHubBinding, GitHubCommitSource, Lesson, LessonContent, LessonRevision, ProjectState, RevisionContent, Spec, SpecRevision, AgentProposal, AgentProposalRevision, AgentProposalContent } from './types';
 
 export const PROJECT_ID = '6c7c62dc-694c-4c7b-9cb1-d9e605164001';
 export const AGENT_ID = 'a8f5f167-6e7a-4d18-8d2e-88466c165001';
@@ -13,7 +14,7 @@ export const GITHUB_SERVICE_ID = 'ouro-github-webhook';
 export class DomainError extends Error {
   constructor(public code: string, message: string, public details?: Record<string, unknown>) { super(message); this.name = 'DomainError'; }
 }
-const fail = (code: string, message: string, details?: Record<string, unknown>): never => { throw new DomainError(code, message, details); };
+function fail(code: string, message: string, details?: Record<string, unknown>): never { throw new DomainError(code, message, details); }
 const text = (value: unknown, label: string, minimum = 1): string => {
   if(typeof value==='string'&&(!isWellFormedUnicode(value)||value.includes('\0')))fail('VALIDATION_ERROR',`${label}: текст содержит непредставимые символы Unicode или NUL.`);
   if (typeof value !== 'string' || value.trim().length < minimum || value.length > 20000) fail('VALIDATION_ERROR', `${label}: требуется текст от ${minimum} до 20000 символов`);
@@ -136,6 +137,7 @@ export function replay(events: readonly DomainEvent[], projectId = PROJECT_ID,on
       }
       case 'LessonPublished': state.lessons.find(lesson=>lesson.id===p.lessonId)!.publishedRevisionId=p.revisionId as string;break;
       case 'ActionReported': break;
+      case 'FlowStepStarted':case 'FlowStepCompleted':case 'FlowStepFailed':case 'FlowStepSkipped':case 'FlowEdgeTraversed':case 'FlowStepRetried':break;
       case 'AgentProposalSubmitted':state.agentProposals.push(p.proposal as AgentProposal);state.agentProposalRevisions.push(p.revision as AgentProposalRevision);break;
       case 'AgentProposalRevisionSubmitted':{
         const revision=p.revision as AgentProposalRevision;state.agentProposalRevisions.push(revision);state.agentProposals.find(proposal=>proposal.id===p.proposalId)!.latestRevisionId=revision.id;break;
@@ -152,6 +154,7 @@ export function replay(events: readonly DomainEvent[], projectId = PROJECT_ID,on
       }
       default: fail('INVALID_EVENT_STREAM', `Неизвестный тип события: ${event.type}`);
     }
+    projectFlowRuntimeEvent(state,event);
     state.version = event.version; state.events.push(copy(event));
     // Lifecycle projection concerns active revision only. Human acceptance stays independent.
     for (const spec of state.specs) {
@@ -159,7 +162,7 @@ export function replay(events: readonly DomainEvent[], projectId = PROJECT_ID,on
       const active = state.executions.filter(e => e.specId === spec.id && e.specRevisionId === spec.activeRevisionId && e.kind === 'primary');
       const started = state.events.some(e => ['ExecutionStarted', 'ExecutionResumed'].includes(e.type) && e.specId === spec.id && e.specRevisionId === spec.activeRevisionId);
       const unmetDependency = started && state.dependencies.some(d => d.type === 'depends_on' && d.to === spec.id && state.specs.find(s => s.id === d.from)?.state !== 'done');
-      const blocked = unmetDependency || active.some(e => ['waiting_for_human', 'paused'].includes(e.state)) || state.executions.some(e=>e.specId===spec.id&&e.stopConfirmation==='unknown') || openPhysicalBlockers(state,spec.id).length>0 || currentDecisionRequests(state).some(r => r.specId === spec.id && r.specRevisionId === spec.activeRevisionId && r.blockingScope === 'execution' && r.state === 'pending');
+      const blocked = unmetDependency || active.some(e => ['waiting_for_human', 'paused'].includes(e.state)||!terminal.has(e.state)&&e.flowRuntime?.state==='failed') || state.executions.some(e=>e.specId===spec.id&&e.stopConfirmation==='unknown') || openPhysicalBlockers(state,spec.id).length>0 || currentDecisionRequests(state).some(r => r.specId === spec.id && r.specRevisionId === spec.activeRevisionId && r.blockingScope === 'execution' && r.state === 'pending');
       spec.state = blocked ? 'blocked' : started ? 'in_progress' : 'specified';
     }
     // The visitor borrows this projection synchronously after every indirect
@@ -236,6 +239,15 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
     if (blockers(execution).length) fail('INVALID_TRANSITION', 'Остались неразрешённые блокировки');
     if (state.executions.some(e => e.specId === execution.specId && e.id !== execution.id && e.stopRequested && !terminal.has(e.state))) fail('INVALID_TRANSITION', 'Остановка прежней попытки ещё не подтверждена');
   };
+  const flowCanAdvance=(execution:Execution)=>{
+    if(execution.state!=='running'||execution.stopRequested)fail('INVALID_TRANSITION','Шаг требует подтверждённого running execution без запроса остановки.');
+    canRun(execution);
+  };
+  const runCause=(execution:Execution,runId:string)=>cause(event=>event.executionId===execution.id&&(
+    event.type==='FlowStepStarted'&&event.payload.runId===runId||
+    ['FlowEdgeTraversed','FlowStepRetried'].includes(event.type)&&(event.payload.run as {id?:string}|undefined)?.id===runId||
+    event.type==='ExecutionCreated'&&(event.payload.execution as Execution|undefined)?.flowRuntime?.runs.some(run=>run.id===runId)===true
+  ));
   switch (command.type) {
     case 'submitAgentProposal':{
       const execution=getExecution(command.executionId);
@@ -362,18 +374,97 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
       if (state.executions.some(e => e.specId === spec.id && !terminal.has(e.state))) fail('INVALID_TRANSITION', 'У спецификации уже есть незавершённая попытка');
       if (command.retryOfExecutionId && !state.executions.some(e => e.id === command.retryOfExecutionId && e.specId === spec.id && terminal.has(e.state))) fail('VALIDATION_ERROR', 'retryOf должен ссылаться на завершённую попытку этой спеки');
       const execution: Execution = { id: id(), specId: spec.id, specRevisionId: command.specRevisionId, agentId: command.agentId, state: 'queued', kind: 'primary', resumeAuthorized: true, retryOfExecutionId: command.retryOfExecutionId };
+      if(command.flowTracking!==undefined){
+        if(command.flowTracking!=='enforced')fail('VALIDATION_ERROR','Неизвестный режим учёта процесса.');
+        const flow=state.revisions.find(revision=>revision.id===command.specRevisionId)?.flow;
+        if(!flow)fail('VALIDATION_ERROR','Для строгого учёта нужна схема назначенной ревизии.');
+        execution.flowRuntime=createFlowRuntime(flow,now,id);
+      }
       emit('ExecutionCreated', { execution }, context(execution)); break;
+    }
+    case 'reportFlowStep': {
+      const execution=getExecution(command.executionId),runtime=requireFlowRuntime(execution),run=currentFlowRun(execution,command.runId);
+      const flow=flowForExecution(state,execution),node=flowNode(flow,run.nodeId);
+      if(!['start','complete','fail'].includes(command.phase))fail('VALIDATION_ERROR','Неизвестная фаза прохода.');
+      assertFlowStepActor(actor,execution,node);
+      if(runtime.state!=='active'||terminal.has(execution.state))fail('INVALID_TRANSITION','Этот процесс больше не принимает новые факты прохода.');
+      if(command.phase!=='complete'&&command.edgeId!==undefined)fail('VALIDATION_ERROR','edgeId выбирается только при завершении прохода.');
+      if(command.phase==='start'){
+        if(run.state!=='ready')fail('INVALID_TRANSITION','Начать можно только текущий ready-проход.');
+        flowCanAdvance(execution);
+        assertFlowInterruptFacts(state,execution,run);
+        if(command.evidence!==undefined)text(command.evidence,'Основание начала шага');
+        emit('FlowStepStarted',{runId:run.id,waiting:node.kind==='wait',...(command.evidence!==undefined?{evidence:command.evidence}:{})},{...context(execution),causationId:runCause(execution,run.id)});break;
+      }
+      if(!run.startedAt||!['running','waiting'].includes(run.state))fail('INVALID_TRANSITION','Нужен текущий начатый проход.');
+      text(command.evidence,'Подтверждение результата шага');
+      if(command.phase==='fail'){
+        emit('FlowStepFailed',{runId:run.id,evidence:command.evidence},{...context(execution),causationId:runCause(execution,run.id)});break;
+      }
+      flowCanAdvance(execution);
+      assertFlowInterruptFacts(state,execution,run);
+      const edge=selectFlowEdge(flow,node,command.edgeId);
+      assertFlowHumanFacts(state,execution,run,node,edge?.id,flow);
+      const next=edge?createFlowRun(runtime,edge.target,now,id):undefined;
+      const request=currentFlowRequest(state,execution,run);
+      const completed=emit('FlowStepCompleted',{runId:run.id,evidence:command.evidence,processCompleted:node.kind==='result',...(request?{decisionRequestId:request.id}:{})},{...context(execution),causationId:runCause(execution,run.id)});
+      if(edge&&next)emit('FlowEdgeTraversed',{traversal:{id:id(),edgeId:edge.id,fromRunId:run.id,toRunId:next.id,at:now},run:next},{...context(execution),causationId:completed.id});
+      break;
+    }
+    case 'retryFlowStep': {
+      human();const execution=getExecution(command.executionId),runtime=requireFlowRuntime(execution),run=currentFlowRun(execution,command.runId);
+      text(command.reason,'Причина повторного прохода');flowCanAdvance(execution);
+      assertFlowInterruptFacts(state,execution,run);
+      if(runtime.state!=='failed'||run.state!=='failed')fail('INVALID_TRANSITION','Повтор создаётся только после failed-прохода.');
+      const next=createFlowRun(runtime,run.nodeId,now,id,run.id);next.reason=command.reason;
+      emit('FlowStepRetried',{run:next},{...context(execution),causationId:cause(event=>event.executionId===execution.id&&event.type==='FlowStepFailed'&&event.payload.runId===run.id)});break;
+    }
+    case 'skipFlowStep': {
+      human();const execution=getExecution(command.executionId),runtime=requireFlowRuntime(execution),run=currentFlowRun(execution,command.runId),flow=flowForExecution(state,execution),node=flowNode(flow,run.nodeId);
+      text(command.reason,'Причина пропуска');text(command.evidence,'Основание пропуска');flowCanAdvance(execution);
+      assertFlowInterruptFacts(state,execution,run);
+      if(runtime.state!=='active'||run.state!=='ready'||!['action','wait'].includes(node.kind))fail('INVALID_TRANSITION','Пропустить можно только ready action/wait с одним выходом.');
+      const edge=selectFlowEdge(flow,node)??fail('INVALID_TRANSITION','У пропускаемого шага должен быть один выход.');
+      if(flow.edges.filter(item=>item.source===node.id).length!==1)fail('INVALID_TRANSITION','Пропуск допускает только один выход.');
+      const next=createFlowRun(runtime,edge.target,now,id);
+      const skipped=emit('FlowStepSkipped',{runId:run.id,reason:command.reason,evidence:command.evidence},{...context(execution),causationId:runCause(execution,run.id)});
+      emit('FlowEdgeTraversed',{traversal:{id:id(),edgeId:edge.id,fromRunId:run.id,toRunId:next.id,at:now},run:next},{...context(execution),causationId:skipped.id});break;
     }
     case 'reportAction': case 'reportQuestion': case 'reportFork': case 'reportBlocker': {
       if('source' in command)fail('FORBIDDEN','Проверенный внешний источник добавляет только серверный адаптер.');
+      if('flowInterrupt' in command)fail('FORBIDDEN','Связь внепланового запроса устанавливает сервер.');
       const execution = getExecution(command.executionId); agent(execution);
       if (execution.specId !== command.specId || execution.specRevisionId !== command.specRevisionId) fail('REVISION_CONFLICT', 'Отчёт не соответствует контракту попытки');
-      if(command.flowNodeId!==undefined){
-        if(typeof command.flowNodeId!=='string'||!command.flowNodeId.trim()||command.flowNodeId.length>200)fail('VALIDATION_ERROR','flowNodeId должен содержать от 1 до 200 символов.');
+      const previousAction=command.type==='reportAction'?state.events.filter(event=>event.type==='ActionReported'&&event.executionId===execution.id&&event.payload.actionId===command.actionId):[];
+      let boundNodeId=command.flowNodeId,boundRunId=command.flowStepRunId,interrupt=false,reportRun:FlowStepRun|undefined;
+      if(execution.flowRuntime){
+        if(typeof boundRunId!=='string'||!boundRunId.trim()||boundRunId.length>200)fail('VALIDATION_ERROR','Строгий отчёт требует flowStepRunId.');
+        const lateAction=command.type==='reportAction'&&command.phase!=='started'&&previousAction.length>0;
+        if(lateAction){
+          const originalRunId=previousAction[0].payload.flowStepRunId;
+          if(typeof originalRunId!=='string'||originalRunId!==boundRunId)fail('VALIDATION_ERROR','Фазы actionId сохраняют исходный flowStepRunId.');
+          reportRun=execution.flowRuntime.runs.find(run=>run.id===boundRunId)??fail('VALIDATION_ERROR','Исходный проход действия отсутствует.');
+        }else{
+          reportRun=currentFlowRun(execution,boundRunId);
+          if(execution.flowRuntime.state!=='active'||!reportRun.startedAt||!['running','waiting'].includes(reportRun.state))fail('INVALID_TRANSITION','Новый отчёт относится только к текущему начатому проходу.');
+        }
+        const node=flowNode(flowForExecution(state,execution),reportRun.nodeId);
+        if(boundNodeId!==undefined&&boundNodeId!==node.id)fail('VALIDATION_ERROR','flowNodeId не соответствует flowStepRunId.');
+        const kinds:FlowNodeKind[]=command.type==='reportAction'?['action','condition','wait','result']:command.type==='reportQuestion'?['question']:command.type==='reportFork'?['fork']:['blocker'];
+        if(kinds.includes(node.kind))boundNodeId=node.id;
+        else if(command.type!=='reportAction'&&command.flowNodeId===undefined){interrupt=true;boundNodeId=undefined;}
+        else fail('VALIDATION_ERROR','Тип отчёта не соответствует узлу назначенного прохода.');
+        if(command.type!=='reportAction'&&!interrupt){
+          const existing=currentFlowRequest(state,execution,reportRun);
+          if(existing&&!['withdrawn','superseded'].includes(existing.state))fail('INVALID_TRANSITION','У этого прохода уже есть актуальный запрос; используйте его решение или исправление.');
+        }
+      }else if(boundRunId!==undefined)fail('VALIDATION_ERROR','Legacy-попытка не имеет зарегистрированных проходов.');
+      if(boundNodeId!==undefined){
+        if(typeof boundNodeId!=='string'||!boundNodeId.trim()||boundNodeId.length>200)fail('VALIDATION_ERROR','flowNodeId должен содержать от 1 до 200 символов.');
         const flow=state.revisions.find(revision=>revision.id===execution.specRevisionId)?.flow;
         if(!flow)fail('VALIDATION_ERROR','Назначенная ревизия не содержит схемы процесса.');
         validateFlowDefinition(flow);
-        const node=flow.nodes.find(node=>node.id===command.flowNodeId);
+        const node=flow.nodes.find(node=>node.id===boundNodeId);
         const allowed:FlowNodeKind[]=command.type==='reportAction'?['action','condition','wait','result']:command.type==='reportQuestion'?['question']:command.type==='reportFork'?['fork']:['blocker'];
         if(!node||!allowed.includes(node.kind))fail('VALIDATION_ERROR','Узел схемы отсутствует в назначенной ревизии или не соответствует типу сообщения.');
       }
@@ -382,11 +473,11 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
         text(command.actionId, 'actionId');
         if (!['started', 'completed', 'failed'].includes(command.phase)) fail('VALIDATION_ERROR', 'Некорректная фаза Action');
         if (command.phase !== 'started') text(command.evidence, 'Основание результата');
-        const previous = state.events.filter(e => e.type === 'ActionReported' && e.executionId === execution.id && e.payload.actionId === command.actionId);
-        if(previous.some(event=>event.payload.flowNodeId!==command.flowNodeId))fail('VALIDATION_ERROR','Привязка actionId к узлу схемы не меняется между фазами.');
+        const previous = previousAction;
+        if(previous.some(event=>event.payload.flowNodeId!==boundNodeId||event.payload.flowStepRunId!==boundRunId))fail('VALIDATION_ERROR','Привязка actionId к узлу и проходу схемы не меняется между фазами.');
         if (previous.some(e => ['completed', 'failed'].includes(String(e.payload.phase))) || (command.phase === 'started' && previous.length)) fail('INVALID_TRANSITION', 'Фаза действия уже завершена или начата');
         if (command.phase === 'started' && (execution.state !== 'running' || execution.stopRequested)) fail('INVALID_TRANSITION', 'Новое действие нельзя начать при остановке или ожидании');
-        emit('ActionReported', { actionId: command.actionId, phase: command.phase, title: command.title, context: command.context, evidence: command.evidence ?? '', historicalContext: getSpec(execution.specId).activeRevisionId !== execution.specRevisionId,...(command.flowNodeId!==undefined?{flowNodeId:command.flowNodeId}:{}) }, { ...context(execution), causationId: command.phase === 'started' ? undefined : previous.find(e => e.payload.phase === 'started')?.id });
+        emit('ActionReported', { actionId: command.actionId, phase: command.phase, title: command.title, context: command.context, evidence: command.evidence ?? '', historicalContext: getSpec(execution.specId).activeRevisionId !== execution.specRevisionId,...(boundNodeId!==undefined?{flowNodeId:boundNodeId}:{}),...(boundRunId!==undefined?{flowStepRunId:boundRunId}:{}) }, { ...context(execution), causationId: command.phase === 'started' ? undefined : previous.find(e => e.payload.phase === 'started')?.id });
         break;
       }
       activeRevision(getSpec(execution.specId),execution.specRevisionId);
@@ -394,10 +485,12 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
       if (state.requests.filter(r => r.specId === execution.specId && r.agentId === execution.agentId && r.state === 'pending').length >= 10) fail('PENDING_LIMIT_EXCEEDED', 'У агента уже 10 открытых запросов по этой спеке');
       const kind = command.type === 'reportQuestion' ? 'Question' : command.type === 'reportFork' ? 'Fork' : 'Blocker';
       const request: DecisionRequest = { id: id(), kind, title: command.title, context: command.context, reason: '', options: [], state: 'pending', specId: execution.specId, specRevisionId: execution.specRevisionId, executionId: execution.id, agentId: execution.agentId, blockingScope: 'execution' };
-      if(command.flowNodeId!==undefined)request.flowNodeId=command.flowNodeId;
+      if(boundNodeId!==undefined)request.flowNodeId=boundNodeId;
+      if(boundRunId!==undefined)request.flowStepRunId=boundRunId;
+      if(interrupt)request.flowInterrupt=true;
       if (command.type === 'reportQuestion') {
         text(command.question, 'Вопрос'); if (!['execution', 'none'].includes(command.blockingScope)) fail('VALIDATION_ERROR', 'Некорректная область блокировки');
-        request.question = command.question; request.blockingScope = command.blockingScope;
+        request.question = command.question; request.blockingScope = execution.flowRuntime?'execution':command.blockingScope;
       } else {
         text(command.reason, 'Причина', 50);
         if (!Array.isArray(command.options) || command.options.length > 10) fail('VALIDATION_ERROR', 'Нужен список вариантов (до 10)');
@@ -412,6 +505,10 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
           if (command.options.length < 2) fail('VALIDATION_ERROR', 'Развилка требует минимум двух вариантов');
           if (command.recommendationOptionId && !optionIds.has(command.recommendationOptionId)) fail('VALIDATION_ERROR', 'Рекомендация должна ссылаться на существующий вариант');
           request.recommendationOptionId = command.recommendationOptionId;
+          if(execution.flowRuntime&&reportRun&&!interrupt){
+            const outgoing=flowForExecution(state,execution).edges.filter(edge=>edge.source===reportRun.nodeId);
+            if(outgoing.length!==command.options.length||outgoing.some(edge=>!edge.optionId||!optionIds.has(edge.optionId)))fail('VALIDATION_ERROR','Варианты плановой развилки должны точно соответствовать optionId её исходящих рёбер.');
+          }
         } else {
           text(command.expected, 'Ожидание'); text(command.actual, 'Факт'); text(command.impact, 'Влияние');
           if (!command.options.length) text(command.noPathReason, 'Почему путь неизвестен');
@@ -528,7 +625,7 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
     case 'completeExecution': {
       const execution = getExecution(command.executionId); agent(execution); text(command.evidence, 'Подтверждение результата');
       if (!['succeeded', 'failed'].includes(command.result) || terminal.has(execution.state)) fail('INVALID_TRANSITION', 'Попытка уже завершена или некорректен результат');
-      if (command.result === 'succeeded') { canRun(execution); if (execution.state !== 'running' || execution.stopRequested) fail('INVALID_TRANSITION', 'Для успеха требуется выполняющаяся разрешённая попытка'); }
+      if (command.result === 'succeeded') { canRun(execution); if (execution.state !== 'running' || execution.stopRequested) fail('INVALID_TRANSITION', 'Для успеха требуется выполняющаяся разрешённая попытка'); if(execution.flowRuntime&&execution.flowRuntime.state!=='completed')fail('INVALID_TRANSITION','Для успеха строгой попытки нужно завершить result-проход процесса.'); }
       emit('ExecutionCompleted', { result: command.result, evidence: command.evidence, simulation: actor.id === AGENT_ID }, context(execution)); break;
     }
     case 'cancelExecution': case 'skipExecution': {

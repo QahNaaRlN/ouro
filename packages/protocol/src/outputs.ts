@@ -1,5 +1,6 @@
 import {z} from 'zod';
 import {flowDefinitionSchema} from './flow.js';
+import {flowRuntimeSchema,flowRuntimeViewSchema} from './flow-runtime.js';
 
 /** Explicit JSON extension data; it never accepts functions, undefined or NaN. */
 export const jsonValueSchema=z.json();
@@ -31,6 +32,7 @@ export const executionOutputSchema=extensible({
  stopConfirmation:z.enum(['unknown','operator_attested']).optional(),
  operatorCancellation:extensible({actorId:id,at:z.string(),reason:z.string(),evidence:z.string(),revokedAgentId:id,revokedAt:z.string()}).optional(),
  stopAttestation:extensible({actorId:id,at:z.string(),evidence:z.string()}).optional(),
+ flowRuntime:flowRuntimeSchema.optional(),
 });
 
 export const decisionOutcomeOutputSchema=z.discriminatedUnion('kind',[
@@ -50,6 +52,8 @@ export const decisionRequestOutputSchema=extensible({
  agentId:id,blockingScope:z.enum(['execution','none']),decision:decisionOutputSchema.optional(),
  clearedEvidence:z.string().optional(),deferredUntil:z.string().optional(),deferredReason:z.string().optional(),
  flowNodeId:id.optional(),rootRequestId:id.optional(),supersedesDecisionId:id.optional(),supersedesRequestId:id.optional(),
+ flowStepRunId:id.optional(),
+ flowInterrupt:z.boolean().optional(),
  correctionReason:z.string().optional(),withdrawalReason:z.string().optional(),
  applicabilityEndedEvidence:z.string().optional(),applicabilityEndedReason:z.string().optional(),
  applicabilityEndedForRevisionId:id.nullable().optional(),
@@ -93,6 +97,7 @@ export const workItemOutputSchema=extensible({
  revision:revisionOutputSchema,requests:z.array(decisionRequestOutputSchema),clarifications:z.array(clarificationOutputSchema),
  proposals:z.array(proposalOutputSchema),proposalRevisions:z.array(proposalRevisionOutputSchema),
  proposalSourceIds:z.array(extensible({id,version:revisionNumber,type:id})),permissions:permissionsOutputSchema,
+ flowProgress:flowRuntimeViewSchema.optional(),
 });
 
 export const contextOutputSchema=extensible({
@@ -118,7 +123,7 @@ export const agentErrorSchema=extensible({
 const mutationTools=new Set([
  'ouro.report_action','ouro.report_question','ouro.report_fork','ouro.report_blocker','ouro.withdraw_decision',
  'ouro.submit_decision_clarification','ouro.confirm_started','ouro.confirm_resumed','ouro.confirm_stopped',
- 'ouro.confirm_decision_applied','ouro.complete_execution','ouro.clear_blocker',
+ 'ouro.confirm_decision_applied','ouro.complete_execution','ouro.clear_blocker','ouro.report_flow_step',
 ]);
 
 export type AgentSuccessSchema=typeof contextOutputSchema|typeof updatesOutputSchema|typeof mutationOutputSchema|typeof proposalMutationOutputSchema;

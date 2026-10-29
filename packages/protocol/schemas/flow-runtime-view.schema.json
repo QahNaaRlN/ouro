@@ -1,0 +1,490 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": [
+        "legacy",
+        "enforced"
+      ]
+    },
+    "run": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "nodeId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "visit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "ready",
+                "running",
+                "waiting",
+                "succeeded",
+                "failed",
+                "skipped",
+                "cancelled"
+              ]
+            },
+            "createdAt": {
+              "type": "string",
+              "minLength": 1
+            },
+            "startedAt": {
+              "type": "string",
+              "minLength": 1
+            },
+            "finishedAt": {
+              "type": "string",
+              "minLength": 1
+            },
+            "evidence": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "retryOfRunId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "required": [
+            "id",
+            "nodeId",
+            "visit",
+            "state",
+            "createdAt"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema0"
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "agentActions": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "object",
+          "properties": {
+            "allowed": {
+              "type": "boolean"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "allowed",
+            "reason"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema1"
+          }
+        },
+        "complete": {
+          "type": "object",
+          "properties": {
+            "allowed": {
+              "type": "boolean"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "allowed",
+            "reason"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema1"
+          }
+        },
+        "fail": {
+          "type": "object",
+          "properties": {
+            "allowed": {
+              "type": "boolean"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "allowed",
+            "reason"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema1"
+          }
+        }
+      },
+      "required": [
+        "start",
+        "complete",
+        "fail"
+      ],
+      "additionalProperties": {
+        "$ref": "#/$defs/__schema2"
+      }
+    },
+    "humanActions": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "object",
+          "properties": {
+            "allowed": {
+              "type": "boolean"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "allowed",
+            "reason"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema1"
+          }
+        },
+        "complete": {
+          "type": "object",
+          "properties": {
+            "allowed": {
+              "type": "boolean"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "allowed",
+            "reason"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema1"
+          }
+        },
+        "fail": {
+          "type": "object",
+          "properties": {
+            "allowed": {
+              "type": "boolean"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "allowed",
+            "reason"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema1"
+          }
+        },
+        "retry": {
+          "type": "object",
+          "properties": {
+            "allowed": {
+              "type": "boolean"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "allowed",
+            "reason"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema1"
+          }
+        },
+        "skip": {
+          "type": "object",
+          "properties": {
+            "allowed": {
+              "type": "boolean"
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "allowed",
+            "reason"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema1"
+          }
+        }
+      },
+      "required": [
+        "start",
+        "complete",
+        "fail",
+        "retry",
+        "skip"
+      ],
+      "additionalProperties": {
+        "$ref": "#/$defs/__schema3"
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "possible",
+              "available",
+              "blocked",
+              "taken",
+              "not_selected"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "reason"
+        ],
+        "additionalProperties": {
+          "$ref": "#/$defs/__schema4"
+        }
+      }
+    }
+  },
+  "required": [
+    "mode",
+    "run",
+    "agentActions",
+    "humanActions",
+    "edges"
+  ],
+  "additionalProperties": {
+    "$ref": "#/$defs/__schema5"
+  },
+  "$defs": {
+    "__schema0": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema0"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema0"
+          }
+        }
+      ]
+    },
+    "__schema1": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema1"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema1"
+          }
+        }
+      ]
+    },
+    "__schema2": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema2"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema2"
+          }
+        }
+      ]
+    },
+    "__schema3": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema3"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema3"
+          }
+        }
+      ]
+    },
+    "__schema4": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema4"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema4"
+          }
+        }
+      ]
+    },
+    "__schema5": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema5"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema5"
+          }
+        }
+      ]
+    }
+  },
+  "$id": "urn:ouro:protocol:0.1.1:flow-runtime-view"
+}

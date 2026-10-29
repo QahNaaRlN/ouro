@@ -42,5 +42,5 @@
     "response"
   ],
   "additionalProperties": false,
-  "$id": "urn:ouro:protocol:0.1.0:input:ouro.submit_decision_clarification"
+  "$id": "urn:ouro:protocol:0.1.1:input:ouro.submit_decision_clarification"
 }

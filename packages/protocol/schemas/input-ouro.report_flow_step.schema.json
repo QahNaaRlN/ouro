@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "executionId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "requestId": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 200
+    },
+    "expectedVersion": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "phase": {
+      "type": "string",
+      "enum": [
+        "start",
+        "complete",
+        "fail"
+      ]
+    },
+    "evidence": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "edgeId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    }
+  },
+  "required": [
+    "executionId",
+    "requestId",
+    "expectedVersion",
+    "runId",
+    "phase"
+  ],
+  "additionalProperties": false,
+  "$id": "urn:ouro:protocol:0.1.1:input:ouro.report_flow_step"
+}

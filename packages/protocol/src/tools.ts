@@ -11,7 +11,8 @@ const text = z.string().min(1).max(20_000);
 const id = z.string().min(1).max(200);
 const version = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 const write = {executionId:id, requestId:z.string().min(8).max(200), expectedVersion:version};
-const report = {...write,title:text,context:text,flowNodeId:id.optional().describe('Optional explicit process-node ID from the assigned immutable revision. Omit for unbound facts; do not infer a path or human approval.')};
+const report = {...write,title:text,context:text,flowNodeId:id.optional().describe('Optional explicit process-node ID from the assigned immutable revision. Omit for unbound legacy facts; do not infer a path or human approval.'),flowStepRunId:id.optional().describe('Required for new reports in an enforced Flow execution. The server binds the exact step occurrence and derives flowNodeId; a supplied node ID must match. Historical Action phases keep their original occurrence.')};
+export const reportFlowStepInputSchema=z.strictObject({...write,runId:id,phase:z.enum(['start','complete','fail']),evidence:text.optional(),edgeId:id.optional()});
 const option = z.strictObject({id,title:text,description:text});
 const define = (name:string,title:string,description:string,inputSchema:z.ZodObject,readOnlyHint=false):AgentToolDefinition => ({
   name,title,description,inputSchema,
@@ -22,6 +23,7 @@ const define = (name:string,title:string,description:string,inputSchema:z.ZodObj
 export const AGENT_TOOLS: AgentToolDefinition[] = [
   define('ouro.get_context','Read assigned work','Read your human-authorized executions, their immutable specification revisions, decisions and current project version. Read before writing; never create your own assignment.',z.strictObject({executionId:id.optional()}),true),
   define('ouro.get_updates','Read committed updates','Read permitted events after a global cursor. Cursor may advance with no visible events. Poll this tool while awaiting a human; never infer consent from time or silence.',z.strictObject({afterCursor:version}),true),
+  define('ouro.report_flow_step','Report an enforced Flow step','Report start, complete or fail for the exact current run of your assigned opt-in Flow execution. Complete/fail require evidence. Condition completion requires an explicit edgeId; Fork completion must match the current human choice and application. Authorization, resume ACK, physical clearance, allowed edges and receipt recovery remain server guards. Step completion never accepts DoD.',reportFlowStepInputSchema),
   define('ouro.report_action','Report an action fact','Record a started/completed/failed action against an assigned execution. Completed/failed phases require evidence. This records a fact, without approving a decision or accepting DoD.',z.strictObject({...report,actionId:id,phase:z.enum(['started','completed','failed']),evidence:text.optional()})),
   define('ouro.report_question','Ask the human','Create a question requiring a human answer. blockingScope execution suspends this execution; none preserves independent work. Confidence and time never answer the question.',z.strictObject({...report,question:text,blockingScope:z.enum(['execution','none'])})),
   define('ouro.report_fork','Request a human choice','Provide at least two distinct alternatives and reason of at least 50 characters. A recommendation is advisory; only the human chooses.',z.strictObject({...report,reason:z.string().min(50).max(20_000),options:z.array(option).min(2).max(10),recommendationOptionId:id.optional()})),

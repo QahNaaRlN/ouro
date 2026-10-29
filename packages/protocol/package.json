@@ -1,6 +1,6 @@
 {
   "name": "@ouro/protocol",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Portable Ouro domain contracts, Flow validation and MCP tool schemas",
   "private": true,
   "license": "UNLICENSED",

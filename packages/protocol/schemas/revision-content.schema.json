@@ -180,5 +180,5 @@
     "comment"
   ],
   "additionalProperties": false,
-  "$id": "urn:ouro:protocol:0.1.0:revision-content"
+  "$id": "urn:ouro:protocol:0.1.1:revision-content"
 }

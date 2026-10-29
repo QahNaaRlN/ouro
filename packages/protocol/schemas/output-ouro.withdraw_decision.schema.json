@@ -126,6 +126,159 @@
           "additionalProperties": {
             "$ref": "#/$defs/__schema0"
           }
+        },
+        "flowRuntime": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "number",
+              "const": 1
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "active",
+                "completed",
+                "failed",
+                "cancelled"
+              ]
+            },
+            "currentRunId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "runs": {
+              "minItems": 1,
+              "maxItems": 1000,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "nodeId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "visit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "ready",
+                      "running",
+                      "waiting",
+                      "succeeded",
+                      "failed",
+                      "skipped",
+                      "cancelled"
+                    ]
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "startedAt": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "finishedAt": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "evidence": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "retryOfRunId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "id",
+                  "nodeId",
+                  "visit",
+                  "state",
+                  "createdAt"
+                ],
+                "additionalProperties": {
+                  "$ref": "#/$defs/__schema1"
+                }
+              }
+            },
+            "traversals": {
+              "maxItems": 1000,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "edgeId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "fromRunId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "toRunId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "at": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "id",
+                  "edgeId",
+                  "fromRunId",
+                  "toRunId",
+                  "at"
+                ],
+                "additionalProperties": {
+                  "$ref": "#/$defs/__schema2"
+                }
+              }
+            }
+          },
+          "required": [
+            "version",
+            "state",
+            "currentRunId",
+            "runs",
+            "traversals"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema3"
+          }
         }
       },
       "required": [
@@ -360,6 +513,13 @@
           "supersedesRequestId": {
             "type": "string",
             "minLength": 1
+          },
+          "flowStepRunId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "flowInterrupt": {
+            "type": "boolean"
           },
           "correctionReason": {
             "type": "string"
@@ -629,7 +789,100 @@
           }
         }
       ]
+    },
+    "__schema1": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema1"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema1"
+          }
+        }
+      ]
+    },
+    "__schema2": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema2"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema2"
+          }
+        }
+      ]
+    },
+    "__schema3": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema3"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema3"
+          }
+        }
+      ]
     }
   },
-  "$id": "urn:ouro:protocol:0.1.0:output:ouro.withdraw_decision"
+  "$id": "urn:ouro:protocol:0.1.1:output:ouro.withdraw_decision"
 }

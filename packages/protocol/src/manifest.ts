@@ -1,6 +1,7 @@
 import {z} from 'zod';
 import {PROTOCOL_VERSION} from './version.js';
 import {flowDefinitionSchema} from './flow.js';
+import {flowRuntimeSchema,flowStepRunSchema,flowTraversalSchema,flowRuntimeViewSchema,enforcedFlowDefinitionSchema} from './flow-runtime.js';
 import {agentProposalContentSchema,proposalRevisionContentSchema} from './inputs.js';
 import {AGENT_TOOLS} from './tools.js';
 import {agentErrorSchema,getToolOutputSchema} from './outputs.js';
@@ -9,6 +10,11 @@ export {PROTOCOL_VERSION} from './version.js';
 export const JSON_SCHEMA_DIALECT='https://json-schema.org/draft/2020-12/schema' as const;
 const definitions=[
  {name:'flow',file:'flow.schema.json',schema:flowDefinitionSchema},
+ {name:'enforced-flow',file:'enforced-flow.schema.json',schema:enforcedFlowDefinitionSchema},
+ {name:'flow-runtime',file:'flow-runtime.schema.json',schema:flowRuntimeSchema},
+ {name:'flow-step-run',file:'flow-step-run.schema.json',schema:flowStepRunSchema},
+ {name:'flow-traversal',file:'flow-traversal.schema.json',schema:flowTraversalSchema},
+ {name:'flow-runtime-view',file:'flow-runtime-view.schema.json',schema:flowRuntimeViewSchema},
  {name:'error',file:'error.schema.json',schema:agentErrorSchema},
  {name:'proposal-content',file:'proposal-content.schema.json',schema:agentProposalContentSchema},
  {name:'revision-content',file:'revision-content.schema.json',schema:proposalRevisionContentSchema},
@@ -21,6 +27,7 @@ const schemaId=(name:string)=>`urn:ouro:protocol:${PROTOCOL_VERSION}:${name}`;
 export const protocolManifest={
  name:'ouro-domain-contract',version:PROTOCOL_VERSION,dialect:JSON_SCHEMA_DIALECT,
  resources:{manifest:'ouro://protocol/manifest',schemas:'ouro://protocol/schemas'},
+ features:{flowRuntime:{mode:'opt-in',tracking:'enforced',runtimeVersion:1,tool:'ouro.report_flow_step',runBinding:'flowStepRunId',maxRuns:1000,legacyExecutions:'unchanged'}},
  tools:AGENT_TOOLS.map(tool=>({name:tool.name,inputSchema:schemaId(`input:${tool.name}`),outputSchema:schemaId(`output:${tool.name}`)})),
  errorSchema:schemaId('error'),
  schemas:definitions.map(({name,file})=>({name,id:schemaId(name),file})),
@@ -30,7 +37,8 @@ export const protocolManifest={
   'Flow limits use legacy UTF-16 code units; JSON Schema maxLength counts Unicode code points. The portable semantic validator preserves the stricter legacy acceptance.',
   'Node/edge IDs are unique; all nodes are reachable from entry and can reach a result. Retry cycles with an exit are allowed.',
   'Question and fork nodes belong to the human. A plan, a decision and actual application are distinct facts.',
-  'Event envelopes are typed; event payload and error details are JSON extension data in version 0.1.0, not a complete typed event catalog.',
+  'Event envelopes are typed; event payload and error details remain JSON extension data, not a complete typed event catalog.',
+  'Enforced Flow tracking is human opt-in on new executions. Run IDs distinguish repeated node visits; reports alone never advance a runtime or grant human approval.',
   'A failed response after commit is an unknown outcome: preserve requestId and the exact body until the receipt is recovered.',
  ],
 };

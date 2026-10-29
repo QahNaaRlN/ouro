@@ -226,5 +226,5 @@
       ]
     }
   },
-  "$id": "urn:ouro:protocol:0.1.0:output:ouro.get_updates"
+  "$id": "urn:ouro:protocol:0.1.1:output:ouro.get_updates"
 }

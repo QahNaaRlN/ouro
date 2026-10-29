@@ -1,4 +1,4 @@
-import { applyCommand, DomainError, PROJECT_ID, type Actor, type Command, type DomainEvent, type ProjectState, type Execution, type DecisionRequest } from '../../core/src';
+import { applyCommand, buildFlowRuntimeView, DomainError, PROJECT_ID, type Actor, type Command, type DomainEvent, type ProjectState, type Execution, type DecisionRequest } from '../../core/src';
 import { AGENT_TOOLS } from './tools';
 import {isExecutionProposalSource,hasRealityProposalSource} from '../../core/src/agent-proposals';
 import {agentErrorSchema,validateToolBody,type AgentResultBody} from '@ouro/protocol';
@@ -55,11 +55,13 @@ export function createAgentService({ store, actor }: {store:AgentStore; actor:Ac
       catch{return false;}
     };
     const resume=can({type:'confirmResumed',executionId:execution.id});
+    const run=execution.flowRuntime?.runs.find(item=>item.id===execution.flowRuntime?.currentRunId);
+    const flowBinding=run?{flowStepRunId:run.id,flowNodeId:run.nodeId}:{};
     return {
       canAcknowledgeStart:execution.state==='queued'&&resume,
       canAcknowledgeResume:execution.state!=='queued'&&resume,
       canAcknowledgeStop:can({type:'confirmStopped',executionId:execution.id}),
-      canStartAction:can({type:'reportAction',executionId:execution.id,specId:execution.specId,specRevisionId:execution.specRevisionId,actionId:'permission-probe-action',title:'Permission probe',context:'Read-only domain guard probe.',phase:'started'}),
+      canStartAction:can({type:'reportAction',executionId:execution.id,specId:execution.specId,specRevisionId:execution.specRevisionId,...flowBinding,actionId:'permission-probe-action',title:'Permission probe',context:'Read-only domain guard probe.',phase:'started'}),
       canCompleteSuccessfully:can({type:'completeExecution',executionId:execution.id,result:'succeeded',evidence:'Read-only domain guard probe.'}),
       stopRequested:execution.stopRequested===true,
       resumeAuthorized:execution.resumeAuthorized===true,
@@ -77,6 +79,7 @@ export function createAgentService({ store, actor }: {store:AgentStore; actor:Ac
     const proposals=state.agentProposals.filter(proposal=>proposal.executionId===execution.id);
     return {
       execution,
+      flowProgress:buildFlowRuntimeView(state,execution.id),
       spec:{id:spec.id,humanId:spec.humanId,title:spec.title,state:spec.state,activeRevisionId:spec.activeRevisionId},
       revision:state.revisions.find(r=>r.id===execution.specRevisionId),
       requests,clarifications,
@@ -140,6 +143,7 @@ export function createAgentService({ store, actor }: {store:AgentStore; actor:Ac
         const context={...base,specId:execution.specId,specRevisionId:execution.specRevisionId};
         let command:Command|undefined;
         switch(name){
+          case 'ouro.report_flow_step':command={...base,type:'reportFlowStep',runId:input.runId as string,phase:input.phase as 'start'|'complete'|'fail',...(input.evidence!==undefined?{evidence:input.evidence as string}:{}),...(input.edgeId!==undefined?{edgeId:input.edgeId as string}:{})};break;
           case 'ouro.report_action':command={...input,...context,type:'reportAction'} as Command;break;
           case 'ouro.report_question':command={...input,...context,type:'reportQuestion'} as Command;break;
           case 'ouro.report_fork':command={...input,...context,type:'reportFork'} as Command;break;

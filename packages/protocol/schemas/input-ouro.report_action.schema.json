@@ -28,7 +28,13 @@
       "maxLength": 20000
     },
     "flowNodeId": {
-      "description": "Optional explicit process-node ID from the assigned immutable revision. Omit for unbound facts; do not infer a path or human approval.",
+      "description": "Optional explicit process-node ID from the assigned immutable revision. Omit for unbound legacy facts; do not infer a path or human approval.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "flowStepRunId": {
+      "description": "Required for new reports in an enforced Flow execution. The server binds the exact step occurrence and derives flowNodeId; a supplied node ID must match. Historical Action phases keep their original occurrence.",
       "type": "string",
       "minLength": 1,
       "maxLength": 200
@@ -62,5 +68,5 @@
     "phase"
   ],
   "additionalProperties": false,
-  "$id": "urn:ouro:protocol:0.1.0:input:ouro.report_action"
+  "$id": "urn:ouro:protocol:0.1.1:input:ouro.report_action"
 }

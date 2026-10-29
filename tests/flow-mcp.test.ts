@@ -40,7 +40,7 @@ test('F05: independent official SDK publishes optional flowNodeId and records it
   try{
     await server.connect(serverTransport);await client.connect(clientTransport);
     const tools=await client.listTools();
-    for(const name of ['ouro.report_action','ouro.report_question','ouro.report_fork','ouro.report_blocker']){const tool=tools.tools.find(t=>t.name===name)!;assert.equal((tool.inputSchema.properties?.flowNodeId as any)?.type,'string',name);assert(!tool.inputSchema.required?.includes('flowNodeId'));}
+    for(const name of ['ouro.report_action','ouro.report_question','ouro.report_fork','ouro.report_blocker']){const tool=tools.tools.find(t=>t.name===name)!;for(const key of ['flowNodeId','flowStepRunId']){assert.equal((tool.inputSchema.properties?.[key] as any)?.type,'string',`${name}.${key}`);assert(!tool.inputSchema.required?.includes(key));}}
     const context=await client.callTool({name:'ouro.get_context',arguments:{executionId:f.execution.id}});assert.deepEqual((context.structuredContent as any).work[0].revision.flow,flow);
     const write={executionId:f.execution.id,requestId:randomUUID(),expectedVersion:(await f.store.getProject()).version,flowNodeId:'action',actionId:randomUUID(),phase:'completed',title:'SDK факт',context:'Официальный независимый MCP Client.',evidence:'test://sdk/flow'};
     const accepted=await client.callTool({name:'ouro.report_action',arguments:write});assert.equal(accepted.isError,undefined,JSON.stringify(accepted));assert.equal((accepted.structuredContent as any).events[0].payload.flowNodeId,'action');

@@ -299,5 +299,5 @@
       "additionalProperties": false
     }
   ],
-  "$id": "urn:ouro:protocol:0.1.0:proposal-content"
+  "$id": "urn:ouro:protocol:0.1.1:proposal-content"
 }

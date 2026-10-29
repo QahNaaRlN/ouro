@@ -1,5 +1,5 @@
-import type {FlowDefinition} from '@ouro/protocol';
-export type {FlowDefinition,FlowNode,FlowEdge,FlowNodeKind,FlowOwner} from '@ouro/protocol';
+import type {FlowDefinition,FlowRuntime} from '@ouro/protocol';
+export type {FlowDefinition,FlowNode,FlowEdge,FlowNodeKind,FlowOwner,FlowRuntime,FlowStepRun,FlowTraversal,FlowRuntimeView} from '@ouro/protocol';
 import type {ManagedSubject,Pin,RunRef} from '../../meridian/src/context';
 
 export type SpecState = 'idea' | 'specified' | 'in_progress' | 'blocked' | 'done' | 'invalidated';
@@ -33,6 +33,7 @@ export type Execution = {
   stopConfirmation?: 'unknown' | 'operator_attested';
   operatorCancellation?: {actorId:string;at:string;reason:string;evidence:string;revokedAgentId:string;revokedAt:string};
   stopAttestation?: {actorId:string;at:string;evidence:string};
+  flowRuntime?:FlowRuntime;
 };
 export type DecisionOption = { id: string; title: string; description: string };
 export type DecisionOutcome = { kind: 'answer'; answer: string } | { kind: 'approve'; chosenOptionId: string } | { kind: 'reject'; reason: string };
@@ -45,6 +46,8 @@ export type DecisionRequest = {
   agentId: string; blockingScope: 'execution' | 'none'; decision?: Decision;
   clearedEvidence?: string; deferredUntil?: string; deferredReason?: string;
   flowNodeId?: string;
+  flowStepRunId?: string;
+  flowInterrupt?: boolean;
   rootRequestId?: string; supersedesDecisionId?: string; supersedesRequestId?:string; correctionReason?: string; withdrawalReason?: string;
   applicabilityEndedEvidence?:string; applicabilityEndedReason?:string;
   applicabilityEndedForRevisionId?:string|null;
@@ -93,7 +96,7 @@ export type ProjectState = {
 };
 export type RevisionContent = Pick<SpecRevision, 'title' | 'goal' | 'dod' | 'constraints' | 'assumptions' | 'risks' | 'inputs' | 'comment' | 'flow'>;
 type CommandBase = { requestId: string; expectedVersion: number; specId?: string; specRevisionId?: string };
-type ReportBase = { specId: string; specRevisionId: string; executionId: string; title: string; context: string; flowNodeId?: string };
+type ReportBase = { specId: string; specRevisionId: string; executionId: string; title: string; context: string; flowNodeId?: string;flowStepRunId?:string };
 export type Command = CommandBase & (
   | { type: 'createSpec'; content: RevisionContent }
   | { type:'importMeridianScope';rawDocument:string;content:RevisionContent }
@@ -103,7 +106,10 @@ export type Command = CommandBase & (
   | { type:'createSpecFromLesson'; lessonId:string; lessonRevisionId:string; content:RevisionContent; sourceSpecId?:string }
   | { type: 'proposeRevision'; specId: string; content: RevisionContent }
   | { type: 'activateRevision'; specId: string; revisionId: string }
-  | { type: 'startExecution'; specId: string; specRevisionId: string; agentId: string; retryOfExecutionId?: string }
+  | { type: 'startExecution'; specId: string; specRevisionId: string; agentId: string; retryOfExecutionId?: string;flowTracking?:'enforced' }
+  | { type:'reportFlowStep';executionId:string;runId:string;phase:'start'|'complete'|'fail';evidence?:string;edgeId?:string }
+  | { type:'retryFlowStep';executionId:string;runId:string;reason:string }
+  | { type:'skipFlowStep';executionId:string;runId:string;reason:string;evidence:string }
   | ({ type: 'reportAction'; actionId: string; phase: 'started' | 'completed' | 'failed'; evidence?: string } & ReportBase)
   | ({ type: 'reportQuestion'; question: string; blockingScope: 'execution' | 'none' } & ReportBase)
   | ({ type: 'reportFork'; reason: string; options: DecisionOption[]; recommendationOptionId?: string } & ReportBase)

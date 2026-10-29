@@ -58,6 +58,8 @@ import ParticipantsPanel,{ParticipantLogin} from '@/components/participants-pane
 import CollaborativeDraftsPanel from '@/components/collaborative-drafts';
 import AgentProposalsPanel,{type ProposalReviewIntentRegistry} from '@/components/agent-proposals-panel';
 import SpecFlow from "@/components/spec-flow";
+import {FlowTrackingChoice,flowTrackingUnavailable} from '@/components/flow-runtime-panel';
+import {runtimeEventNames,type FlowRuntimeCommand,type FlowCommandOutcome,type RuntimeIntentRegistry} from '@/components/flow-runtime-ui';
 import { StateTransitions } from "@/components/state-transitions";
 import HistoricalPanel from "@/components/historical-panel";
 import { createProjectSnapshotAdopter, type ProjectSnapshot } from '@/lib/project-snapshot';
@@ -128,6 +130,7 @@ const eventLabels: Record<string, string> = {
   GitHubBindingCreated: "GitHub привязан к попытке",
   GitHubBindingRevoked: "Привязка GitHub отозвана",
   AgentProposalSubmitted:'Агент предложил сводку или спеку',AgentProposalRevisionSubmitted:'Агент уточнил предложение',AgentProposalReviewed:'Сводка рассмотрена человеком',AgentProposalDismissed:'Предложение отклонено',AgentProposalAdopted:'Из предложения создан черновик',
+  ...runtimeEventNames,
 };
 function shortDate(value: string) {
   return new Date(value).toLocaleString("ru-RU", {
@@ -161,6 +164,15 @@ export default function Home() {
     [cursor, setCursor] = useState(0);
   const [agents, setAgents] = useState<AgentRegistration[]>([]);
   const [identity,setIdentity]=useState<Actor|null>(null),[sharedPending,setSharedPending]=useState(false);
+  const [flowTrackingSelections,setFlowTrackingSelections]=useState<Record<string,boolean>>({});
+  const flowRuntimeIntents=useRef<RuntimeIntentRegistry>(new Map());
+  // Pending requests remain keyed to their original author. Another identity
+  // cannot see or resend them; returning to that author can recover the receipt.
+  useEffect(()=>{setFlowTrackingSelections({});},[identity?.id]);
+  useEffect(()=>{
+    const warn=(event:BeforeUnloadEvent)=>{if(flowRuntimeIntents.current.size){event.preventDefault();event.returnValue='';}};
+    window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);
+  },[]);
   const [assignmentAgentId, setAssignmentAgentId] = useState(AGENT_ID);
   const [snapshotAdopter] = useState(()=>createProjectSnapshotAdopter(PROJECT_ID));
   const [streamStatus,setStreamStatus] = useState<ProjectSubscriptionStatus>('connecting');
@@ -295,6 +307,7 @@ export default function Home() {
     notice = "Изменение записано в историю",
     expectedVersionOverride?: number,
     onCommitted?: (events:DomainEvent[])=>void,
+    onOutcome?: (outcome:Omit<FlowCommandOutcome,'ok'>)=>void,
   ) => {
     if(historicalCursorRef.current!==null){setError('Историческое состояние доступно только для чтения. Вернитесь к текущей работе.');return false;}
     if (!state || busy) return false;
@@ -304,14 +317,15 @@ export default function Home() {
     try {
       const r = await fetch("/api/commands", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json",...(identity?{'X-Ouro-Expected-Participant':identity.id}:{}) },
         body: JSON.stringify({
           ...payload,
-          requestId: crypto.randomUUID(),
+          requestId: typeof payload.requestId==='string'?payload.requestId:crypto.randomUUID(),
           expectedVersion: expectedVersionOverride ?? state.version,
         }),
       });
       const data = await r.json();
+      onOutcome?.({status:r.status,...(typeof data.error?.code==='string'?{code:data.error.code}:{})});
       if (!r.ok) {
         if (data.state) adoptSnapshot(data);
         else await refresh();
@@ -334,6 +348,25 @@ export default function Home() {
       setBusy(false);
       pendingRef.current = false;
     }
+  };
+  const runFlowCommand:FlowRuntimeCommand=async(payload,expectedVersion)=>{
+    if(!identity||identity.kind!=='human')return {ok:false,status:401,code:'UNAUTHENTICATED'};
+    let outcome:Omit<FlowCommandOutcome,'ok'>={};
+    const ok=await command(payload,'Действие процесса записано',expectedVersion,undefined,value=>{outcome=value;});
+    return {ok,...outcome};
+  };
+  const simulateFlowCommand:FlowRuntimeCommand=async(payload,expectedVersion)=>{
+    if(historicalCursorRef.current!==null||!state||busy)return {ok:false};
+    if(!identity||!['local-human','human-token'].includes(identity.id))return {ok:false,status:403,code:'FORBIDDEN'};
+    setBusy(true);pendingRef.current=true;setError('');
+    let outcome:Omit<FlowCommandOutcome,'ok'>={};
+    try{
+      const response=await fetch('/api/simulator',{method:'POST',headers:{'Content-Type':'application/json','X-Ouro-Expected-Participant':identity.id},body:JSON.stringify({...payload,requestId:typeof payload.requestId==='string'?payload.requestId:crypto.randomUUID(),expectedVersion})});
+      const data=await response.json();outcome={status:response.status,...(typeof data.error?.code==='string'?{code:data.error.code}:{})};
+      if(!response.ok){if(data.state)adoptSnapshot(data);else await refresh();setError(`${data.error?.code??'ERROR'}: ${data.error?.message??'Учебное действие не записано.'}`);return {ok:false,...outcome};}
+      await adoptMutation(data);setToast('Учебный симулятор записал явно синтетический факт процесса');return {ok:true,...outcome};
+    }catch{setError('Результат учебного действия не подтверждён. Сохраните прежний запрос для повтора.');return {ok:false,...outcome};}
+    finally{setBusy(false);pendingRef.current=false;}
   };
   const saveFlow = async (flow: FlowDefinition, base: {revisionId:string;expectedVersion:number}) => {
     const original=state?.revisions.find(r=>r.id===base.revisionId);
@@ -432,6 +465,14 @@ export default function Home() {
   const selectedAgentName = execution ? execution.agentId===AGENT_ID ? 'Симулятор агента' : agents.find(a=>a.id===execution.agentId)?.name??'Назначенный MCP-агент' : 'MCP и симулятор';
   const assignmentValid=assignmentAgentId===AGENT_ID || agents.some(a=>a.id===assignmentAgentId&&!a.revokedAt);
   const externalStopUnknown=state?.executions.some(e=>e.specId===selected&&e.stopConfirmation==='unknown')??false;
+  const trackingKey=`${spec?.id??''}:${spec?.activeRevisionId??''}`;
+  const trackingReason=flowTrackingUnavailable(state?.revisions.find(item=>item.id===spec?.activeRevisionId)?.flow);
+  const trackingChecked=flowTrackingSelections[trackingKey]??false;
+  const setTrackingChecked=(checked:boolean)=>setFlowTrackingSelections(current=>({...current,[trackingKey]:checked}));
+  const authorizeAttempt=(notice:string)=>{
+    if(!spec?.activeRevisionId)return;
+    void command({type:'startExecution',specId:spec.id,specRevisionId:spec.activeRevisionId,agentId:assignmentAgentId,...(trackingChecked&&!trackingReason?{flowTracking:'enforced'}:{})},notice,undefined,()=>setFlowTrackingSelections(current=>({...current,[trackingKey]:false})));
+  };
   const visibleSpecs = state?.specs.filter(s=>matchesRoadmapFilter(s,state,{query,status,agentId:agentFilter,requestKind:requestFilter}))??[];
   const filterOptions=state?getRoadmapFilterOptions(state):{agentIds:[],requestKinds:[]};
   const connected=streamStatus==='connected';
@@ -892,7 +933,7 @@ export default function Home() {
                             <label className="form-label">Ревизия схемы<select aria-label="Ревизия схемы" value={shown.id} onChange={e=>setFlowRevisionId(e.target.value)}>{state.revisions.filter(r=>r.specId===spec.id).toReversed().map(r=><option key={r.id} value={r.id}>r{r.revision} · {r.id===spec.activeRevisionId?'активная':r.id===spec.revisionIds.at(-1)?'предложена':'историческая'}</option>)}</select></label>
                             {shown.id!==spec.activeRevisionId&&shown.id===spec.revisionIds.at(-1)&&<button className="btn" disabled={busy} onClick={()=>command({type:'activateRevision',specId:spec.id,revisionId:shown.id},'Ревизия схемы активирована. История прежних попыток сохранена.')}><Check size={14}/>Активировать ревизию {shown.revision}</button>}
                           </div>
-                          <SpecFlow key={shown.id} revision={shown} state={state} busy={busy} onSave={saveFlow}/>
+                          <SpecFlow key={shown.id} revision={shown} state={state} busy={busy} onSave={saveFlow} actorId={identity?.id??'unauthenticated'} intents={flowRuntimeIntents.current} onCommand={runFlowCommand} onSimulateFlow={identity&&['local-human','human-token'].includes(identity.id)?simulateFlowCommand:undefined}/>
                         </>;
                       })()}
                       {detailTab==='states'&&<StateTransitions state={state} specId={spec.id} executionId={execution?.id}/>}
@@ -1126,20 +1167,13 @@ export default function Home() {
                               spec.activeRevisionId &&
                               spec.state !== "done" && (
                                 <div className="agent-assignment-actions">
+                                <FlowTrackingChoice checked={trackingChecked} reason={trackingReason} disabled={busy} onChange={setTrackingChecked}/>
                                 <AgentPicker agents={agents} value={assignmentAgentId} onChange={setAssignmentAgentId} disabled={busy}/>
                                 <button
                                   className="btn btn-small"
                                   disabled={busy || !assignmentValid || externalStopUnknown}
                                   onClick={() =>
-                                    command(
-                                      {
-                                        type: "startExecution",
-                                        specId: spec.id,
-                                        specRevisionId: spec.activeRevisionId,
-                                        agentId: assignmentAgentId,
-                                      },
-                                      "Попытка разрешена. Ожидается подтверждение назначенного исполнителя",
-                                    )
+                                    authorizeAttempt("Попытка разрешена. Ожидается подтверждение назначенного исполнителя")
                                   }
                                 >
                                   <Play size={13} />
@@ -1495,20 +1529,13 @@ export default function Home() {
                     spec.state !== "done" &&
                     spec.state !== "invalidated" && (
                       <div className="agent-assignment-actions agent-assignment-vertical">
+                                <FlowTrackingChoice checked={trackingChecked} reason={trackingReason} disabled={busy} onChange={setTrackingChecked}/>
                       <AgentPicker agents={agents} value={assignmentAgentId} onChange={setAssignmentAgentId} disabled={busy}/>
                       <button
                         className="btn btn-small btn-full"
                         disabled={busy || !assignmentValid || externalStopUnknown}
                         onClick={() =>
-                          command(
-                            {
-                              type: "startExecution",
-                              specId: spec.id,
-                              specRevisionId: spec.activeRevisionId,
-                              agentId: assignmentAgentId,
-                            },
-                            "Попытка разрешена человеком. Ожидается подтверждение назначенного исполнителя",
-                          )
+                          authorizeAttempt("Попытка разрешена человеком. Ожидается подтверждение назначенного исполнителя")
                         }
                       >
                         <Play size={13} />
