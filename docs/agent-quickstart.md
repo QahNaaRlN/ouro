@@ -1,12 +1,12 @@
-# Подключить агента · 0.1.0-alpha.14
+# Подключить агента · 0.1.0-alpha.15
 
-Общий версионированный контракт Ouro позволяет любому совместимому MCP-агенту читать назначения, сообщать факты и запрашивать человека. Единый realtime-дашборд выбранного проекта показывает карту, Flow, агентов/попытки, внимание человека и события из этих сообщений. Поддерживаются tools и stdio либо Streamable HTTP с настраиваемым bearer-заголовком. ChatGPT — отдельный [пример Secure MCP Tunnel](chatgpt-guide.md); LLM и аккаунт провайдера остаются на стороне клиента. [SDD первоначального подключения](specs/agent-connect.md), [локальные проекты и дашборд](specs/project-workspace.md).
+Общий версионированный контракт Ouro позволяет любому совместимому MCP-агенту читать назначения, сообщать факты и запрашивать человека. Единый realtime-дашборд выбранного проекта показывает карту, Flow, агентов/попытки, внимание человека и события из этих сообщений. Поддерживаются tools и stdio либо Streamable HTTP с настраиваемым bearer-заголовком. Cursor, Claude Code и Claude Desktop имеют [готовые профили подключения](agent-clients-guide.md), ChatGPT — отдельный [пример Secure MCP Tunnel](chatgpt-guide.md); LLM и аккаунт провайдера остаются на стороне клиента. [SDD первоначального подключения](specs/agent-connect.md), [локальные проекты и дашборд](specs/project-workspace.md).
 
 ## Быстрый путь
 
 1. `npm ci`, затем `npm run dev`; откройте <http://127.0.0.1:3000/projects>, добавьте существующую папку и откройте её дашборд.
-2. Нажмите **«Зарегистрировать агента»**, задав имя своего MCP-клиента. Сохраните одноразовый ключ в отдельный локальный файл вне Git/папки контекста; укажите его абсолютный путь в конфигурации stdio. Выданный MCP URL фиксирует выбранный projectId. Список/история не хранят значение ключа.
-3. Добавьте JSON в MCP-клиент и перезапустите его MCP-подключение. Выданные `command`/`args` содержат абсолютные пути и работают из другой папки.
+2. Выберите профиль Cursor, Claude Code или Claude Desktop и нажмите **«Зарегистрировать агента»**, задав имя своего MCP-клиента. Сохраните одноразовый ключ в отдельный локальный файл вне Git/папки контекста; укажите его абсолютный путь в конфигурации stdio. Выданный MCP URL фиксирует выбранный projectId. Список/история не хранят значение ключа.
+3. Скопируйте или скачайте JSON и добавьте запись в MCP-клиент, сохранив остальные настройки; включите сервер и его разрешения. Cursor использует `.cursor/mcp.json`, Claude Code — `.mcp.json` либо `--mcp-config`, Desktop — Developer → Edit Config с полным restart. Выданные `command`/`args` содержат абсолютные пути и работают из другой папки.
 4. Выберите эту регистрацию, заполните задачу, название и проверяемые критерии; нажмите **«Начать работу»**. Спека, активная ревизия и queued-попытка создаются атомарно. До настоящего ACK видно **«Ожидает агента»**.
 5. Дайте агенту инструкцию: «Прочитай `ouro.get_context`, найди назначенную попытку, подтверди запуск через `ouro.confirm_started`. Работай по её ревизии, сообщай факты через Ouro; вопросы и развилки передавай человеку».
 6. Наблюдайте общий дашборд и ответьте на запросы человека. Применение решения, разрешение продолжения и ACK — отдельные действия. После результата человек проверяет и принимает DoD.
@@ -19,29 +19,19 @@
 
 UI выдаёт JSON с реальными путями, project-specific URL и ссылкой на файл ключа. Значение одноразового ключа сохраняется отдельно. Ниже только шаблоны.
 
-Общий stdio для Claude/Cursor и клиентов с такой же JSON-оболочкой:
+Профиль stdio для Cursor/Claude Code; у Desktop генератор сохраняет command/args/env без обязательного type. Здесь только шаблон — UI выдаёт реальные значения:
 
 ```json
-{"mcpServers":{"ouro":{"command":"/absolute/path/to/node","args":["/absolute/path/to/ouro/packages/mcp/bin/ouro-mcp.mjs"],"env":{"OURO_URL":"http://127.0.0.1:3000/api/projects/PROJECT_ID/mcp","OURO_AGENT_TOKEN_FILE":"/absolute/path/to/local-agent-key.txt"}}}}
+{"mcpServers":{"ouro-PROJECT_ID":{"type":"stdio","command":"/absolute/path/to/node","args":["/absolute/path/to/ouro/packages/mcp/bin/ouro-mcp.mjs"],"env":{"OURO_URL":"http://127.0.0.1:3000/api/projects/PROJECT_ID/mcp","OURO_AGENT_TOKEN_FILE":"/absolute/path/to/local-agent-key.txt"}}}}
 ```
 
 Можно задать `OURO_AGENT_TOKEN` вместо файла, но не оба одновременно. Bridge не открывает БД: все изменения идут через сервер Ouro. stdout содержит только MCP; диагностика stderr не печатает ключ. Удалённый endpoint требует HTTPS.
 
 Для нового проекта используйте выданный registered-agent key. Legacy серверный env-token ограничен default-проектом. Не добавляйте projectId в tool arguments: scope проверяется по endpoint и ключу. Для прежнего demo URL остаётся `http://127.0.0.1:3000/api/mcp`.
 
-Cursor HTTP (`.cursor/mcp.json` либо пользовательская конфигурация):
+Новые профили используют файл ключа и локальный stdio без Tunnel. Генератор `npm run --silent agent:config -- ...` печатает тот же JSON; для Claude Code отдельный `--entry` предназначен для `claude mcp add-json`, а полный wrapper — для `.mcp.json`/`--mcp-config`. Подробности, platform paths и объединение существующих настроек: [Cursor/Claude guide](agent-clients-guide.md).
 
-```json
-{"mcpServers":{"ouro":{"url":"http://127.0.0.1:3000/api/projects/PROJECT_ID/mcp","headers":{"Authorization":"Bearer YOUR_AGENT_KEY"}}}}
-```
-
-Claude Code HTTP (`.mcp.json` либо пользовательская конфигурация):
-
-```json
-{"mcpServers":{"ouro":{"type":"http","url":"http://127.0.0.1:3000/api/projects/PROJECT_ID/mcp","headers":{"Authorization":"Bearer YOUR_AGENT_KEY"}}}}
-```
-
-Первоисточники: [Claude Code MCP](https://code.claude.com/docs/en/mcp), [Cursor MCP](https://cursor.com/docs/mcp). Формат оболочки других клиентов может отличаться. Проверка этого пакета выполнена независимыми официальными SDK-клиентами HTTP и stdio; установка конкретных проприетарных клиентов не заявляется проверенной.
+Streamable HTTP с отдельным bearer остаётся доступным для клиентов с соответствующей поддержкой. Хранение/подстановка credential зависит от клиента; готовые профили этого пакета не вставляют значение ключа в JSON или argv. У Ouro нет собственного OAuth-сервера. [Официальные источники и выбранные границы](agent-clients-research.md).
 
 ## Инструменты
 
@@ -94,7 +84,7 @@ Human/system-шаги, retry и skip подтверждает человек. Ru
 
 Получив `DecisionClarificationRequested` через `get_updates` либо `clarifications` назначенной работы в `get_context`, агент отвечает `ouro.submit_decision_clarification` с `clarificationEventId` исходного факта. Контекст содержит и ранее записанные уточнения/ответы, поэтому переподключение не теряет открытый вопрос человека. Ответ не закрывает запрос и не разрешает исполнение. Отзыв собственного pending-запроса также не возобновляет работу; физический Blocker остаётся до проверяемого устранения либо явного пересмотра его применимости к другому контракту.
 
-MCP сам не запускает LLM и не контролирует внешние процессы. Начиная с alpha.4 Human View получает committed snapshots через SSE с восстановлением после разрыва; MCP get_updates остаётся scoped чтением, а техническая presence регистраций обновляется отдельно. Один проект; доступны отдельные зарегистрированные участники с HttpOnly-сессиями, без внешнего SSO/OAuth server и multi-tenancy. Для внешнего адреса нужен `OURO_PUBLIC_URL=https://…` и реальная human-авторизация; loopback demo не становится production identity через reverse proxy.
+MCP сам не запускает LLM и не контролирует внешние процессы. Начиная с alpha.4 Human View получает committed snapshots через SSE с восстановлением после разрыва; MCP get_updates остаётся scoped чтением, а техническая presence регистраций обновляется отдельно. Проекты разделены endpoint и ключами; каталог папок доступен доверенному локальному оператору. В прежнем Human View доступны отдельные зарегистрированные участники с HttpOnly-сессиями, без внешнего SSO/OAuth server и production multi-tenancy. Для внешнего адреса нужен `OURO_PUBLIC_URL=https://…` и реальная human-авторизация; loopback demo не становится production identity через reverse proxy.
 
 Трассировка тестов и наблюдавшиеся RED/GREEN: [журнал пакета](plans/agent-connect.md).
 
@@ -105,3 +95,5 @@ MCP сам не запускает LLM и не контролирует внеш
 Версия предметного контракта `0.1.2` отделена от версии приложения и transport MCP. Не добавляйте `contractVersion` в прежние tool arguments: входы закрыты, версия объявлена в manifest. `tools/list` содержит input/output schemas всех 18 tools; выходная схема включает `ok:true` и `ok:false`, потому что SDK-клиент проверяет любое присутствующее structuredContent, включая `isError:true`. Canonical bundle использует Draft 2020-12, wire-схемы закреплённого SDK 1.32.2 — Draft 7.
 
 `OUTPUT_CONTRACT_ERROR` с `error.details.outcomeUnknown:true` не означает, что команда не записалась. Сохраните прежние requestId и полное тело, включая expectedVersion, и выясняйте исход точным повтором; новый ID или подмена версии могут создать другую команду. Статические схемы не предоставляют прав или назначения. [Инструкция контракта и отдельной установки](protocol-guide.md) · [самостоятельный пакет](../packages/protocol/README.md).
+
+Cursor/Claude Code имеют собственные edit/shell tools; read-only ограничение касается tools файлового контекста Ouro. Дашборд не перехватывает все действия IDE автоматически — агент явно сообщает наблюдаемые факты. Настройка клиента и модель остаются на стороне пользователя.

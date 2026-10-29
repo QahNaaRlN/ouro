@@ -2,7 +2,7 @@
 
 Единый realtime-дашборд выбранного проекта: дорожная карта, подробный процесс выбранной спеки, агенты и попытки, вопросы/блокеры и живая лента фактов. Общий версионированный MCP-контракт позволяет любому совместимому агенту работать с Ouro; ChatGPT — один из вариантов подключения.
 
-Рабочая версия `0.1.0-alpha.14`: любая существующая локальная папка как отдельный проект, project-bound подключения MCP-агентов и назначение задач с DoD, queued до настоящего ACK. Выбор папки, подключение и назначение — вход в общий дашборд. `@ouro/protocol@0.1.2` описывает 18 tools, Flow, проходы, ответы и ограниченное чтение файлов. История сохраняется в PostgreSQL; папка не обязана быть Git-репозиторием.
+Рабочая версия `0.1.0-alpha.15`: любая существующая локальная папка как отдельный проект, project-bound подключения MCP-агентов и назначение задач с DoD, queued до настоящего ACK. Выбор папки, подключение и назначение — вход в общий дашборд. `@ouro/protocol@0.1.2` описывает 18 tools, Flow, проходы, ответы и ограниченное чтение файлов. История сохраняется в PostgreSQL; папка не обязана быть Git-репозиторием.
 
 Прежний полный Human View сохраняет учебный проект, GitHub evidence, уроки, показатели дрейфа, исторический просмотр, исправления решений, совместные черновики, предложения с источниками, Meridian import и строгий учёт проходов. Новый проект имеет собственные историю, карту и регистрации, без учебного seed. Файловые tools предоставляют read-only контекст; встроенного LLM runner и файловых write/shell tools нет.
 
@@ -10,12 +10,12 @@
 
 ## Локальный запуск
 
-Версия с локальными проектами и единым дашбордом находится в ветке **`feat/project-workspace`**. Предыдущая alpha.13 сохранена в `feat/flow-runtime`, alpha.12 — в `feat/domain-contract`, локальная alpha.11 — в `feat/local-start`; в `master` пока исходное описание проекта. Нужны Git и [Node.js 24 LTS](https://nodejs.org/) с npm; проверенная версия закреплена в `.nvmrc` (`24.19.0`). Минимум Next.js — Node 20.9, но для воспроизводимого запуска рекомендуется Node 24.
+Версия с готовыми профилями Cursor, Claude Code и Claude Desktop находится в ветке **`feat/client-onboarding`**. Предыдущая alpha.14 с единым дашбордом сохранена в `feat/project-workspace`, alpha.13 — в `feat/flow-runtime`, alpha.12 — в `feat/domain-contract`, локальная alpha.11 — в `feat/local-start`; в `master` пока исходное описание проекта. Нужны Git и [Node.js 24 LTS](https://nodejs.org/) с npm; проверенная версия закреплена в `.nvmrc` (`24.19.0`). Минимум Next.js — Node 20.9, но для воспроизводимого запуска рекомендуется Node 24.
 
 Команды одинаковы для PowerShell, терминалов macOS и Linux:
 
 ```sh
-git clone --branch feat/project-workspace --single-branch https://github.com/QahNaaRlN/ouro.git
+git clone --branch feat/client-onboarding --single-branch https://github.com/QahNaaRlN/ouro.git
 cd ouro
 npm ci
 npm run dev
@@ -65,16 +65,22 @@ Playwright использует свой Chromium и отдельную врем
 
 ## Быстро подключить агента
 
-1. В `/projects` добавьте существующую папку и откройте её дашборд. Создайте именованную регистрацию агента, сохраните одноразовый ключ в локальный файл и скопируйте конфигурацию с project-specific URL и путём файла ключа.
-2. Подключите любой совместимый MCP-клиент через stdio или Streamable HTTP. Для ChatGPT используйте [Secure MCP Tunnel → локальный stdio bridge](docs/chatgpt-guide.md); это пример подключения к тому же общему контракту.
+1. В `/projects` добавьте существующую папку и откройте её дашборд. Выберите Cursor, Claude Code или Claude Desktop, создайте отдельную именованную регистрацию и сохраните одноразовый ключ в локальный файл вне репозитория. Укажите абсолютный путь файла, затем скопируйте или скачайте готовую конфигурацию с точным project URL.
+2. Cursor: добавьте запись в `.cursor/mcp.json` открытой папки и включите сервер в Customize. Claude Code: добавьте её в `.mcp.json` либо загрузите отдельный JSON через `claude --mcp-config "/absolute/path/ouro-mcp.json"`. Claude Desktop: Settings → Developer → Edit Config, добавьте запись в `mcpServers` и полностью перезапустите приложение. Существующие настройки сохраняйте; готовые профили их не перезаписывают.
 3. Выберите регистрацию, задайте цель и проверяемые DoD, нажмите **«Начать работу»**. Попытка остаётся **«Ожидает агента»** до `ouro.confirm_started`. Передайте агенту выданную инструкцию с точным executionId.
 4. Наблюдайте карту, выбранный процесс, агентов, требующие внимания запросы и живые факты на общем экране. Ответ человека, подтверждение применения, разрешение продолжения/ACK, результат и приёмка DoD — отдельные действия.
 
-[Папка и дашборд проекта](docs/project-workspace-guide.md) · [Общий MCP quickstart](docs/agent-quickstart.md) · [ChatGPT: пошаговая настройка](docs/chatgpt-guide.md) · [SDD/TDD текущего пакета](docs/plans/project-workspace.md).
+[Cursor/Claude: подробная настройка и CLI](docs/agent-clients-guide.md) · [Папка и дашборд](docs/project-workspace-guide.md) · [Общий MCP quickstart](docs/agent-quickstart.md) · [SDD/TDD текущего пакета](docs/plans/client-onboarding.md).
+
+Эти клиенты используют локальный stdio bridge без Secure MCP Tunnel. Для ChatGPT сохранён отдельный [пример подключения](docs/chatgpt-guide.md). Ouro, Node/bridge и MCP-клиент должны видеть соответствующие пути и loopback-адрес; пример из облачной среды не подключает приложение на вашем компьютере.
+
+Генератор без изменения настроек: `npm run --silent agent:config -- --client cursor --project-id PROJECT_ID --url "http://127.0.0.1:3000/api/projects/PROJECT_ID/mcp" --key-file "/absolute/private/ouro-agent.key"`. Подставьте значения своего проекта. Для `claude-code` флаг `--entry` печатает одну server entry для `claude mcp add-json`, обычный вывод содержит весь `mcpServers`. [Примеры и правила объединения](docs/agent-clients-guide.md#генератор-из-терминала).
 
 Read-only проверка подключения: задайте `OURO_URL` и `OURO_AGENT_TOKEN_FILE` (либо `OURO_AGENT_TOKEN`) и запустите `npm run agent:check`. stdout не содержит ключа. Stdio bridge также доступен через `npm run mcp`.
 
-Проверки SDK, протокола и интерфейса перечислены в [индексе валидации](docs/validation.md). Для реального ChatGPT нужны настройка tunnel/workspace и успешный вызов из самого ChatGPT; один SDK-тест не подтверждает этот этап.
+Cursor и Claude Code сохраняют собственные edit/shell tools. Read-only относится к файловым tools Ouro; дашборд видит явно сообщённые агентом факты, а не автоматически все действия IDE. Ключ Ouro не заменяет аккаунт/credentials клиента.
+
+Проверки SDK, протокола и интерфейса перечислены в [индексе валидации](docs/validation.md). Конфигурация и bridge-проверка не подтверждают вход в пользовательский аккаунт Cursor/Claude; фактическое подключение проверяется его инструментами. Для ChatGPT дополнительно нужны tunnel/workspace и успешный вызов из самого ChatGPT. [Прочитанные официальные источники](docs/agent-clients-research.md).
 
 ## Переносимый контракт Ouro
 

@@ -1,6 +1,6 @@
 {
   "name": "ouro",
-  "version": "0.1.0-alpha.14",
+  "version": "0.1.0-alpha.15",
   "private": true,
   "engines": {
     "node": ">=20.9.0"
@@ -24,7 +24,8 @@
     "protocol:build": "npm --prefix packages/protocol run build",
     "protocol:check": "npm --prefix packages/protocol run check",
     "protocol:pack": "node scripts/pack-protocol.mjs",
-    "protocol:test-package": "node --test tests/protocol-package.test.mjs"
+    "protocol:test-package": "node --test tests/protocol-package.test.mjs",
+    "agent:config": "tsx scripts/agent-config.ts"
   },
   "dependencies": {
     "@dagrejs/dagre": "^1.1.8",
