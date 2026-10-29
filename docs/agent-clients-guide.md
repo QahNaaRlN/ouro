@@ -1,13 +1,13 @@
 # Подключить Cursor и Claude к Ouro
 
-Рабочая версия — `0.1.0-alpha.15`, ветка `feat/client-onboarding`. Cursor, Claude Code и Claude Desktop используют тот же контракт `@ouro/protocol@0.1.2`: 18 tools, статические resources и 49 JSON Schema. Отдельный протокол для каждого клиента не нужен. [SDD](specs/client-onboarding.md) · [проверки](plans/client-onboarding.md) · [официальные источники](agent-clients-research.md).
+Рабочая версия — `0.1.0-beta.1`, ветка `main`. Cursor, Claude Code и Claude Desktop используют тот же контракт `@ouro/protocol@0.1.2`: 18 tools, статические resources и 49 JSON Schema. Отдельный протокол для каждого клиента не нужен. [SDD](specs/client-onboarding.md) · [проверки](plans/client-onboarding.md) · [официальные источники](agent-clients-research.md).
 
 ## Сначала запустить Ouro локально
 
 Установите Git, Node.js24 и нужный MCP-клиент. Для нового клона:
 
 ```sh
-git clone --branch feat/client-onboarding --single-branch https://github.com/QahNaaRlN/ouro.git ouro-local
+git clone --branch main --single-branch https://github.com/QahNaaRlN/ouro.git ouro-local
 cd ouro-local
 npm ci
 npm run dev
@@ -18,9 +18,9 @@ npm run dev
 Если репозиторий уже скачан, остановите его сервер через Ctrl+C и выполните из его папки:
 
 ```sh
-git fetch origin feat/client-onboarding:refs/remotes/origin/feat/client-onboarding
-git switch feat/client-onboarding
-git merge --ff-only origin/feat/client-onboarding
+git fetch origin main:refs/remotes/origin/main
+git switch main
+git merge --ff-only origin/main
 npm ci
 npm run dev
 ```
