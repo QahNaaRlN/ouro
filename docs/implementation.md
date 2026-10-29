@@ -1,8 +1,14 @@
 # Реализация прототипа и границы проверки
 
-## Текущий срез `0.1.0-alpha.11`
+## Текущий срез `0.1.0-alpha.12`
 
 Исполняемый domain/store отделён от HTTP/MCP и интерфейса. [Дорожная карта](roadmap.md) и [валидация](validation.md) связывают текущие функции с SDD/TDD; далее сохранены датированные описания ранних срезов.
+
+`packages/protocol` выделен в самостоятельный `@ouro/protocol@0.1.0`. Полный Flow, входы 15 tools, DTO ответов и ошибок, manifest и 34 canonical JSON Schema имеют общий источник. Пакет собирается в ESM/CommonJS с соответствующими declarations, JSON-файлами, примерами и CLI. Runtime зависит только от Zod; ни Next.js, ни store, ни MCP SDK в него не входят. Корневое приложение использует тот же публичный скомпилированный пакет через file-зависимость и npm build hooks. [Каталог](../packages/protocol/schemas/manifest.json), [отдельная установка](../packages/protocol/README.md), [интеграционная инструкция](protocol-guide.md).
+
+HTTP и stdio публикуют статические resources `ouro://protocol/manifest` и `ouro://protocol/schemas`; число tools осталось 15. Canonical dialect — Draft 2020-12, wire-экспорт закреплённого SDK — Draft 7. Output схемы описывают обе ветви `ok`; DTO сохраняют дополнительные JSON-поля, а inputs/Flow закрыты. Конверт события описан, payload и error details остаются JSON-расширениями. Самостоятельный JSON-валидатор не заменяет графовые, lifecycle, authority и idempotency guards приложения.
+
+Ошибки сериализации/проверки ответа после commit дают безопасный неизвестный исход с требованием сохранить requestId/body. Квитанции и legacy optional-поля остаются совместимыми без перезаписи SQL-истории. Контракт не требует новой миграции и не добавляет новую статусную ось. [SDD/RED/GREEN и итоговый gate](plans/domain-contract.md).
 
 | Миграция | Текущий объём |
 |---|---|

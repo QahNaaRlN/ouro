@@ -16,8 +16,11 @@
 | 7 | AI-сводки Reality и предложения новых спек с источниками | alpha.10: OURO-ENG-000009,219 unit/integration +50 production E2E; предложения внешнего MCP-агента, human review/adoption в idea, активация отдельно; [контракт](specs/agent-proposals.md) |
 | 8 | Адаптер Meridian на стороне Ouro | alpha.11: OURO-ENG-000010,245 unit/integration +57 production E2E; строгий pinned import, человеческий idea-черновик, статические light/dark tokens; [инструкция](meridian-guide.md). Native IPC/SSO/theme sync и Windows-приёмка остаются отдельным [RFC](proposals/meridian-native-bridge.md) |
 | 9 | Подготовка полной версии к локальному запуску | OURO-ENG-000011:247 unit/integration +57 dev E2E; чистый клон с GitHub, переносимые npm-команды, build/start с сохранением БД; [инструкция и проверки](plans/local-start.md) |
+| 10 | Переносимый предметный контракт Flow и MCP | alpha.12: OURO-ENG-000013, `@ouro/protocol@0.1.0`; 266 unit/integration +59 production E2E, 34 JSON Schema, отдельная установка `.tgz` 1/1; Flow/input/output, manifest/resources HTTP+stdio, ESM/CommonJS/types/CLI; [инструкция](protocol-guide.md), [SDD/TDD](plans/domain-contract.md) |
 
 Исправление входа в детальный процесс из дорожной карты — [OURO-ENG-000012](plans/roadmap-process-navigation.md): точная активная ревизия по клику/Enter/пробелу, явное пустое состояние, 2 новых + 10 прежних browser-сценариев; без изменения доменной истории.
+
+Следующий предметный этап — пакетные предложения полной дорожной карты: спеки, зависимости, процессы, основания и правила полноты плана с человеческим рассмотрением. Текущий контракт формализует существующие 15 tools, Flow и ответы; batch tool и полный типизированный каталог event payload в него не входят. [Граница версии 0.1.0](protocol-guide.md).
 
 Дополнительные требования действующей методологии реализованы пакетом [OURO-ENG-000007](specs/methodology-recovery.md): отзыв/уточнение и исправление решения новыми фактами, read-only проекция на выбранном cursor, операторское восстановление после экстренного отзыва ключа. Физические Blocker и неизвестная остановка сохраняют отдельные guards; [сценарии и ограничения](methodology-guide.md).
 

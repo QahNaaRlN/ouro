@@ -1,5 +1,11 @@
 # Проверка прототипа
 
+Текущий интегрированный срез — **`0.1.0-alpha.12`**, предметный контракт **`@ouro/protocol@0.1.0`**. Замороженный код `dc0676e`: **266/266 unit/integration, 59/59 production E2E**, typecheck, production build и `protocol:check` для 34 canonical JSON-схем успешны. Отдельная приёмка самостоятельного пакета — **1/1**: копия исходников со своим `npm ci` → обычный `npm pack` → установка в пустой consumer, ESM/CommonJS, TypeScript declarations и CLI; runtime-дерево содержит только protocol и Zod. Проверены читаемые файловые права 0644 и исполняемый CLI 0755. [SDD/RED/GREEN и итоговые доказательства](plans/domain-contract.md), [инструкция использования](protocol-guide.md).
+
+Полный production Playwright: 59 expected, 0 unexpected/flaky/skipped, около 2 мин. Реальный Next HTTP + официальный SDK подтвердили 15 tools и 15 output schemas с двумя ветвями, конкретный Flow, оба статических ресурса и bundle из 34 схем версии 0.1.0. Обычный FORBIDDEN-ответ принят клиентом после `tools/list`. Browser smoke на 390 px в светлой теме: 0 page errors, без горизонтального overflow, SSE подключён, cursor 35→35. Это standalone Ouro-проверка, не native Meridian acceptance.
+
+## Предыдущие gates
+
 Исправление перехода из дорожной карты в процесс: **2/2 новых и 10/10 затронутых прежних browser-сценариев**, typecheck и production build успешны. Клик/Enter/пробел открывают точную активную ревизию, отсутствие flow показано явно; навигация не меняет историю. [SDD/RED/GREEN и границы проверки](plans/roadmap-process-navigation.md).
 
 Gate подготовки локальной сборки `0.1.0-alpha.11` до этого UI-fix: **247/247 unit/integration и 57/57 dev E2E**, typecheck, DB-check и production build успешны. Чистый клон с GitHub проверен через dev → остановка → build/start с сохранением точной записи и без ошибок браузера. [SDD/RED/GREEN и подробности локального пакета](plans/local-start.md).
