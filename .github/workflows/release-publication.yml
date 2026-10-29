@@ -1,4 +1,4 @@
-name: Prepare first beta release assets
+name: Prepare beta release assets
 
 on:
   push:
@@ -8,7 +8,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: ouro-v0.1.0-beta.1-draft-assets
+  group: ouro-v0.1.0-beta.2-draft-assets
   cancel-in-progress: false
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
       - name: Check out the accepted source commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: e20472ca6ef9da1d547c8468b348b62b01d3e2a6
+          ref: c4ce0d9053d9e4a8db8710219f0eb64f36b95ff4
           fetch-depth: 0
           fetch-tags: true
           persist-credentials: false
@@ -29,14 +29,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = e20472ca6ef9da1d547c8468b348b62b01d3e2a6
-          test "$(git cat-file -t refs/tags/v0.1.0-beta.1)" = tag
-          test "$(git rev-parse 'refs/tags/v0.1.0-beta.1^{commit}')" = e20472ca6ef9da1d547c8468b348b62b01d3e2a6
+          test "$(git rev-parse HEAD)" = c4ce0d9053d9e4a8db8710219f0eb64f36b95ff4
+          test "$(git cat-file -t refs/tags/v0.1.0-beta.2)" = tag
+          test "$(git rev-parse 'refs/tags/v0.1.0-beta.2^{commit}')" = c4ce0d9053d9e4a8db8710219f0eb64f36b95ff4
 
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24'
+          node-version-file: '.nvmrc'
           cache: npm
 
       - name: Install locked dependencies and build tools
@@ -50,7 +50,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm run release:pack -- --ref e20472ca6ef9da1d547c8468b348b62b01d3e2a6 --out artifacts/release-publication --protocol-file artifacts/ouro-protocol-0.1.2.tgz
+          npm run release:pack -- --ref c4ce0d9053d9e4a8db8710219f0eb64f36b95ff4 --out artifacts/release-publication --protocol-file artifacts/ouro-protocol-0.1.2.tgz
           cd artifacts/release-publication
           sha256sum -c SHA256SUMS
 
@@ -68,11 +68,11 @@ jobs:
           import path from 'node:path';
 
           const repo='QahNaaRlN/ouro';
-          const tag='v0.1.0-beta.1';
-          const commit='e20472ca6ef9da1d547c8468b348b62b01d3e2a6';
-          const releaseId=428132258;
+          const tag='v0.1.0-beta.2';
+          const commit='c4ce0d9053d9e4a8db8710219f0eb64f36b95ff4';
+          const releaseId=428237478;
           const out=path.resolve('artifacts/release-publication');
-          const names=['ouro-0.1.0-beta.1-source.zip','ouro-protocol-0.1.2.tgz','release-manifest.json','SHA256SUMS'];
+          const names=['ouro-0.1.0-beta.2-source.zip','ouro-protocol-0.1.2.tgz','release-manifest.json','SHA256SUMS'];
           const gh=(...args)=>execFileSync('gh',args,{maxBuffer:64*1024*1024});
           const api=endpoint=>JSON.parse(gh('api',`repos/${repo}/${endpoint}`).toString('utf8'));
           const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
@@ -82,9 +82,9 @@ jobs:
           assert.equal(manifest.schemaVersion,1);
           assert.equal(manifest.product,'ouro');
           assert.equal(manifest.commitSHA,commit);
-          assert.equal(manifest.productVersion,'0.1.0-beta.1');
+          assert.equal(manifest.productVersion,'0.1.0-beta.2');
           assert.equal(manifest.protocolVersion,'0.1.2');
-          assert.equal(manifest.sourcePrefix,'ouro-0.1.0-beta.1/');
+          assert.equal(manifest.sourcePrefix,'ouro-0.1.0-beta.2/');
           assert.equal(manifest.assets.length,2);
           assert.deepEqual(manifest.assets.map(asset=>asset.name).sort(),names.slice(0,2).sort());
           for(const asset of manifest.assets){
