@@ -21,6 +21,7 @@ async function finishSteps(page:Page,titles:string[]){
   for(let index=0;index<titles.length;index++){
     await expect(tour(page).getByRole('heading',{name:titles[index],exact:true})).toBeVisible();
     await expect(tour(page).locator('[data-onboarding-highlight]')).toBeVisible();
+    await expectInsideViewport(page);
     await expect(tour(page)).toContainText(`Шаг ${index+1} из ${titles.length}`);
     await tour(page).getByRole('button',{name:index===titles.length-1?'Завершить':'Далее',exact:true}).click();
   }
@@ -60,7 +61,7 @@ test('ON03 empty-project tour teaches real controls without registering an agent
   try{
     const project=await createProject(page,folder);await page.goto(`/projects/${project.id}`);await expect(page.getByRole('heading',{name:project.name,exact:true})).toBeVisible();
     const before=await snapshot(page,project.id),writes:string[]=[];page.on('request',request=>{if(['POST','PATCH','DELETE','PUT'].includes(request.method()))writes.push(request.url());});
-    await expect(invitation(page)).toBeVisible();await expect(tour(page)).toHaveCount(0);await launch(page).click();await finishSteps(page,projectTitles);
+    await expect(invitation(page)).toBeVisible();await expect(tour(page)).toHaveCount(0);await page.setViewportSize({width:390,height:844});await launch(page).click();await finishSteps(page,projectTitles);
     const after=await snapshot(page,project.id);expect(after.cursor).toBe(before.cursor);expect(after.state).toEqual(before.state);expect(after.agents).toEqual(before.agents);expect(writes).toEqual([]);
     await page.reload();await expect(invitation(page)).toHaveCount(0);
   }finally{await rm(folder,{recursive:true,force:true});}
@@ -103,4 +104,33 @@ test('ON07 a missing active target leaves a readable explanation and an accessib
 test('ON08 malformed tour preferences are ignored and never hide the functional restart button',async({page})=>{
   await page.addInitScript(()=>localStorage.setItem('ouro:onboarding:catalog:v1','{broken'));
   await page.goto('/projects');await expect(invitation(page)).toBeVisible();await expect(launch(page)).toBeVisible();await launch(page).click();await finishSteps(page,catalogTitles);
+});
+
+test('ON09 readable but unwritable storage retains dismissal during internal navigation',async({page})=>{
+  await page.addInitScript(()=>{const set=Storage.prototype.setItem;Storage.prototype.setItem=function(key:string,value:string){if(key.startsWith('ouro:onboarding:'))throw new DOMException('Full','QuotaExceededError');return set.call(this,key,value);};});
+  await page.goto('/projects');await expect(invitation(page)).toBeVisible();await invitation(page).getByRole('button',{name:'Не сейчас',exact:true}).click();
+  const navigation=page.getByRole('navigation',{name:'Навигация проектов',exact:true});await navigation.getByRole('link',{name:'Подключить агента',exact:true}).click();await expect(page.getByRole('heading',{name:'Подключить агента к Ouro',exact:true})).toBeVisible();
+  await navigation.getByRole('link',{name:'Проекты',exact:true}).click();await expect(launch(page)).toBeVisible();await expect(invitation(page)).toHaveCount(0);await launch(page).click();await finishSteps(page,catalogTitles);
+});
+
+test('ON10 browser zoom keeps both the highlighted control and tooltip within the visual viewport',async({page})=>{
+  await page.goto('/projects');await launch(page).click();const session=await page.context().newCDPSession(page);
+  try{
+    await session.send('Emulation.setPageScaleFactor',{pageScaleFactor:2});
+    await expect.poll(()=>page.evaluate(()=>window.visualViewport?.scale??1)).toBeGreaterThan(1.5);
+    for(let index=0;index<catalogTitles.length;index++){
+      await expect(tour(page).getByRole('heading',{name:catalogTitles[index],exact:true})).toBeVisible();
+      await expect.poll(async()=>{
+        // DOM client rects and visualViewport offsets share layout coordinates.
+        // Playwright boundingBox subtracts the visual offset during pinch zoom.
+        return page.evaluate(()=>{
+          const view=window.visualViewport!;
+          const bounds=['[data-onboarding-card]','[data-onboarding-highlight]'].map(selector=>document.querySelector(selector)?.getBoundingClientRect());
+          return bounds.every(rect=>!!rect&&rect.width>0&&rect.height>0&&rect.left>=view.offsetLeft-1&&rect.top>=view.offsetTop-1&&rect.right<=view.offsetLeft+view.width+1&&rect.bottom<=view.offsetTop+view.height+1);
+        });
+      }).toBe(true);
+      const next=tour(page).getByRole('button',{name:index===catalogTitles.length-1?'Завершить':'Далее',exact:true});await next.focus();await page.keyboard.press('Enter');
+    }
+    await expect(tour(page)).toHaveCount(0);
+  }finally{await session.send('Emulation.setPageScaleFactor',{pageScaleFactor:1});await session.detach();}
 });

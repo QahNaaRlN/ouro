@@ -180,25 +180,6 @@ pre {
   font-weight: 650;
   letter-spacing: -1.3px;
 }
-.brand-symbol {
-  width: 27px;
-  height: 27px;
-  display: grid;
-  place-items: center;
-  border: 1.5px solid var(--text);
-  border-radius: 50%;
-  font-family: Georgia, serif;
-  font-size: 16px;
-  position: relative;
-  color: transparent;
-}
-.brand-symbol:after {
-  content: "";
-  position: absolute;
-  inset: 6px;
-  border: 1px solid var(--text);
-  border-radius: 50%;
-}
 .brand-dot {
   color: var(--text-faint);
 }
@@ -211,38 +192,6 @@ pre {
   margin-left: auto;
   font-weight: 500;
   color: var(--text-muted);
-}
-.workspace-switch {
-  margin: 0 12px 32px;
-  padding: 11px 9px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  display: flex;
-  gap: 9px;
-  align-items: center;
-}
-.workspace-switch > svg {
-  margin-left: auto;
-  color: var(--text-faint);
-}
-.workspace-avatar {
-  display: grid;
-  place-items: center;
-  width: 29px;
-  height: 29px;
-  background: var(--muted);
-  border-radius: 5px;
-}
-.workspace-switch strong {
-  display: block;
-  font-size: 12px;
-  font-weight: 550;
-}
-.workspace-switch small {
-  display: block;
-  font-size: 12px;
-  color: var(--text-faint);
-  margin-top: 2px;
 }
 .nav-label {
   font-size: 12px;
@@ -286,27 +235,6 @@ pre {
   border-radius: 4px;
   font-size: 12px;
 }
-.sidebar-note {
-  margin: 50px 22px 20px;
-  padding-top: 24px;
-  border-top: 1px solid var(--border);
-  font-size: 12px;
-  color: var(--text-muted);
-}
-.sidebar-note-icon {
-  color: var(--text-faint);
-  margin-bottom: 9px;
-}
-.sidebar-note strong {
-  font-size: 12px;
-  font-weight: 500;
-}
-.sidebar-note p {
-  font-size: 12px;
-  line-height: 1.8;
-  color: var(--text-faint);
-  margin-top: 8px;
-}
 .sidebar-bottom {
   margin-top: auto;
   padding: 12px 10px;
@@ -315,41 +243,25 @@ pre {
   font-size: 12px;
   gap: 7px;
 }
-.sidebar-bottom .nav-item > svg:last-child {
-  margin-left: auto;
-}
-.profile {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+.session-status {
   border-top: 1px solid var(--border);
-  padding: 19px 5px 5px;
   margin-top: 14px;
+  padding: 16px 11px 4px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
 }
-.profile > svg {
-  margin-left: auto;
-  color: var(--text-faint);
-}
-.avatar {
-  font-size: 12px;
-  background: var(--muted);
-  border: 1px solid var(--border);
-  border-radius: 50%;
-  width: 27px;
-  height: 27px;
-  display: grid;
-  place-items: center;
-}
-.profile strong {
-  font-size: 12px;
+.session-status strong,
+.session-status small {
   display: block;
-  font-weight: 550;
-}
-.profile small {
   font-size: 12px;
-  display: block;
+  line-height: 1.7;
+}
+.session-status strong {
+  font-weight: 500;
+}
+.session-status small {
   color: var(--text-faint);
-  margin-top: 2px;
+  margin-top: 3px;
 }
 .app-main {
   margin-left: 208px;
@@ -635,16 +547,6 @@ pre {
   color: var(--text-faint);
   letter-spacing: 0.5px;
   font-weight: 400;
-}
-.right-panel-bottom {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 17px 20px;
-  color: var(--text-faint);
-  font-size: 12px;
-  margin-top: auto;
-  border-top: 1px solid var(--border);
 }
 .page-heading {
   display: flex;
@@ -2138,9 +2040,6 @@ tbody tr.selected {
   .context-panel .selected-title {
     font-size: 12px;
   }
-  .profile strong {
-    font-size: 12px;
-  }
   .sidebar-bottom .nav-item {
     font-size: 12px;
   }
@@ -2301,9 +2200,6 @@ tbody tr.selected {
   }
   .detail-tabs button {
     font-size: 12px;
-  }
-  .sidebar-note {
-    margin-top: 45px;
   }
 }
 @media (max-width: 680px) {
@@ -2751,25 +2647,6 @@ tbody tr.selected {
   font-size: 12px;
   white-space: normal;
 }
-.profile {
-  align-items: flex-start;
-}
-.profile strong,
-.profile small {
-  font-size: 12px;
-}
-.profile .avatar {
-  flex-shrink: 0;
-}
-.profile > svg {
-  margin-top: 4px;
-}
-.workspace-switch small {
-  font-size: 12px;
-}
-.sidebar-note p {
-  font-size: 12px;
-}
 .attention-card small {
   flex-wrap: wrap;
   gap: 5px;
@@ -2818,9 +2695,6 @@ tbody tr.selected {
 .react-flow__attribution {
   font-size: 12px;
 }
-.right-panel-bottom {
-  font-size: 12px;
-}
 .selection-strip .mono {
   font-size: 12px;
 }
@@ -2847,9 +2721,6 @@ tbody tr.selected {
 .attention-list {
   padding-bottom: 5px;
 }
-.sidebar-note {
-  margin-top: 35px;
-}
 @media (max-width: 1250px) {
   .sidebar {
     width: 208px;
@@ -2863,9 +2734,6 @@ tbody tr.selected {
     padding-right: 18px;
   }
   .sidebar-bottom .nav-item {
-    font-size: 12px;
-  }
-  .profile strong {
     font-size: 12px;
   }
   .demo-label {
@@ -2961,10 +2829,6 @@ tbody tr.selected {
     margin-top: 0;
   }
   .graph-caption {
-    font-size: 12px;
-  }
-  .profile strong,
-  .profile small {
     font-size: 12px;
   }
 }
