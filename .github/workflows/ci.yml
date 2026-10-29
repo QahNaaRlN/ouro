@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+  push:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source and commit history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Check pull request conventions
+        if: github.event_name == 'pull_request'
+        run: npm run check:conventions
+        env:
+          OURO_CONVENTIONS_BRANCH: ${{ github.head_ref }}
+          OURO_CONVENTIONS_TITLE: ${{ github.event.pull_request.title }}
+          OURO_CONVENTIONS_BASE: ${{ github.event.pull_request.base.sha }}
+          OURO_CONVENTIONS_HEAD: ${{ github.event.pull_request.head.sha }}
+      - name: Check integration history conventions
+        if: github.event_name == 'push'
+        run: npm run check:conventions -- --all
+        env:
+          OURO_CONVENTIONS_BRANCH: ${{ github.ref_name }}
+      - name: Install dependencies
+        run: npm ci
+      - name: Run unit and integration tests
+        run: npm test
+      - name: Check TypeScript
+        run: npm run typecheck
+      - name: Verify canonical protocol schemas
+        run: npm run protocol:check
+      - name: Verify independent protocol installation
+        run: npm run protocol:test-package
+      - name: Check durable database replay
+        run: npm run db:check
+      - name: Build production application
+        run: npm run build
+
+  browser:
+    name: browser
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build production application
+        run: npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run production browser acceptance
+        run: npm run test:e2e:production
+      - name: Preserve browser diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: production-browser-diagnostics
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
