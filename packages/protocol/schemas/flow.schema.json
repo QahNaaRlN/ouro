@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "entryNodeId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "nodes": {
+      "minItems": 1,
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "action",
+              "condition",
+              "question",
+              "fork",
+              "blocker",
+              "wait",
+              "result"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          },
+          "description": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 20000
+          },
+          "owner": {
+            "type": "string",
+            "enum": [
+              "human",
+              "agent",
+              "system"
+            ],
+            "description": "Question and fork nodes require human ownership; choosing a path never grants execution permission."
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "description",
+          "owner"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "edges": {
+      "maxItems": 200,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "target": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "label": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 20000
+          },
+          "optionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "target",
+          "label"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "entryNodeId",
+    "nodes",
+    "edges"
+  ],
+  "additionalProperties": false,
+  "$id": "urn:ouro:protocol:0.1.0:flow"
+}

@@ -1,0 +1,1 @@
+{"entryNodeId":"work","nodes":[{"id":"work","kind":"action","title":"Пример ошибки ссылки","description":"Ссылка ведёт к отсутствующему узлу.","owner":"agent"}],"edges":[{"id":"missing","source":"work","target":"absent","label":"Не существует"}]}

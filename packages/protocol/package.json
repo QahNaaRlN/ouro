@@ -1,0 +1,26 @@
+{
+  "name": "@ouro/protocol",
+  "version": "0.1.0",
+  "description": "Portable Ouro domain contracts, Flow validation and MCP tool schemas",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {"node": ">=20.9.0"},
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {"types": "./dist/esm/index.d.ts", "default": "./dist/esm/index.js"},
+      "require": {"types": "./dist/cjs/index.d.ts", "default": "./dist/cjs/index.js"}
+    },
+    "./schemas/*": "./schemas/*",
+    "./package.json": "./package.json"
+  },
+  "bin": {"ouro-protocol": "./bin/ouro-protocol.mjs"},
+  "files": ["dist", "schemas", "examples", "bin", "README.md"],
+  "scripts": {"build": "node scripts/build.mjs", "check": "node scripts/build.mjs --check", "prepack": "npm run build"},
+  "dependencies": {"zod": "^4.1.12"},
+  "devDependencies": {"typescript": "^5.9.3"}
+}

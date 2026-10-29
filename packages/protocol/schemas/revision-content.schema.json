@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "maxLength": 20000
+    },
+    "goal": {
+      "type": "string",
+      "maxLength": 20000
+    },
+    "dod": {
+      "minItems": 1,
+      "maxItems": 50,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 20000
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 20000
+          },
+          "required": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "required"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "constraints": {
+      "type": "string",
+      "maxLength": 20000
+    },
+    "assumptions": {
+      "type": "string",
+      "maxLength": 20000
+    },
+    "risks": {
+      "type": "string",
+      "maxLength": 20000
+    },
+    "inputs": {
+      "type": "string",
+      "maxLength": 20000
+    },
+    "comment": {
+      "type": "string",
+      "maxLength": 20000
+    },
+    "flow": {
+      "type": "object",
+      "properties": {
+        "entryNodeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "nodes": {
+          "minItems": 1,
+          "maxItems": 100,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "action",
+                  "condition",
+                  "question",
+                  "fork",
+                  "blocker",
+                  "wait",
+                  "result"
+                ]
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "description": {
+                "type": "string",
+                "minLength": 0,
+                "maxLength": 20000
+              },
+              "owner": {
+                "type": "string",
+                "enum": [
+                  "human",
+                  "agent",
+                  "system"
+                ],
+                "description": "Question and fork nodes require human ownership; choosing a path never grants execution permission."
+              }
+            },
+            "required": [
+              "id",
+              "kind",
+              "title",
+              "description",
+              "owner"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "edges": {
+          "maxItems": 200,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "label": {
+                "type": "string",
+                "minLength": 0,
+                "maxLength": 20000
+              },
+              "optionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              }
+            },
+            "required": [
+              "id",
+              "source",
+              "target",
+              "label"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "entryNodeId",
+        "nodes",
+        "edges"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "title",
+    "goal",
+    "dod",
+    "constraints",
+    "assumptions",
+    "risks",
+    "inputs",
+    "comment"
+  ],
+  "additionalProperties": false,
+  "$id": "urn:ouro:protocol:0.1.0:revision-content"
+}

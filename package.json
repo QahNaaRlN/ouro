@@ -1,18 +1,30 @@
 {
   "name": "ouro",
-  "version": "0.1.0-alpha.11",
+  "version": "0.1.0-alpha.12",
   "private": true,
-  "engines": {"node": ">=20.9.0"},
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
+    "predev": "npm run protocol:build",
     "dev": "node scripts/local-next.mjs dev",
+    "prebuild": "npm run protocol:build",
     "build": "next build --webpack",
     "start": "node scripts/local-next.mjs start",
+    "pretypecheck": "npm run protocol:build",
     "typecheck": "tsc --noEmit",
+    "pretest": "npm run protocol:build",
     "test": "tsx --test tests/*.test.ts",
+    "pretest:e2e": "npm run protocol:build",
     "test:e2e": "playwright test",
     "mcp": "node packages/mcp/bin/ouro-mcp.mjs",
     "agent:check": "node scripts/check-agent.mjs",
-    "db:check": "tsx scripts/check-db.ts"
+    "predb:check": "npm run protocol:build",
+    "db:check": "tsx scripts/check-db.ts",
+    "protocol:build": "npm --prefix packages/protocol run build",
+    "protocol:check": "npm --prefix packages/protocol run check",
+    "protocol:pack": "node scripts/pack-protocol.mjs",
+    "protocol:test-package": "node --test tests/protocol-package.test.mjs"
   },
   "dependencies": {
     "@dagrejs/dagre": "^1.1.8",
@@ -20,6 +32,7 @@
     "@fontsource/inter": "^5.3.0",
     "@fontsource/jetbrains-mono": "^5.3.0",
     "@modelcontextprotocol/sdk": "^1.32.2",
+    "@ouro/protocol": "file:packages/protocol",
     "@xyflow/react": "^12.10.0",
     "lib0": "^0.2.119",
     "lucide-react": "^0.468.0",
@@ -37,6 +50,7 @@
     "@types/pg": "^8.15.6",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
+    "ajv": "^8.20.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   }

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "afterCursor": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    }
+  },
+  "required": [
+    "afterCursor"
+  ],
+  "additionalProperties": false,
+  "$id": "urn:ouro:protocol:0.1.0:input:ouro.get_updates"
+}

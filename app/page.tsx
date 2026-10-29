@@ -1,5 +1,7 @@
 "use client";
 
+import packageInfo from '../package.json';
+
 import {
   useCallback,
   useEffect,
@@ -1601,7 +1603,7 @@ export default function Home() {
                   : "Хранилище…"}
             </span>
             <span className="footer-separator" />
-            <span>0.1.0-alpha.11</span>
+            <span>{packageInfo.version}</span>
             <span className="small-tag">PROTOTYPE</span>
           </div>
         </footer>

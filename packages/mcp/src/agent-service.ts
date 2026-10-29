@@ -1,6 +1,7 @@
 import { applyCommand, DomainError, PROJECT_ID, type Actor, type Command, type DomainEvent, type ProjectState, type Execution, type DecisionRequest } from '../../core/src';
 import { AGENT_TOOLS } from './tools';
 import {isExecutionProposalSource,hasRealityProposalSource} from '../../core/src/agent-proposals';
+import {agentErrorSchema,validateToolBody,type AgentResultBody} from '@ouro/protocol';
 
 export type AgentStore = {
   getProject(): Promise<ProjectState>;
@@ -9,13 +10,30 @@ export type AgentStore = {
 };
 export type AgentToolResult = {
   content: Array<{type:'text';text:string}>;
-  structuredContent: Record<string, unknown>;
+  structuredContent: AgentResultBody & Record<string,unknown>;
   isError?: boolean;
 };
 
-function result(body:Record<string,unknown>,isError=false):AgentToolResult {
-  const clean=JSON.parse(JSON.stringify(body)) as Record<string,unknown>;
-  return {content:[{type:'text',text:JSON.stringify(clean)}],structuredContent:clean,...(isError?{isError:true}:{})};
+// Validate the constant when the module loads, before a store can commit work.
+const outputFailure=agentErrorSchema.parse({ok:false,error:{
+  code:'OUTPUT_CONTRACT_ERROR',
+  message:'Не удалось подтвердить результат ответа. Если выполнялась команда, сохраните тот же requestId и неизменное тело; повтор должен получить исходную квитанцию.',
+  details:{outcomeUnknown:true},retryable:false,refreshRequired:false,
+}});
+function result(name:string,body:Record<string,unknown>,isError=false):AgentToolResult {
+  try{
+    const clean=JSON.parse(JSON.stringify(body)) as AgentResultBody & Record<string,unknown>;
+    validateToolBody(name,clean,isError);
+    // Keep the original JSON, including allowed extension fields. A validator
+    // must never silently strip a committed receipt's evidence or metadata.
+    return {content:[{type:'text',text:JSON.stringify(clean)}],structuredContent:clean,...(isError?{isError:true}:{})};
+  }catch{
+    // A successful SQL commit can precede serialization/output validation.
+    // This does not prove absence and must not invite a new request ID. Do not
+    // return Zod issues or raw values from a potentially sensitive projection.
+    const clean=JSON.parse(JSON.stringify(outputFailure)) as AgentResultBody & Record<string,unknown>;
+    return {content:[{type:'text',text:JSON.stringify(clean)}],structuredContent:clean,isError:true};
+  }
 }
 const fail=(code:string,message:string):never=>{throw new DomainError(code,message);};
 const terminal=new Set(['succeeded','failed','cancelled','skipped']);
@@ -89,6 +107,7 @@ export function createAgentService({ store, actor }: {store:AgentStore; actor:Ac
   return {
     listTools:()=>AGENT_TOOLS,
     async callTool(name:string,args:unknown):Promise<AgentToolResult>{
+      let committedWrite=false;
       try{
         assertActor();
         const tool=AGENT_TOOLS.find(t=>t.name===name)??fail('UNKNOWN_TOOL','Инструмент не опубликован для агента.');
@@ -99,7 +118,7 @@ export function createAgentService({ store, actor }: {store:AgentStore; actor:Ac
         if(state.projectId!==PROJECT_ID)fail('FORBIDDEN','Недоступный проект.');
         if(name==='ouro.get_context'){
           const work=input.executionId?[assigned(state,String(input.executionId))]:state.executions.filter(e=>e.agentId===actor.id);
-          return result({ok:true,project:{id:state.projectId,title:state.roadmap.title,roadmapState:state.roadmap.state},agent:{id:actor.id,name:actor.name},version:state.version,cursor:state.version,work:work.map(e=>workItem(state,e)),instructions:[
+          return result(name,{ok:true,project:{id:state.projectId,title:state.roadmap.title,roadmapState:state.roadmap.state},agent:{id:actor.id,name:actor.name},version:state.version,cursor:state.version,work:work.map(e=>workItem(state,e)),instructions:[
             'Работайте только в назначенной попытке и по её immutable revision. Отсутствие назначения не разрешает самостоятельный запуск.',
             'ACK разрешённого запуска/продолжения отправляется отдельно от решения человека. При stopRequested остановите затронутую работу и подтвердите фактическую остановку.',
             'Question/Fork/Blocker требуют человека. Пока ожидаете, читайте get_updates/get_context; отсутствие ответа и confidence не означают согласие.',
@@ -114,7 +133,7 @@ export function createAgentService({ store, actor }: {store:AgentStore; actor:Ac
           // Authorization uses current committed assignments. A new assignment can
           // appear between the snapshot read and cursor read, so refresh its scope.
           const scope=updates.cursor>state.version?await store.getProject():state;
-          return result({ok:true,events:updates.events.filter(e=>permittedEvent(e,scope)),cursor:updates.cursor});
+          return result(name,{ok:true,events:updates.events.filter(e=>permittedEvent(e,scope)),cursor:updates.cursor});
         }
         const execution=assigned(state,String(input.executionId));
         const base={requestId:input.requestId as string,expectedVersion:input.expectedVersion as number,executionId:execution.id};
@@ -148,6 +167,7 @@ export function createAgentService({ store, actor }: {store:AgentStore; actor:Ac
           default:fail('UNKNOWN_TOOL','Инструмент не опубликован для агента.');
         }
         const committed=await store.executeCommand(command??fail('UNKNOWN_TOOL','Инструмент не опубликован для агента.'),actor);
+        committedWrite=true;
         const savedExecution=assigned(committed.state,execution.id);
         // Immutable receipts from older releases lack fields added later. Only
         // the new tool needs proposal arrays; never rewrite old SQL receipts.
@@ -156,12 +176,14 @@ export function createAgentService({ store, actor }: {store:AgentStore; actor:Ac
           const proposals=(committed.state.agentProposals??[]).filter(proposal=>proposal.executionId===execution.id),ids=new Set(proposals.map(proposal=>proposal.id));
           proposalResult={proposals,proposalRevisions:(committed.state.agentProposalRevisions??[]).filter(revision=>ids.has(revision.proposalId))};
         }
-        return result({ok:true,execution:savedExecution,requests:requestsFor(committed.state,savedExecution),...proposalResult,events:committed.events.filter(e=>permittedEvent(e,committed.state)),cursor:committed.cursor,replayed:committed.replayed});
+        return result(name,{ok:true,execution:savedExecution,requests:requestsFor(committed.state,savedExecution),...proposalResult,events:committed.events.filter(e=>permittedEvent(e,committed.state)),cursor:committed.cursor,replayed:committed.replayed});
       }catch(error){
+        if(committedWrite)return result(name,outputFailure,true);
         const e=error as {code?:string;message?:string;details?:Record<string,unknown>};
         const known=typeof e.code==='string'&&/^[A-Z_]+$/.test(e.code);
         const code=known?e.code!:'INTERNAL_ERROR';
-        return result({ok:false,error:{code,message:known?e.message:'Не удалось выполнить инструмент. Прочитайте контекст перед повтором.',...(known&&e.details?{details:e.details}:{}),retryable:false,refreshRequired:['VERSION_CONFLICT','REVISION_CONFLICT'].includes(code)}},true);
+        const message=known&&typeof e.message==='string'?e.message:'Результат не подтверждён. При повторе команды сохраните тот же requestId и тело; прочитайте контекст перед повтором.';
+        return result(name,{ok:false,error:{code,message,...(known&&e.details?{details:e.details}:!known?{details:{outcomeUnknown:true}}:{}),retryable:false,refreshRequired:['VERSION_CONFLICT','REVISION_CONFLICT'].includes(code)}},true);
       }
     },
   };

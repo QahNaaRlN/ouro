@@ -1,4 +1,4 @@
-# Подключить агента · 0.1.0-alpha.11
+# Подключить агента · 0.1.0-alpha.12
 
 Пакет [OURO-ENG-000001](specs/agent-connect.md), разработан по SDD/TDD. Поддерживается MCP-клиент с tools и stdio либо Streamable HTTP с настраиваемым bearer-заголовком. LLM, аккаунт провайдера и установка IDE остаются на стороне пользователя.
 
@@ -71,3 +71,11 @@ Claude Code HTTP (`.mcp.json` либо пользовательская конф
 MCP сам не запускает LLM и не контролирует внешние процессы. Начиная с alpha.4 Human View получает committed snapshots через SSE с восстановлением после разрыва; MCP get_updates остаётся scoped чтением, а техническая presence регистраций обновляется отдельно. Один проект; доступны отдельные зарегистрированные участники с HttpOnly-сессиями, без внешнего SSO/OAuth server и multi-tenancy. Для внешнего адреса нужен `OURO_PUBLIC_URL=https://…` и реальная human-авторизация; loopback demo не становится production identity через reverse proxy.
 
 Трассировка тестов и наблюдавшиеся RED/GREEN: [журнал пакета](plans/agent-connect.md).
+
+## Обнаружение предметного контракта
+
+Начиная с пакета [OURO-ENG-000013](specs/domain-contract.md) сервер сохраняет прежние 15 tools и дополнительно публикует статические MCP resources: `ouro://protocol/manifest` с версией контракта и каталогом, `ouro://protocol/schemas` с canonical JSON Schema bundle. После initialize проверьте capability `resources`, затем используйте `resources/list`/`resources/read`. HTTP и stdio дают тот же контракт; с прежним tools-only сервером discovery необязателен.
+
+Версия предметного контракта `0.1.0` отделена от версии приложения и transport MCP. Не добавляйте `contractVersion` в прежние tool arguments: входы закрыты, версия объявлена в manifest. `tools/list` содержит input/output schemas; выходная схема включает `ok:true` и `ok:false`, потому что SDK-клиент проверяет любое присутствующее structuredContent, включая `isError:true`. Canonical bundle использует Draft 2020-12, wire-схемы закреплённого SDK 1.32.2 — Draft 7.
+
+`OUTPUT_CONTRACT_ERROR` с `error.details.outcomeUnknown:true` не означает, что команда не записалась. Сохраните прежние requestId и полное тело, включая expectedVersion, и выясняйте исход точным повтором; новый ID или подмена версии могут создать другую команду. Статические схемы не предоставляют прав или назначения. [Инструкция контракта и отдельной установки](protocol-guide.md) · [самостоятельный пакет](../packages/protocol/README.md).

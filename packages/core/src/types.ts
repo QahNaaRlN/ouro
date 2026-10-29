@@ -1,3 +1,5 @@
+import type {FlowDefinition} from '@ouro/protocol';
+export type {FlowDefinition,FlowNode,FlowEdge,FlowNodeKind,FlowOwner} from '@ouro/protocol';
 import type {ManagedSubject,Pin,RunRef} from '../../meridian/src/context';
 
 export type SpecState = 'idea' | 'specified' | 'in_progress' | 'blocked' | 'done' | 'invalidated';
@@ -6,11 +8,6 @@ export type RequestState = 'pending' | 'resolved' | 'withdrawn' | 'superseded';
 export type RequestKind = 'Question' | 'Fork' | 'Blocker';
 export type Actor = { id: string; kind: 'human' | 'agent' | 'service'; projectIds: string[]; name?: string };
 export type Criterion = { id: string; text: string; required: boolean };
-export type FlowNodeKind = 'action' | 'condition' | 'question' | 'fork' | 'blocker' | 'wait' | 'result';
-export type FlowOwner = 'human' | 'agent' | 'system';
-export type FlowNode = { id:string; kind:FlowNodeKind; title:string; description:string; owner:FlowOwner };
-export type FlowEdge = { id:string; source:string; target:string; label:string; optionId?:string };
-export type FlowDefinition = { entryNodeId:string; nodes:FlowNode[]; edges:FlowEdge[] };
 export type SpecRevision = {
   id: string; specId: string; revision: number; title: string; goal: string; dod: Criterion[];
   constraints: string; assumptions: string; risks: string; inputs: string; comment: string;

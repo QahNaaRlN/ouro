@@ -1,0 +1,15 @@
+{
+  "entryNodeId": "choice",
+  "nodes": [
+    {"id":"choice","kind":"fork","title":"Выбрать подход","description":"Решение принимает человек.","owner":"human"},
+    {"id":"first","kind":"action","title":"Проверить первый подход","description":"Разрешённая работа.","owner":"agent"},
+    {"id":"second","kind":"action","title":"Проверить второй подход","description":"Альтернативная работа.","owner":"agent"},
+    {"id":"result","kind":"result","title":"Предъявить результат","description":"Приёмка DoD остаётся отдельным решением.","owner":"agent"}
+  ],
+  "edges": [
+    {"id":"choose-first","source":"choice","target":"first","label":"Первый вариант","optionId":"first"},
+    {"id":"choose-second","source":"choice","target":"second","label":"Второй вариант","optionId":"second"},
+    {"id":"first-result","source":"first","target":"result","label":"Получен результат"},
+    {"id":"second-result","source":"second","target":"result","label":"Получен результат"}
+  ]
+}

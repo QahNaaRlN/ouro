@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "executionId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "requestId": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 200
+    },
+    "expectedVersion": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "context": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "flowNodeId": {
+      "description": "Optional explicit process-node ID from the assigned immutable revision. Omit for unbound facts; do not infer a path or human approval.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "question": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "blockingScope": {
+      "type": "string",
+      "enum": [
+        "execution",
+        "none"
+      ]
+    }
+  },
+  "required": [
+    "executionId",
+    "requestId",
+    "expectedVersion",
+    "title",
+    "context",
+    "question",
+    "blockingScope"
+  ],
+  "additionalProperties": false,
+  "$id": "urn:ouro:protocol:0.1.0:input:ouro.report_question"
+}

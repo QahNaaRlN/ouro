@@ -4,7 +4,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { ListToolsRequestSchema,CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { ListToolsRequestSchema,CallToolRequestSchema,ListResourcesRequestSchema,ReadResourceRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
 if(process.argv.includes('--help')){
   process.stderr.write('Ouro MCP stdio bridge\nOURO_URL=http://127.0.0.1:3000/api/mcp\nOURO_AGENT_TOKEN or OURO_AGENT_TOKEN_FILE is required.\nConfiguration is issued in the Ouro Agents screen. stdout is reserved for MCP.\n');
@@ -22,9 +22,14 @@ try{
   const {version}=JSON.parse(await readFile(new URL('../../../package.json',import.meta.url),'utf8'));
   remote=new Client({name:'ouro-stdio-bridge',version});
   await remote.connect(new StreamableHTTPClientTransport(url,{requestInit:{headers:{Authorization:`Bearer ${token}`}}}));
-  server=new Server({name:'ouro',version},{capabilities:{tools:{}},instructions:remote.getInstructions()??'Read ouro.get_context first. Human decisions and DoD acceptance remain in Ouro.'});
+  const supportsResources=!!remote.getServerCapabilities()?.resources;
+  server=new Server({name:'ouro',version},{capabilities:{tools:{},...(supportsResources?{resources:{}}:{})},instructions:remote.getInstructions()??'Read ouro.get_context first. Human decisions and DoD acceptance remain in Ouro.'});
   server.setRequestHandler(ListToolsRequestSchema,async()=>remote.listTools());
   server.setRequestHandler(CallToolRequestSchema,async(request)=>remote.callTool(request.params));
+  if(supportsResources){
+    server.setRequestHandler(ListResourcesRequestSchema,async(request)=>remote.listResources(request.params));
+    server.setRequestHandler(ReadResourceRequestSchema,async(request)=>remote.readResource(request.params));
+  }
   await server.connect(new StdioServerTransport());
   let closing=false;
   const close=async()=>{if(closing)return;closing=true;await server?.close();await remote?.close();};
