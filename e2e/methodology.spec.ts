@@ -29,7 +29,7 @@ async function attempt(request:APIRequestContext,title:string,agentId=AGENT_ID){
   return {spec,revision,execution:state.executions.at(-1)!};
 }
 
-test('M06 a historical cursor stays pinned during live commits and mounts no mutation controls',async({page,request})=>{
+test('M06 a historical cursor stays pinned during live commits and mounts no mutation controls',async({page,request},testInfo)=>{
   await request.get('/api/session');await open(page);
   const before=await project(request);
   await page.getByRole('button',{name:'История',exact:true}).first().click();
@@ -42,7 +42,7 @@ test('M06 a historical cursor stays pinned during live commits and mounts no mut
   await expect.poll(async()=>Number((await page.locator('footer').innerText()).match(/cursor\s+(\d+)/)?.[1])).toBe(after.version);
   await expect(preview).toContainText(`Последний cursor ${after.version}`);
   await expect(preview).not.toContainText(title);
-  await page.screenshot({path:'/tmp/ouro-methodology-history.png',fullPage:true});
+  await page.screenshot({path:testInfo.outputPath('ouro-methodology-history.png'),fullPage:true});
   await expect(page.getByRole('button',{name:'Новая спека',exact:true})).toHaveCount(0);
   await expect(page.getByRole('button',{name:'Разрешить одну попытку',exact:true})).toHaveCount(0);
   await expect(page.getByLabel('Сценарий симулятора')).toHaveCount(0);
@@ -157,7 +157,7 @@ test('M08 a withdrawn Blocker gets a linked plan and retires historically withou
   }finally{await client.close();}
 });
 
-test('M06 historical read-only mode remains usable on a narrow screen in the light theme',async({page})=>{
+test('M06 historical read-only mode remains usable on a narrow screen in the light theme',async({page},testInfo)=>{
   await page.setViewportSize({width:390,height:844});await open(page);
   await page.getByRole('button',{name:'Включить светлую тему',exact:true}).click();
   await page.getByRole('button',{name:'Открыть меню',exact:true}).click();
@@ -168,7 +168,7 @@ test('M06 historical read-only mode remains usable on a narrow screen in the lig
   await expect(preview).toContainText('Состояние на cursor 0');await expect(preview.getByRole('heading',{name:'Историческое состояние',exact:true})).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-theme','light');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
-  await page.screenshot({path:'/tmp/ouro-methodology-history-mobile-light.png',fullPage:true});
+  await page.screenshot({path:testInfo.outputPath('ouro-methodology-history-mobile-light.png'),fullPage:true});
   await preview.getByRole('button',{name:'Вернуться к текущей работе',exact:true}).click();
   await expect(page.getByRole('spinbutton',{name:'Исторический cursor',exact:true})).toBeVisible();
 });

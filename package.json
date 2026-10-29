@@ -2,10 +2,11 @@
   "name": "ouro",
   "version": "0.1.0-alpha.11",
   "private": true,
+  "engines": {"node": ">=20.9.0"},
   "scripts": {
-    "dev": "OURO_LOCAL_DEMO=1 next dev --hostname 127.0.0.1",
+    "dev": "node scripts/local-next.mjs dev",
     "build": "next build --webpack",
-    "start": "OURO_LOCAL_DEMO=1 next start --hostname 127.0.0.1",
+    "start": "node scripts/local-next.mjs start",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "test:e2e": "playwright test",
