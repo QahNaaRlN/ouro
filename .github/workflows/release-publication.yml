@@ -1,0 +1,141 @@
+name: Prepare first beta release assets
+
+on:
+  push:
+    branches: [chore/release-publication]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ouro-v0.1.0-beta.1-draft-assets
+  cancel-in-progress: false
+
+jobs:
+  prepare-draft-assets:
+    if: github.repository == 'QahNaaRlN/ouro' && github.event_name == 'push' && github.ref == 'refs/heads/chore/release-publication'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the accepted source commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: e20472ca6ef9da1d547c8468b348b62b01d3e2a6
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Verify the accepted commit and annotated release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = e20472ca6ef9da1d547c8468b348b62b01d3e2a6
+          test "$(git cat-file -t refs/tags/v0.1.0-beta.1)" = tag
+          test "$(git rev-parse 'refs/tags/v0.1.0-beta.1^{commit}')" = e20472ca6ef9da1d547c8468b348b62b01d3e2a6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install locked dependencies and build tools
+        run: npm ci --include=dev
+
+      - name: Build and package the standalone protocol
+        # protocol:pack invokes npm pack; the protocol's prepack builds its code.
+        run: npm run protocol:pack
+
+      - name: Package the exact accepted source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run release:pack -- --ref e20472ca6ef9da1d547c8468b348b62b01d3e2a6 --out artifacts/release-publication --protocol-file artifacts/ouro-protocol-0.1.2.tgz
+          cd artifacts/release-publication
+          sha256sum -c SHA256SUMS
+
+      - name: Upload verified assets to the existing draft without publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import {execFileSync} from 'node:child_process';
+          import {createHash} from 'node:crypto';
+          import {readFileSync} from 'node:fs';
+          import path from 'node:path';
+
+          const repo='QahNaaRlN/ouro';
+          const tag='v0.1.0-beta.1';
+          const commit='e20472ca6ef9da1d547c8468b348b62b01d3e2a6';
+          const releaseId=428132258;
+          const out=path.resolve('artifacts/release-publication');
+          const names=['ouro-0.1.0-beta.1-source.zip','ouro-protocol-0.1.2.tgz','release-manifest.json','SHA256SUMS'];
+          const gh=(...args)=>execFileSync('gh',args,{maxBuffer:64*1024*1024});
+          const api=endpoint=>JSON.parse(gh('api',`repos/${repo}/${endpoint}`).toString('utf8'));
+          const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
+          const local=new Map(names.map(name=>{const bytes=readFileSync(path.join(out,name));return [name,{bytes:bytes.length,sha256:hash(bytes)}];}));
+
+          const manifest=JSON.parse(readFileSync(path.join(out,'release-manifest.json'),'utf8'));
+          assert.equal(manifest.schemaVersion,1);
+          assert.equal(manifest.product,'ouro');
+          assert.equal(manifest.commitSHA,commit);
+          assert.equal(manifest.productVersion,'0.1.0-beta.1');
+          assert.equal(manifest.protocolVersion,'0.1.2');
+          assert.equal(manifest.sourcePrefix,'ouro-0.1.0-beta.1/');
+          assert.equal(manifest.assets.length,2);
+          assert.deepEqual(manifest.assets.map(asset=>asset.name).sort(),names.slice(0,2).sort());
+          for(const asset of manifest.assets){
+            assert.equal(asset.sha256,local.get(asset.name).sha256);
+            assert.equal(asset.bytes,local.get(asset.name).bytes);
+          }
+
+          function inspectDraft(){
+            const ref=api(`git/ref/tags/${tag}`);
+            assert.equal(ref.ref,`refs/tags/${tag}`);
+            assert.equal(ref.object.type,'tag');
+            const localTag=execFileSync('git',['rev-parse',`refs/tags/${tag}`],{encoding:'utf8'}).trim();
+            assert.equal(ref.object.sha,localTag);
+            const annotated=api(`git/tags/${ref.object.sha}`);
+            assert.equal(annotated.tag,tag);
+            assert.equal(annotated.object.type,'commit');
+            assert.equal(annotated.object.sha,commit);
+            const release=api(`releases/${releaseId}`);
+            assert.equal(release.id,releaseId);
+            assert.equal(release.tag_name,tag);
+            assert.equal(release.draft,true,'The release must remain a draft.');
+            assert.equal(release.prerelease,true);
+            assert(Array.isArray(release.assets));
+            assert(release.assets.every(asset=>names.includes(asset.name)),'Unexpected existing release asset.');
+            assert.equal(new Set(release.assets.map(asset=>asset.name)).size,release.assets.length);
+            return release;
+          }
+
+          function verifyRemoteAsset(asset,name){
+            assert.equal(asset.state,'uploaded');
+            assert.equal(asset.size,local.get(name).bytes);
+            const bytes=gh('api','-H','Accept: application/octet-stream',`repos/${repo}/releases/assets/${asset.id}`);
+            assert.equal(bytes.length,local.get(name).bytes);
+            assert.equal(hash(bytes),local.get(name).sha256,`Asset bytes differ: ${name}`);
+          }
+
+          for(const name of names){
+            const existing=inspectDraft().assets.find(asset=>asset.name===name);
+            if(existing){
+              verifyRemoteAsset(existing,name);
+              console.log(`Already present and verified: ${name}`);
+              continue;
+            }
+            // Deliberately omit --clobber. A concurrent or differing asset fails closed.
+            gh('release','upload',tag,path.join(out,name),'--repo',repo);
+            const uploaded=inspectDraft().assets.find(asset=>asset.name===name);
+            assert(uploaded,`Missing uploaded asset: ${name}`);
+            verifyRemoteAsset(uploaded,name);
+            console.log(`Uploaded and verified: ${name}`);
+          }
+          const final=inspectDraft();
+          assert.deepEqual(final.assets.map(asset=>asset.name).sort(),[...names].sort());
+          console.log(`All four assets verified. Release ${releaseId} remains an unpublished draft.`);
+          JS
