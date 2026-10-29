@@ -523,7 +523,7 @@ export default function Home() {
           <span>
             ouro<span className="brand-dot">.</span>
           </span>
-          <span className="alpha-label">ALPHA</span>
+          <span className="alpha-label">{packageInfo.version.split('-')[1]?.split('.')[0].toUpperCase()??'RELEASE'}</span>
         </a>
         <div className="workspace-switch">
           <span className="workspace-avatar">
