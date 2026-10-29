@@ -8,6 +8,7 @@ import {createProjectSnapshotAdopter,type ProjectSnapshot} from '@/lib/project-s
 import {startProjectSubscription,type ProjectSubscriptionStatus} from '@/lib/project-subscription';
 import Roadmap,{specLabels} from './roadmap';
 import SpecFlow from './spec-flow';
+import WorkspaceOnboarding from './onboarding';
 import {WorkspaceOverview,WorkspaceAgentActivity,WorkspaceActivityFeed,WorkspaceSources} from './workspace-dashboard';
 import WorkspaceConnectionPanel from './workspace-connection';
 import WorkspaceTaskForm from './workspace-task';
@@ -50,9 +51,10 @@ function ProjectScope({projectId,actorId}:{projectId:string;actorId:string}){
   const pick=(specId:string)=>{setSelected(specId);setChosenRevision('');setChosenExecution('');setCopied(false);};
   return <>
     <header className="ws-heading">
-      <div><Link href="/projects" className="ws-back">← Проекты</Link><p className="ws-eyebrow">ДАШБОРД ПРОЕКТА · MCP</p><h1>{metadata.project.name}</h1><p className="ws-path"><FolderOpen size={15}/>{metadata.project.rootPath??'Demo · прежний учебный проект'}</p></div>
+      <div><Link href="/projects" className="ws-back">← Проекты</Link><h1>{metadata.project.name}</h1><p className="ws-path"><FolderOpen size={15}/>{metadata.project.rootPath??'Demo · прежний учебный проект'}</p></div>
       <button aria-label="Обновить проект" onClick={()=>void refresh().catch(e=>setError(e.message))}><RefreshCw size={16}/></button>
     </header>
+    <WorkspaceOnboarding scope="project" hasFlow={!!spec&&!!revision}/>
     <div className="ws-project-meta"><code>projectId: {projectId}</code><span role="status">{status==='connected'?'История обновляется':status==='reload-required'?'Нужно перечитать историю':status==='reconnecting'?'Восстанавливаем обновления':'Подключаем обновления'} · v{snapshot.cursor}</span></div>
     {error&&<div role="alert" className="ws-error">{error}</div>}
     <WorkspaceOverview state={state} agents={metadata.agents}/><WorkspaceAgentActivity state={state} agents={metadata.agents} onSelect={pick} compact/>
@@ -64,7 +66,7 @@ function ProjectScope({projectId,actorId}:{projectId:string;actorId:string}){
     </details>
     <div className="ws-dashboard-grid">
       <div className="ws-dashboard-main">
-        <section className="ws-panel ws-work" aria-label="Дорожная карта проекта">
+        <section className="ws-panel ws-work" aria-label="Дорожная карта проекта" data-onboarding="project-roadmap">
           <div className="ws-section-top"><h2>Дорожная карта</h2><span className="ws-muted">{state.specs.length} задач</span></div>
           {!state.specs.length?<div className="ws-empty">Задач пока нет. Назначьте первую работу агенту выше.</div>:<>
             <div className="ws-map" aria-label="Граф спецификаций проекта"><Roadmap state={state} selected={spec?.id??null} onSelect={pick} query="" status="" layoutKey={0}/></div>
@@ -87,7 +89,7 @@ function ProjectScope({projectId,actorId}:{projectId:string;actorId:string}){
             {latestRevision&&latestRevision.id!==spec.activeRevisionId&&<div className="ws-revision-notice"><p>Есть предложение r{latestRevision.revision}. Проверьте его перед активацией.</p><button disabled={disabled} onClick={()=>void command({type:'activateRevision',specId:spec.id,revisionId:latestRevision.id},`activate:${spec.id}`,'Активировать новую ревизию').catch(e=>setError(e.message))}>Активировать новую ревизию</button></div>}
             <WorkspaceStartAttempt key={`start:${revision.id}`} spec={spec} revision={revision} state={state} agents={metadata.agents} command={command} disabled={disabled}/><WorkspaceRevisionForm key={revision.id} spec={spec} revision={revision} command={command} disabled={disabled}/>
           </section>
-          <section className="ws-panel ws-work" aria-label="Текущий процесс"><div className="ws-section-top"><h2>Процесс выбранной спеки</h2><span className="ws-muted">r{revision.revision}{revision.id===spec.activeRevisionId?' · активная':' · предложение'}</span></div><WorkspaceCurrentFlowControls state={state} execution={execution?.specRevisionId===revision.id?execution:undefined} command={command} disabled={disabled}/>{!revision.flow&&<p className="ws-muted">Схема не задана этой ревизией. Предложение агента с Flow появится отдельно до человеческого рассмотрения и активации.</p>}<SpecFlow revision={revision} state={state} busy={disabled} readOnly onSave={async()=>false}/></section>
+          <section className="ws-panel ws-work" aria-label="Текущий процесс" data-onboarding="project-flow"><div className="ws-section-top"><h2>Процесс выбранной спеки</h2><span className="ws-muted">r{revision.revision}{revision.id===spec.activeRevisionId?' · активная':' · предложение'}</span></div><WorkspaceCurrentFlowControls state={state} execution={execution?.specRevisionId===revision.id?execution:undefined} command={command} disabled={disabled}/>{!revision.flow&&<p className="ws-muted">Схема не задана этой ревизией. Предложение агента с Flow появится отдельно до человеческого рассмотрения и активации.</p>}<SpecFlow revision={revision} state={state} busy={disabled} readOnly onSave={async()=>false}/></section>
           <WorkspaceAcceptance key={revision.id} spec={spec} revision={revision} state={state} command={command} disabled={disabled}/>
         </>}
         <WorkspaceProposals state={state} command={command} disabled={disabled} onOpenSpec={pick}/>

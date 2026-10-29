@@ -1,6 +1,8 @@
 "use client";
 
 import packageInfo from '../package.json';
+import Link from 'next/link';
+import OuroLogo from '@/components/ouro-logo';
 
 import {
   useCallback,
@@ -19,7 +21,6 @@ import {
   Bot,
   Box,
   Check,
-  ChevronDown,
   CircleDot,
   Clock3,
   Code2,
@@ -149,10 +150,9 @@ function RequestIcon({ kind, size = 16 }: { kind: string; size?: number }) {
     <MessageCircle size={size} />
   );
 }
-function Empty({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+function Empty({ children }: { children: ReactNode }) {
   return (
     <div className="empty-state">
-      {icon}
       <p>{children}</p>
     </div>
   );
@@ -518,23 +518,13 @@ export default function Home() {
   return (
     <div className={`app-shell ${historicalCursor!==null?'historical-preview':''}`}>
       <aside className={`sidebar ${mobileNav ? "mobile-open" : ""}`}>
-        <a className="brand" href="/" aria-label="Ouro — главная">
-          <span className="brand-symbol">O</span>
+        <Link className="brand" href="/projects" aria-label="Ouro — проекты">
+          <OuroLogo size={28}/>
           <span>
             ouro<span className="brand-dot">.</span>
           </span>
           <span className="alpha-label">{packageInfo.version.split('-')[1]?.split('.')[0].toUpperCase()??'RELEASE'}</span>
-        </a>
-        <div className="workspace-switch">
-          <span className="workspace-avatar">
-            <Box size={17} />
-          </span>
-          <div>
-            <strong>Ouro OS</strong>
-            <small>Локальное рабочее место</small>
-          </div>
-          <ChevronDown size={14} />
-        </div>
+        </Link>
         <div className="nav-label">ПРОЕКТ</div>
         <nav aria-label="Основная навигация">
           <a className="nav-item" href="/projects"><Box size={18}/><span>Проекты</span></a>
@@ -553,17 +543,6 @@ export default function Home() {
             </button>
           ))}
         </nav>
-        <div className="sidebar-note">
-          <div className="sidebar-note-icon">
-            <GitBranch size={16} />
-          </div>
-          <strong>Ожидание → реальность</strong>
-          <p>
-            Агент сообщает факты.
-            <br />
-            Человек принимает решения.
-          </p>
-        </div>
         <div className="sidebar-bottom">
           <button
             className={`nav-item ${view === "methodology" ? "active" : ""}`}
@@ -572,15 +551,10 @@ export default function Home() {
           >
             <BookOpen size={18} />
             Методология и источники
-            <ArrowUpRight size={13} />
           </button>
-          <div className="profile">
-            <span className="avatar">ВЫ</span>
-            <div>
-              <strong>{identity?.name??'Вход не выполнен'}</strong>
-              <small>{identity?['local-human','human-token'].includes(identity.id)?'Локальный оператор':'Участник проекта':'Нужна сессия человека'}</small>
-            </div>
-            <ShieldCheck size={15} />
+          <div className="session-status" role="status" aria-label="Текущая сессия">
+            <strong>{identity?.name??'Вход не выполнен'}</strong>
+            <small>{identity?['local-human','human-token'].includes(identity.id)?'Локальный оператор':'Участник проекта':'Нужна сессия человека'}</small>
           </div>
         </div>
       </aside>
@@ -594,12 +568,9 @@ export default function Home() {
             >
               <Menu size={19} />
             </button>
-            <span className="project-crumb">Проекты</span>
+            <Link className="project-crumb" href="/projects">Проекты</Link>
             <span className="crumb-slash">/</span>
-            <span className="current-project">
-              <Box size={15} />
-              Ouro OS
-            </span>
+            <span className="current-project">Учебный проект</span>
             <span className="project-tag">Human View</span>
           </div>
           <div className="topbar-actions">
@@ -669,7 +640,6 @@ export default function Home() {
                 <>
                   <div className="page-heading">
                     <div>
-                      <div className="eyebrow">НАПРАВЛЕНИЕ ПРОЕКТА</div>
                       <h1>
                         Дорожная карта{" "}
                         <span className="heading-count">
@@ -839,7 +809,6 @@ export default function Home() {
                 <>
                   <div className="page-heading compact">
                     <div>
-                      <div className="eyebrow">ОЖИДАНИЕ И РЕАЛЬНОСТЬ</div>
                       <h1>Спецификация</h1>
                       <p>Ожидание версионируется. Факты сохраняются.</p>
                     </div>
@@ -1289,7 +1258,7 @@ export default function Home() {
                       )}
                     </>
                   ) : (
-                    <Empty icon={<FileText size={30} />}>
+                    <Empty>
                       Выберите спецификацию или создайте первую.
                     </Empty>
                   )}
@@ -1299,7 +1268,6 @@ export default function Home() {
                 <>
                   <div className="page-heading">
                     <div>
-                      <div className="eyebrow">ЧЕЛОВЕК В КОНТУРЕ</div>
                       <h1>
                         Решения{" "}
                         <span className="heading-count attention-count">
@@ -1350,7 +1318,7 @@ export default function Home() {
                           </button>
                         ))
                       ) : (
-                        <Empty icon={<CircleDot size={28} />}>
+                        <Empty>
                           Открытых запросов нет. Запрос появится, когда назначенный агент сообщит вопрос, развилку или блокер.
                         </Empty>
                       )}
@@ -1371,7 +1339,7 @@ export default function Home() {
                           onOpenRequest={openRequest}
                         />
                       ) : (
-                        <Empty icon={<MessageCircle size={30} />}>
+                        <Empty>
                           Выберите запрос, чтобы увидеть основания и варианты.
                         </Empty>
                       )}
@@ -1383,7 +1351,6 @@ export default function Home() {
                 <>
                   <div className="page-heading">
                     <div>
-                      <div className="eyebrow">НЕИЗМЕНЯЕМАЯ ИСТОРИЯ</div>
                       <h1>Факты и решения</h1>
                       <p>
                         Серверный порядок событий · {state.events.length}{" "}
@@ -1608,10 +1575,6 @@ export default function Home() {
                   Action фиксирует факт. Решения остаются за человеком.
                 </span>
               </div>
-              <div className="right-panel-bottom">
-                <ShieldCheck size={15} />
-                <span>Решение ≠ исполнение ≠ приёмка</span>
-              </div>
             </aside>}
           </div>
         )}
@@ -1632,7 +1595,6 @@ export default function Home() {
             </span>
             <span className="footer-separator" />
             <span>{packageInfo.version}</span>
-            <span className="small-tag">PROTOTYPE</span>
           </div>
         </footer>
       </div>
@@ -1784,7 +1746,7 @@ function SpecTable({
         </tbody>
       </table>
       {!specs.length && (
-        <Empty icon={<Search size={25} />}>
+        <Empty>
           По текущим фильтрам ничего не найдено.
         </Empty>
       )}
@@ -2382,7 +2344,7 @@ function Timeline({
           </article>
         ))
       ) : (
-        <Empty icon={<History size={28} />}>
+        <Empty>
           Событий в выбранном контексте пока нет.
         </Empty>
       )}
@@ -2741,7 +2703,6 @@ function Methodology() {
     <>
       <div className="page-heading">
         <div>
-          <div className="eyebrow">ОБОСНОВАННЫЕ РЕШЕНИЯ</div>
           <h1>Методология и источники</h1>
           <p>Практики, которые определяют поведение прототипа.</p>
         </div>

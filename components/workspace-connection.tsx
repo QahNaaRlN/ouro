@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import {useState,type FormEvent} from 'react';
-import {Bot,Copy,Download,KeyRound,Plug,ShieldCheck} from 'lucide-react';
+import {Bot,Copy,Download,KeyRound,ShieldCheck} from 'lucide-react';
 import {AGENT_CLIENTS,buildAgentClientConfig,type AgentClientId} from '@/lib/agent-client-config';
 import type {AgentRegistration} from './agents-panel';
 import {useWorkspaceSession,type WorkspaceConnection} from './workspace-client';
@@ -23,7 +23,7 @@ export default function WorkspaceConnectionPanel({projectId,agents,connection,on
   const configCopyId=`config:${client}:${projectId}:${keyFile}`,entryCopyId=`entry:${client}:${projectId}:${keyFile}`,keyCopyId=`key:${issued?.agent.id??''}`;
   const download=()=>{if(!generated)return;const url=URL.createObjectURL(new Blob([config+'\n'],{type:'application/json'})),anchor=document.createElement('a');anchor.href=url;anchor.download=`ouro-${client}-mcp.json`;anchor.click();setTimeout(()=>URL.revokeObjectURL(url),0);};
   return <section className="ws-panel" aria-label="Подключение MCP-агента">
-    <div className="ws-section-top"><div><p className="ws-step">01 · ПОДКЛЮЧЕНИЕ</p><h2>MCP-агенты проекта</h2></div><Plug size={23}/></div>
+    <div className="ws-section-top"><h2>MCP-агенты проекта</h2></div>
     <p>Выберите клиент и подключите его к этому проекту. Cursor и Claude работают через локальный stdio bridge; отдельный туннель для них не нужен.</p>
     {error&&<p className="ws-error" role="alert">{error}</p>}
     <label className="ws-client-choice">MCP-клиент<select aria-label="MCP-клиент" value={client} disabled={busy} onChange={event=>selectClient(event.target.value as AgentClientId)}>{profiles.map(profile=><option key={profile.id} value={profile.id}>{profile.name}</option>)}</select></label>

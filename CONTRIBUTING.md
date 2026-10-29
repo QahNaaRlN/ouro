@@ -57,6 +57,8 @@ npm run test:e2e:production
 
 Production browser checks require Playwright's Chromium installation. See the repository's local setup instructions. Do not run a build and dev server in the same checkout at the same time.
 
+CI uses the exact Node version in `.nvmrc` (currently24.19.0). The unit command runs files serially to bound PGlite memory. Its test-only `--no-wasm-code-gc` retains Wasm code until each short-lived test process exits, avoiding the teardown signature documented in [nodejs/node#66366](https://github.com/nodejs/node/issues/66366). All assertions remain enabled; production build/start and browser acceptance use the ordinary runtime. Revalidate this setting when upgrading Node after the upstream fix. [Runtime qualification](docs/specs/release-runtime.md).
+
 CI exposes stable required checks named **`checks`** and **`browser`**. Report the commands and actual results in the PR, link the SDD and journal, and state material limits of the verification. A JSON configuration or SDK test does not establish that a user's desktop client or model account is connected.
 
 Do not commit keys, credentials, `.env` files other than `.env.example`, `.ouro`, `node_modules`, `.next` or test/runtime artifacts. Keep users' folders, databases and client settings intact. A release archive must contain an exact committed source tree and pass its private-data audit.
