@@ -1,6 +1,8 @@
 # Проверка прототипа
 
-Текущая локальная сборка `0.1.0-alpha.11`: **247/247 unit/integration и 57/57 dev E2E**, typecheck, DB-check и production build успешны. Чистый клон с GitHub проверен через dev → остановка → build/start с сохранением точной записи и без ошибок браузера. [SDD/RED/GREEN и подробности локального пакета](plans/local-start.md).
+Исправление перехода из дорожной карты в процесс: **2/2 новых и 10/10 затронутых прежних browser-сценариев**, typecheck и production build успешны. Клик/Enter/пробел открывают точную активную ревизию, отсутствие flow показано явно; навигация не меняет историю. [SDD/RED/GREEN и границы проверки](plans/roadmap-process-navigation.md).
+
+Gate подготовки локальной сборки `0.1.0-alpha.11` до этого UI-fix: **247/247 unit/integration и 57/57 dev E2E**, typecheck, DB-check и production build успешны. Чистый клон с GitHub проверен через dev → остановка → build/start с сохранением точной записи и без ошибок браузера. [SDD/RED/GREEN и подробности локального пакета](plans/local-start.md).
 
 Предшествующий общий gate `0.1.0-alpha.11`: 245/245 unit/integration, 57/57 production E2E, typecheck и production build успешны. Трассировка SDD/RED/GREEN и границы каждого пакета: [alpha.2 MCP](plans/agent-connect.md#итоговая-проверка-28102026), [alpha.3 Flow](plans/flow-visualization.md), [alpha.4 realtime](plans/live-updates.md), [alpha.5 GitHub](plans/github-evidence.md), [alpha.6 уроки](plans/lessons.md), [alpha.7 показатели](plans/drift-metric.md), [alpha.8 история и восстановление](plans/methodology-recovery.md), [alpha.9 совместные черновики и участники](plans/collaborative-drafts.md), [alpha.10 предложения агента](plans/agent-proposals.md), [alpha.11 Meridian import](plans/meridian-context.md).
 

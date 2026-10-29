@@ -382,6 +382,14 @@ export default function Home() {
     setSelected(id);
     setRequestId(null);
   };
+  const openSpecProcess = (id: string) => {
+    const target = state?.specs.find(spec => spec.id === id);
+    if (!target) return;
+    pick(id);
+    setFlowRevisionId(target.activeRevisionId ?? target.revisionIds.at(-1) ?? null);
+    setDetailTab('process');
+    setView('specs');
+  };
   const openRequest = (r: DecisionRequest) => {
     setSelected(r.specId);
     setRequestId(r.id);
@@ -743,7 +751,7 @@ export default function Home() {
                       <Roadmap
                         state={state}
                         selected={selected}
-                        onSelect={pick}
+                        onSelect={openSpecProcess}
                         query={query}
                         status={status}
                         layoutKey={layoutKey}
@@ -754,10 +762,7 @@ export default function Home() {
                         specs={visibleSpecs}
                         state={state}
                         selected={selected}
-                        onSelect={(id) => {
-                          pick(id);
-                          setView("specs");
-                        }}
+                        onSelect={openSpecProcess}
                       />
                     )}
                   </div>
@@ -777,9 +782,9 @@ export default function Home() {
                       </div>
                       <button
                         className="text-btn"
-                        onClick={() => setView("specs")}
+                        onClick={() => openSpecProcess(spec.id)}
                       >
-                        Открыть спецификацию
+                        Открыть процесс
                         <ArrowRight size={15} />
                       </button>
                     </div>

@@ -177,7 +177,7 @@ export default function Roadmap({
       selected: s.id === selected,
     },
     style: { opacity: visible(s) ? 1 : 0.2 },
-    ariaLabel: `${s.humanId}. ${s.title}. ${specLabels[s.state]}`,
+    ariaLabel: `Открыть процесс ${s.humanId}: ${s.title}. ${specLabels[s.state]}`,
   }));
   const edges: Edge[] = state.dependencies.map((d) => ({
     id: d.id,
@@ -208,7 +208,16 @@ export default function Roadmap({
     });
   }, []);
   return (
-    <div className="graph-container">
+    <div className="graph-container" onKeyDownCapture={event => {
+      if ((event.key !== 'Enter' && event.key !== ' ') || event.repeat) return;
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || !target.classList.contains('react-flow__node')) return;
+      const id = target.getAttribute('data-id');
+      if (!id) return;
+      event.preventDefault();
+      event.stopPropagation();
+      onSelect(id);
+    }}>
       <ReactFlow<SpecFlowNode, Edge>
         key={layoutKey}
         nodes={nodes}
@@ -224,6 +233,7 @@ export default function Roadmap({
         deleteKeyCode={null}
         proOptions={{ hideAttribution: false }}
         ariaLabelConfig={{
+          'node.a11yDescription.default': 'Нажмите Enter или пробел, чтобы открыть процесс спеки. Стрелки перемещают карточку.',
           "controls.zoomIn.ariaLabel": "Приблизить",
           "controls.zoomOut.ariaLabel": "Отдалить",
           "controls.fitView.ariaLabel": "Показать весь граф",
