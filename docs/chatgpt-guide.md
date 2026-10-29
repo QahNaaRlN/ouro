@@ -100,7 +100,7 @@ tunnel-client run --profile ouro-project
 2. Введите понятные имя и описание, например «Ouro — мой проект».
 3. В **Connection** выберите **Tunnel**, затем нужный tunnel или его полный tunnel_id.
 4. Этот stdio bridge уже авторизует доступ в Ouro через локальный agent-key file; дополнительный upstream OAuth Ouro не предоставляет. Настройте соответствующий вариант без upstream OAuth, проверьте предупреждение доступа, выберите **I understand and want to continue**, затем **Create as a plugin**.
-5. Проверьте обнаруженный список инструментов. Для alpha.14 ожидаются 18 tools, включая `ouro.list_workspace_files` и `ouro.read_workspace_file`.
+5. Проверьте обнаруженный список инструментов. Для alpha.14/15 ожидаются 18 tools, включая `ouro.list_workspace_files` и `ouro.read_workspace_file`.
 6. Установите созданный plugin, откройте новый разговор, введите `@` и выберите именно это подключение проекта.
 
 Не вставляйте localhost URL в поле публичного HTTPS server и не переносите agent key в URL. Для этого сценария выбран Tunnel к локальной stdio-команде. Если tunnel не виден, проверьте organization/workspace association и Read + Use, затем состояние tunnel-client.

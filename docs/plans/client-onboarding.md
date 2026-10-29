@@ -23,3 +23,7 @@ CLI работал без login/account/LLM-команд. Key file0600 был в
 ## Общая приёмка
 
 Полный unit/integration прогон344/344 GREEN без пропусков (87.25s), `/tmp/ouro-clients-unit.log`. Typecheck/build и production browser gate фиксируются ниже по завершении.
+
+Финальный код `398d5db`: **71/71 production E2E GREEN**,176.46s,0 unexpected/flaky/skipped, workers1/retries0. Root config `/tmp/ouro-clients-production.config.cjs`, новая БД `/tmp/ouro-clients-production-aiyWqm`, порт3357. Все прежние69 и новые2 сценария выполнены вместе. Результат `/tmp/ouro-clients-production-e2e.{log,json}`. Общие typecheck, production build и protocol:check49/49 также GREEN: `/tmp/ouro-clients-typecheck.log`, `/tmp/ouro-clients-build.log`, `/tmp/ouro-clients-protocol-check.log`.
+
+Протокол0.1.2 и SQL не менялись; его standalone-package acceptance сохранена из alpha.14 и не объявляется новым отдельным запуском. Scratch Claude Code не добавлен зависимостью приложения. Временный dev3356 остановлен перед build, production3357 завершён вместе с gate. Пользовательские экземпляры, существующие проекты, папки и настройки Cursor/Claude не менялись. Базовый UI RED на собственной preview3013 создал только два технических folder-проекта; существующие истории и source прежних preview не менялись, временные папки удалены. Адреса loopback среды не выдаются за доступный пользователю сайт. Инструкция содержит обновление прежнего single-branch клона без reset/удаления данных.

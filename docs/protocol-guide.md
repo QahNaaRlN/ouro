@@ -1,6 +1,6 @@
 # Предметный контракт Ouro · 0.1.2
 
-Контракт стандартизирует данные общения Ouro и любого совместимого MCP-агента: схемы процесса и проходов, workspace context, входы 18 tools, успешные ответы и ошибки. На этих данных единый realtime-дашборд показывает выбранный проект, roadmap/Flow, агентов/попытки, внимание человека и события. ChatGPT — пример клиента общего контракта. Версия `0.1.2` отделена от приложения `0.1.0-alpha.14`, transport MCP и `schemaVersion:1` событий. Текущая ветка — `feat/project-workspace`; первоначальный контракт 0.1.0 и его проверки сохранены в [журнале alpha.12](plans/domain-contract.md).
+Контракт стандартизирует данные общения Ouro и любого совместимого MCP-агента: схемы процесса и проходов, workspace context, входы 18 tools, успешные ответы и ошибки. На этих данных единый realtime-дашборд показывает выбранный проект, roadmap/Flow, агентов/попытки, внимание человека и события. ChatGPT — пример клиента общего контракта. Версия `0.1.2` отделена от приложения `0.1.0-alpha.15`, transport MCP и `schemaVersion:1` событий. Текущая ветка — `feat/client-onboarding`; первоначальный контракт 0.1.0 и его проверки сохранены в [журнале alpha.12](plans/domain-contract.md).
 
 Исходники и самостоятельная инструкция находятся в [packages/protocol](../packages/protocol/README.md). Пакет `@ouro/protocol` содержит ESM/CommonJS, соответствующие TypeScript declarations, JSON Schema, примеры и CLI. Его runtime-зависимость — Zod. Для использования пакета не нужны Next.js, PostgreSQL, браузер или MCP SDK.
 
@@ -25,10 +25,10 @@ Canonical каталог содержит 49 JSON Schema. Входы и wire-о�
 
 ## Запуск приложения и сборка пакета
 
-Полный репозиторий этой реализации находится в ветке `feat/project-workspace`:
+Полный репозиторий этой реализации находится в ветке `feat/client-onboarding`:
 
 ```sh
-git clone --branch feat/project-workspace --single-branch https://github.com/QahNaaRlN/ouro.git
+git clone --branch feat/client-onboarding --single-branch https://github.com/QahNaaRlN/ouro.git
 cd ouro
 npm ci
 npm run dev

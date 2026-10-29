@@ -1,6 +1,6 @@
 # Прототип 0.1.0-alpha.1: соответствие ТЗ/ТС
 
-Это историческая матрица базового среза alpha.1. Текущий прототип `0.1.0-alpha.14` и все последующие пакеты описаны в [дорожной карте](roadmap.md), [индексе проверок](validation.md) и [README](../README.md). Настоящие MCP HTTP/stdio появились в alpha.2: [SDD](specs/agent-connect.md), [инструкция](agent-quickstart.md), [TDD](plans/agent-connect.md). Упоминания отсутствующего MCP, polling и единственного локального человека ниже относятся только к alpha.1.
+Это историческая матрица базового среза alpha.1. Текущий прототип `0.1.0-alpha.15` и все последующие пакеты описаны в [дорожной карте](roadmap.md), [индексе проверок](validation.md) и [README](../README.md). Настоящие MCP HTTP/stdio появились в alpha.2: [SDD](specs/agent-connect.md), [инструкция](agent-quickstart.md), [TDD](plans/agent-connect.md). Упоминания отсутствующего MCP, polling и единственного локального человека ниже относятся только к alpha.1.
 
 Это проверяемый срез, не приёмка полного продукта. Команды запуска — в [README](../README.md).
 
