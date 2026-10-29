@@ -13,8 +13,12 @@ async function fixture(){
  await writeFile(path.join(repository,'.ouro','sentinel'),'PRESERVE_EXISTING_DATA');
  const launcher=path.join(repository,'scripts','launch.mjs');await copyFile(path.resolve('scripts/launch.mjs'),launcher);
  const log=path.join(directory,'phases.jsonl'),heartbeat=path.join(directory,'heartbeat'),descendant=path.join(directory,'descendant.json'),npm=path.join(directory,"npm cli & ' пробел.mjs");
- await writeFile(npm,`import {appendFileSync,writeFileSync} from 'node:fs';import {spawn} from 'node:child_process';
+ await writeFile(npm,`import {appendFileSync,writeFileSync,readFileSync} from 'node:fs';import {spawn} from 'node:child_process';
  const args=process.argv.slice(2),phase=args[0]==='run'?args[1]:args[0];appendFileSync(process.env.FAKE_PHASE_LOG,JSON.stringify({phase,args,cwd:process.cwd(),dataDir:process.env.OURO_DATA_DIR})+'\\n');
+ if(process.env.FAKE_REQUIRE_BUILD_TOOLS==='1'){
+  if(phase==='ci')writeFileSync(process.env.FAKE_BUILD_TOOLS_STATE,JSON.stringify({installed:process.env.NODE_ENV!=='production'||args.includes('--include=dev'),nodeEnv:process.env.NODE_ENV}));
+  if(phase==='build'&&!JSON.parse(readFileSync(process.env.FAKE_BUILD_TOOLS_STATE,'utf8')).installed){console.error('Build tooling was omitted by the production installation');process.exit(42);}
+ }
  if(process.env.FAKE_FAIL_PHASE===phase)process.exit(7);
  if(process.env.FAKE_SIGNAL_PHASE===phase)process.kill(process.pid,'SIGTERM');
  if(process.env.FAKE_WAIT_PHASE===phase){
@@ -23,7 +27,7 @@ async function fixture(){
   process.on('SIGINT',()=>process.exit(0));setInterval(()=>{},1000);
  }else if(phase==='start'&&process.env.FAKE_READY==='1'){console.log('Preparing fixture server');setTimeout(()=>console.log('✓ Ready in 1ms'),30);}
  `);
- const env={...process.env,npm_execpath:npm,FAKE_PHASE_LOG:log,FAKE_HEARTBEAT:heartbeat,FAKE_DESCENDANT:descendant,OURO_DATA_DIR:path.join(repository,'.ouro','данные & $(literal)')};
+ const env={...process.env,npm_execpath:npm,FAKE_PHASE_LOG:log,FAKE_HEARTBEAT:heartbeat,FAKE_DESCENDANT:descendant,FAKE_BUILD_TOOLS_STATE:path.join(directory,'build-tools.json'),OURO_DATA_DIR:path.join(repository,'.ouro','данные & $(literal)')};
  const run=(args:string[]=[],overrides:Record<string,string|undefined>={})=>spawnSync(process.execPath,[launcher,...args],{cwd:foreign,env:{...env,...overrides},encoding:'utf8',timeout:15000});
  const phases=async():Promise<Phase[]>=>{try{return (await readFile(log,'utf8')).trim().split('\n').filter(Boolean).map(line=>JSON.parse(line));}catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT')return [];throw error;}};
  return {directory,repository,foreign,launcher,npm,log,heartbeat,descendant,env,run,phases,close:()=>rm(directory,{recursive:true,force:true})};
@@ -33,7 +37,7 @@ test('FRL03 launcher runs ordered ci/build/start from its own extracted root and
  const f=await fixture();try{
   const result=f.run(['--port','4319']);assert.equal(result.status,0,result.stderr);
   assert.deepEqual(await f.phases(),[
-   {phase:'ci',args:['ci'],cwd:f.repository,dataDir:f.env.OURO_DATA_DIR},
+   {phase:'ci',args:['ci','--include=dev'],cwd:f.repository,dataDir:f.env.OURO_DATA_DIR},
    {phase:'build',args:['run','build'],cwd:f.repository,dataDir:f.env.OURO_DATA_DIR},
    {phase:'start',args:['start','--','--port','4319'],cwd:f.repository,dataDir:f.env.OURO_DATA_DIR},
   ]);
@@ -45,6 +49,14 @@ test('FRL03 a failed install/build/start preserves its code and never starts a l
  for(const [failed,count]of [['ci',1],['build',2],['start',3]] as const){const f=await fixture();try{
   const result=f.run([],{FAKE_FAIL_PHASE:failed});assert.equal(result.status,7,result.stderr);assert.equal((await f.phases()).length,count);assert.equal(result.stdout.includes('Open http://'),false);
  }finally{await f.close();}}
+});
+
+test('FRL03 an inherited production NODE_ENV still installs the tools needed to build the source release',async()=>{
+ const f=await fixture();try{
+  const result=f.run([],{NODE_ENV:'production',FAKE_REQUIRE_BUILD_TOOLS:'1'});assert.equal(result.status,0,result.stderr);
+  const state=JSON.parse(await readFile(f.env.FAKE_BUILD_TOOLS_STATE,'utf8'));assert.equal(state.installed,true);assert.equal(state.nodeEnv,'production');
+  assert.deepEqual((await f.phases()).map(item=>item.phase),['ci','build','start']);assert((await f.phases())[0].args.includes('--include=dev'));
+ }finally{await f.close();}
 });
 
 test('FRL03 malformed launch arguments fail before preparation without echoing unknown values',async()=>{
