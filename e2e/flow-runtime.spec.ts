@@ -204,7 +204,15 @@ test('FR01/FR12 legacy bound evidence stays readable on a light mobile screen wi
   await expect(flowPanel(page)).toContainText('Строгий учёт проходов не включён');
   await expect(flowPanel(page).locator('.react-flow__node[data-id="work"]')).toContainText('1 связанных фактов');
   await page.getByRole('button',{name:'Включить светлую тему',exact:true}).click();await page.setViewportSize({width:390,height:844});
-  await flowPanel(page).getByRole('button',{name:'Таблица',exact:true}).click();const open=flowPanel(page).getByRole('button',{name:'Открыть узел Прочитать назначенное ожидание',exact:true});await open.focus();await open.press('Enter');
+  await flowPanel(page).getByRole('button',{name:'Таблица',exact:true}).click();
+  const nodeTable=flowPanel(page).getByRole('table',{name:'Узлы процесса',exact:true}),firstTitleCell=nodeTable.getByRole('row').nth(1).getByRole('cell').first();
+  expect(await firstTitleCell.evaluate(cell=>cell.getBoundingClientRect().width)).toBeGreaterThanOrEqual(140);
+  const tableScroll=flowPanel(page).getByRole('region',{name:'Таблица узлов процесса',exact:true});
+  expect(await tableScroll.evaluate(element=>element.scrollWidth>element.clientWidth)).toBe(true);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await tableScroll.focus();await expect(tableScroll).toBeFocused();const originalScroll=await tableScroll.evaluate(element=>element.scrollLeft);
+  await tableScroll.press('ArrowRight');await expect.poll(()=>tableScroll.evaluate(element=>element.scrollLeft)).toBeGreaterThan(originalScroll);
+  const open=flowPanel(page).getByRole('button',{name:'Открыть узел Прочитать назначенное ожидание',exact:true});await open.focus();await open.press('Enter');
   const inspector=flowPanel(page).getByRole('region',{name:'Выбранный узел',exact:true});await expect(inspector).toContainText('Прежний факт без runId');await expect(inspector).toContainText('test://flow-runtime/legacy-action-evidence');
   await expect(flowPanel(page).locator('[data-step-run-id]')).toHaveCount(0);
   expect((await project(page)).executions.find(execution=>execution.id===fixture.execution.id)).not.toHaveProperty('flowRuntime');

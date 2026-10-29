@@ -2,3 +2,24 @@
 @media(max-width:1000px){.process-heading{flex-wrap:wrap}.process-editor-forms{grid-template-columns:1fr}.process-fields{grid-template-columns:1fr}.process-canvas{height:450px}.process-legend{gap:10px}}
 @media(prefers-reduced-motion:reduce){.spec-flow *,.spec-flow *::before,.spec-flow *::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
 .process-node.has-runtime .process-node-title{-webkit-line-clamp:2}.process-node .flow-node-run-state{white-space:normal;overflow:visible;line-height:1.5}.process-node-visit-count{font-size:9px;color:var(--text-faint);margin-top:3px}.flow-runtime-selection{max-width:480px;margin:14px 0}.flow-runtime-context{overflow-wrap:anywhere}.flow-runtime-context code{font-size:10px;overflow-wrap:anywhere}.flow-run-request{padding:12px 0;border-top:1px solid var(--border)}.flow-run-request strong{display:block;font-size:12px;overflow-wrap:anywhere}.flow-run-request code{font-size:10px;overflow-wrap:anywhere}
+
+/* Preserve readable columns on narrow screens; only the labelled table region
+   scrolls. A page-width table must not collapse titles or action labels. */
+.process-tables{min-width:0}
+.process-tables .process-table-scroll{min-width:0;max-width:100%;width:100%;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;border:1px solid var(--border);border-radius:var(--radius)}
+.process-table-scroll:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.process-table-hint{font-size:11px;line-height:1.7;color:var(--text-muted);margin:0}
+.process-tables table{table-layout:fixed}
+.process-tables .process-nodes-table{min-width:700px}
+.process-nodes-table th:nth-child(1){width:200px}
+.process-nodes-table th:nth-child(2){width:140px}
+.process-nodes-table th:nth-child(3){width:80px}
+.process-nodes-table th:nth-child(4){width:180px}
+.process-nodes-table th:nth-child(5){width:100px}
+.process-tables .process-edges-table{min-width:640px}
+.process-edges-table th:nth-child(1){width:280px}
+.process-edges-table th:nth-child(2){width:240px}
+.process-edges-table th:nth-child(3){width:120px}
+.process-tables table td,.process-tables table th{white-space:normal;word-break:normal;overflow-wrap:break-word;vertical-align:top}
+.process-tables table td:first-child strong{display:block}
+.process-tables button{white-space:nowrap}
