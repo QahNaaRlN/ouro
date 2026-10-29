@@ -29,3 +29,7 @@
 Общий результат: unit/integration336/336, финальный typecheck, production build, DB-check (35 legacy events, append-only и reopen), protocol:check49/49 и protocol:test-package1/1 — GREEN. Проверки `/tmp/ouro-projects-final-unit.log`, `/tmp/ouro-projects-final-typecheck.log`, `/tmp/ouro-projects-production-build.log`, `/tmp/ouro-projects-db-check.log`, `/tmp/ouro-projects-protocol-check.log`, `/tmp/ouro-projects-protocol-package.log`. Отдельный `protocol:pack` создал переносимый `artifacts/ouro-protocol-0.1.2.tgz` (106 files), npm registry не менялся.
 
 Новая production preview работает отдельно на3013 с собственной `.ouro/preview-postgres`. Исходная рабочая папка пользователя, сервер3000, прежние preview и их данные не изменялись. Пакет готов для локального выбора папки и подключения совместимого агента; реальный ChatGPT аккаунт/tunnel требует пользовательской настройки из инструкции и не объявляется автоматически установленным. Read-only filesystem и operator-only boundary остаются принятыми ограничениями этого пакета.
+
+### Уточнение адреса локального запуска
+
+Выданная в чате ссылка `127.0.0.1:3013` указывала на loopback облачной среды и не была доступной ссылкой для браузера пользователя. При повторной диагностике `/projects` отвечал HTTP200 внутри среды; публикация/входящий preview здесь не настроены. Исправлены README и пользовательская инструкция: сначала запуск Ouro на собственном компьютере, затем `/projects` на порту из строки `Local`. Изменение только документации; новый публичный tunnel или deployment не создавался.
