@@ -8,6 +8,8 @@
 
 Enforced profile: один текущий проход; все исходы исключающие. Action/wait/question/blocker имеют ровно один выход, result — ноль. Condition требует явного edgeId и evidence, текст условия не исполняется. Каждый выход Fork имеет уникальный optionId; соответствующий вариант должен существовать в человеческом запросе. Неоднозначный legacy Flow остаётся читаемым, но его строгий запуск отклоняется с объяснением. Параллельные fork/join, выражения условий, таймеры и автоматический scheduler не добавляются.
 
+Несколько входящих связей означают обычное слияние выбранного пути: каждый реальный переход создаёт новый проход; ожидания всех предшественников как у AND-join нет. Start узла wait даёт waiting до явного complete с evidence; для Question/Fork/Blocker waiting возникает при связанном запросе. Waiting не завершает шаг автоматически.
+
 ## Данные и состояния
 
 `Execution.flowRuntime?` — проекция событий: `{version:1,state,currentRunId,runs,traversals}`. State = active/completed/failed/cancelled. Run = `{id,nodeId,visit,state,createdAt,startedAt?,finishedAt?,evidence?,reason?,retryOfRunId?}`. State прохода = ready/running/waiting/succeeded/failed/skipped/cancelled. Visit — последовательный номер посещения одного nodeId внутри execution. Traversal = `{id,edgeId,fromRunId,toRunId,at}`. Предел — 1000 проходов на попытку, без автоматических циклов.
