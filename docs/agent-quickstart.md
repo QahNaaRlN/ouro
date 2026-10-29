@@ -1,4 +1,4 @@
-# Подключить агента · 0.1.0-alpha.12
+# Подключить агента · 0.1.0-alpha.13
 
 Пакет [OURO-ENG-000001](specs/agent-connect.md), разработан по SDD/TDD. Поддерживается MCP-клиент с tools и stdio либо Streamable HTTP с настраиваемым bearer-заголовком. LLM, аккаунт провайдера и установка IDE остаются на стороне пользователя.
 
@@ -45,6 +45,7 @@ Claude Code HTTP (`.mcp.json` либо пользовательская конф
 |---|---|
 | Назначения, immutable ожидание, DoD, решения, guards и текущая версия | `ouro.get_context` |
 | Разрешённые изменения после committed cursor | `ouro.get_updates` |
+| Начало, завершение или неуспех конкретного прохода строгой схемы | `ouro.report_flow_step` |
 | Факт / вопрос / выбор / препятствие | `ouro.report_action`, `ouro.report_question`, `ouro.report_fork`, `ouro.report_blocker` |
 | Фактический запуск / продолжение / остановка | `ouro.confirm_started`, `ouro.confirm_resumed`, `ouro.confirm_stopped` |
 | Подтверждение применения положительного решения с evidence | `ouro.confirm_decision_applied` |
@@ -58,7 +59,19 @@ Claude Code HTTP (`.mcp.json` либо пользовательская конф
 
 Для source-backed предложения укажите `sourceCursor` и точные ID первичных событий в каждом finding. `get_context` возвращает допустимые `proposalSourceIds`. Сервер проверяет каждый источник именно для выбранной попытки; чужие попытки того же агента и другие ревизии не становятся источниками автоматически. Pending версию можно уточнить с proposalId/baseProposalRevisionId; human review/adoption остаются отдельными полномочиями. [Инструкция](agent-proposals-guide.md).
 
-Отозванный ключ получает401. Ответ агенту не содержит полного snapshot чужих работ. Старый HTTP Inbox сохранён для совместимости; новые интеграции используют `/api/mcp`.
+Отозванный ключ получает 401. Ответ агенту не содержит полного snapshot чужих работ. Старый HTTP Inbox сохранён для совместимости; новые интеграции используют `/api/mcp`.
+
+## Как работать по runId
+
+При новой попытке человек может включить **«Строгий учёт проходов»**. До назначения убедитесь, что клиент поддерживает контракт 0.1.1 и `ouro.report_flow_step`; старому клиенту оставляйте legacy-попытку. Старые исполнения не получают проходы задним числом.
+
+1. После `ouro.confirm_started` прочитайте `work[].execution.flowRuntime.currentRunId` и `work[].flowProgress`. Работайте по точной назначенной ревизии и доступным guards.
+2. Начните текущий ready-run через `ouro.report_flow_step` с phase `start`. Для wait состояние станет waiting. Завершение сообщает отдельная команда phase `complete` с evidence; выбор condition требует edgeId. Неуспех начатого run сообщает phase `fail` с evidence.
+3. Новые `report_action/question/fork/blocker` передают flowStepRunId. Action.completed не завершает run. Поздняя фаза существующего actionId сохраняет прежнюю привязку, даже если currentRunId уже другой.
+4. Во время начатого шага можно обнаружить внеплановый вопрос, развилку или блокер. При несовпадении типа узла опустите flowNodeId: сервер запишет flowInterrupt. Человеческое решение, применение/устранение, отдельное продолжение и ACK обязательны по действующим guards; операционный Fork не выбирает ребро плана.
+5. После complete заново прочитайте currentRunId: каждое посещение имеет новый runId и visit. Повтор сетевого запроса сохраняет исходные runId/requestId/тело/expectedVersion и возвращает квитанцию, а не начинает следующий шаг.
+
+Human/system-шаги, retry и skip подтверждает человек. Runtime.failed основной незавершённой попытки активной ревизии блокирует спеку до допустимого retry. Завершённый result требует отдельного итога execution и отдельной человеческой приёмки DoD. [Профиль, владельцы, повторы и пример MCP](flow-runtime-guide.md).
 
 ## Проверка и ограничения
 
@@ -74,8 +87,8 @@ MCP сам не запускает LLM и не контролирует внеш
 
 ## Обнаружение предметного контракта
 
-Начиная с пакета [OURO-ENG-000013](specs/domain-contract.md) сервер сохраняет прежние 15 tools и дополнительно публикует статические MCP resources: `ouro://protocol/manifest` с версией контракта и каталогом, `ouro://protocol/schemas` с canonical JSON Schema bundle. После initialize проверьте capability `resources`, затем используйте `resources/list`/`resources/read`. HTTP и stdio дают тот же контракт; с прежним tools-only сервером discovery необязателен.
+Пакет [OURO-ENG-000013](specs/domain-contract.md) добавил статические MCP resources, а [OURO-ENG-000014](specs/flow-runtime.md) — шестнадцатый tool `ouro.report_flow_step`. `ouro://protocol/manifest` содержит версию контракта и каталог, `ouro://protocol/schemas` — canonical bundle из 41 JSON Schema. После initialize проверьте capability `resources`, затем используйте `resources/list`/`resources/read`. HTTP и stdio дают тот же контракт; с прежним tools-only сервером discovery необязателен.
 
-Версия предметного контракта `0.1.0` отделена от версии приложения и transport MCP. Не добавляйте `contractVersion` в прежние tool arguments: входы закрыты, версия объявлена в manifest. `tools/list` содержит input/output schemas; выходная схема включает `ok:true` и `ok:false`, потому что SDK-клиент проверяет любое присутствующее structuredContent, включая `isError:true`. Canonical bundle использует Draft 2020-12, wire-схемы закреплённого SDK 1.32.2 — Draft 7.
+Версия предметного контракта `0.1.1` отделена от версии приложения и transport MCP. Не добавляйте `contractVersion` в прежние tool arguments: входы закрыты, версия объявлена в manifest. `tools/list` содержит input/output schemas всех 16 tools; выходная схема включает `ok:true` и `ok:false`, потому что SDK-клиент проверяет любое присутствующее structuredContent, включая `isError:true`. Canonical bundle использует Draft 2020-12, wire-схемы закреплённого SDK 1.32.2 — Draft 7.
 
 `OUTPUT_CONTRACT_ERROR` с `error.details.outcomeUnknown:true` не означает, что команда не записалась. Сохраните прежние requestId и полное тело, включая expectedVersion, и выясняйте исход точным повтором; новый ID или подмена версии могут создать другую команду. Статические схемы не предоставляют прав или назначения. [Инструкция контракта и отдельной установки](protocol-guide.md) · [самостоятельный пакет](../packages/protocol/README.md).

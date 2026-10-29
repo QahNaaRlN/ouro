@@ -1,6 +1,6 @@
 # Ouro OS — дополненная техническая спецификация
 
-Дата: 2026-10-28. Редакция архитектуры: `1.1.0-draft.1`. Текущий ограниченный прототип — `0.1.0-alpha.12`, состояние реализации актуализировано 29.10.2026. Реализованные пакеты и финальные проверки: [roadmap.md](roadmap.md), [validation.md](validation.md); фактическое хранение и миграции: [implementation.md](implementation.md). [prototype-scope.md](prototype-scope.md) сохраняет историческую матрицу alpha.1.
+Дата: 2026-10-28. Редакция архитектуры: `1.1.0-draft.1`. Текущий ограниченный прототип — `0.1.0-alpha.13`, состояние реализации актуализировано 29.10.2026. Реализованные пакеты и статус проверок: [roadmap.md](roadmap.md), [validation.md](validation.md); фактическое хранение и миграции: [implementation.md](implementation.md). [prototype-scope.md](prototype-scope.md) сохраняет историческую матрицу alpha.1.
 
 ## 1. Границы системы
 
@@ -16,7 +16,7 @@ Human View — продуктовая поверхность для челове
 | `@ouro/view` | Human View, представления графа/истории, доступность, получение темы хоста |
 | `@ouro/mcp` | Адаптер входящих сообщений агентов; не обходит серверные правила |
 
-Самостоятельный `@ouro/protocol` версии `0.1.0` уже реализован в `packages/protocol`: Zod/runtime-контракты, ESM/CommonJS и TypeScript declarations, canonical JSON Schema и CLI. Runtime зависит только от Zod; приложение использует публичный скомпилированный пакет через локальную file-зависимость. Npm hooks собирают его перед dev/build/typecheck/test. [Каталог форматов](../packages/protocol/schemas/manifest.json) и [инструкция](protocol-guide.md) являются текущей границей формата; проектный псевдокод не заменяет этот каталог.
+Самостоятельный `@ouro/protocol` версии `0.1.1` реализован в `packages/protocol`: Zod/runtime-контракты Flow и проходов, ESM/CommonJS и TypeScript declarations, canonical JSON Schema и CLI. Runtime зависит только от Zod; приложение использует публичный скомпилированный пакет через локальную file-зависимость. Npm hooks собирают его перед dev/build/typecheck/test. [Каталог форматов](../packages/protocol/schemas/manifest.json) и [инструкция](protocol-guide.md) являются текущей границей формата; проектный псевдокод не заменяет этот каталог.
 
 `packages/meridian` содержит закрытый parser изученного host DTO и статическую палитру; запись идёт через отдельный человеческий `/api/meridian/import`. Это Ouro-side адаптер, без нативного моста: [границы](meridian-guide.md), [host RFC](proposals/meridian-native-bridge.md). Домен не зависит от конкретного маршрутизатора, realtime-провайдера или оболочки Meridian.
 
@@ -31,11 +31,11 @@ Human View — продуктовая поверхность для челове
 - Исправления — новые корректирующие или компенсирующие события со ссылками на оригиналы.
 - Доменные события, записи outbox и необходимые изменения в границах одной команды сохраняются одной транзакцией PostgreSQL. Только committed данные попадают в realtime.
 
-Модель должна включать Project/Workspace, Roadmap, Spec/SpecRevision, типизированные связи, Execution, Reality Event, Decision Request/Decision, DoD/evidence, principals/agent instances и outbox. Физическая нормализация, индексы и миграции уточняются при реализации; исходный SQL с тремя таблицами не считается полной схемой.
+Модель должна включать Project/Workspace, Roadmap, Spec/SpecRevision, типизированные связи, Execution, Reality Event, Decision Request/Decision, DoD/evidence, principals/agent instances и outbox. Строгие попытки дополнительно имеют FlowRuntime, FlowStepRun и FlowTraversal как проекцию immutable событий внутри execution; отдельные SQL-таблицы и новая миграция для alpha.13 не добавлены. Физическая нормализация, индексы и миграции уточняются при реализации; исходный SQL с тремя таблицами не считается полной схемой.
 
 ## 3. Команды и чтение
 
-Четыре исходных отчётных MCP-инструмента сохраняются: `ouro.report_action`, `ouro.report_question`, `ouro.report_fork`, `ouro.report_blocker`. Они входят в текущий набор из 15 инструментов чтения, lifecycle, уточнений и предложений: [подключение и полный сценарий](agent-quickstart.md), [каталог предметного контракта](../packages/protocol/schemas/manifest.json). Payload валидируется по типу, а не общим правилом «reason и два варианта нужны каждому сообщению».
+Четыре исходных отчётных MCP-инструмента сохраняются: `ouro.report_action`, `ouro.report_question`, `ouro.report_fork`, `ouro.report_blocker`. Они входят в текущий набор из 16 инструментов чтения, lifecycle, уточнений, предложений и нового `ouro.report_flow_step`: [подключение и полный сценарий](agent-quickstart.md), [каталог предметного контракта](../packages/protocol/schemas/manifest.json). Payload валидируется по типу, а не общим правилом «reason и два варианта нужны каждому сообщению».
 
 - Action: факт выполненного действия и ссылки на результат; автоматическая фиксация истории, без запроса одобрения.
 - Question: вопрос и контекст; человек отвечает либо отклоняет с причиной. Причина и альтернативы не навязываются обычному вопросу как у Fork.
@@ -44,7 +44,7 @@ Human View — продуктовая поверхность для челове
 
 Доменные команды `resolveDecision`, `proposeRevision`, `activateRevision`, `acceptSpec` реализованы через серверный слой; Human View читает snapshot и committed SSE. `getRoadmap`, `getSpecDetail`, `getPendingDecisions`, `subscribeToProject/Spec` ниже обозначают проектные операции чтения, а не отдельные опубликованные RPC. Фактические маршруты находятся в [app/api](../app/api), MCP input/output — в [каталоге `@ouro/protocol`](../packages/protocol/schemas/manifest.json) и `tools/list`. Вместо исходного `approveEvent` используется типизированное решение запроса. API прототипа не объявлен стабильным production-контрактом.
 
-MCP resources `ouro://protocol/manifest` и `ouro://protocol/schemas` доступны через HTTP и stdio, не добавляя tools или полномочий. Canonical bundle содержит 34 схемы Draft 2020-12; закреплённый SDK 1.32.2 публикует wire-схемы Draft 7. Каждая `outputSchema` включает `ok:true` и `ok:false`: SDK-клиент валидирует любое присутствующее structuredContent, включая isError. DTO ответов сохраняют дополнительные JSON-поля; inputs и Flow остаются закрытыми. Конверт события типизирован, payload/error details являются JSON-расширениями версии 0.1.0.
+MCP resources `ouro://protocol/manifest` и `ouro://protocol/schemas` доступны через HTTP и stdio, не добавляя tools или полномочий. Canonical bundle содержит 41 схему Draft 2020-12; закреплённый SDK 1.32.2 публикует wire-схемы Draft 7. Каждая `outputSchema` включает `ok:true` и `ok:false`: SDK-клиент валидирует любое присутствующее structuredContent, включая isError. DTO ответов сохраняют дополнительные JSON-поля через `validateToolBody`; inputs и Flow остаются закрытыми. Конверт события типизирован, payload/error details являются JSON-расширениями версии 0.1.1.
 
 Форма ответа проверяется после выполнения команды. `OUTPUT_CONTRACT_ERROR` с `outcomeUnknown:true` означает неизвестный исход: прежние requestId/body сохраняются, повтор ищет исходную квитанцию. Нельзя считать такой ответ доказательством отсутствия commit или автоматически менять expectedVersion. Старые receipts не переписываются ради новой схемы. [Правила ошибок и совместимости](protocol-guide.md).
 
@@ -82,11 +82,23 @@ MCP resources `ouro://protocol/manifest` и `ouro://protocol/schemas` досту
 - Timeline сортируется по определённому серверному порядку; события связываются с ревизией, исполнением, запросом и решением.
 - Для начального layout подходит Dagre; ELK рассматривается при сложных портах и вложенных группах. Выбор — проектная рекомендация, не доказанный результат бенчмарка Ouro.
 
+### Строгий последовательный runtime · alpha.13
+
+Новая человеческая `startExecution` может указать `flowTracking:'enforced'`; `validateEnforcedFlowDefinition` проверяет поддерживаемый профиль без изменения legacy Flow. ExecutionCreated сразу содержит один ready-run входа. `Execution.flowRuntime` имеет state active/completed/failed/cancelled, currentRunId, runs и traversals. FlowStepRun имеет собственные id/nodeId/visit и state ready/running/waiting/succeeded/failed/skipped/cancelled; FlowTraversal связывает fromRunId, toRunId и edgeId. Повтор/цикл создаёт новое посещение, human retry дополнительно хранит retryOfRunId.
+
+Один текущий run означает исключающий выбор исхода. Несколько входов — слияние без ожидания всех ветвей; параллельных tokens/join, таймеров, интерпретатора выражений и встроенного runner нет. Action/wait/question/blocker имеют один выход, result — ноль, Fork — до десяти уникальных optionId, Blocker — owner agent. Condition требует явного edgeId/evidence. Лимит — 1000 проходов на execution.
+
+`ouro.report_flow_step` принимает executionId/runId, phase start/complete/fail, requestId/expectedVersion, evidence и при complete edgeId. Start/complete/retry/skip проверяют running execution, активную ревизию, owner и canRun. Fail фиксирует текущий начатый running/waiting-run правильным автором с evidence и при паузе/stop request/смене ревизии незавершённой execution; он не открывает преемника и не меняет stop-флаги. Complete, traversal и следующий ready-run фиксируются атомарно. Retry/skip — человеческие команды; skip ограничен ready action/wait с одним исходом. Result завершает runtime, но итог execution и приёмка DoD отдельны.
+
+Новые отчёты enforced-попытки требуют flowStepRunId; поздняя фаза actionId сохраняет исходную привязку. Внеплановый Question/Fork/Blocker на текущем начатом run получает серверный flowInterrupt при несовпадении типа и отсутствующем flowNodeId. Все актуальные запросы сохраняют человеческие решение, применение/clearance, отдельный resume и ACK. Отозванный interrupt-Question/Fork допускает продолжение после resume/ACK; плановый узел требует положительного запроса, отзыв Blocker не снимает физическую помеху. Interrupt-Fork не выбирает ребро схемы.
+
+`buildFlowRuntimeView` выводит guards из того же доменного ядра. В контексте агент получает `work[].flowProgress`, UI — доступность с причинами и edge states possible/available/blocked/taken/not_selected. Выбранный исторический runId сохраняется при SSE. Неуспех runtime основной незавершённой попытки активной ревизии даёт Spec.blocked до допустимого retry. Закрытие авторизации run исходом execution не доказывает физической остановки. [Нормативный SDD](specs/flow-runtime.md), [инструкция](flow-runtime-guide.md), [SCXML/BPMN и ограничения](flow-runtime-research.md).
+
 ## 7. Идентичность, версии и Meridian
 
 Читаемый `humanId` — постоянный номер спеки в проекте; канонический `spec.id` — UUID, отображаемый как Agent ID. Версия содержания хранится отдельной ревизией. ID автора и экземпляра агента не смешиваются с ID спеки.
 
-SemVer применяется к релизам проекта и публичным пакетам/контрактам; до 1.0 действует локальная политика: breaking change увеличивает MINOR, совместимое изменение — PATCH. После 1.0 — стандартные MAJOR/MINOR/PATCH. Первый срез `0.1.0-alpha.1` сохранён в истории, текущая сборка — `0.1.0-alpha.12`; production-релиз не выпущен. `@ouro/protocol` имеет независимую версию `0.1.0` и поддерживает точное явно объявленное значение. Ревизия спеки, `schemaVersion:1` событий и transport-версия MCP не подменяются версией продукта или пакета.
+SemVer применяется к релизам проекта и публичным пакетам/контрактам; до 1.0 действует локальная политика: breaking change увеличивает MINOR, совместимое изменение — PATCH. После 1.0 — стандартные MAJOR/MINOR/PATCH. Первый срез `0.1.0-alpha.1` сохранён в истории, текущая сборка — `0.1.0-alpha.13`; production-релиз не выпущен. `@ouro/protocol` имеет независимую версию `0.1.1` и поддерживает точное явно объявленное значение. Opt-in runtime сохраняет legacy-вызовы; артефакт 0.1.0 и старые receipts не переписываются. Ревизия спеки, `schemaVersion:1` событий и transport-версия MCP не подменяются версией продукта или пакета.
 
 Для Meridian нужны устойчивые project/spec/revision IDs, переносимый envelope событий, отдельные адаптеры идентичностей и запуска, тема из токенов хоста и независимые от оболочки доменные правила. При экспорте можно использовать CloudEvents 1.0.2: его `specversion: "1.0"` обозначает версию формата CloudEvents, не версию Ouro и не schemaVersion payload. Внутренний формат не объявляется автоматически полностью CloudEvents-совместимым.
 
@@ -97,3 +109,5 @@ SemVer применяется к релизам проекта и публичн
 Обязательные сценарии: ручной ответ на Question; Fork с выбранным option ID; одобрение Blocker без преждевременного снятия; конфликт двух решений; идемпотентный повтор; смена ревизии без изменения прошлого; пересборка проекций; reconnect без потери событий; проверка project scope; подтверждение внешнего применения отдельно от записи решения; отсутствие циклов roadmap; доступное отображение статуса без анимации.
 
 Пакеты alpha.1–12 прошли зафиксированные TypeScript-, SQL/domain-, browser- и production build проверки: [текущий индекс](validation.md). Общий alpha.12 gate: 266/266 unit/integration, 59/59 production E2E, typecheck, production build и проверка 34 JSON-схем; самостоятельная установка tarball проверена отдельно, 1/1. SDD и RED/GREEN следы связаны с каждым пунктом [дорожной карты](roadmap.md). Сводки и предложения подаёт подключённый внешний MCP-агент; встроенного LLM runner и batch tool для всей дорожной карты нет. Ouro-side Meridian импорт проверен отдельно от не выполненного native host/Windows пакета. Внешний PostgreSQL, production OAuth/SSO/RBAC/tenancy и масштабная эксплуатация отдельно не приняты.
+
+Итоговый gate alpha.13 / OURO-ENG-000014: 300/300 unit/integration без пропусков, 65/65 production E2E без unexpected/flaky/skipped, typecheck, production build, проверка 41 JSON Schema и самостоятельная установка пакета 1/1 (ESM/CommonJS, types, CLI и права файлов). Финальные E2E выполнены на production-сборке замороженного кода `8e3e3c0` с отдельной новой БД; все шесть новых browser-сценариев входят в эти 65. Собственные RED/GREEN, SQL/SDK/browser-сценарии и границы приёмки фиксируются в [журнале runtime](plans/flow-runtime.md) и [текущем индексе](validation.md); исторические числа alpha.12 не являются результатом новой версии.
