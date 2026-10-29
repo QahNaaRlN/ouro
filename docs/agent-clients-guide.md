@@ -1,6 +1,6 @@
 # Подключить Cursor и Claude к Ouro
 
-Рабочая версия — `0.1.0-beta.1`, ветка `main`. Cursor, Claude Code и Claude Desktop используют тот же контракт `@ouro/protocol@0.1.2`: 18 tools, статические resources и 49 JSON Schema. Отдельный протокол для каждого клиента не нужен. [SDD](specs/client-onboarding.md) · [проверки](plans/client-onboarding.md) · [официальные источники](agent-clients-research.md).
+Рабочая версия — `0.1.0-beta.2`, ветка `main`. Cursor, Claude Code и Claude Desktop используют тот же контракт `@ouro/protocol@0.1.2`: 18 tools, статические resources и 49 JSON Schema. Отдельный протокол для каждого клиента не нужен. [SDD](specs/client-onboarding.md) · [проверки](plans/client-onboarding.md) · [официальные источники](agent-clients-research.md).
 
 ## Сначала запустить Ouro локально
 

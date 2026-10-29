@@ -1,35 +1,35 @@
-# Установить Ouro v0.1.0-beta.1
+# Установить Ouro v0.1.0-beta.2
 
 Это локальная beta-версия для наблюдаемой работы с агентами: выбранная папка, дорожная карта, процесс спеки, вопросы/блокеры и поток подтверждённых фактов. Браузер открывает Ouro на вашем компьютере. Публикация архива на GitHub не создаёт облачный веб-сервис.
 
-[Состав версии](releases/0.1.0-beta.1.md) · [Подключение Cursor/Claude](agent-clients-guide.md) · [Фактическая приёмка](plans/first-release.md).
+[Состав версии](releases/0.1.0-beta.2.md) · [Обучение в интерфейсе](guided-workspace-guide.md) · [Подключение Cursor/Claude](agent-clients-guide.md) · [Журнал текущей версии](plans/guided-workspace.md).
 
 ## Скачать и проверить архив
 
-Откройте [выпуск v0.1.0-beta.1](https://github.com/QahNaaRlN/ouro/releases/tag/v0.1.0-beta.1). Используйте подготовленный [ouro-0.1.0-beta.1-source.zip](https://github.com/QahNaaRlN/ouro/releases/download/v0.1.0-beta.1/ouro-0.1.0-beta.1-source.zip), в котором находятся исходники приложения и команды запуска.
+Откройте [выпуск v0.1.0-beta.2](https://github.com/QahNaaRlN/ouro/releases/tag/v0.1.0-beta.2). Используйте подготовленный [ouro-0.1.0-beta.2-source.zip](https://github.com/QahNaaRlN/ouro/releases/download/v0.1.0-beta.2/ouro-0.1.0-beta.2-source.zip), в котором находятся исходники приложения и команды запуска.
 
 | Файл выпуска | Назначение |
 |---|---|
-| [ouro-0.1.0-beta.1-source.zip](https://github.com/QahNaaRlN/ouro/releases/download/v0.1.0-beta.1/ouro-0.1.0-beta.1-source.zip) | Приложение для установки с Node/npm, без Git |
-| [ouro-protocol-0.1.2.tgz](https://github.com/QahNaaRlN/ouro/releases/download/v0.1.0-beta.1/ouro-protocol-0.1.2.tgz) | Переносимый контракт для отдельной установки; запуску самого Ouro не нужен |
-| [release-manifest.json](https://github.com/QahNaaRlN/ouro/releases/download/v0.1.0-beta.1/release-manifest.json) | Версии продукта/протокола, точный commit SHA и хеши артефактов |
-| [SHA256SUMS](https://github.com/QahNaaRlN/ouro/releases/download/v0.1.0-beta.1/SHA256SUMS) | Контрольные суммы файлов выпуска |
+| [ouro-0.1.0-beta.2-source.zip](https://github.com/QahNaaRlN/ouro/releases/download/v0.1.0-beta.2/ouro-0.1.0-beta.2-source.zip) | Приложение для установки с Node/npm, без Git |
+| [ouro-protocol-0.1.2.tgz](https://github.com/QahNaaRlN/ouro/releases/download/v0.1.0-beta.2/ouro-protocol-0.1.2.tgz) | Переносимый контракт для отдельной установки; запуску самого Ouro не нужен |
+| [release-manifest.json](https://github.com/QahNaaRlN/ouro/releases/download/v0.1.0-beta.2/release-manifest.json) | Версии продукта/протокола, точный commit SHA и хеши артефактов |
+| [SHA256SUMS](https://github.com/QahNaaRlN/ouro/releases/download/v0.1.0-beta.2/SHA256SUMS) | Контрольные суммы файлов выпуска |
 
-Для проверки всего набора скачайте все четыре файла в одну папку. На Linux выполните `sha256sum -c SHA256SUMS`, на macOS — `shasum -a 256 -c SHA256SUMS`. В PowerShell используйте `Get-FileHash .\ouro-0.1.0-beta.1-source.zip -Algorithm SHA256` и сравните результат со строкой этого файла в `SHA256SUMS`.
+Для проверки всего набора скачайте все четыре файла в одну папку. На Linux выполните `sha256sum -c SHA256SUMS`, на macOS — `shasum -a 256 -c SHA256SUMS`. В PowerShell используйте `Get-FileHash .\ouro-0.1.0-beta.2-source.zip -Algorithm SHA256` и сравните результат со строкой этого файла в `SHA256SUMS`.
 
 Архив не включает `node_modules`, `.next`, `.git`, пользовательскую `.ouro`, рабочие `.env` или ключи. Пример настроек `.env.example` входит в исходники.
 
 ## Запустить на своём компьютере
 
 1. Установите [Node.js 24 LTS](https://nodejs.org/) с npm. В терминале команды `node --version` и `npm --version` должны выводить версии. Проверенная версия Node закреплена в `.nvmrc`.
-2. Полностью распакуйте ZIP. Откройте терминал в папке `ouro-0.1.0-beta.1`, где лежит `package.json`.
+2. Полностью распакуйте ZIP. Откройте терминал в папке `ouro-0.1.0-beta.2`, где лежит `package.json`.
 3. Выполните:
 
 ```sh
 npm run launch
 ```
 
-Команда не требует предварительно установленных зависимостей. Она последовательно выполняет `npm ci`, свежую production-сборку и локальный запуск. Для загрузки зависимостей нужен доступ к npm registry. Если этап завершился ошибкой, следующий не запускается; исправьте указанную причину и повторите команду.
+Команда не требует предварительно установленных зависимостей. Она последовательно выполняет `npm ci --include=dev`, свежую production-сборку и локальный запуск. Для загрузки зависимостей нужен доступ к npm registry. Если этап завершился ошибкой, следующий не запускается; исправьте указанную причину и повторите команду.
 
 Когда терминал покажет `Ready`, откройте <http://127.0.0.1:3000/projects>. Не закрывайте терминал; **Ctrl+C** останавливает Ouro. Если порт занят:
 
@@ -42,6 +42,8 @@ npm run launch -- --port 3001
 Каждый `launch` заново устанавливает зависимости и собирает приложение, сохраняя `.ouro`. Если установленная версия не менялась и уже успешно собрана, для повторного старта достаточно `npm start` или `npm start -- --port 3001`.
 
 ## Выбрать проект и подключить агента
+
+На странице «Проекты» нажмите **«Обучение»**, если хотите пройти подсказки с подсветкой и затемнением экрана. После открытия проекта та же кнопка объясняет подключение агента, назначение задачи, дорожную карту и человеческие решения. Обучение можно закрыть через Escape и запустить повторно; само оно не создаёт данные и не начинает работу. [Подробная инструкция](guided-workspace-guide.md).
 
 В **«Проекты»** добавьте существующую папку. Git для неё не обязателен. Файлы выбранной папки не изменяются самим выбором проекта; новая папка получает отдельную историю, без учебных спек.
 
@@ -81,7 +83,7 @@ npm run launch
 
 ## Что проверено и что учитывать
 
-Окончательные команды, результаты и source SHA находятся в [журнале релиза](plans/first-release.md) и [индексе проверок](validation.md). Предшествующая alpha.15 имела344/344 unit/integration и71/71 production browser checks; эти числа не подменяют приёмку нового релизного запуска и архива.
+Команды, результаты проверок и source SHA текущей версии фиксируются в [журнале обновления](plans/guided-workspace.md), [release notes](releases/0.1.0-beta.2.md) и [индексе проверок](validation.md). Результаты первого выпуска сохранены отдельно в [его журнале](plans/first-release.md); они не подменяют приёмку новой версии и её архива.
 
 Проверенная среда — Linux/Node 24. Синтаксис npm-команд переносим; самостоятельная native-приёмка Windows/macOS/WSL, Cursor/Claude Desktop GUI и аккаунтов не выводится из Linux-проверок. Реальный Claude Code MCP health-check без LLM выполнен в alpha.15; сгенерированные профили остальных клиентов проверены через SDK.
 
