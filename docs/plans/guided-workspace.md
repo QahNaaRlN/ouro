@@ -49,4 +49,6 @@ These references guided implementation choices; they do not establish a blanket 
 
 ### Publication gate
 
+The first release-head CI (`40926476711`) passed all82 browser scenarios, but its unit process aborted in Node24.22.1/V8's Wasm allocator during teardown. This matches the published native signature in [nodejs/node#66366](https://github.com/nodejs/node/issues/66366). The [bounded runtime follow-up](../specs/release-runtime.md) pins CI to `.nvmrc`24.19.0 and applies the documented Wasm-code-GC workaround only to the serial unit-test command. The final release gate must use the corrected head; the failed run is not release acceptance.
+
 The feature enters `dev` through a reviewed PR; the release candidate enters `main` only after real `checks`/`browser` jobs pass. Verify proposed/actual merge trees against the accepted head, preserve shared history, and package the exact final main commit. The annotated tag, release manifest and GitHub Release identify that immutable commit and the actual CI evidence. Upload assets through the isolated publication workflow with the standard repository token, verify downloaded bytes before publishing, then verify anonymous public downloads. [Version and publication evidence](https://github.com/QahNaaRlN/ouro/releases/tag/v0.1.0-beta.2).

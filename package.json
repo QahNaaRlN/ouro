@@ -14,7 +14,7 @@
     "pretypecheck": "npm run protocol:build",
     "typecheck": "tsc --noEmit",
     "pretest": "npm run protocol:build",
-    "test": "tsx --test tests/*.test.ts",
+    "test": "tsx --no-wasm-code-gc --test --test-concurrency=1 tests/*.test.ts",
     "pretest:e2e": "npm run protocol:build",
     "test:e2e": "playwright test",
     "mcp": "node packages/mcp/bin/ouro-mcp.mjs",
