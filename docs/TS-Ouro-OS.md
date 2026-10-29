@@ -112,6 +112,8 @@ SemVer применяется к релизам проекта и публичн
 
 ## 8. Валидация реализации и границы
 
+Итоговый gate alpha.14 / OURO-ENG-000015:336/336 unit/integration,69/69 production E2E без unexpected/flaky/skipped, typecheck/build/DB-check,49 схем и standalone package1/1 GREEN. Приняты scoped catalog/store/MCP/SSE, полный человеческий lifecycle и standard proposal→draft→strict execution без автоприёмки. [Точные результаты и границы](validation.md), [SDD/RED/GREEN](plans/project-workspace.md).
+
 Обязательные сценарии: ручной ответ на Question; Fork с выбранным option ID; одобрение Blocker без преждевременного снятия; конфликт двух решений; идемпотентный повтор; смена ревизии без изменения прошлого; пересборка проекций; reconnect без потери событий; проверка project scope; подтверждение внешнего применения отдельно от записи решения; отсутствие циклов roadmap; доступное отображение статуса без анимации.
 
 Пакеты alpha.1–12 прошли зафиксированные TypeScript-, SQL/domain-, browser- и production build проверки: [текущий индекс](validation.md). Общий alpha.12 gate: 266/266 unit/integration, 59/59 production E2E, typecheck, production build и проверка 34 JSON-схем; самостоятельная установка tarball проверена отдельно, 1/1. SDD и RED/GREEN следы связаны с каждым пунктом [дорожной карты](roadmap.md). Сводки и предложения подаёт подключённый внешний MCP-агент; встроенного LLM runner и batch tool для всей дорожной карты нет. Ouro-side Meridian импорт проверен отдельно от не выполненного native host/Windows пакета. Внешний PostgreSQL, production OAuth/SSO/RBAC/tenancy и масштабная эксплуатация отдельно не приняты.
