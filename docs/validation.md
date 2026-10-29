@@ -1,5 +1,13 @@
 # Проверка прототипа
 
+## Текущий пакет `0.1.0-beta.2`: интерфейс и обучение
+
+Локально прошли **368/368 unit/integration** и **82/82 production E2E**, без пропусков, неожиданных сбоев и flaky-повторов. Production build, TypeScript, проверка49 canonical JSON Schema, durable database replay и независимая установка protocol package **1/1** также прошли. Browser gate: workers1/retries0, новая БД,190.466s. Unit gate в ограниченной по памяти среде выполнен последовательно за180.245s. Результаты RED→GREEN и границы проверки описаны в [журнале пакета](plans/guided-workspace.md); реальная CI-приёмка и точный опубликованный commit указаны в [выпуске](https://github.com/QahNaaRlN/ouro/releases/tag/v0.1.0-beta.2).
+
+Проверяются добровольный запуск и повтор обучения, клавиатура/модальный фокус, отсутствие доменных команд при просмотре подсказок, пустой и заполненный проект, недоступное browser storage и адаптация подсветки к размеру/масштабу экрана. Убрано неработающее декоративное оформление; сведения об участнике и рабочие статусы сохранены. Протокол остаётся `0.1.2` с 18 tools/49 схемами; новые серверные разрешения и миграции не добавляются. [SDD](specs/guided-workspace.md), [инструкция](guided-workspace-guide.md).
+
+## Предыдущий рабочий prerelease `0.1.0-beta.1`
+
 Первый рабочий prerelease — **`0.1.0-beta.1`**, функциональный кандидат `71aaa7b`: **368/368 unit/integration, 71/71 production E2E**, production build, TypeScript и независимый protocol package1/1 GREEN. Финальный локальный browser gate:0 unexpected/flaky/skipped, workers1/retries0, новая БД,179.33s. Реальные GitHub CI jobs `checks` и `browser` также прошли на этом кандидате: [run40909579954](https://github.com/QahNaaRlN/ouro/actions/runs/40909579954). Слияние и публикация требуют зелёных проверок финального PR head; merge tree проверяется на тождество принятому дереву. [Журнал релиза](plans/first-release.md), [установка ZIP](first-release-guide.md), [ветки и коммиты](../CONTRIBUTING.md).
 
 Фактическая чистая установка: source ZIP распакован в папку с пробелами, кириллицей и апострофом, без .git/node_modules/.next; Git недоступен через PATH. `NODE_ENV=production npm run launch` установил build dependencies, собрал и запустил сервер. Через extracted bridge SDK обнаружил18 tools и protocol0.1.2, прочитал назначенный файл, записал ACK/Action/результат и оставил DoD непринятым. Настоящий SIGINT остановил принадлежащее launcher дерево процессов; повторный полный launch сохранил точный state/cursor7, key identity и MCP/file access. Иконка/metadata отдаются по HTTP200. Это Linux/Node24 acceptance; native Windows/macOS GUI и внешнее веб-размещение не объявляются проверенными.
