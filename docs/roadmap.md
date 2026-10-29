@@ -15,6 +15,7 @@
 | 6 | Совместное редактирование черновиков с идентичностью участников | alpha.9: OURO-ENG-000008,206 unit/integration +46 production E2E; отдельные человеческие сессии, Yjs и атомарная публикация |
 | 7 | AI-сводки Reality и предложения новых спек с источниками | alpha.10: OURO-ENG-000009,219 unit/integration +50 production E2E; предложения внешнего MCP-агента, human review/adoption в idea, активация отдельно; [контракт](specs/agent-proposals.md) |
 | 8 | Адаптер Meridian на стороне Ouro | alpha.11: OURO-ENG-000010,245 unit/integration +57 production E2E; строгий pinned import, человеческий idea-черновик, статические light/dark tokens; [инструкция](meridian-guide.md). Native IPC/SSO/theme sync и Windows-приёмка остаются отдельным [RFC](proposals/meridian-native-bridge.md) |
+| 9 | Подготовка полной версии к локальному запуску | OURO-ENG-000011:247 unit/integration +57 dev E2E; чистый клон с GitHub, переносимые npm-команды, build/start с сохранением БД; [инструкция и проверки](plans/local-start.md) |
 
 Дополнительные требования действующей методологии реализованы пакетом [OURO-ENG-000007](specs/methodology-recovery.md): отзыв/уточнение и исправление решения новыми фактами, read-only проекция на выбранном cursor, операторское восстановление после экстренного отзыва ключа. Физические Blocker и неизвестная остановка сохраняют отдельные guards; [сценарии и ограничения](methodology-guide.md).
 
