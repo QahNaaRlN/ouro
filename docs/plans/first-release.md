@@ -23,3 +23,19 @@ Independent source review found no remaining blocker (`/tmp/ouro-first-release-r
 ## Integrated candidate
 
 Full local unit/integration:367/367 GREEN,0 failed/skipped (89.62s), `/tmp/ouro-release-unit.log`. Production build GREEN, `/tmp/ouro-release-build.log`. The final production browser, clean ZIP launch/restart/MCP and actual GitHub CI are recorded after execution; source checks are not substituted for them.
+
+## Final local and archive acceptance
+
+The inherited NODE_ENV=production initially caused a real build-tools omission: the launcher fixture build exited42. Explicit `npm ci --include=dev` fixed it without changing NODE_ENV; focused launcher9/9 and complete unit/integration368/368 GREEN (89.11s), `/tmp/ouro-release-unit-final.log`.
+
+A clean candidate ZIP actually failed to build in an apostrophe-containing installation path: Next16.4.3 generated an unescaped absolute string in next-metadata-route-loader for app/icon.svg. Read the installed Metadata icons guide and moved the asset to public/icon.svg with explicit icon metadata. No vendor files were patched. Repeated full production build and all71 browser cases passed (179.33s,0 unexpected/flaky/skipped), `/tmp/ouro-release-build-final.log`, `/tmp/ouro-release-production-e2e-final.log`, `test-results/production-results.json`. The UI badge derives BETA from the product version.
+
+Functional candidate71aaa7b was packaged from its exact committed tree and extracted into `/tmp/ouro beta clean ' данные YcnuoS/ouro-0.1.0-beta.1` with no .git/dependencies/build. Git was disabled through PATH and NODE_ENV was production. Actual npm run launch installed/built/started correctly; the emitted connection pointed to that extracted bridge. SDK confirmed product0.1.0-beta.1, protocol0.1.2/resources/18 tools, assigned file hash, ACK/Action/result and no automatic DoD acceptance. SIGINT returned130 and stopped the owned process tree. Repeating the full fresh launcher retained exact state/cursor7, registration/key identity and file/MCP access. Icon and metadata HTTP200 passed. Evidence: `/tmp/ouro-release-clean-{launch-final,restart,smoke}.log`, `/tmp/ouro-release-clean-location.json`.
+
+Independent protocol consumer1/1 GREEN, `/tmp/ouro-release-protocol-package.log`; fresh protocol pack produced106 files and passed the release packager TAR audit. No old artifact is substituted for a different committed protocol source. Native Cursor/Desktop/Windows/macOS execution is not inferred from Linux acceptance.
+
+## GitHub migration and CI outcome
+
+The owner selected main in GitHub and the API confirmed default_branch=main. The old master SHA27d55f7 was verified as an ancestor of working main and deleted with an expected-SHA lease. Local origin/HEAD was updated to main. This completes the requested branch replacement through the permission-compatible path; it does not establish GitHub rename redirects or server-level protections.
+
+Real PR17 CI at71aaa7b completed successfully: checks/browser both GREEN, [run40909579954](https://github.com/QahNaaRlN/ouro/actions/runs/40909579954). Final documentation is committed separately; publication waits for the final PR head's checks too. The merged main tree must equal that accepted head before tagging/asset generation. Final main/dev/tag/assets and public-download verification are recorded in the published release metadata.
