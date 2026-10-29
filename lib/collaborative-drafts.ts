@@ -9,7 +9,7 @@ type CommandResult={state:ProjectState;events:DomainEvent[];cursor:number;replay
 export type CollaborativeDraft={id:string;projectId:string;specId:string;baseRevisionId:string;createdBy:string;createdAt:string;version:number;stateUpdate:string;stateHash:string;contentHash:string;content:RevisionContent;hasPendingUpdates:boolean;publishedRevisionId?:string;publishedAt?:string};
 export type CollaborativeDraftSummary=Omit<CollaborativeDraft,'stateUpdate'|'content'>&{title:string};
 type DraftRow={id:string;project_id:string;spec_id:string;base_revision_id:string;created_by:string;created_at:string|Date;version:string|number;state_update_base64:string;state_hash:string;content_hash:string;published_revision_id:string|null;published_at:string|Date|null};
-type DraftDependencies={db:Database;serialize:<T>(fn:()=>Promise<T>)=>Promise<T>;lockProject:(tx:Connection)=>Promise<unknown>;assertHuman:(tx:Connection,actor:Actor)=>Promise<void>;state:(tx:Connection)=>Promise<ProjectState>;commit:(tx:Connection,body:unknown,actor:Actor)=>Promise<CommandResult>;hash:(value:unknown)=>string};
+type DraftDependencies={projectId?:string;db:Database;serialize:<T>(fn:()=>Promise<T>)=>Promise<T>;lockProject:(tx:Connection)=>Promise<unknown>;assertHuman:(tx:Connection,actor:Actor)=>Promise<void>;state:(tx:Connection)=>Promise<ProjectState>;commit:(tx:Connection,body:unknown,actor:Actor)=>Promise<CommandResult>;hash:(value:unknown)=>string};
 export class CollaborativeDraftError extends Error{constructor(public code:string,message:string){super(message);}}
 const fail=(code:string,message:string):never=>{throw new CollaborativeDraftError(code,message);};
 const id=z.string().trim().min(1).max(200),version=z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),requestId=z.string().min(8).max(200);
@@ -20,11 +20,11 @@ const select=`SELECT d.*,h.version,h.state_update_base64,h.state_hash,h.content_
 const stateHash=(value:string)=>createHash('sha256').update(Buffer.from(value,'base64')).digest('hex');
 
 export function createCollaborativeDraftService(deps:DraftDependencies){
-  const {db,serialize,lockProject,assertHuman,state:projectState,commit,hash}=deps;
+  const {db,serialize,lockProject,assertHuman,state:projectState,commit,hash,projectId=PROJECT_ID}=deps;
   const parse=<T>(schema:z.ZodType<T>,value:unknown):T=>{const result=schema.safeParse(value);return result.success?result.data:fail('VALIDATION_ERROR','Поля операции совместного черновика не соответствуют контракту.');};
   const row=async(tx:Connection,draftId:string)=>{
     if(!id.safeParse(draftId).success)fail('VALIDATION_ERROR','Нужен ID совместного черновика.');
-    const result=await tx.query<DraftRow>(`${select} WHERE d.id=$1 AND d.project_id=$2`,[draftId,PROJECT_ID]);
+    const result=await tx.query<DraftRow>(`${select} WHERE d.id=$1 AND d.project_id=$2`,[draftId,projectId]);
     return result.rows[0]??fail('NOT_FOUND','Совместный черновик не найден.');
   };
   const snapshot=(record:DraftRow,state:ProjectState):CollaborativeDraft=>{
@@ -33,10 +33,10 @@ export function createCollaborativeDraftService(deps:DraftDependencies){
     try{return {id:record.id,projectId:record.project_id,specId:record.spec_id,baseRevisionId:record.base_revision_id,createdBy:record.created_by,createdAt:new Date(record.created_at).toISOString(),version:Number(record.version),stateUpdate:record.state_update_base64,stateHash:record.state_hash,contentHash:record.content_hash,content:readDraftContent(doc,base.flow),hasPendingUpdates:hasPendingDraftUpdates(doc),...(record.published_revision_id?{publishedRevisionId:record.published_revision_id,publishedAt:new Date(record.published_at!).toISOString()}:{})};}finally{doc.destroy();}
   };
   const receipt=async<T>(tx:Connection,actor:Actor,key:string,payloadHash:string):Promise<T|null>=>{
-    const found=await tx.query<{payload_hash:string;response:T}>('SELECT payload_hash,response FROM ouro_draft_receipts WHERE project_id=$1 AND actor_id=$2 AND request_id=$3',[PROJECT_ID,actor.id,key]);
+    const found=await tx.query<{payload_hash:string;response:T}>('SELECT payload_hash,response FROM ouro_draft_receipts WHERE project_id=$1 AND actor_id=$2 AND request_id=$3',[projectId,actor.id,key]);
     if(!found.rows[0])return null;if(found.rows[0].payload_hash!==payloadHash)fail('IDEMPOTENCY_CONFLICT','Этот requestId уже использован для другой операции черновика.');return found.rows[0].response;
   };
-  const saveReceipt=(tx:Connection,actor:Actor,key:string,operation:'create'|'publish',payloadHash:string,response:unknown)=>tx.query('INSERT INTO ouro_draft_receipts(project_id,actor_id,request_id,operation,payload_hash,response) VALUES($1,$2,$3,$4,$5,$6::jsonb)',[PROJECT_ID,actor.id,key,operation,payloadHash,JSON.stringify(response)]);
+  const saveReceipt=(tx:Connection,actor:Actor,key:string,operation:'create'|'publish',payloadHash:string,response:unknown)=>tx.query('INSERT INTO ouro_draft_receipts(project_id,actor_id,request_id,operation,payload_hash,response) VALUES($1,$2,$3,$4,$5,$6::jsonb)',[projectId,actor.id,key,operation,payloadHash,JSON.stringify(response)]);
   return {
     createCollaborativeDraft:(body:unknown,actor:Actor):Promise<CollaborativeDraft>=>serialize(()=>db.transaction(async tx=>{
       await lockProject(tx);await assertHuman(tx,actor);const input=parse(createInput,body),payloadHash=hash({operation:'create',...input});
@@ -47,13 +47,13 @@ export function createCollaborativeDraftService(deps:DraftDependencies){
       const base=state.revisions.find(r=>r.id===input.baseRevisionId&&r.specId===spec.id)??fail('NOT_FOUND','Ревизия не найдена.');
       const doc=createDraftDocument(base);let encoded:string,content:RevisionContent;
       try{encoded=encodeDraftDocument(doc);content=readDraftContent(doc,base.flow);if(Buffer.from(encoded,'base64').length>1024*1024)fail('VALIDATION_ERROR','Исходный Yjs-документ превышает 1 MiB.');}finally{doc.destroy();}
-      const draftId=randomUUID();await tx.query('INSERT INTO ouro_collaborative_drafts(id,project_id,spec_id,base_revision_id,created_by) VALUES($1,$2,$3,$4,$5)',[draftId,PROJECT_ID,spec.id,base.id,actor.id]);
+      const draftId=randomUUID();await tx.query('INSERT INTO ouro_collaborative_drafts(id,project_id,spec_id,base_revision_id,created_by) VALUES($1,$2,$3,$4,$5)',[draftId,projectId,spec.id,base.id,actor.id]);
       await tx.query('INSERT INTO ouro_draft_heads(draft_id,version,state_update_base64,state_hash,content_hash) VALUES($1,0,$2,$3,$4)',[draftId,encoded,stateHash(encoded),hash(content)]);
       const draft=snapshot(await row(tx,draftId),state);await saveReceipt(tx,actor,input.requestId,'create',payloadHash,draft);return draft;
     })),
     listCollaborativeDrafts:(actor:Actor,specId?:string):Promise<CollaborativeDraftSummary[]>=>serialize(()=>db.transaction(async tx=>{
       await assertHuman(tx,actor);if(specId!==undefined&&!id.safeParse(specId).success)fail('VALIDATION_ERROR','Некорректный ID спеки.');
-      const records=await tx.query<DraftRow>(`${select} WHERE d.project_id=$1${specId?' AND d.spec_id=$2':''} ORDER BY d.created_at DESC,d.id LIMIT 100`,specId?[PROJECT_ID,specId]:[PROJECT_ID]);
+      const records=await tx.query<DraftRow>(`${select} WHERE d.project_id=$1${specId?' AND d.spec_id=$2':''} ORDER BY d.created_at DESC,d.id LIMIT 100`,specId?[projectId,specId]:[projectId]);
       const state=await projectState(tx);return records.rows.map(record=>{const {stateUpdate,content,...metadata}=snapshot(record,state);void stateUpdate;return {...metadata,title:content.title};});
     })),
     getCollaborativeDraft:(draftId:string,actor:Actor):Promise<CollaborativeDraft>=>serialize(()=>db.transaction(async tx=>{

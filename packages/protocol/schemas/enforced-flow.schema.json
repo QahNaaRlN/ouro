@@ -110,5 +110,5 @@
   ],
   "additionalProperties": false,
   "description": "Opt-in sequential Flow profile. Additional semantic rules require exactly one outgoing action/wait/question/blocker edge, agent-owned blockers and distinct Fork option IDs (at most ten).",
-  "$id": "urn:ouro:protocol:0.1.1:enforced-flow"
+  "$id": "urn:ouro:protocol:0.1.2:enforced-flow"
 }

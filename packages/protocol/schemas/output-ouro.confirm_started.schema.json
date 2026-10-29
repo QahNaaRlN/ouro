@@ -884,5 +884,5 @@
       ]
     }
   },
-  "$id": "urn:ouro:protocol:0.1.1:output:ouro.confirm_started"
+  "$id": "urn:ouro:protocol:0.1.2:output:ouro.confirm_started"
 }

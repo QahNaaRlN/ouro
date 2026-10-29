@@ -1326,5 +1326,5 @@
       ]
     }
   },
-  "$id": "urn:ouro:protocol:0.1.1:output:ouro.submit_proposal"
+  "$id": "urn:ouro:protocol:0.1.2:output:ouro.submit_proposal"
 }

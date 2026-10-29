@@ -1,13 +1,14 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { Actor } from '../../core/src/types';
-import type { createStore } from '../../../lib/store';
-import { createAgentService } from './agent-service';
+import { createAgentService,type AgentStore,type AgentWorkspace } from './agent-service';
 import packageInfo from '../../../package.json';
 import {getToolOutputSchema,protocolManifest,createSchemaBundle} from '@ouro/protocol';
 
 export type McpDependencies = {
-  store: Pick<Awaited<ReturnType<typeof createStore>>, 'getProject' | 'getEvents' | 'executeCommand'>;
+  store: AgentStore;
   actor: Actor;
+  projectId?:string;
+  workspace?:AgentWorkspace;
 };
 
 export function createOuroMcpServer(dependencies: McpDependencies) {

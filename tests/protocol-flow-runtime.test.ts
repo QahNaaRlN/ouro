@@ -28,7 +28,7 @@ test('FR10 standalone contract describes concrete runtime runs, traversal histor
 test('FR10 new flow-step tool and optional run bindings are discoverable without changing legacy report inputs',async()=>{
  const protocol=await contracts(),tool=protocol.AGENT_TOOLS.find(tool=>tool.name==='ouro.report_flow_step');
  assert(tool,'Flow-step reporting tool must be published');
- assert.equal(protocol.AGENT_TOOLS.length,16);
+ assert.equal(protocol.AGENT_TOOLS.length,18);
  assert(tool.inputSchema.safeParse({executionId:'execution-1',requestId:'stable-request-1',expectedVersion:42,runId:'run-1',phase:'start'}).success);
  assert.equal(tool.inputSchema.safeParse({executionId:'execution-1',requestId:'stable-request-1',expectedVersion:42,runId:'run-1',phase:'jump'}).success,false);
  assert.equal(tool.inputSchema.safeParse({executionId:'execution-1',requestId:'stable-request-1',expectedVersion:42,runId:'run-1',phase:'complete',state:'succeeded'}).success,false);

@@ -1,7 +1,7 @@
 import { applyCommand, buildFlowRuntimeView, DomainError, PROJECT_ID, type Actor, type Command, type DomainEvent, type ProjectState, type Execution, type DecisionRequest } from '../../core/src';
 import { AGENT_TOOLS } from './tools';
 import {isExecutionProposalSource,hasRealityProposalSource} from '../../core/src/agent-proposals';
-import {agentErrorSchema,validateToolBody,type AgentResultBody} from '@ouro/protocol';
+import {agentErrorSchema,validateToolBody,type AgentResultBody,type WorkspaceMetadata,type WorkspaceFileList,type WorkspaceFile} from '@ouro/protocol';
 
 export type AgentStore = {
   getProject(): Promise<ProjectState>;
@@ -13,6 +13,12 @@ export type AgentToolResult = {
   structuredContent: AgentResultBody & Record<string,unknown>;
   isError?: boolean;
 };
+export type AgentWorkspace={
+  getMetadata():Promise<WorkspaceMetadata|null>;
+  listFiles(path?:string,cursor?:number):Promise<WorkspaceFileList>;
+  readFile(path:string):Promise<WorkspaceFile>;
+};
+export type AgentServiceDependencies={store:AgentStore;actor:Actor;projectId?:string;workspace?:AgentWorkspace};
 
 // Validate the constant when the module loads, before a store can commit work.
 const outputFailure=agentErrorSchema.parse({ok:false,error:{
@@ -39,9 +45,9 @@ const fail=(code:string,message:string):never=>{throw new DomainError(code,messa
 const terminal=new Set(['succeeded','failed','cancelled','skipped']);
 
 /** Read/write facade for an already authenticated identity. It grants no human capabilities. */
-export function createAgentService({ store, actor }: {store:AgentStore; actor:Actor}) {
+export function createAgentService({ store, actor,projectId=PROJECT_ID,workspace }: AgentServiceDependencies) {
   const assertActor=()=>{
-    if(actor.kind!=='agent'||!actor.id||!actor.projectIds.includes(PROJECT_ID))fail('FORBIDDEN','Требуется назначенная агентская идентичность этого проекта.');
+    if(actor.kind!=='agent'||!actor.id||!actor.projectIds.includes(projectId))fail('FORBIDDEN','Требуется назначенная агентская идентичность этого проекта.');
   };
   const assigned=(state:ProjectState,executionId:string):Execution=>{
     const execution=state.executions.find(e=>e.id===executionId&&e.agentId===actor.id);
@@ -118,10 +124,11 @@ export function createAgentService({ store, actor }: {store:AgentStore; actor:Ac
         if(!parsed.success)throw new DomainError('VALIDATION_ERROR','Аргументы не соответствуют опубликованной схеме инструмента.',{issues:parsed.error.issues.map(i=>({path:i.path.join('.'),message:i.message}))});
         const input=parsed.data as Record<string,unknown>;
         const state=await store.getProject();
-        if(state.projectId!==PROJECT_ID)fail('FORBIDDEN','Недоступный проект.');
+        if(state.projectId!==projectId)fail('FORBIDDEN','Недоступный проект.');
         if(name==='ouro.get_context'){
           const work=input.executionId?[assigned(state,String(input.executionId))]:state.executions.filter(e=>e.agentId===actor.id);
-          return result(name,{ok:true,project:{id:state.projectId,title:state.roadmap.title,roadmapState:state.roadmap.state},agent:{id:actor.id,name:actor.name},version:state.version,cursor:state.version,work:work.map(e=>workItem(state,e)),instructions:[
+          const metadata=work.length&&workspace?await workspace.getMetadata():null;
+          return result(name,{ok:true,project:{id:state.projectId,title:state.roadmap.title,roadmapState:state.roadmap.state},agent:{id:actor.id,name:actor.name},version:state.version,cursor:state.version,work:work.map(e=>workItem(state,e)),...(metadata?{workspace:metadata}:{}),instructions:[
             'Работайте только в назначенной попытке и по её immutable revision. Отсутствие назначения не разрешает самостоятельный запуск.',
             'ACK разрешённого запуска/продолжения отправляется отдельно от решения человека. При stopRequested остановите затронутую работу и подтвердите фактическую остановку.',
             'Question/Fork/Blocker требуют человека. Пока ожидаете, читайте get_updates/get_context; отсутствие ответа и confidence не означают согласие.',
@@ -129,6 +136,7 @@ export function createAgentService({ store, actor }: {store:AgentStore; actor:Ac
             'Свой pending-запрос можно отозвать с причиной через withdraw_decision. Отзыв не является решением человека, разрешением продолжить или доказательством устранения Blocker.',
             'Сохраняйте requestId при сетевом повторе. При VERSION_CONFLICT прочитайте контекст и осмысленно сформируйте новую команду; не подменяйте версию автоматически.',
             'Успех исполнения не является human-приёмкой DoD. Предъявляйте проверяемое evidence, не выдавайте симуляцию за реальную работу.',
+            'Файлы папки доступны только для чтения в назначенном execution через list_workspace_files/read_workspace_file. Это текущее содержимое с hash, а не immutable файл ревизии; запись файлов и запуск команд не предоставляются.',
           ]});
         }
         if(name==='ouro.get_updates'){
@@ -139,6 +147,12 @@ export function createAgentService({ store, actor }: {store:AgentStore; actor:Ac
           return result(name,{ok:true,events:updates.events.filter(e=>permittedEvent(e,scope)),cursor:updates.cursor});
         }
         const execution=assigned(state,String(input.executionId));
+        if(name==='ouro.list_workspace_files'||name==='ouro.read_workspace_file'){
+          const files=workspace??fail('NOT_AVAILABLE','У назначенного проекта нет доступной папки для чтения файлов.');
+          const metadata=await files.getMetadata()??fail('NOT_AVAILABLE','У назначенного проекта нет доступной папки для чтения файлов.');
+          const body=name==='ouro.list_workspace_files'?await files.listFiles(input.path as string|undefined,input.cursor as number|undefined):await files.readFile(input.path as string);
+          return result(name,{ok:true,projectId,executionId:execution.id,bindingId:metadata.bindingId,...body});
+        }
         const base={requestId:input.requestId as string,expectedVersion:input.expectedVersion as number,executionId:execution.id};
         const context={...base,specId:execution.specId,specRevisionId:execution.specRevisionId};
         let command:Command|undefined;

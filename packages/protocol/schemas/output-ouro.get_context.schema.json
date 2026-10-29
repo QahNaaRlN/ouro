@@ -1779,6 +1779,52 @@
         "type": "string"
       }
     },
+    "workspace": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "bindingId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "folderName": {
+          "type": "string"
+        },
+        "capabilities": {
+          "type": "object",
+          "properties": {
+            "readOnlyFiles": {
+              "type": "boolean",
+              "const": true
+            }
+          },
+          "required": [
+            "readOnlyFiles"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema9"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "projectId",
+        "bindingId",
+        "folderName",
+        "capabilities"
+      ],
+      "additionalProperties": {
+        "$ref": "#/$defs/__schema10"
+      }
+    },
     "error": {
       "type": "object",
       "properties": {
@@ -2131,7 +2177,69 @@
           }
         }
       ]
+    },
+    "__schema9": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema9"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema9"
+          }
+        }
+      ]
+    },
+    "__schema10": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema10"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema10"
+          }
+        }
+      ]
     }
   },
-  "$id": "urn:ouro:protocol:0.1.1:output:ouro.get_context"
+  "$id": "urn:ouro:protocol:0.1.2:output:ouro.get_context"
 }

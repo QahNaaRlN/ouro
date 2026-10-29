@@ -98,6 +98,8 @@ export type RevisionContent = Pick<SpecRevision, 'title' | 'goal' | 'dod' | 'con
 type CommandBase = { requestId: string; expectedVersion: number; specId?: string; specRevisionId?: string };
 type ReportBase = { specId: string; specRevisionId: string; executionId: string; title: string; context: string; flowNodeId?: string;flowStepRunId?:string };
 export type Command = CommandBase & (
+  | { type:'initializeProject';name:string }
+  | { type:'startProjectWork';agentId:string;content:RevisionContent }
   | { type: 'createSpec'; content: RevisionContent }
   | { type:'importMeridianScope';rawDocument:string;content:RevisionContent }
   | { type:'createLesson'; content:LessonContent }

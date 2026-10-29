@@ -21,6 +21,7 @@ export function assertMcpRequest(request:Request) {
   if(origin&&origin!==expected)throw new AccessError('FORBIDDEN','Origin не разрешён для MCP.');
   if(!request.headers.get('content-type')?.startsWith('application/json'))throw new AccessError('UNSUPPORTED_MEDIA_TYPE','MCP POST требует application/json.',415);
 }
-export function connectionConfig(request:Request) {
-  return {httpUrl:`${requestOrigin(request)}/api/mcp`,stdioCommand:process.execPath,stdioArgs:[path.resolve('packages/mcp/bin/ouro-mcp.mjs')],projectId:PROJECT_ID};
+export function connectionConfig(request:Request,projectId=PROJECT_ID) {
+  const endpoint=projectId===PROJECT_ID?'/api/mcp':`/api/projects/${encodeURIComponent(projectId)}/mcp`;
+  return {httpUrl:`${requestOrigin(request)}${endpoint}`,stdioCommand:process.execPath,stdioArgs:[path.resolve('packages/mcp/bin/ouro-mcp.mjs')],projectId};
 }

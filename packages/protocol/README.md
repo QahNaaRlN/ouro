@@ -1,26 +1,26 @@
-# @ouro/protocol · контракт 0.1.1
+# @ouro/protocol · контракт 0.1.2
 
-Переносимая библиотека предметных контрактов Ouro: Flow, проходы шагов, входы 16 MCP tools, SUCCESS-ответы и ошибки. Включает Zod-валидаторы, TypeScript declarations, 41 JSON Schema Draft2020-12, каталог версии, примеры и CLI.
+Переносимая библиотека предметных контрактов Ouro: Flow, проходы шагов, входы 18 MCP tools, SUCCESS-ответы и ошибки. Включает Zod-валидаторы, TypeScript declarations, 49 JSON Schema Draft2020-12, каталог версии, примеры и CLI.
 
 Пакет работает отдельно от приложения Ouro. Runtime-зависимость — `zod`; Next.js, PostgreSQL, MCP SDK и браузер не нужны. Сам пакет не является MCP-сервером, не выдаёт полномочий и не исполняет задачи. Он также не генерирует план автоматически.
 
 ## Отдельная сборка из исходников
 
-Нужны Git, Node.js 20.9+ и npm; рекомендуемая проверенная версия Node 24.19.0. Исходники находятся в ветке `feat/flow-runtime`:
+Нужны Git, Node.js 20.9+ и npm; рекомендуемая проверенная версия Node 24.19.0. Исходники находятся в ветке `feat/project-workspace`:
 
 ```sh
-git clone --branch feat/flow-runtime --single-branch https://github.com/QahNaaRlN/ouro.git
+git clone --branch feat/project-workspace --single-branch https://github.com/QahNaaRlN/ouro.git
 cd ouro/packages/protocol
 npm ci
 npm pack
 ```
 
-`npm pack` сам собирает ESM, CommonJS, declarations и JSON-файлы. Получается **`ouro-protocol-0.1.1.tgz`**. Устанавливать зависимости корневого приложения для этого не требуется.
+`npm pack` сам собирает ESM, CommonJS, declarations и JSON-файлы. Получается **`ouro-protocol-0.1.2.tgz`**. Устанавливать зависимости корневого приложения для этого не требуется.
 
 Перенесите tarball в другой проект:
 
 ```sh
-npm install ./ouro-protocol-0.1.1.tgz
+npm install ./ouro-protocol-0.1.2.tgz
 ```
 
 Публикация в npm registry не выполнялась. Имя `@ouro/protocol` используется в локальном пакете; команда `npm install @ouro/protocol` из публичного registry здесь не обещается. `private:true` не мешает установке `.tgz`.
@@ -39,7 +39,7 @@ import {
   type FlowDefinition,
 } from '@ouro/protocol';
 
-assertProtocolVersion('0.1.1');
+assertProtocolVersion('0.1.2');
 
 const candidate: unknown = {
   entryNodeId: 'result',
@@ -69,7 +69,9 @@ const {validateFlowDefinition, PROTOCOL_VERSION} = require('@ouro/protocol');
 | `validateEnforcedFlowDefinition(value)` / `enforcedFlowDefinitionSchema` | Дополнительно проверяют профиль последовательного учёта проходов, не меняя legacy Flow |
 | `flowRuntimeSchema`, `flowStepRunSchema`, `flowTraversalSchema`, `flowRuntimeViewSchema` | Конкретные DTO проекции процесса, отдельных посещений, переходов и доступности действий |
 | `FlowRuntime`, `FlowStepRun`, `FlowTraversal`, `FlowRuntimeView` | TypeScript-типы известных полей тех же DTO |
-| `AGENT_TOOLS` | Строгие входные схемы и метаданные 16 tools, включая `ouro.report_flow_step` |
+| `workspaceMetadataSchema`, `workspaceFileEntrySchema`, `workspaceFileListSchema`, `workspaceFileSchema` | Формат безопасной metadata папки, записи каталога, списка и прочитанного файла |
+| `WorkspaceMetadata`, `WorkspaceFileEntry`, `WorkspaceFileList`, `WorkspaceFile` | Переносимые TypeScript-типы файлового контекста, без filesystem-зависимостей |
+| `AGENT_TOOLS` | Строгие входные схемы и метаданные 18 tools, включая `ouro.report_flow_step` |
 | `getToolOutputSchema(name)` | Возвращает wire ZodObject выбранного tool с SUCCESS/error-вариантами; неизвестное имя отклоняется |
 | `getToolSuccessSchema(name)` | Возвращает отдельный SUCCESS-контракт выбранного tool |
 | `agentErrorSchema` | Отдельная схема `{ok:false,error:{...}}` |
@@ -104,7 +106,7 @@ npx ouro-protocol validate-response ouro.get_updates response.json
 - `output-ouro.get_context.schema.json` — ответ с назначенным контекстом;
 - `error.schema.json` — тело ошибки.
 
-Canonical dialect — `https://json-schema.org/draft/2020-12/schema`. `$id` имеет вид `urn:ouro:protocol:0.1.1:flow`; это идентификатор, а не адрес сетевого сервиса. Файлы можно использовать независимо от JavaScript/npm в совместимом JSON Schema-валидаторе. Он проверит структуру; правила следующего раздела нужно реализовать дополнительно или вызвать переносимый JS-валидатор.
+Canonical dialect — `https://json-schema.org/draft/2020-12/schema`. `$id` имеет вид `urn:ouro:protocol:0.1.2:flow`; это идентификатор, а не адрес сетевого сервиса. Файлы можно использовать независимо от JavaScript/npm в совместимом JSON Schema-валидаторе. Он проверит структуру; правила следующего раздела нужно реализовать дополнительно или вызвать переносимый JS-валидатор.
 
 ## Семантика Flow и границы проверки
 
@@ -120,7 +122,7 @@ Canonical dialect — `https://json-schema.org/draft/2020-12/schema`. `$id` им
 
 ## Подключение через MCP
 
-Сервер сохраняет прежние 15 tools и добавляет `ouro.report_flow_step`. Legacy-аргументы остаются допустимыми. Агент может дополнительно прочитать:
+Сервер сохраняет прежние 16 tools и добавляет read-only `ouro.list_workspace_files` и `ouro.read_workspace_file`. Legacy-аргументы остаются допустимыми. Агент может дополнительно прочитать:
 
 - `ouro://protocol/manifest` — версия и список схем;
 - `ouro://protocol/schemas` — canonical bundle.
@@ -139,7 +141,19 @@ Canonical dialect — `https://json-schema.org/draft/2020-12/schema`. `$id` им
 
 Переход создаёт завершение, traversal и следующий ready-run атомарно. Сохраните точное тело и requestId: повтор после смены текущего run возвращает исходную SQL-квитанцию. Result не завершает execution и не принимает DoD; эти действия остаются отдельными. Лимит/отказ, пауза, зависимость, смена ревизии и stopRequested проверяются сервером. Fail фиксирует наблюдение начатого прохода и при остановке/смене ревизии, не разрешая новый шаг.
 
-Полная [инструкция по runtime](https://github.com/QahNaaRlN/ouro/blob/feat/flow-runtime/docs/flow-runtime-guide.md) и [SDD](https://github.com/QahNaaRlN/ouro/blob/feat/flow-runtime/docs/specs/flow-runtime.md) находятся в репозитории; пакет самостоятельно предоставляет контракты и валидаторы, без event store или runner.
+Полная [инструкция по runtime](https://github.com/QahNaaRlN/ouro/blob/feat/project-workspace/docs/flow-runtime-guide.md) и [SDD](https://github.com/QahNaaRlN/ouro/blob/feat/project-workspace/docs/specs/flow-runtime.md) находятся в репозитории; пакет самостоятельно предоставляет контракты и валидаторы, без event store или runner.
+
+## Проект и файловый контекст
+
+Проектные MCP-подключения доступны любому совместимому агенту через HTTP либо stdio bridge. Они используют `/api/projects/{projectId}/mcp` и отдельный зарегистрированный ключ. URL и ключ фиксируют проект; переключение страницы в браузере его не меняет. Прежний `/api/mcp` сохраняет default-проект. Произвольный projectId не добавляется к tool arguments и не даёт полномочий. Установка библиотеки сама не создаёт endpoint или файловую привязку.
+
+`ouro.list_workspace_files {executionId,path?,cursor?}` возвращает `{ok:true,projectId,executionId,bindingId,path,entries,nextCursor,truncated}`. Entries содержат `{name,path,kind:'file'|'directory',size?}`. Просмотр одной папки ограничен 200 записями, без рекурсии; cursor относится к текущему списку и не обещает snapshot при внешнем изменении папки.
+
+`ouro.read_workspace_file {executionId,path}` возвращает `{ok:true,projectId,executionId,bindingId,path,text,sha256,size,modifiedAt}`. Это текущий UTF-8 текст до 128 KiB с SHA-256, не immutable файл ревизии, не доказательство выполнения задачи. Входы закрытые; дополнительные rootPath, actor или projectId отклоняются. Сначала сервер проверяет назначение execution, затем immutable binding и файловые ограничения. Без папки ответ — `NOT_AVAILABLE`.
+
+`get_context.workspace?` содержит только `{name,projectId,bindingId,folderName,capabilities:{readOnlyFiles:true}}`; абсолютный host root агенту не передаётся. Файловый сервер запрещает выход из root, абсолютные/обратные пути, symlink, типичные секреты и credential directories, binary/не-UTF-8 и слишком большие файлы. Библиотека описывает DTO, а реальные проверки назначения, filesystem identity и содержания выполняет сервер. Записи файлов, shell, установки зависимостей и LLM runner нет.
+
+ChatGPT служит одним из примеров MCP-клиента. У него нет прямого доступа к локальной папке через установленный npm-пакет. Предусмотрен отдельный [путь подключения ChatGPT](https://github.com/QahNaaRlN/ouro/blob/feat/project-workspace/docs/chatgpt-guide.md) через официальный Secure MCP Tunnel к stdio bridge с закреплёнными project URL и локальным key file. Секрет не помещается в URL/arguments; SDK-проверка HTTP/stdio не подтверждает настройку конкретного ChatGPT account/workspace. [SDD проекта](https://github.com/QahNaaRlN/ouro/blob/feat/project-workspace/docs/specs/project-workspace.md).
 
 Закреплённый MCP SDK1.32.2 публикует tool input/output schemas в **Draft7**. Canonical пакет использует **Draft2020-12**. Это два проверенных представления тех же определений; dialect нельзя угадывать по версии приложения. MCP `outputSchema` описывает SUCCESS и error `structuredContent` через явные discriminator/required-ветви. Tool errors сохраняют `isError:true` и отдельно проверяются `agentErrorSchema`. Это необходимо: server SDK пропускает output validation для isError, а client валидирует любое присутствующее structuredContent даже при isError.
 
@@ -147,7 +161,7 @@ Canonical dialect — `https://json-schema.org/draft/2020-12/schema`. `$id` им
 
 ## Версии и совместимость
 
-Версия библиотеки/контракта 0.1.1 независима от версии приложения, transport MCP и `schemaVersion:1` доменных событий. В этом артефакте поддерживается только точная 0.1.1; автоматический выбор другой 0.x не выполняется. Клиент сравнивает manifest и использует схему объявленной версии. Версия 0.1.1 совместимо добавляет opt-in tracking и сохраняет legacy-вызовы; старый артефакт 0.1.0 не переписывается. Старый сервер без discovery нового tool не приобретает эту возможность.
+Версия библиотеки/контракта 0.1.2 независима от версии приложения, transport MCP и `schemaVersion:1` доменных событий. В этом артефакте поддерживается только точная 0.1.2; автоматический выбор другой 0.x не выполняется. Клиент сравнивает manifest и использует схему объявленной версии. Версия 0.1.2 совместимо добавляет файловый контекст к прежнему opt-in tracking и сохраняет legacy-вызовы; старые артефакты 0.1.0/0.1.1 не переписываются. Старый сервер без discovery новых tools не приобретает эти возможности.
 
 До1.0 несовместимое изменение требует новой MINOR-версии, совместимая правка — PATCH. Новые обязательные поля, изменение смысловых guards и изменения закрытой Flow-структуры могут быть несовместимыми даже при добавлении необязательного поля. Дополнительные поля расширяемых DTO допустимы; новые возможности старого сервера нельзя предполагать без discovery. Опубликованный артефакт существующей версии не редактируется молча. Существующие ревизии/receipts приложение не переписывает ради нового описания.
 

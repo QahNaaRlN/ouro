@@ -12,5 +12,5 @@
     "afterCursor"
   ],
   "additionalProperties": false,
-  "$id": "urn:ouro:protocol:0.1.1:input:ouro.get_updates"
+  "$id": "urn:ouro:protocol:0.1.2:input:ouro.get_updates"
 }

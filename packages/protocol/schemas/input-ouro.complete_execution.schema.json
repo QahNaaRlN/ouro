@@ -38,5 +38,5 @@
     "evidence"
   ],
   "additionalProperties": false,
-  "$id": "urn:ouro:protocol:0.1.1:input:ouro.complete_execution"
+  "$id": "urn:ouro:protocol:0.1.2:input:ouro.complete_execution"
 }

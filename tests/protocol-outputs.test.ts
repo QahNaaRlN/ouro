@@ -20,7 +20,7 @@ const context=()=>({ok:true,project:{id:'project-1',title:'Example',roadmapState
  proposals:[],proposalRevisions:[],proposalSourceIds:[{id:event.id,version:1,type:event.type}],
  permissions:{canAcknowledgeStart:false,canAcknowledgeResume:false,canAcknowledgeStop:false,canStartAction:true,canCompleteSuccessfully:true,stopRequested:false,resumeAuthorized:false,terminal:false,canSubmitProposal:true},
 }],instructions:['Keep the same requestId on uncertain retries.']});
-const names=['ouro.get_context','ouro.get_updates','ouro.report_action','ouro.report_question','ouro.report_fork','ouro.report_blocker','ouro.withdraw_decision','ouro.submit_decision_clarification','ouro.confirm_started','ouro.confirm_resumed','ouro.confirm_stopped','ouro.confirm_decision_applied','ouro.complete_execution','ouro.clear_blocker','ouro.submit_proposal','ouro.report_flow_step'];
+const names=['ouro.get_context','ouro.get_updates','ouro.list_workspace_files','ouro.read_workspace_file','ouro.report_action','ouro.report_question','ouro.report_fork','ouro.report_blocker','ouro.withdraw_decision','ouro.submit_decision_clarification','ouro.confirm_started','ouro.confirm_resumed','ouro.confirm_stopped','ouro.confirm_decision_applied','ouro.complete_execution','ouro.clear_blocker','ouro.submit_proposal','ouro.report_flow_step'];
 const errorBody=()=>({ok:false,error:{code:'OUTPUT_CONTRACT_ERROR',message:'Outcome is unknown; repeat the same requestId/body.',details:{outcomeUnknown:true},retryable:false,refreshRequired:false}});
 
 test('P03 valid own __proto__ JSON extension keys survive validation without prototype pollution',async()=>{

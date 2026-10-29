@@ -1,6 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Actor } from '@/packages/core/src/types';
 import { authenticateAgentToken } from './store';
+import {PROJECT_ID} from '@/packages/core/src';
 
 const authGlobal = globalThis as unknown as { ouroSessionSecret?: string };
 const secret = authGlobal.ouroSessionSecret ??= randomBytes(32).toString('hex');
@@ -89,10 +90,11 @@ export async function authenticatedParticipant(request:Request,projectId:string,
 }
 
 /** MCP uses an explicit agent credential; browser cookies never grant this role. */
-export async function authenticatedAgent(request: Request, projectId: string, legacyAgentId: string): Promise<Actor> {
+export async function authenticatedAgent(request: Request, projectId: string, legacyAgentId: string,resolveToken:(token:string)=>Promise<Actor|null>=authenticateAgentToken): Promise<Actor> {
   const authorization=request.headers.get('authorization');
   if(!authorization?.startsWith('Bearer ')) throw new AccessError('UNAUTHENTICATED','Нужен отдельный ключ агента в Authorization: Bearer.',401);
   const bearer=authorization.slice(7);
+  if(projectId!==PROJECT_ID&&process.env.OURO_AGENT_TOKEN&&eq(bearer,process.env.OURO_AGENT_TOKEN))throw new AccessError('UNAUTHENTICATED','Серверный ключ агента доступен только прежнему проекту.',401);
   const headers=new Headers(request.headers);headers.delete('cookie');
   try {
     const actor=authenticatedActor(new Request(request.url,{headers}),projectId,legacyAgentId);
@@ -101,8 +103,8 @@ export async function authenticatedAgent(request: Request, projectId: string, le
   }catch(error){
     if(!(error instanceof AccessError)||error.code!=='UNAUTHENTICATED')throw error;
   }
-  const actor=await authenticateAgentToken(bearer);
-  if(!actor||!actor.projectIds.includes(projectId))throw new AccessError('UNAUTHENTICATED','Ключ агента недействителен или отозван.',401);
+  const actor=await resolveToken(bearer);
+  if(!actor||actor.kind!=='agent'||!actor.projectIds.includes(projectId))throw new AccessError('UNAUTHENTICATED','Ключ агента недействителен или отозван.',401);
   return actor;
 }
 export function assertJsonWrite(request: Request,maxBytes=256_000) {

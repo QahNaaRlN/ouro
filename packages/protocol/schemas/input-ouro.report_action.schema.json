@@ -68,5 +68,5 @@
     "phase"
   ],
   "additionalProperties": false,
-  "$id": "urn:ouro:protocol:0.1.1:input:ouro.report_action"
+  "$id": "urn:ouro:protocol:0.1.2:input:ouro.report_action"
 }

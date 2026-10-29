@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "executionId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    }
+  },
+  "required": [
+    "executionId",
+    "path"
+  ],
+  "additionalProperties": false,
+  "$id": "urn:ouro:protocol:0.1.2:input:ouro.read_workspace_file"
+}

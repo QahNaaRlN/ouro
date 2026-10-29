@@ -36,5 +36,5 @@
     "evidence"
   ],
   "additionalProperties": false,
-  "$id": "urn:ouro:protocol:0.1.1:input:ouro.confirm_decision_applied"
+  "$id": "urn:ouro:protocol:0.1.2:input:ouro.confirm_decision_applied"
 }

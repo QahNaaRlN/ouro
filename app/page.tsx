@@ -537,6 +537,7 @@ export default function Home() {
         </div>
         <div className="nav-label">ПРОЕКТ</div>
         <nav aria-label="Основная навигация">
+          <a className="nav-item" href="/projects"><Box size={18}/><span>Проекты</span></a>
           {nav.map((item) => (
             <button
               className={`nav-item ${view === item.id ? "active" : ""}`}

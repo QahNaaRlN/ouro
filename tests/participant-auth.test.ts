@@ -18,7 +18,8 @@ test('C01/C02 invalid or revoked participant cookies never fall back to a valid 
   const previous=process.env.OURO_LOCAL_DEMO;process.env.OURO_LOCAL_DEMO='1';
   try{
     const demo=issueLocalSession(request('')),valid=issueParticipantSession(alice,PROJECT_ID);
-    for(const participant of ['',valid+'x','broken',valid.replace(/.$/,'0')])await assert.rejects(authenticatedParticipant(request(`ouro_session=${demo}; ouro_participant=${participant}`),PROJECT_ID,AGENT_ID,async()=>alice),denied);
+    const tampered=valid.slice(0,-1)+(valid.endsWith('0')?'1':'0');
+    for(const participant of ['',valid+'x','broken',tampered])await assert.rejects(authenticatedParticipant(request(`ouro_session=${demo}; ouro_participant=${participant}`),PROJECT_ID,AGENT_ID,async()=>alice),denied);
     await assert.rejects(authenticatedParticipant(request(`ouro_session=${demo}; ouro_participant=${valid}`),PROJECT_ID,AGENT_ID,async()=>null),denied);
     await assert.rejects(authenticatedParticipant(request(`ouro_participant=${valid}; ouro_participant=${valid}`),PROJECT_ID,AGENT_ID,async()=>alice),denied);
     assert.equal((await authenticatedParticipant(request(`ouro_session=${demo}`),PROJECT_ID,AGENT_ID)).id,'local-human');

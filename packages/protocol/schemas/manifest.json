@@ -1,6 +1,6 @@
 {
   "name": "ouro-domain-contract",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "dialect": "https://json-schema.org/draft/2020-12/schema",
   "resources": {
     "manifest": "ouro://protocol/manifest",
@@ -15,301 +15,361 @@
       "runBinding": "flowStepRunId",
       "maxRuns": 1000,
       "legacyExecutions": "unchanged"
+    },
+    "workspaceFiles": {
+      "readOnly": true,
+      "assignedExecutionRequired": true,
+      "maxEntries": 200,
+      "maxFileBytes": 131072,
+      "tools": [
+        "ouro.list_workspace_files",
+        "ouro.read_workspace_file"
+      ]
     }
   },
   "tools": [
     {
       "name": "ouro.get_context",
-      "inputSchema": "urn:ouro:protocol:0.1.1:input:ouro.get_context",
-      "outputSchema": "urn:ouro:protocol:0.1.1:output:ouro.get_context"
+      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.get_context",
+      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.get_context"
     },
     {
       "name": "ouro.get_updates",
-      "inputSchema": "urn:ouro:protocol:0.1.1:input:ouro.get_updates",
-      "outputSchema": "urn:ouro:protocol:0.1.1:output:ouro.get_updates"
+      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.get_updates",
+      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.get_updates"
+    },
+    {
+      "name": "ouro.list_workspace_files",
+      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.list_workspace_files",
+      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.list_workspace_files"
+    },
+    {
+      "name": "ouro.read_workspace_file",
+      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.read_workspace_file",
+      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.read_workspace_file"
     },
     {
       "name": "ouro.report_flow_step",
-      "inputSchema": "urn:ouro:protocol:0.1.1:input:ouro.report_flow_step",
-      "outputSchema": "urn:ouro:protocol:0.1.1:output:ouro.report_flow_step"
+      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.report_flow_step",
+      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.report_flow_step"
     },
     {
       "name": "ouro.report_action",
-      "inputSchema": "urn:ouro:protocol:0.1.1:input:ouro.report_action",
-      "outputSchema": "urn:ouro:protocol:0.1.1:output:ouro.report_action"
+      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.report_action",
+      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.report_action"
     },
     {
       "name": "ouro.report_question",
-      "inputSchema": "urn:ouro:protocol:0.1.1:input:ouro.report_question",
-      "outputSchema": "urn:ouro:protocol:0.1.1:output:ouro.report_question"
+      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.report_question",
+      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.report_question"
     },
     {
       "name": "ouro.report_fork",
-      "inputSchema": "urn:ouro:protocol:0.1.1:input:ouro.report_fork",
-      "outputSchema": "urn:ouro:protocol:0.1.1:output:ouro.report_fork"
+      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.report_fork",
+      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.report_fork"
     },
     {
       "name": "ouro.report_blocker",
-      "inputSchema": "urn:ouro:protocol:0.1.1:input:ouro.report_blocker",
-      "outputSchema": "urn:ouro:protocol:0.1.1:output:ouro.report_blocker"
+      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.report_blocker",
+      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.report_blocker"
     },
     {
       "name": "ouro.withdraw_decision",
-      "inputSchema": "urn:ouro:protocol:0.1.1:input:ouro.withdraw_decision",
-      "outputSchema": "urn:ouro:protocol:0.1.1:output:ouro.withdraw_decision"
+      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.withdraw_decision",
+      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.withdraw_decision"
     },
     {
       "name": "ouro.submit_decision_clarification",
-      "inputSchema": "urn:ouro:protocol:0.1.1:input:ouro.submit_decision_clarification",
-      "outputSchema": "urn:ouro:protocol:0.1.1:output:ouro.submit_decision_clarification"
+      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.submit_decision_clarification",
+      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.submit_decision_clarification"
     },
     {
       "name": "ouro.confirm_started",
-      "inputSchema": "urn:ouro:protocol:0.1.1:input:ouro.confirm_started",
-      "outputSchema": "urn:ouro:protocol:0.1.1:output:ouro.confirm_started"
+      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.confirm_started",
+      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.confirm_started"
     },
     {
       "name": "ouro.confirm_resumed",
-      "inputSchema": "urn:ouro:protocol:0.1.1:input:ouro.confirm_resumed",
-      "outputSchema": "urn:ouro:protocol:0.1.1:output:ouro.confirm_resumed"
+      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.confirm_resumed",
+      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.confirm_resumed"
     },
     {
       "name": "ouro.confirm_stopped",
-      "inputSchema": "urn:ouro:protocol:0.1.1:input:ouro.confirm_stopped",
-      "outputSchema": "urn:ouro:protocol:0.1.1:output:ouro.confirm_stopped"
+      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.confirm_stopped",
+      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.confirm_stopped"
     },
     {
       "name": "ouro.confirm_decision_applied",
-      "inputSchema": "urn:ouro:protocol:0.1.1:input:ouro.confirm_decision_applied",
-      "outputSchema": "urn:ouro:protocol:0.1.1:output:ouro.confirm_decision_applied"
+      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.confirm_decision_applied",
+      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.confirm_decision_applied"
     },
     {
       "name": "ouro.complete_execution",
-      "inputSchema": "urn:ouro:protocol:0.1.1:input:ouro.complete_execution",
-      "outputSchema": "urn:ouro:protocol:0.1.1:output:ouro.complete_execution"
+      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.complete_execution",
+      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.complete_execution"
     },
     {
       "name": "ouro.clear_blocker",
-      "inputSchema": "urn:ouro:protocol:0.1.1:input:ouro.clear_blocker",
-      "outputSchema": "urn:ouro:protocol:0.1.1:output:ouro.clear_blocker"
+      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.clear_blocker",
+      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.clear_blocker"
     },
     {
       "name": "ouro.submit_proposal",
-      "inputSchema": "urn:ouro:protocol:0.1.1:input:ouro.submit_proposal",
-      "outputSchema": "urn:ouro:protocol:0.1.1:output:ouro.submit_proposal"
+      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.submit_proposal",
+      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.submit_proposal"
     }
   ],
-  "errorSchema": "urn:ouro:protocol:0.1.1:error",
+  "errorSchema": "urn:ouro:protocol:0.1.2:error",
   "schemas": [
     {
       "name": "flow",
-      "id": "urn:ouro:protocol:0.1.1:flow",
+      "id": "urn:ouro:protocol:0.1.2:flow",
       "file": "flow.schema.json"
     },
     {
       "name": "enforced-flow",
-      "id": "urn:ouro:protocol:0.1.1:enforced-flow",
+      "id": "urn:ouro:protocol:0.1.2:enforced-flow",
       "file": "enforced-flow.schema.json"
     },
     {
       "name": "flow-runtime",
-      "id": "urn:ouro:protocol:0.1.1:flow-runtime",
+      "id": "urn:ouro:protocol:0.1.2:flow-runtime",
       "file": "flow-runtime.schema.json"
     },
     {
       "name": "flow-step-run",
-      "id": "urn:ouro:protocol:0.1.1:flow-step-run",
+      "id": "urn:ouro:protocol:0.1.2:flow-step-run",
       "file": "flow-step-run.schema.json"
     },
     {
       "name": "flow-traversal",
-      "id": "urn:ouro:protocol:0.1.1:flow-traversal",
+      "id": "urn:ouro:protocol:0.1.2:flow-traversal",
       "file": "flow-traversal.schema.json"
     },
     {
       "name": "flow-runtime-view",
-      "id": "urn:ouro:protocol:0.1.1:flow-runtime-view",
+      "id": "urn:ouro:protocol:0.1.2:flow-runtime-view",
       "file": "flow-runtime-view.schema.json"
     },
     {
+      "name": "workspace",
+      "id": "urn:ouro:protocol:0.1.2:workspace",
+      "file": "workspace.schema.json"
+    },
+    {
+      "name": "workspace-file-entry",
+      "id": "urn:ouro:protocol:0.1.2:workspace-file-entry",
+      "file": "workspace-file-entry.schema.json"
+    },
+    {
+      "name": "workspace-file-list",
+      "id": "urn:ouro:protocol:0.1.2:workspace-file-list",
+      "file": "workspace-file-list.schema.json"
+    },
+    {
+      "name": "workspace-file",
+      "id": "urn:ouro:protocol:0.1.2:workspace-file",
+      "file": "workspace-file.schema.json"
+    },
+    {
       "name": "error",
-      "id": "urn:ouro:protocol:0.1.1:error",
+      "id": "urn:ouro:protocol:0.1.2:error",
       "file": "error.schema.json"
     },
     {
       "name": "proposal-content",
-      "id": "urn:ouro:protocol:0.1.1:proposal-content",
+      "id": "urn:ouro:protocol:0.1.2:proposal-content",
       "file": "proposal-content.schema.json"
     },
     {
       "name": "revision-content",
-      "id": "urn:ouro:protocol:0.1.1:revision-content",
+      "id": "urn:ouro:protocol:0.1.2:revision-content",
       "file": "revision-content.schema.json"
     },
     {
       "name": "input:ouro.get_context",
-      "id": "urn:ouro:protocol:0.1.1:input:ouro.get_context",
+      "id": "urn:ouro:protocol:0.1.2:input:ouro.get_context",
       "file": "input-ouro.get_context.schema.json"
     },
     {
       "name": "output:ouro.get_context",
-      "id": "urn:ouro:protocol:0.1.1:output:ouro.get_context",
+      "id": "urn:ouro:protocol:0.1.2:output:ouro.get_context",
       "file": "output-ouro.get_context.schema.json"
     },
     {
       "name": "input:ouro.get_updates",
-      "id": "urn:ouro:protocol:0.1.1:input:ouro.get_updates",
+      "id": "urn:ouro:protocol:0.1.2:input:ouro.get_updates",
       "file": "input-ouro.get_updates.schema.json"
     },
     {
       "name": "output:ouro.get_updates",
-      "id": "urn:ouro:protocol:0.1.1:output:ouro.get_updates",
+      "id": "urn:ouro:protocol:0.1.2:output:ouro.get_updates",
       "file": "output-ouro.get_updates.schema.json"
     },
     {
+      "name": "input:ouro.list_workspace_files",
+      "id": "urn:ouro:protocol:0.1.2:input:ouro.list_workspace_files",
+      "file": "input-ouro.list_workspace_files.schema.json"
+    },
+    {
+      "name": "output:ouro.list_workspace_files",
+      "id": "urn:ouro:protocol:0.1.2:output:ouro.list_workspace_files",
+      "file": "output-ouro.list_workspace_files.schema.json"
+    },
+    {
+      "name": "input:ouro.read_workspace_file",
+      "id": "urn:ouro:protocol:0.1.2:input:ouro.read_workspace_file",
+      "file": "input-ouro.read_workspace_file.schema.json"
+    },
+    {
+      "name": "output:ouro.read_workspace_file",
+      "id": "urn:ouro:protocol:0.1.2:output:ouro.read_workspace_file",
+      "file": "output-ouro.read_workspace_file.schema.json"
+    },
+    {
       "name": "input:ouro.report_flow_step",
-      "id": "urn:ouro:protocol:0.1.1:input:ouro.report_flow_step",
+      "id": "urn:ouro:protocol:0.1.2:input:ouro.report_flow_step",
       "file": "input-ouro.report_flow_step.schema.json"
     },
     {
       "name": "output:ouro.report_flow_step",
-      "id": "urn:ouro:protocol:0.1.1:output:ouro.report_flow_step",
+      "id": "urn:ouro:protocol:0.1.2:output:ouro.report_flow_step",
       "file": "output-ouro.report_flow_step.schema.json"
     },
     {
       "name": "input:ouro.report_action",
-      "id": "urn:ouro:protocol:0.1.1:input:ouro.report_action",
+      "id": "urn:ouro:protocol:0.1.2:input:ouro.report_action",
       "file": "input-ouro.report_action.schema.json"
     },
     {
       "name": "output:ouro.report_action",
-      "id": "urn:ouro:protocol:0.1.1:output:ouro.report_action",
+      "id": "urn:ouro:protocol:0.1.2:output:ouro.report_action",
       "file": "output-ouro.report_action.schema.json"
     },
     {
       "name": "input:ouro.report_question",
-      "id": "urn:ouro:protocol:0.1.1:input:ouro.report_question",
+      "id": "urn:ouro:protocol:0.1.2:input:ouro.report_question",
       "file": "input-ouro.report_question.schema.json"
     },
     {
       "name": "output:ouro.report_question",
-      "id": "urn:ouro:protocol:0.1.1:output:ouro.report_question",
+      "id": "urn:ouro:protocol:0.1.2:output:ouro.report_question",
       "file": "output-ouro.report_question.schema.json"
     },
     {
       "name": "input:ouro.report_fork",
-      "id": "urn:ouro:protocol:0.1.1:input:ouro.report_fork",
+      "id": "urn:ouro:protocol:0.1.2:input:ouro.report_fork",
       "file": "input-ouro.report_fork.schema.json"
     },
     {
       "name": "output:ouro.report_fork",
-      "id": "urn:ouro:protocol:0.1.1:output:ouro.report_fork",
+      "id": "urn:ouro:protocol:0.1.2:output:ouro.report_fork",
       "file": "output-ouro.report_fork.schema.json"
     },
     {
       "name": "input:ouro.report_blocker",
-      "id": "urn:ouro:protocol:0.1.1:input:ouro.report_blocker",
+      "id": "urn:ouro:protocol:0.1.2:input:ouro.report_blocker",
       "file": "input-ouro.report_blocker.schema.json"
     },
     {
       "name": "output:ouro.report_blocker",
-      "id": "urn:ouro:protocol:0.1.1:output:ouro.report_blocker",
+      "id": "urn:ouro:protocol:0.1.2:output:ouro.report_blocker",
       "file": "output-ouro.report_blocker.schema.json"
     },
     {
       "name": "input:ouro.withdraw_decision",
-      "id": "urn:ouro:protocol:0.1.1:input:ouro.withdraw_decision",
+      "id": "urn:ouro:protocol:0.1.2:input:ouro.withdraw_decision",
       "file": "input-ouro.withdraw_decision.schema.json"
     },
     {
       "name": "output:ouro.withdraw_decision",
-      "id": "urn:ouro:protocol:0.1.1:output:ouro.withdraw_decision",
+      "id": "urn:ouro:protocol:0.1.2:output:ouro.withdraw_decision",
       "file": "output-ouro.withdraw_decision.schema.json"
     },
     {
       "name": "input:ouro.submit_decision_clarification",
-      "id": "urn:ouro:protocol:0.1.1:input:ouro.submit_decision_clarification",
+      "id": "urn:ouro:protocol:0.1.2:input:ouro.submit_decision_clarification",
       "file": "input-ouro.submit_decision_clarification.schema.json"
     },
     {
       "name": "output:ouro.submit_decision_clarification",
-      "id": "urn:ouro:protocol:0.1.1:output:ouro.submit_decision_clarification",
+      "id": "urn:ouro:protocol:0.1.2:output:ouro.submit_decision_clarification",
       "file": "output-ouro.submit_decision_clarification.schema.json"
     },
     {
       "name": "input:ouro.confirm_started",
-      "id": "urn:ouro:protocol:0.1.1:input:ouro.confirm_started",
+      "id": "urn:ouro:protocol:0.1.2:input:ouro.confirm_started",
       "file": "input-ouro.confirm_started.schema.json"
     },
     {
       "name": "output:ouro.confirm_started",
-      "id": "urn:ouro:protocol:0.1.1:output:ouro.confirm_started",
+      "id": "urn:ouro:protocol:0.1.2:output:ouro.confirm_started",
       "file": "output-ouro.confirm_started.schema.json"
     },
     {
       "name": "input:ouro.confirm_resumed",
-      "id": "urn:ouro:protocol:0.1.1:input:ouro.confirm_resumed",
+      "id": "urn:ouro:protocol:0.1.2:input:ouro.confirm_resumed",
       "file": "input-ouro.confirm_resumed.schema.json"
     },
     {
       "name": "output:ouro.confirm_resumed",
-      "id": "urn:ouro:protocol:0.1.1:output:ouro.confirm_resumed",
+      "id": "urn:ouro:protocol:0.1.2:output:ouro.confirm_resumed",
       "file": "output-ouro.confirm_resumed.schema.json"
     },
     {
       "name": "input:ouro.confirm_stopped",
-      "id": "urn:ouro:protocol:0.1.1:input:ouro.confirm_stopped",
+      "id": "urn:ouro:protocol:0.1.2:input:ouro.confirm_stopped",
       "file": "input-ouro.confirm_stopped.schema.json"
     },
     {
       "name": "output:ouro.confirm_stopped",
-      "id": "urn:ouro:protocol:0.1.1:output:ouro.confirm_stopped",
+      "id": "urn:ouro:protocol:0.1.2:output:ouro.confirm_stopped",
       "file": "output-ouro.confirm_stopped.schema.json"
     },
     {
       "name": "input:ouro.confirm_decision_applied",
-      "id": "urn:ouro:protocol:0.1.1:input:ouro.confirm_decision_applied",
+      "id": "urn:ouro:protocol:0.1.2:input:ouro.confirm_decision_applied",
       "file": "input-ouro.confirm_decision_applied.schema.json"
     },
     {
       "name": "output:ouro.confirm_decision_applied",
-      "id": "urn:ouro:protocol:0.1.1:output:ouro.confirm_decision_applied",
+      "id": "urn:ouro:protocol:0.1.2:output:ouro.confirm_decision_applied",
       "file": "output-ouro.confirm_decision_applied.schema.json"
     },
     {
       "name": "input:ouro.complete_execution",
-      "id": "urn:ouro:protocol:0.1.1:input:ouro.complete_execution",
+      "id": "urn:ouro:protocol:0.1.2:input:ouro.complete_execution",
       "file": "input-ouro.complete_execution.schema.json"
     },
     {
       "name": "output:ouro.complete_execution",
-      "id": "urn:ouro:protocol:0.1.1:output:ouro.complete_execution",
+      "id": "urn:ouro:protocol:0.1.2:output:ouro.complete_execution",
       "file": "output-ouro.complete_execution.schema.json"
     },
     {
       "name": "input:ouro.clear_blocker",
-      "id": "urn:ouro:protocol:0.1.1:input:ouro.clear_blocker",
+      "id": "urn:ouro:protocol:0.1.2:input:ouro.clear_blocker",
       "file": "input-ouro.clear_blocker.schema.json"
     },
     {
       "name": "output:ouro.clear_blocker",
-      "id": "urn:ouro:protocol:0.1.1:output:ouro.clear_blocker",
+      "id": "urn:ouro:protocol:0.1.2:output:ouro.clear_blocker",
       "file": "output-ouro.clear_blocker.schema.json"
     },
     {
       "name": "input:ouro.submit_proposal",
-      "id": "urn:ouro:protocol:0.1.1:input:ouro.submit_proposal",
+      "id": "urn:ouro:protocol:0.1.2:input:ouro.submit_proposal",
       "file": "input-ouro.submit_proposal.schema.json"
     },
     {
       "name": "output:ouro.submit_proposal",
-      "id": "urn:ouro:protocol:0.1.1:output:ouro.submit_proposal",
+      "id": "urn:ouro:protocol:0.1.2:output:ouro.submit_proposal",
       "file": "output-ouro.submit_proposal.schema.json"
     }
   ],
   "compatibility": {
     "supportedVersions": [
-      "0.1.1"
+      "0.1.2"
     ],
     "legacyToolArguments": true,
     "mcpWireDialect": "draft-07",
@@ -322,6 +382,7 @@
     "Question and fork nodes belong to the human. A plan, a decision and actual application are distinct facts.",
     "Event envelopes are typed; event payload and error details remain JSON extension data, not a complete typed event catalog.",
     "Enforced Flow tracking is human opt-in on new executions. Run IDs distinguish repeated node visits; reports alone never advance a runtime or grant human approval.",
-    "A failed response after commit is an unknown outcome: preserve requestId and the exact body until the receipt is recovered."
+    "A failed response after commit is an unknown outcome: preserve requestId and the exact body until the receipt is recovered.",
+    "Project routes and credentials pin workspace scope. File reads are bounded current observations from the assigned folder binding; they never write files or execute code."
   ]
 }

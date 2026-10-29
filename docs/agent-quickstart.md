@@ -1,40 +1,44 @@
-# Подключить агента · 0.1.0-alpha.13
+# Подключить агента · 0.1.0-alpha.14
 
-Пакет [OURO-ENG-000001](specs/agent-connect.md), разработан по SDD/TDD. Поддерживается MCP-клиент с tools и stdio либо Streamable HTTP с настраиваемым bearer-заголовком. LLM, аккаунт провайдера и установка IDE остаются на стороне пользователя.
+Общий версионированный контракт Ouro позволяет любому совместимому MCP-агенту читать назначения, сообщать факты и запрашивать человека. Единый realtime-дашборд выбранного проекта показывает карту, Flow, агентов/попытки, внимание человека и события из этих сообщений. Поддерживаются tools и stdio либо Streamable HTTP с настраиваемым bearer-заголовком. ChatGPT — отдельный [пример Secure MCP Tunnel](chatgpt-guide.md); LLM и аккаунт провайдера остаются на стороне клиента. [SDD первоначального подключения](specs/agent-connect.md), [локальные проекты и дашборд](specs/project-workspace.md).
 
 ## Быстрый путь
 
-1. `npm ci`, затем `npm run dev`; откройте <http://127.0.0.1:3000>.
-2. В **«Агенты»** создайте именованную регистрацию. Скопируйте одноразовую конфигурацию stdio либо HTTP. Список/история не хранят ключ. Конфигурацию с ключом храните локально, вне Git.
+1. `npm ci`, затем `npm run dev`; откройте <http://127.0.0.1:3000/projects>, добавьте существующую папку и откройте её дашборд.
+2. Нажмите **«Зарегистрировать агента»**, задав имя своего MCP-клиента. Сохраните одноразовый ключ в отдельный локальный файл вне Git/папки контекста; укажите его абсолютный путь в конфигурации stdio. Выданный MCP URL фиксирует выбранный projectId. Список/история не хранят значение ключа.
 3. Добавьте JSON в MCP-клиент и перезапустите его MCP-подключение. Выданные `command`/`args` содержат абсолютные пути и работают из другой папки.
-4. Создайте/выберите спеку, активируйте ревизию, выберите зарегистрированного агента и **«Разрешить одну попытку»**.
+4. Выберите эту регистрацию, заполните задачу, название и проверяемые критерии; нажмите **«Начать работу»**. Спека, активная ревизия и queued-попытка создаются атомарно. До настоящего ACK видно **«Ожидает агента»**.
 5. Дайте агенту инструкцию: «Прочитай `ouro.get_context`, найди назначенную попытку, подтверди запуск через `ouro.confirm_started`. Работай по её ревизии, сообщай факты через Ouro; вопросы и развилки передавай человеку».
-6. Ответьте в Human View. Разрешение продолжения и его ACK — отдельные действия. После результата человек проверяет и принимает DoD.
+6. Наблюдайте общий дашборд и ответьте на запросы человека. Применение решения, разрешение продолжения и ACK — отдельные действия. После результата человек проверяет и принимает DoD.
 
 Без назначения агент получает пустой список и инструкцию ожидать. Ключ не даёт права самостоятельно назначить работу, активировать спеку, выбрать ответ или принять DoD.
 
+Прежний Human View по `/` и `/api/mcp` сохраняет demo-проект: там регистрацию создают в **«Агенты»**, затем активируют ревизию и разрешают попытку. Новый project-specific URL не выбирается глобальной cookie. Подключение A остаётся в A при переключении браузера на B; другой проект требует своей регистрации и endpoint. [Папка, dashboard и ограничения](project-workspace-guide.md).
+
 ## Конфигурации
 
-UI выдаёт готовые JSON с реальными путями и одноразовым ключом. Ниже только шаблоны.
+UI выдаёт JSON с реальными путями, project-specific URL и ссылкой на файл ключа. Значение одноразового ключа сохраняется отдельно. Ниже только шаблоны.
 
 Общий stdio для Claude/Cursor и клиентов с такой же JSON-оболочкой:
 
 ```json
-{"mcpServers":{"ouro":{"command":"/absolute/path/to/node","args":["/absolute/path/to/ouro/packages/mcp/bin/ouro-mcp.mjs"],"env":{"OURO_URL":"http://127.0.0.1:3000/api/mcp","OURO_AGENT_TOKEN_FILE":"/absolute/path/to/local-agent-key.txt"}}}}
+{"mcpServers":{"ouro":{"command":"/absolute/path/to/node","args":["/absolute/path/to/ouro/packages/mcp/bin/ouro-mcp.mjs"],"env":{"OURO_URL":"http://127.0.0.1:3000/api/projects/PROJECT_ID/mcp","OURO_AGENT_TOKEN_FILE":"/absolute/path/to/local-agent-key.txt"}}}}
 ```
 
 Можно задать `OURO_AGENT_TOKEN` вместо файла, но не оба одновременно. Bridge не открывает БД: все изменения идут через сервер Ouro. stdout содержит только MCP; диагностика stderr не печатает ключ. Удалённый endpoint требует HTTPS.
 
+Для нового проекта используйте выданный registered-agent key. Legacy серверный env-token ограничен default-проектом. Не добавляйте projectId в tool arguments: scope проверяется по endpoint и ключу. Для прежнего demo URL остаётся `http://127.0.0.1:3000/api/mcp`.
+
 Cursor HTTP (`.cursor/mcp.json` либо пользовательская конфигурация):
 
 ```json
-{"mcpServers":{"ouro":{"url":"http://127.0.0.1:3000/api/mcp","headers":{"Authorization":"Bearer YOUR_AGENT_KEY"}}}}
+{"mcpServers":{"ouro":{"url":"http://127.0.0.1:3000/api/projects/PROJECT_ID/mcp","headers":{"Authorization":"Bearer YOUR_AGENT_KEY"}}}}
 ```
 
 Claude Code HTTP (`.mcp.json` либо пользовательская конфигурация):
 
 ```json
-{"mcpServers":{"ouro":{"type":"http","url":"http://127.0.0.1:3000/api/mcp","headers":{"Authorization":"Bearer YOUR_AGENT_KEY"}}}}
+{"mcpServers":{"ouro":{"type":"http","url":"http://127.0.0.1:3000/api/projects/PROJECT_ID/mcp","headers":{"Authorization":"Bearer YOUR_AGENT_KEY"}}}}
 ```
 
 Первоисточники: [Claude Code MCP](https://code.claude.com/docs/en/mcp), [Cursor MCP](https://cursor.com/docs/mcp). Формат оболочки других клиентов может отличаться. Проверка этого пакета выполнена независимыми официальными SDK-клиентами HTTP и stdio; установка конкретных проприетарных клиентов не заявляется проверенной.
@@ -45,6 +49,7 @@ Claude Code HTTP (`.mcp.json` либо пользовательская конф
 |---|---|
 | Назначения, immutable ожидание, DoD, решения, guards и текущая версия | `ouro.get_context` |
 | Разрешённые изменения после committed cursor | `ouro.get_updates` |
+| Список/текст файлов назначенной папки, только чтение | `ouro.list_workspace_files`, `ouro.read_workspace_file` |
 | Начало, завершение или неуспех конкретного прохода строгой схемы | `ouro.report_flow_step` |
 | Факт / вопрос / выбор / препятствие | `ouro.report_action`, `ouro.report_question`, `ouro.report_fork`, `ouro.report_blocker` |
 | Фактический запуск / продолжение / остановка | `ouro.confirm_started`, `ouro.confirm_resumed`, `ouro.confirm_stopped` |
@@ -59,11 +64,19 @@ Claude Code HTTP (`.mcp.json` либо пользовательская конф
 
 Для source-backed предложения укажите `sourceCursor` и точные ID первичных событий в каждом finding. `get_context` возвращает допустимые `proposalSourceIds`. Сервер проверяет каждый источник именно для выбранной попытки; чужие попытки того же агента и другие ревизии не становятся источниками автоматически. Pending версию можно уточнить с proposalId/baseProposalRevisionId; human review/adoption остаются отдельными полномочиями. [Инструкция](agent-proposals-guide.md).
 
-Отозванный ключ получает 401. Ответ агенту не содержит полного snapshot чужих работ. Старый HTTP Inbox сохранён для совместимости; новые интеграции используют `/api/mcp`.
+Отозванный ключ получает 401. Ответ агенту не содержит полного snapshot чужих работ. Старый HTTP Inbox сохранён для совместимости; новые папки-проекты используют `/api/projects/{projectId}/mcp`, demo — `/api/mcp`.
+
+## Как читать папку проекта
+
+Если `ouro.get_context` вернул workspace capability `readOnlyFiles:true`, передавайте назначенный executionId в `ouro.list_workspace_files` и `ouro.read_workspace_file`. Root сервер получает из сохранённой привязки; агент задаёт относительные пути вроде `README.md` или `src/main.ts`, с `/`.
+
+Listing читает одну папку до 200 entries; продолжайте по nextCursor, пока он не null. Read возвращает text/sha256/size/modifiedAt для UTF-8 файла до 128 KiB. Абсолютные/traversal/drive/backslash пути, symlink, hard-linked файлы, известные credential paths, бинарные/не UTF-8 и oversize файлы недоступны. Чтение требует настоящее назначение этого проекта до filesystem IO; чужой executionId не подходит.
+
+Эти tools дают текущий контекст без write/shell. Если у агента нет собственного инструмента выполнения требуемых изменений, он сообщает ограничение и запрашивает следующий шаг. Текст с hash не является подтверждением исполнения или приёмкой DoD. [Полная инструкция проекта](project-workspace-guide.md).
 
 ## Как работать по runId
 
-При новой попытке человек может включить **«Строгий учёт проходов»**. До назначения убедитесь, что клиент поддерживает контракт 0.1.1 и `ouro.report_flow_step`; старому клиенту оставляйте legacy-попытку. Старые исполнения не получают проходы задним числом.
+При новой попытке человек может включить **«Строгий учёт проходов»**. До назначения убедитесь, что клиент поддерживает контракт 0.1.2 и `ouro.report_flow_step`; старому клиенту оставляйте legacy-попытку. Старые исполнения не получают проходы задним числом.
 
 1. После `ouro.confirm_started` прочитайте `work[].execution.flowRuntime.currentRunId` и `work[].flowProgress`. Работайте по точной назначенной ревизии и доступным guards.
 2. Начните текущий ready-run через `ouro.report_flow_step` с phase `start`. Для wait состояние станет waiting. Завершение сообщает отдельная команда phase `complete` с evidence; выбор condition требует edgeId. Неуспех начатого run сообщает phase `fail` с evidence.
@@ -87,8 +100,8 @@ MCP сам не запускает LLM и не контролирует внеш
 
 ## Обнаружение предметного контракта
 
-Пакет [OURO-ENG-000013](specs/domain-contract.md) добавил статические MCP resources, а [OURO-ENG-000014](specs/flow-runtime.md) — шестнадцатый tool `ouro.report_flow_step`. `ouro://protocol/manifest` содержит версию контракта и каталог, `ouro://protocol/schemas` — canonical bundle из 41 JSON Schema. После initialize проверьте capability `resources`, затем используйте `resources/list`/`resources/read`. HTTP и stdio дают тот же контракт; с прежним tools-only сервером discovery необязателен.
+Пакет [OURO-ENG-000013](specs/domain-contract.md) добавил статические MCP resources, [OURO-ENG-000014](specs/flow-runtime.md) — `ouro.report_flow_step`, а [OURO-ENG-000015](specs/project-workspace.md) — два read-only workspace tools. Текущий набор содержит 18 инструментов. `ouro://protocol/manifest` содержит версию контракта и каталог, `ouro://protocol/schemas` — canonical bundle из 49 JSON Schema. После initialize проверьте capability `resources`, затем используйте `resources/list`/`resources/read`. HTTP и stdio дают тот же контракт; с прежним tools-only сервером discovery необязателен.
 
-Версия предметного контракта `0.1.1` отделена от версии приложения и transport MCP. Не добавляйте `contractVersion` в прежние tool arguments: входы закрыты, версия объявлена в manifest. `tools/list` содержит input/output schemas всех 16 tools; выходная схема включает `ok:true` и `ok:false`, потому что SDK-клиент проверяет любое присутствующее structuredContent, включая `isError:true`. Canonical bundle использует Draft 2020-12, wire-схемы закреплённого SDK 1.32.2 — Draft 7.
+Версия предметного контракта `0.1.2` отделена от версии приложения и transport MCP. Не добавляйте `contractVersion` в прежние tool arguments: входы закрыты, версия объявлена в manifest. `tools/list` содержит input/output schemas всех 18 tools; выходная схема включает `ok:true` и `ok:false`, потому что SDK-клиент проверяет любое присутствующее structuredContent, включая `isError:true`. Canonical bundle использует Draft 2020-12, wire-схемы закреплённого SDK 1.32.2 — Draft 7.
 
 `OUTPUT_CONTRACT_ERROR` с `error.details.outcomeUnknown:true` не означает, что команда не записалась. Сохраните прежние requestId и полное тело, включая expectedVersion, и выясняйте исход точным повтором; новый ID или подмена версии могут создать другую команду. Статические схемы не предоставляют прав или назначения. [Инструкция контракта и отдельной установки](protocol-guide.md) · [самостоятельный пакет](../packages/protocol/README.md).

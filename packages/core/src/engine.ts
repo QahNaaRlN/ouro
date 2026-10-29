@@ -40,6 +40,7 @@ export function replay(events: readonly DomainEvent[], projectId = PROJECT_ID,on
     if (event.causationId && !state.events.some(prior => prior.id === event.causationId)) fail('INVALID_EVENT_STREAM', 'Причинная ссылка должна указывать на ранее зафиксированное событие');
     const p = copy(event.payload);
     switch (event.type) {
+      case 'ProjectInitialized': state.roadmap=copy(p.roadmap) as ProjectState['roadmap'];break;
       case 'SpecCreated': state.specs.push(p.spec as Spec); state.revisions.push(p.revision as SpecRevision); break;
       case 'RevisionProposed': {
         const revision = p.revision as SpecRevision;
@@ -249,6 +250,23 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
     event.type==='ExecutionCreated'&&(event.payload.execution as Execution|undefined)?.flowRuntime?.runs.some(run=>run.id===runId)===true
   ));
   switch (command.type) {
+    case 'initializeProject':{
+      human();text(command.name,'Название проекта');
+      if(state.version!==0||state.events.length||state.specs.length)fail('INVALID_TRANSITION','Начальные данные проекта уже зафиксированы.');
+      emit('ProjectInitialized',{roadmap:{id:id(),title:command.name,goal:'Работа в локальном проекте',state:'active'}});break;
+    }
+    case 'startProjectWork':{
+      human();text(command.agentId,'agentId');validateContent(command.content);rejectClaimedAdapterOrigin(command,command.content);
+      if(state.roadmap.state!=='active')fail('INVALID_TRANSITION','Начать новую работу можно только в активной дорожной карте.');
+      const specId=id(),revisionId=id(),executionId=id();
+      const nextNumber=Math.max(0,...state.specs.map(spec=>Number(spec.humanId.split('-').at(-1))||0))+1;
+      const spec:Spec={id:specId,projectId:state.projectId,humanId:`OURO-S-${String(nextNumber).padStart(6,'0')}`,title:command.content.title,state:'idea',activeRevisionId:null,revisionIds:[revisionId]};
+      const revision:SpecRevision={...copy(command.content),id:revisionId,specId,revision:1,createdAt:now,authorId:actor.id};
+      const created=emit('SpecCreated',{spec,revision},{specId,specRevisionId:revisionId});
+      const activated=emit('RevisionActivated',{revisionId},{specId,specRevisionId:revisionId,causationId:created.id});
+      const execution:Execution={id:executionId,specId,specRevisionId:revisionId,agentId:command.agentId,state:'queued',kind:'primary',resumeAuthorized:true};
+      emit('ExecutionCreated',{execution},{...context(execution),causationId:activated.id});break;
+    }
     case 'submitAgentProposal':{
       const execution=getExecution(command.executionId);
       if(actor.kind!=='agent'||actor.id!==execution.agentId)fail('FORBIDDEN','Предложение может отправить только назначенный агент.');

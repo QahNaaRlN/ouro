@@ -1,6 +1,7 @@
 import {z} from 'zod';
 import {flowDefinitionSchema} from './flow.js';
 import {flowRuntimeSchema,flowRuntimeViewSchema} from './flow-runtime.js';
+import {workspaceMetadataSchema,workspaceFileListSchema,workspaceFileSchema} from './workspace.js';
 
 /** Explicit JSON extension data; it never accepts functions, undefined or NaN. */
 export const jsonValueSchema=z.json();
@@ -103,8 +104,11 @@ export const workItemOutputSchema=extensible({
 export const contextOutputSchema=extensible({
  ok:z.literal(true),project:extensible({id,title:z.string(),roadmapState:z.enum(['draft','active','frozen','archived'])}),
  agent:extensible({id,name:z.string().optional()}),version,cursor:version,work:z.array(workItemOutputSchema),instructions:z.array(z.string()),
+ workspace:workspaceMetadataSchema.optional(),
 });
 export const updatesOutputSchema=extensible({ok:z.literal(true),events:z.array(eventEnvelopeSchema),cursor:version});
+export const workspaceFileListOutputSchema=workspaceFileListSchema.safeExtend({ok:z.literal(true),projectId:id,executionId:id,bindingId:id});
+export const workspaceFileOutputSchema=workspaceFileSchema.safeExtend({ok:z.literal(true),projectId:id,executionId:id,bindingId:id});
 export const mutationOutputSchema=extensible({
  ok:z.literal(true),execution:executionOutputSchema,requests:z.array(decisionRequestOutputSchema),
  events:z.array(eventEnvelopeSchema),cursor:version,replayed:z.boolean(),
@@ -126,11 +130,13 @@ const mutationTools=new Set([
  'ouro.confirm_decision_applied','ouro.complete_execution','ouro.clear_blocker','ouro.report_flow_step',
 ]);
 
-export type AgentSuccessSchema=typeof contextOutputSchema|typeof updatesOutputSchema|typeof mutationOutputSchema|typeof proposalMutationOutputSchema;
+export type AgentSuccessSchema=typeof contextOutputSchema|typeof updatesOutputSchema|typeof mutationOutputSchema|typeof proposalMutationOutputSchema|typeof workspaceFileListOutputSchema|typeof workspaceFileOutputSchema;
 
 export function getToolSuccessSchema(name:string):AgentSuccessSchema{
  if(name==='ouro.get_context')return contextOutputSchema;
  if(name==='ouro.get_updates')return updatesOutputSchema;
+ if(name==='ouro.list_workspace_files')return workspaceFileListOutputSchema;
+ if(name==='ouro.read_workspace_file')return workspaceFileOutputSchema;
  if(name==='ouro.submit_proposal')return proposalMutationOutputSchema;
  if(mutationTools.has(name))return mutationOutputSchema;
  throw new RangeError(`Unknown Ouro tool: ${name}`);
@@ -166,8 +172,10 @@ export type ContextOutput=z.infer<typeof contextOutputSchema>;
 export type UpdatesOutput=z.infer<typeof updatesOutputSchema>;
 export type MutationOutput=z.infer<typeof mutationOutputSchema>;
 export type ProposalMutationOutput=z.infer<typeof proposalMutationOutputSchema>;
+export type WorkspaceFileListOutput=z.infer<typeof workspaceFileListOutputSchema>;
+export type WorkspaceFileOutput=z.infer<typeof workspaceFileOutputSchema>;
 export type AgentErrorBody=z.infer<typeof agentErrorSchema>;
-export type AgentResultBody=ContextOutput|UpdatesOutput|MutationOutput|ProposalMutationOutput|AgentErrorBody;
+export type AgentResultBody=ContextOutput|UpdatesOutput|MutationOutput|ProposalMutationOutput|WorkspaceFileListOutput|WorkspaceFileOutput|AgentErrorBody;
 
 function validateReservedField(schema:z.ZodType,key:string,value:unknown):void{
  const parsed=schema.safeParse(value);

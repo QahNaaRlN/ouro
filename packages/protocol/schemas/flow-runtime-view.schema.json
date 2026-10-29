@@ -486,5 +486,5 @@
       ]
     }
   },
-  "$id": "urn:ouro:protocol:0.1.1:flow-runtime-view"
+  "$id": "urn:ouro:protocol:0.1.2:flow-runtime-view"
 }

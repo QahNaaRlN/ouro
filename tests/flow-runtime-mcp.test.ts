@@ -36,7 +36,7 @@ test('FR10 official SDK discovers opt-in tracking and exposes the assigned curre
  const state=projection(),store:AgentStore={async getProject(){return state;},async getEvents(){return {events:[],cursor:state.version};},async executeCommand(){throw new Error('Read-only discovery attempted a write');}};
  const f=await connect(store);
  try{
-  const tools=await f.client.listTools();assert.equal(tools.tools.length,AGENT_TOOLS.length);assert.equal(tools.tools.length,16);
+  const tools=await f.client.listTools();assert.equal(tools.tools.length,AGENT_TOOLS.length);
   const step=tools.tools.find(tool=>tool.name==='ouro.report_flow_step')!;assert(step.outputSchema);assert.equal((step.inputSchema.properties?.runId as any).type,'string');
   assert.deepEqual((step.inputSchema.properties?.phase as any).enum,['start','complete','fail']);
   const manifest=await f.client.readResource({uri:'ouro://protocol/manifest'});assert.equal(JSON.parse((manifest.contents[0] as {text:string}).text).version,PROTOCOL_VERSION);

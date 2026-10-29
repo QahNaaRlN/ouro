@@ -884,5 +884,5 @@
       ]
     }
   },
-  "$id": "urn:ouro:protocol:0.1.1:output:ouro.clear_blocker"
+  "$id": "urn:ouro:protocol:0.1.2:output:ouro.clear_blocker"
 }
