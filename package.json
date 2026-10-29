@@ -1,6 +1,6 @@
 {
   "name": "ouro",
-  "version": "0.1.0-alpha.15",
+  "version": "0.1.0-beta.1",
   "private": true,
   "engines": {
     "node": ">=20.9.0"
@@ -25,7 +25,11 @@
     "protocol:check": "npm --prefix packages/protocol run check",
     "protocol:pack": "node scripts/pack-protocol.mjs",
     "protocol:test-package": "node --test tests/protocol-package.test.mjs",
-    "agent:config": "tsx scripts/agent-config.ts"
+    "agent:config": "tsx scripts/agent-config.ts",
+    "launch": "node scripts/launch.mjs",
+    "release:pack": "node scripts/pack-release.mjs",
+    "check:conventions": "node scripts/check-conventions.mjs",
+    "test:e2e:production": "playwright test --config=playwright.production.config.ts"
   },
   "dependencies": {
     "@dagrejs/dagre": "^1.1.8",

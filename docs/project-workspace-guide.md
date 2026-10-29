@@ -1,4 +1,4 @@
-# Единый живой дашборд проекта · alpha.15
+# Единый живой дашборд проекта · beta.1
 
 [SDD дашборда](specs/project-workspace.md) · [Cursor и Claude](agent-clients-guide.md) · [ChatGPT](chatgpt-guide.md) · [Прочитанные источники](project-workspace-research.md) · [Проверки и границы](plans/project-workspace.md).
 
