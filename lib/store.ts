@@ -467,7 +467,9 @@ function createProjectStore(projectId:string,owner:StoreOwner){
           JOIN ouro_agent_registrations r ON r.id=c.agent_id LEFT JOIN ouro_agent_revocations v ON v.agent_id=r.id
           WHERE c.token_hash=$1 AND v.agent_id IS NULL`,[tokenHash(token)]);
         const found=result.rows[0];if(!found)return null;
-        const assignments=await tx.query<{project_id:string}>(`SELECT a.project_id FROM ouro_agent_assignments a LEFT JOIN ouro_agent_assignment_revocations r ON r.agent_id=a.agent_id AND r.project_id=a.project_id WHERE a.agent_id=$1 AND r.agent_id IS NULL ORDER BY a.project_id`,[found.id]);
+        // Scoped stores resolve only their own assignment. The legacy root can
+        // resolve shared hosted agents, but never implicitly folder projects.
+        const assignments=await tx.query<{project_id:string}>(`SELECT a.project_id FROM ouro_agent_assignments a LEFT JOIN ouro_agent_assignment_revocations r ON r.agent_id=a.agent_id AND r.project_id=a.project_id LEFT JOIN ouro_workspace_projects w ON w.id=a.project_id WHERE a.agent_id=$1 AND r.agent_id IS NULL AND (a.project_id=$2 OR ($2=$3 AND (a.project_id=$3 OR w.id IS NULL))) ORDER BY a.project_id`,[found.id,projectId,PROJECT_ID]);
         if(!assignments.rows.length)return null;
         await tx.query('INSERT INTO ouro_agent_presence (agent_id,last_seen_at) VALUES ($1,now()) ON CONFLICT (agent_id) DO UPDATE SET last_seen_at=excluded.last_seen_at',[found.id]);
         return {id:found.id,kind:'agent',name:found.name,projectIds:assignments.rows.map(row=>row.project_id)};
