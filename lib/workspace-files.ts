@@ -87,12 +87,12 @@ async function openWithin(binding:WorkspaceBinding,parts:string[],file:boolean):
   for(let index=0;index<parts.length;index++){
    const last=index===parts.length-1,next=path.join(anchored(handle,absolutePath),parts[index]);
    absolutePath=path.join(absolutePath,parts[index]);
-   const item=await lstat(next);
+   const item=await lstat(next,{bigint:true});
    if(item.isSymbolicLink())fail('FORBIDDEN','Внутренние символические ссылки недоступны.',403);
    if(last&&file?!item.isFile():!item.isDirectory())fail('VALIDATION_ERROR',file?'Путь должен указывать на обычный файл.':'Путь должен указывать на папку.');
    if(last&&file&&item.nlink>1)fail('FORBIDDEN','Файлы с несколькими жёсткими ссылками недоступны как контекст.',403);
    handle=await open(next,last&&file?constants.O_RDONLY|(constants.O_NOFOLLOW??0)|(constants.O_NONBLOCK??0):directoryFlags);handles.push(handle);
-   const opened=await handle.stat();
+   const opened=await handle.stat({bigint:true});
    if(!matches(identity(item),identity(opened)))fail('WORKSPACE_BINDING_CONFLICT','Файловый путь изменился во время чтения.',409);
    if(last&&file?!opened.isFile():!opened.isDirectory())fail('VALIDATION_ERROR',file?'Путь должен указывать на обычный файл.':'Путь должен указывать на папку.');
    if(last&&file&&opened.nlink>1)fail('FORBIDDEN','Файлы с несколькими жёсткими ссылками недоступны как контекст.',403);

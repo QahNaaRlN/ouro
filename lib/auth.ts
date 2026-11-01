@@ -59,6 +59,11 @@ export function participantCookie(request:Request):string|undefined{
   if(values.length>1)throw new AccessError('UNAUTHENTICATED','Сессия участника недействительна. Войдите повторно.',401);
   return values[0]?.slice('ouro_participant='.length);
 }
+export function userSessionCookie(request:Request):string|undefined{
+  const values=request.headers.get('cookie')?.split(';').map(value=>value.trim()).filter(value=>value.startsWith('ouro_user_session='))??[];
+  if(values.length>1)throw new AccessError('UNAUTHENTICATED','Сессия пользователя недействительна. Войдите повторно.',401);
+  return values[0]?.slice('ouro_user_session='.length);
+}
 export function issueParticipantSession(actor:Actor,projectId:string,expires=Date.now()+12*60*60*1000):string{
   assertHuman(actor);
   if(!actor.id||!actor.projectIds.includes(projectId)||!Number.isSafeInteger(expires)||expires<=Date.now())throw new AccessError('FORBIDDEN','Нельзя выдать сессию для этого проекта.');
@@ -72,6 +77,12 @@ export async function authenticatedParticipant(request:Request,projectId:string,
     const headers=new Headers(request.headers);headers.delete('cookie');
     const actor=authenticatedActor(new Request(request.url,{headers}),projectId,agentId);
     assertExpectedParticipant(request,actor);return actor;
+  }
+  const userToken=userSessionCookie(request);
+  if(userToken!==undefined){
+    const session=userToken?await (await (await import('./store')).getUserAuth()).resolveSession(userToken):null;
+    if(!session||!session.actor.projectIds.includes(projectId))throw new AccessError('UNAUTHENTICATED','Сессия пользователя недействительна или не имеет доступа к проекту.',401);
+    assertExpectedParticipant(request,session.actor);return session.actor;
   }
   const cookie=participantCookie(request);
   if(cookie===undefined){const actor=authenticatedActor(request,projectId,agentId);assertExpectedParticipant(request,actor);return actor;}

@@ -56,6 +56,8 @@ import MeridianOrigin from '@/components/meridian-origin';
 import LessonsPanel from '@/components/lessons-panel';
 import ImpactPanel from '@/components/impact-panel';
 import ParticipantsPanel,{ParticipantLogin} from '@/components/participants-panel';
+import { AccountLogout, EmailLogin, ProjectMembersPanel, ProjectSwitcher, selectProject, selectedProjectId } from '@/components/project-account';
+import type { ProjectRole } from '@/lib/projects';
 import CollaborativeDraftsPanel from '@/components/collaborative-drafts';
 import AgentProposalsPanel,{type ProposalReviewIntentRegistry} from '@/components/agent-proposals-panel';
 import SpecFlow from "@/components/spec-flow";
@@ -69,7 +71,6 @@ import { getRoadmapFilterOptions, matchesRoadmapFilter } from '@/packages/core/s
 import { currentDecisionRequests, decisionRoot, isCurrentDecisionRequest, openPhysicalBlockers } from '@/packages/core/src/decision-lineage';
 import {
   AGENT_ID,
-  PROJECT_ID,
   type DecisionRequest,
   type ProjectState,
   type DomainEvent,
@@ -166,6 +167,8 @@ export default function Home() {
   const [identity,setIdentity]=useState<Actor|null>(null),[sharedPending,setSharedPending]=useState(false);
   const [flowTrackingSelections,setFlowTrackingSelections]=useState<Record<string,boolean>>({});
   const flowRuntimeIntents=useRef<RuntimeIntentRegistry>(new Map());
+  const [projectRole,setProjectRole]=useState<ProjectRole|null>(null);
+  const canWrite=projectRole==='Owner'||projectRole==='Contributor';
   // Pending requests remain keyed to their original author. Another identity
   // cannot see or resend them; returning to that author can recover the receipt.
   useEffect(()=>{setFlowTrackingSelections({});},[identity?.id]);
@@ -174,7 +177,7 @@ export default function Home() {
     window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);
   },[]);
   const [assignmentAgentId, setAssignmentAgentId] = useState(AGENT_ID);
-  const [snapshotAdopter] = useState(()=>createProjectSnapshotAdopter(PROJECT_ID));
+  const [snapshotAdopter] = useState(()=>createProjectSnapshotAdopter(selectedProjectId()));
   const [streamStatus,setStreamStatus] = useState<ProjectSubscriptionStatus>('connecting');
   const [agentFilter,setAgentFilter] = useState(''),[requestFilter,setRequestFilter] = useState('');
   const [flowRevisionId, setFlowRevisionId] = useState<string | null>(null);
@@ -257,7 +260,15 @@ export default function Home() {
           );
         }
         if (!cancelled) {
-          setIdentity(sessionData.actor??null);
+          const actor=(sessionData.actor??null) as Actor|null;
+          setIdentity(actor);
+          if(sessionData.account&&actor){
+            const projectsResponse=await fetch('/api/projects',{cache:'no-store'}),projectsData=await projectsResponse.json();
+            if(!projectsResponse.ok)throw new Error(projectsData.error?.message??'Не удалось прочитать список проектов.');
+            const selectedId=selectedProjectId(),current=projectsData.projects.find((project:{id:string})=>project.id===selectedId);
+            if(!current&&projectsData.projects[0]){selectProject(projectsData.projects[0].id);return;}
+            setProjectRole(current?.role??null);
+          }else setProjectRole(actor&&['local-human','human-token'].includes(actor.id)?'Owner':'Contributor');
           await refresh();
           const agentsResponse=await fetch('/api/agents',{cache:'no-store'});
           if(agentsResponse.ok){const body=await agentsResponse.json();if(!cancelled)setAgents(body.agents);}
@@ -309,6 +320,7 @@ export default function Home() {
     onCommitted?: (events:DomainEvent[])=>void,
     onOutcome?: (outcome:Omit<FlowCommandOutcome,'ok'>)=>void,
   ) => {
+    if(!canWrite){setError('Роль Viewer разрешает только чтение проекта.');return false;}
     if(historicalCursorRef.current!==null){setError('Историческое состояние доступно только для чтения. Вернитесь к текущей работе.');return false;}
     if (!state || busy) return false;
     setBusy(true);
@@ -379,6 +391,7 @@ export default function Home() {
     return command({type:'proposeRevision',specId:original.specId,content:{title,goal,dod,constraints,assumptions,risks,inputs,comment,flow}},'Новая ревизия со схемой предложена. Активация выполняется отдельно.',base.expectedVersion);
   };
   const simulate = async (scenario: string) => {
+    if(!canWrite){setError('Роль Viewer разрешает только чтение проекта.');return;}
     if(historicalCursorRef.current!==null){setError('Историческое состояние доступно только для чтения.');return;}
     if (!state || !selected || busy) return;
     const target=state.executions.filter(e=>e.specId===selected&&!['succeeded','failed','cancelled','skipped'].includes(e.state)).at(-1);
@@ -461,7 +474,7 @@ export default function Home() {
     state?.executions.filter((e) => e.specId === selected) ?? [];
   const execution = executions.at(-1);
   const simulationExecution = executions.filter(e=>!['succeeded','failed','cancelled','skipped'].includes(e.state)).at(-1);
-  const simulatorAvailable = simulationExecution?.agentId===AGENT_ID&&!!identity&&['local-human','human-token'].includes(identity.id);
+  const simulatorAvailable = canWrite&&simulationExecution?.agentId===AGENT_ID&&!!identity&&['local-human','human-token'].includes(identity.id);
   const selectedAgentName = execution ? execution.agentId===AGENT_ID ? 'Симулятор агента' : agents.find(a=>a.id===execution.agentId)?.name??'Назначенный MCP-агент' : 'MCP и симулятор';
   const assignmentValid=assignmentAgentId===AGENT_ID || agents.some(a=>a.id===assignmentAgentId&&!a.revokedAt);
   const externalStopUnknown=state?.executions.some(e=>e.specId===selected&&e.stopConfirmation==='unknown')??false;
@@ -525,6 +538,7 @@ export default function Home() {
           </span>
           <span className="alpha-label">{packageInfo.version.split('-')[1]?.split('.')[0].toUpperCase()??'RELEASE'}</span>
         </Link>
+        <ProjectSwitcher identity={identity}/>
         <div className="nav-label">ПРОЕКТ</div>
         <nav aria-label="Основная навигация">
           <a className="nav-item" href="/projects"><Box size={18}/><span>Проекты</span></a>
@@ -553,8 +567,13 @@ export default function Home() {
             Методология и источники
           </button>
           <div className="session-status" role="status" aria-label="Текущая сессия">
-            <strong>{identity?.name??'Вход не выполнен'}</strong>
-            <small>{identity?['local-human','human-token'].includes(identity.id)?'Локальный оператор':'Участник проекта':'Нужна сессия человека'}</small>
+            <span className="avatar">ВЫ</span>
+            <div>
+              <strong>{identity?.name??'Вход не выполнен'}</strong>
+              <small>{identity?`${projectRole??'Проверяем роль'} · ${['local-human','human-token'].includes(identity.id)?'Локальный оператор':'Участник проекта'}`:'Нужна сессия человека'}</small>
+            </div>
+            {identity&&!['local-human','human-token'].includes(identity.id)&&<AccountLogout identity={identity}/>}
+            <ShieldCheck size={15} />
           </div>
         </div>
       </aside>
@@ -570,7 +589,10 @@ export default function Home() {
             </button>
             <Link className="project-crumb" href="/projects">Проекты</Link>
             <span className="crumb-slash">/</span>
-            <span className="current-project">Учебный проект</span>
+            <span className="current-project">
+              <Box size={15} />
+              {state?.roadmap.title ?? 'Ouro'}
+            </span>
             <span className="project-tag">Human View</span>
           </div>
           <div className="topbar-actions">
@@ -616,6 +638,7 @@ export default function Home() {
             {toast}
           </div>
         )}
+        {projectRole==='Viewer'&&state&&<div className="toast" role="status"><ShieldCheck size={16}/>Роль Viewer: проект доступен только для чтения.</div>}
         {loading ? (
           <main className="loading-screen">
             <LoaderCircle className="spin" size={25} />
@@ -627,7 +650,8 @@ export default function Home() {
             <TriangleAlert size={30} />
             <h1>Проект недоступен</h1>
             <p>{error || "Проверьте запуск сервера и локальную сессию."}</p>
-            <ParticipantLogin/>
+            <EmailLogin/>
+            <details open><summary>Вход по прежнему ключу участника</summary><ParticipantLogin/></details>
             <button className="btn" onClick={() => location.reload()}>
               Повторить
             </button>
@@ -653,7 +677,7 @@ export default function Home() {
                     </div>
                     <button
                       className="btn btn-primary"
-                      onClick={() => setModal("create")}
+                      disabled={!canWrite} onClick={() => setModal("create")}
                     >
                       <Plus size={16} />
                       Новая спека
@@ -744,6 +768,7 @@ export default function Home() {
                         className="icon-btn"
                         title="Новая зависимость"
                         aria-label="Добавить зависимость"
+                        disabled={!canWrite}
                         onClick={() => setModal("dependency")}
                       >
                         <GitBranch size={17} />
@@ -812,7 +837,7 @@ export default function Home() {
                       <h1>Спецификация</h1>
                       <p>Ожидание версионируется. Факты сохраняются.</p>
                     </div>
-                    <button className="btn" onClick={() => setModal("create")}>
+                    <button className="btn" disabled={!canWrite} onClick={() => setModal("create")}>
                       <Plus size={16} />
                       Новая спека
                     </button>
@@ -901,9 +926,9 @@ export default function Home() {
                         return <>
                           <div className="run-toolbar">
                             <label className="form-label">Ревизия схемы<select aria-label="Ревизия схемы" value={shown.id} onChange={e=>setFlowRevisionId(e.target.value)}>{state.revisions.filter(r=>r.specId===spec.id).toReversed().map(r=><option key={r.id} value={r.id}>r{r.revision} · {r.id===spec.activeRevisionId?'активная':r.id===spec.revisionIds.at(-1)?'предложена':'историческая'}</option>)}</select></label>
-                            {shown.id!==spec.activeRevisionId&&shown.id===spec.revisionIds.at(-1)&&<button className="btn" disabled={busy} onClick={()=>command({type:'activateRevision',specId:spec.id,revisionId:shown.id},'Ревизия схемы активирована. История прежних попыток сохранена.')}><Check size={14}/>Активировать ревизию {shown.revision}</button>}
+                            {shown.id!==spec.activeRevisionId&&shown.id===spec.revisionIds.at(-1)&&<button className="btn" disabled={!canWrite||busy} onClick={()=>command({type:'activateRevision',specId:spec.id,revisionId:shown.id},'Ревизия схемы активирована. История прежних попыток сохранена.')}><Check size={14}/>Активировать ревизию {shown.revision}</button>}
                           </div>
-                          <SpecFlow key={shown.id} revision={shown} state={state} busy={busy} onSave={saveFlow} actorId={identity?.id??'unauthenticated'} intents={flowRuntimeIntents.current} onCommand={runFlowCommand} onSimulateFlow={identity&&['local-human','human-token'].includes(identity.id)?simulateFlowCommand:undefined}/>
+                          <SpecFlow key={shown.id} revision={shown} state={state} busy={busy} readOnly={!canWrite} onSave={saveFlow} actorId={identity?.id??'unauthenticated'} intents={flowRuntimeIntents.current} onCommand={runFlowCommand} onSimulateFlow={identity&&['local-human','human-token'].includes(identity.id)?simulateFlowCommand:undefined}/>
                         </>;
                       })()}
                       {detailTab==='states'&&<StateTransitions state={state} specId={spec.id} executionId={execution?.id}/>}
@@ -986,7 +1011,7 @@ export default function Home() {
                               </p>
                               <button
                                 className="btn btn-small"
-                                disabled={busy}
+                                disabled={!canWrite||busy}
                                 onClick={() =>
                                   command(
                                     {
@@ -1005,6 +1030,7 @@ export default function Home() {
                           <div className="detail-actions">
                             <button
                               className="btn"
+                              disabled={!canWrite}
                               onClick={() => setModal("revision")}
                             >
                               <Plus size={15} />
@@ -1012,7 +1038,7 @@ export default function Home() {
                             </button>
                             <button
                               className="btn btn-primary"
-                              disabled={busy || spec.state === "done"}
+                              disabled={!canWrite || busy || spec.state === "done"}
                               onClick={() => setModal("accept")}
                             >
                               <ShieldCheck size={15} />
@@ -1096,6 +1122,7 @@ export default function Home() {
                                   )}
                                   busy={busy}
                                   command={command}
+                                  readOnly={!canWrite}
                                 />
                               )}
                             <Timeline
@@ -1137,11 +1164,11 @@ export default function Home() {
                               spec.activeRevisionId &&
                               spec.state !== "done" && (
                                 <div className="agent-assignment-actions">
-                                <FlowTrackingChoice checked={trackingChecked} reason={trackingReason} disabled={busy} onChange={setTrackingChecked}/>
-                                <AgentPicker agents={agents} value={assignmentAgentId} onChange={setAssignmentAgentId} disabled={busy}/>
+                                <FlowTrackingChoice checked={trackingChecked} reason={trackingReason} disabled={!canWrite||busy} onChange={setTrackingChecked}/>
+                                <AgentPicker agents={agents} value={assignmentAgentId} onChange={setAssignmentAgentId} disabled={!canWrite||busy}/>
                                 <button
                                   className="btn btn-small"
-                                  disabled={busy || !assignmentValid || externalStopUnknown}
+                                  disabled={!canWrite || busy || !assignmentValid || externalStopUnknown}
                                   onClick={() =>
                                     authorizeAttempt("Попытка разрешена. Ожидается подтверждение назначенного исполнителя")
                                   }
@@ -1190,6 +1217,7 @@ export default function Home() {
                             requests={selectedRequests}
                             busy={busy}
                             command={command}
+                            readOnly={!canWrite}
                           />
                           <RealitySwitch
                             value={realityView}
@@ -1337,6 +1365,7 @@ export default function Home() {
                           version={state.version}
                           state={state}
                           onOpenRequest={openRequest}
+                          readOnly={!canWrite}
                         />
                       ) : (
                         <Empty>
@@ -1405,17 +1434,17 @@ export default function Home() {
                 </>
               )}
               {view === "methodology" && <Methodology />}
-              {view === "agents" && <AgentsPanel onAgentsChange={setAgents}/>}
+              {view === "agents" && <AgentsPanel onAgentsChange={setAgents} readOnly={projectRole!=='Owner'}/>}
               {view==='integrations'&&<>
                 <div className="integration-source-switch" role="group" aria-label="Источник интеграции"><button type="button" aria-pressed={integrationSource==='github'} onClick={()=>setIntegrationSource('github')}>GitHub</button><button type="button" aria-pressed={integrationSource==='meridian'} onClick={()=>setIntegrationSource('meridian')}>Meridian</button></div>
-                <div hidden={integrationSource!=='github'}><GitHubPanel state={state} onSnapshot={adoptMutation}/></div>
-                <div hidden={integrationSource!=='meridian'}><MeridianPanel key={`${state.projectId}:${meridianParticipantKey}`} participantKey={meridianParticipantKey} pendingIntent={meridianPendingIntent} theme={theme} state={state} onSnapshot={adoptMutation} onOpenSpec={id=>{pick(id);setDetailTab('expectation');setView('specs');}}/></div>
+                <div hidden={integrationSource!=='github'}><GitHubPanel state={state} onSnapshot={adoptMutation} readOnly={!canWrite}/></div>
+                <div hidden={integrationSource!=='meridian'}><MeridianPanel key={`${state.projectId}:${meridianParticipantKey}`} participantKey={meridianParticipantKey} pendingIntent={meridianPendingIntent} theme={theme} state={state} onSnapshot={adoptMutation} readOnly={!canWrite} onOpenSpec={id=>{pick(id);setDetailTab('expectation');setView('specs');}}/></div>
               </>}
-              {view==='lessons'&&<LessonsPanel state={state} onSnapshot={adoptMutation} onOpenSpec={id=>{pick(id);setView('specs');setDetailTab('expectation');}}/>}
+              {view==='lessons'&&<LessonsPanel state={state} onSnapshot={adoptMutation} readOnly={!canWrite} onOpenSpec={id=>{pick(id);setView('specs');setDetailTab('expectation');}}/>}
               {view==='impact'&&<ImpactPanel state={state}/>}
-              {view==='participants'&&<ParticipantsPanel/>}
-              {view==='drafts'&&<CollaborativeDraftsPanel state={state} actorId={identity?.id??'local-human'} onSnapshot={adoptMutation} onPendingChange={setSharedPending} onOpenSpec={id=>{pick(id);setView('specs');}}/>}
-              {view==='proposals'&&<AgentProposalsPanel state={state} actorId={identity?.id??'unauthenticated'} onSnapshot={adoptMutation} intents={proposalIntents} initialSelection={proposalFocus} onOpenSpec={id=>{pick(id);setView('specs');setDetailTab('expectation');}}/>}
+              {view==='participants'&&(identity&&!['local-human','human-token'].includes(identity.id)?<ProjectMembersPanel projectId={state.projectId} identity={identity}/>:<ParticipantsPanel/>)}
+              {view==='drafts'&&<CollaborativeDraftsPanel state={state} actorId={identity?.id??'local-human'} onSnapshot={adoptMutation} onPendingChange={setSharedPending} readOnly={!canWrite} onOpenSpec={id=>{pick(id);setView('specs');}}/>}
+              {view==='proposals'&&<AgentProposalsPanel state={state} actorId={identity?.id??'unauthenticated'} onSnapshot={adoptMutation} intents={proposalIntents} initialSelection={proposalFocus} readOnly={!canWrite} onOpenSpec={id=>{pick(id);setView('specs');setDetailTab('expectation');}}/>}
               </>}
             </main>
             {historicalCursor===null && view !== 'agents' && view!=='integrations' && view!=='lessons' && view!=='impact' && view!=='participants' && view!=='drafts' && view!=='proposals' && <aside className="context-panel">
@@ -1497,11 +1526,11 @@ export default function Home() {
                     spec.state !== "done" &&
                     spec.state !== "invalidated" && (
                       <div className="agent-assignment-actions agent-assignment-vertical">
-                                <FlowTrackingChoice checked={trackingChecked} reason={trackingReason} disabled={busy} onChange={setTrackingChecked}/>
-                      <AgentPicker agents={agents} value={assignmentAgentId} onChange={setAssignmentAgentId} disabled={busy}/>
+                      <FlowTrackingChoice checked={trackingChecked} reason={trackingReason} disabled={!canWrite||busy} onChange={setTrackingChecked}/>
+                      <AgentPicker agents={agents} value={assignmentAgentId} onChange={setAssignmentAgentId} disabled={!canWrite||busy}/>
                       <button
                         className="btn btn-small btn-full"
-                        disabled={busy || !assignmentValid || externalStopUnknown}
+                        disabled={!canWrite || busy || !assignmentValid || externalStopUnknown}
                         onClick={() =>
                           authorizeAttempt("Попытка разрешена человеком. Ожидается подтверждение назначенного исполнителя")
                         }
@@ -1521,6 +1550,7 @@ export default function Home() {
                       requests={selectedRequests}
                       busy={busy}
                       command={command}
+                      readOnly={!canWrite}
                     />
                   )}
                   <button
@@ -1768,6 +1798,7 @@ function DecisionForm({
   version,
   state,
   onOpenRequest,
+  readOnly=false,
 }: {
   request: DecisionRequest;
   spec?: Spec;
@@ -1777,13 +1808,14 @@ function DecisionForm({
   version:number;
   state:ProjectState;
   onOpenRequest:(request:DecisionRequest)=>void;
+  readOnly?:boolean;
 }) {
   const [text, setText] = useState(""),
     [option, setOption] = useState(""),
     [mode, setMode] = useState<"decide" | "reject" | "defer">("decide");
   const [remediationAgentId,setRemediationAgentId]=useState(r.agentId);
   const [baseVersion,setBaseVersion]=useState(version);
-  const closed=r.state!=='pending';
+  const closed=readOnly||r.state!=='pending';
   const remediationValid=remediationAgentId===AGENT_ID||agents.some(a=>a.id===remediationAgentId&&!a.revokedAt);
   const outcome = r.decision?.outcome;
   const submit = async (e: FormEvent) => {
@@ -1860,7 +1892,8 @@ function DecisionForm({
       )}
       {(r.state === 'pending'||text.length>0||option.length>0) && (
         <form onSubmit={submit}>
-          {closed&&<p className="helper-note">Запрос уже закрыт. Ваш введённый текст сохранён для сравнения; повторная запись недоступна.</p>}
+          {r.state!=='pending'&&<p className="helper-note">Запрос уже закрыт. Ваш введённый текст сохранён для сравнения; повторная запись недоступна.</p>}
+          {readOnly&&r.state==='pending'&&<p className="helper-note">Роль Viewer разрешает читать запрос и его источники. Ответ может записать Owner или Contributor.</p>}
           {!closed&&version!==baseVersion&&<p className="helper-note">Проект изменился после начала ответа. <button type="button" className="text-btn" onClick={()=>setBaseVersion(version)}>Обновить версию после проверки</button></p>}
           <div className="decision-mode">
             <button
@@ -2064,7 +2097,7 @@ function DecisionForm({
           Отложено до {shortDate(r.deferredUntil!)}: {r.deferredReason}
         </p>
       )}
-      <DecisionMaintenance request={r} state={state} busy={busy} command={command} onOpenRequest={onOpenRequest}/>
+      <DecisionMaintenance request={r} state={state} busy={busy||readOnly} command={command} onOpenRequest={onOpenRequest}/>
       <div className="request-id">
         <span>Decision Request</span>
         <code>{r.id}</code>
@@ -2139,6 +2172,7 @@ function ExecutionPanel({
   busy,
   command,
   compact = false,
+  readOnly = false,
 }: {
   execution?: ProjectState["executions"][number];
   requests: DecisionRequest[];
@@ -2148,6 +2182,7 @@ function ExecutionPanel({
   busy: boolean;
   command: (p: Payload, n?: string, expectedVersion?:number) => Promise<boolean>;
   compact?: boolean;
+  readOnly?: boolean;
 }) {
   if (!e)
     return <div className="execution-empty">Исполнение ещё не начато.</div>;
@@ -2178,64 +2213,66 @@ function ExecutionPanel({
           Остановка запрошена. Фактическая остановка ещё не подтверждена.
         </p>
       )}
-      <OperatorRecovery key={e.id} version={version} execution={e} revoked={agents.some(a=>a.id===e.agentId&&!!a.revokedAt)} busy={busy} command={command}/>
-      {(e.state === "waiting_for_human" || e.state === "paused") &&
-        !e.resumeAuthorized && (
+      {!readOnly&&<>
+        <OperatorRecovery key={e.id} version={version} execution={e} revoked={agents.some(a=>a.id===e.agentId&&!!a.revokedAt)} busy={busy} command={command}/>
+        {(e.state === "waiting_for_human" || e.state === "paused") &&
+          !e.resumeAuthorized && (
+            <button
+              className="btn btn-small btn-full"
+              disabled={busy || blocking}
+              title={
+                blocking
+                  ? "Сначала разрешите блокирующие запросы и устраните блокеры"
+                  : undefined
+              }
+              onClick={() =>
+                command(
+                  { type: "resumeExecution", executionId: e.id },
+                  "Продолжение разрешено. Агент должен подтвердить применение",
+                )
+              }
+            >
+              <Play size={13} />
+              Разрешить продолжение
+            </button>
+          )}
+        {(e.state === "queued" || e.state === "paused") && (
           <button
             className="btn btn-small btn-full"
-            disabled={busy || blocking}
-            title={
-              blocking
-                ? "Сначала разрешите блокирующие запросы и устраните блокеры"
-                : undefined
-            }
+            disabled={busy}
             onClick={() =>
               command(
-                { type: "resumeExecution", executionId: e.id },
-                "Продолжение разрешено. Агент должен подтвердить применение",
+                {
+                  type: "cancelExecution",
+                  executionId: e.id,
+                  reason: "Человек завершил разрешённую попытку без продолжения",
+                },
+                "Попытка отменена человеком",
               )
             }
           >
-            <Play size={13} />
-            Разрешить продолжение
+            Отменить попытку
           </button>
         )}
-      {(e.state === "queued" || e.state === "paused") && (
-        <button
-          className="btn btn-small btn-full"
-          disabled={busy}
-          onClick={() =>
-            command(
-              {
-                type: "cancelExecution",
-                executionId: e.id,
-                reason: "Человек завершил разрешённую попытку без продолжения",
-              },
-              "Попытка отменена человеком",
-            )
-          }
-        >
-          Отменить попытку
-        </button>
-      )}
-      {(e.state === "running" || e.state === "queued") && !e.stopRequested && (
-        <button
-          className="btn btn-small btn-full"
-          disabled={busy}
-          onClick={() =>
-            command(
-              {
-                type: "requestStop",
-                executionId: e.id,
-                reason: "Человек запросил остановку из Human View",
-              },
-              "Остановка запрошена. Подтверждение ожидается",
-            )
-          }
-        >
-          Запросить остановку
-        </button>
-      )}
+        {(e.state === "running" || e.state === "queued") && !e.stopRequested && (
+          <button
+            className="btn btn-small btn-full"
+            disabled={busy}
+            onClick={() =>
+              command(
+                {
+                  type: "requestStop",
+                  executionId: e.id,
+                  reason: "Человек запросил остановку из Human View",
+                },
+                "Остановка запрошена. Подтверждение ожидается",
+              )
+            }
+          >
+            Запросить остановку
+          </button>
+        )}
+      </>}
     </section>
   );
 }

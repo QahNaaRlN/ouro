@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,mkdir,writeFile,symlink,link,rename,rm,readFile} from 'node:fs/promises';
+import {mkdtemp,mkdir,writeFile,link,rename,rm,readFile} from 'node:fs/promises';
+import {createTestSymlink} from './symlink-helper';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
@@ -17,10 +18,10 @@ async function fixture(){
 }
 const rejected=(error:unknown)=>typeof(error as {code?:string}).code==='string'&&!(error as {message:string}).message.includes('super-secret');
 
-test('WF01 an arbitrary folder without Git resolves canonically and aliases share an immutable identity',async()=>{
+test('WF01 an arbitrary folder without Git resolves canonically and aliases share an immutable identity',async(t)=>{
  const f=await fixture();try{
   const fs=await api();await writeFile(path.join(f.root,'README.md'),'Обычная папка, без Git.');
-  const alias=path.join(f.base,'alias');await symlink(f.root,alias,'dir');
+  const alias=path.join(f.base,'alias');if(!await createTestSymlink(f.root,alias,'dir')){t.skip('Создание символических ссылок недоступно в этом окружении.');return;}
   const resolved=await fs.resolveWorkspaceFolder(f.root),viaAlias=await fs.resolveWorkspaceFolder(alias);
   assert.deepEqual(viaAlias,resolved);assert.equal(resolved.canonicalPath,f.root);assert.equal(resolved.displayName,'project');
   assert.match(resolved.identity.dev,/^\d+$/);assert.match(resolved.identity.ino,/^\d+$/);
@@ -48,7 +49,7 @@ test('WF02 file IO stays relative, hashes actual UTF-8 content and never writes 
 test('WF03 inner symlinks, secret paths and binary/oversized text cannot become agent context',async()=>{
  const f=await fixture();try{
   const fs=await api();await writeFile(path.join(f.base,'outside.txt'),'super-secret');await mkdir(path.join(f.base,'outside-dir'));
-  await symlink(path.join(f.base,'outside.txt'),path.join(f.root,'link.txt'));await symlink(path.join(f.base,'outside-dir'),path.join(f.root,'link-dir'),'dir');
+  const fileLink=await createTestSymlink(path.join(f.base,'outside.txt'),path.join(f.root,'link.txt')),directoryLink=fileLink&&await createTestSymlink(path.join(f.base,'outside-dir'),path.join(f.root,'link-dir'),'dir');
   await link(path.join(f.base,'outside.txt'),path.join(f.root,'hard-link.txt'));
   const protectedFiles=['.env','.env.local','id_rsa','private.pem','credentials.json'];
   for(const name of protectedFiles)await writeFile(path.join(f.root,name),'super-secret');
@@ -57,8 +58,8 @@ test('WF03 inner symlinks, secret paths and binary/oversized text cannot become 
   await writeFile(path.join(f.root,'safe.txt'),'safe');
   const root=await fs.resolveWorkspaceFolder(f.root),binding={id:'binding',canonicalPath:root.canonicalPath,identity:root.identity};
   const listed=await fs.listWorkspaceFiles(binding);assert.deepEqual(listed.entries.map(entry=>entry.name),['invalid.txt','large.txt','nul.bin','safe.txt']);
-  for(const input of [...protectedFiles,'.git/data.txt','node_modules/data.txt','.ssh/data.txt','.aws/data.txt','link.txt','hard-link.txt','link-dir/child.txt','nul.bin','invalid.txt','large.txt'])await assert.rejects(fs.readWorkspaceFile(binding,input),rejected);
-  for(const input of ['.git','node_modules','.ssh','.aws','link-dir'])await assert.rejects(fs.listWorkspaceFiles(binding,input),rejected);
+  for(const input of [...protectedFiles,'.git/data.txt','node_modules/data.txt','.ssh/data.txt','.aws/data.txt',...(fileLink?['link.txt']:[]),'hard-link.txt',...(directoryLink?['link-dir/child.txt']:[]),'nul.bin','invalid.txt','large.txt'])await assert.rejects(fs.readWorkspaceFile(binding,input),rejected);
+  for(const input of ['.git','node_modules','.ssh','.aws',...(directoryLink?['link-dir']:[])])await assert.rejects(fs.listWorkspaceFiles(binding,input),rejected);
   await assert.rejects(fs.resolveWorkspaceFolder(path.join(f.root,'.ssh')),rejected);
  }finally{await f.close();}
 });
@@ -82,7 +83,7 @@ test('WF05 missing/replaced roots never silently rebind, even if the path and fi
   await rename(f.root,path.join(f.base,'old'));await assert.rejects(fs.assertWorkspaceFolder(binding),rejected);
   await mkdir(f.root);await writeFile(path.join(f.root,'same.txt'),'new');
   await assert.rejects(fs.assertWorkspaceFolder(binding),rejected);await assert.rejects(fs.listWorkspaceFiles(binding),rejected);await assert.rejects(fs.readWorkspaceFile(binding,'same.txt'),rejected);
-  await rm(f.root,{recursive:true});await symlink(path.join(f.base,'old'),f.root,'dir');await assert.rejects(fs.assertWorkspaceFolder(binding),rejected);
+  await rm(f.root,{recursive:true});if(await createTestSymlink(path.join(f.base,'old'),f.root,'dir'))await assert.rejects(fs.assertWorkspaceFolder(binding),rejected);
  }finally{await f.close();}
 });
 

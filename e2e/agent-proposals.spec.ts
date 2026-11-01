@@ -59,7 +59,7 @@ test('P06/P07 real HTTP and stdio proposals show sources and human adoption retr
   expect(current.revisions.find(r=>r.id===draft.revisionIds[0])!.flow).toEqual(f.flow);
   await expect(page.getByRole('region',{name:'Происхождение предложения агента'})).toContainText('v1');
   const updates=await f.client.callTool({name:'ouro.get_updates',arguments:{afterCursor:f.proposalRevision.sourceCursor}});expect(JSON.stringify(updates.structuredContent)).not.toContain(adoptedTitle);
-  await stdio.connect(new StdioClientTransport({command:process.execPath,args:[path.resolve('packages/mcp/bin/ouro-mcp.mjs')],env:{PATH:process.env.PATH??'',OURO_URL:f.url.href,OURO_AGENT_TOKEN:f.token},stderr:'pipe'}));
+  await stdio.connect(new StdioClientTransport({command:process.execPath,args:[path.resolve('packages/mcp/bin/ouro-mcp.mjs')],env:{PATH:process.env.PATH??'',ELECTRON_RUN_AS_NODE:'1',OURO_URL:f.url.href,OURO_AGENT_TOKEN:f.token},stderr:'pipe'}));
   expect(f.client.getServerVersion()?.version).toBe(packageInfo.version);expect(stdio.getServerVersion()?.version).toBe(packageInfo.version);
   expect((await stdio.listTools()).tools.map(t=>t.name)).toContain('ouro.submit_proposal');
   const summary={kind:'reality_summary',title:'Сводка через настоящий stdio',findings:[{text:'Есть первичный источник.',sourceEventIds:[f.sourceId]}],interpretation:'Интерпретация внешнего клиента.',limitations:'Это тест протокола, не качества модели.'};

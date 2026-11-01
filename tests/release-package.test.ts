@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {copyFile,mkdtemp,mkdir,writeFile,readFile,readdir,rm,symlink} from 'node:fs/promises';
+import {copyFile,mkdtemp,mkdir,writeFile,readFile,readdir,rm} from 'node:fs/promises';
+import {createTestSymlink} from './symlink-helper';
 import path from 'node:path';
 import {tmpdir} from 'node:os';
 import {spawnSync} from 'node:child_process';
@@ -15,7 +16,7 @@ const run=(cwd:string,args:string[])=>{
 };
 async function fixture(){
  const directory=await mkdtemp(path.join(tmpdir(),"ouro release & данные ' ")),repo=path.join(directory,'repository'),out=path.join(directory,'output');await mkdir(repo);
- run(repo,['init','-q']);run(repo,['config','user.name','Release fixture']);run(repo,['config','user.email','release-fixture@example.invalid']);
+ run(repo,['init','-q']);run(repo,['config','core.autocrlf','false']);run(repo,['config','user.name','Release fixture']);run(repo,['config','user.email','release-fixture@example.invalid']);
  await mkdir(path.join(repo,'packages/protocol'),{recursive:true});
  await writeFile(path.join(repo,'package.json'),JSON.stringify({name:'ouro',version:'0.1.0-beta.1'}));await writeFile(path.join(repo,'packages/protocol/package.json'),JSON.stringify({name:'@ouro/protocol',version:'0.1.2'}));
  await writeFile(path.join(repo,'README.md'),'# Committed release\n');await writeFile(path.join(repo,'.env.example'),'EXAMPLE=value\n');
@@ -62,7 +63,7 @@ test('FRL04 tracked runtime, key files and symlink entries are refused before an
  for(const candidate of ['.ouro/postgres/data','node_modules/package.json','.next/BUILD_ID','credentials.json','keys/id_ed25519','private.key','packages/protocol/dist/index.mjs','linked-source']){
   const f=await fixture();try{
    const file=path.join(f.repo,candidate);await mkdir(path.dirname(file),{recursive:true});
-   if(candidate==='linked-source')await symlink('README.md',file);else await writeFile(file,'FAKE-PRIVATE-FIXTURE');
+   if(candidate==='linked-source'){if(!await createTestSymlink('README.md',file))continue;}else await writeFile(file,'FAKE-PRIVATE-FIXTURE');
    run(f.repo,['add','-f',candidate]);run(f.repo,['commit','-qm','test: add forbidden tracked fixture']);
    await assert.rejects(packRelease({repoDir:f.repo,outDir:f.out}),/tracked|private|runtime|links/i);
    await assert.rejects(readdir(f.out),{code:'ENOENT'});

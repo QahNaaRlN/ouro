@@ -15,7 +15,7 @@ export function MeridianPin({label,pin}:{label:string;pin:Pin}){
   return <div className="meridian-pin"><span>{label}</span><strong>{pin.key.id} · r{pin.revision}</strong><code>{pin.sha256}</code></div>;
 }
 
-export default function MeridianPanel({state,onSnapshot,onOpenSpec,theme,pendingIntent,participantKey}:{state:ProjectState;onSnapshot:(data:unknown)=>void|Promise<void>;onOpenSpec?:(id:string)=>void;theme:'light'|'dark';pendingIntent:MeridianIntentCache;participantKey:string}){
+export default function MeridianPanel({state,onSnapshot,onOpenSpec,theme,pendingIntent,participantKey,readOnly=false}:{state:ProjectState;onSnapshot:(data:unknown)=>void|Promise<void>;onOpenSpec?:(id:string)=>void;theme:'light'|'dark';pendingIntent:MeridianIntentCache;participantKey:string;readOnly?:boolean}){
   const [recovered]=useState(()=>{
     const saved=pendingIntent.current;
     if(saved&&saved.projectId===state.projectId&&saved.participantKey===participantKey)return structuredClone(saved);
@@ -31,7 +31,7 @@ export default function MeridianPanel({state,onSnapshot,onOpenSpec,theme,pending
     const saved=pendingIntent.current;
     if(saved?.projectId===state.projectId&&saved.participantKey===participantKey&&saved.body.requestId===body.requestId)pendingIntent.current=null;
   };
-  const sealed=busy||uncertain||createdId!==null;
+  const sealed=busy||uncertain||createdId!==null||readOnly;
   const load=async(event:ChangeEvent<HTMLInputElement>)=>{
     if(sealed)return;const file=event.target.files?.[0],epoch=++readEpoch.current;
     setView(null);setContent(null);setRawDocument('');setError('');setNotice('');setFilename('');pending.current=null;

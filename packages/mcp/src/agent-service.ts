@@ -45,7 +45,7 @@ const fail=(code:string,message:string):never=>{throw new DomainError(code,messa
 const terminal=new Set(['succeeded','failed','cancelled','skipped']);
 
 /** Read/write facade for an already authenticated identity. It grants no human capabilities. */
-export function createAgentService({ store, actor,projectId=PROJECT_ID,workspace }: AgentServiceDependencies) {
+export function createAgentService({ store, actor, projectId=PROJECT_ID, workspace }: AgentServiceDependencies) {
   const assertActor=()=>{
     if(actor.kind!=='agent'||!actor.id||!actor.projectIds.includes(projectId))fail('FORBIDDEN','Требуется назначенная агентская идентичность этого проекта.');
   };

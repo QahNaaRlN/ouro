@@ -1,6 +1,6 @@
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { authenticatedAgent } from '@/lib/auth';
-import { assertMcpRequest } from '@/lib/connection-config';
+import { assertMcpRequest, requestedProjectId } from '@/lib/connection-config';
 import { apiError } from '@/lib/http';
 import { executeCommand,getEvents,getProject } from '@/lib/store';
 import { PROJECT_ID,AGENT_ID } from '@/packages/core/src';
@@ -11,8 +11,9 @@ export async function POST(request:Request){
   let server:ReturnType<typeof createOuroMcpServer>|undefined;
   try{
     assertMcpRequest(request);
-    const actor=await authenticatedAgent(request,PROJECT_ID,AGENT_ID);
-    server=createOuroMcpServer({store:{getProject,getEvents,executeCommand},actor});
+    const projectId=requestedProjectId(request);
+    const actor=await authenticatedAgent(request,projectId,AGENT_ID);
+    server=createOuroMcpServer({store:{getProject:()=>getProject(projectId,actor),getEvents:(after=0)=>getEvents(after,projectId,actor),executeCommand:(body,commandActor)=>executeCommand(body,commandActor,projectId)},actor,projectId});
     const transport=new WebStandardStreamableHTTPServerTransport({sessionIdGenerator:undefined,enableJsonResponse:true,maxRequestBodySize:256_000});
     await server.connect(transport);
     const response=await transport.handleRequest(request);
