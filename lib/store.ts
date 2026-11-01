@@ -369,11 +369,12 @@ function createProjectStore(projectId:string,owner:StoreOwner){
       return rows.rows.map(publicGitHubJob);
     })),
     claimGitHubDelivery: (claimOptions:{now?:number;leaseMs?:number;projectId?:string}={}):Promise<ClaimedGitHubDelivery|null>=>serialize(()=>db.transaction(async tx=>{
-      const now=claimOptions.now??Date.now(),leaseMs=claimOptions.leaseMs??30_000,projectId=claimOptions.projectId??null;
+      // The legacy worker retains its global queue; scoped stores stay pinned.
+      const now=claimOptions.now??Date.now(),leaseMs=claimOptions.leaseMs??30_000,selectedProjectId=claimOptions.projectId??(projectId===PROJECT_ID?null:projectId);
       if(!Number.isFinite(now)||!Number.isFinite(leaseMs)||leaseMs<100||leaseMs>300_000)throw new StoreError('VALIDATION_ERROR','Некорректная длительность lease.');
-      if(projectId)await tx.query('SELECT version FROM ouro_projects WHERE id=$1 FOR UPDATE',[projectId]);
-      await tx.query(`UPDATE ouro_github_jobs SET status='retryable',last_error='ATTEMPT_LIMIT',lease_token=NULL,lease_until=NULL,updated_at=$1 FROM ouro_github_deliveries d WHERE d.id=ouro_github_jobs.delivery_id AND ($2::text IS NULL OR d.project_id=$2) AND status='processing' AND lease_until<=$1 AND attempts>=5`,[new Date(now).toISOString(),projectId]);
-      const candidates=await tx.query<GitHubJobRow>(`${githubJobSelection} WHERE ($1::text IS NULL OR d.project_id=$1) AND j.attempts<5 AND ((j.status IN ('pending','retryable') AND j.next_attempt_at<=$2) OR (j.status='processing' AND j.lease_until<=$2)) ORDER BY d.received_at,d.id LIMIT 1`,[projectId,new Date(now).toISOString()]);
+      if(selectedProjectId)await tx.query('SELECT version FROM ouro_projects WHERE id=$1 FOR UPDATE',[selectedProjectId]);
+      await tx.query(`UPDATE ouro_github_jobs SET status='retryable',last_error='ATTEMPT_LIMIT',lease_token=NULL,lease_until=NULL,updated_at=$1 FROM ouro_github_deliveries d WHERE d.id=ouro_github_jobs.delivery_id AND ($2::text IS NULL OR d.project_id=$2) AND status='processing' AND lease_until<=$1 AND attempts>=5`,[new Date(now).toISOString(),selectedProjectId]);
+      const candidates=await tx.query<GitHubJobRow>(`${githubJobSelection} WHERE ($1::text IS NULL OR d.project_id=$1) AND j.attempts<5 AND ((j.status IN ('pending','retryable') AND j.next_attempt_at<=$2) OR (j.status='processing' AND j.lease_until<=$2)) ORDER BY d.received_at,d.id LIMIT 1`,[selectedProjectId,new Date(now).toISOString()]);
       const row=candidates.rows[0];if(!row)return null;
       const leaseToken=randomUUID();await tx.query(`UPDATE ouro_github_jobs SET status='processing',attempts=attempts+1,lease_token=$2,lease_until=$3,updated_at=$4 WHERE delivery_id=$1`,[row.id,leaseToken,new Date(now+leaseMs).toISOString(),new Date(now).toISOString()]);
       return {id:row.id,deliveryId:row.delivery_id,projectId:row.project_id,payload:row.payload,bindingIds:row.binding_ids,leaseToken,attempts:row.attempts+1};
