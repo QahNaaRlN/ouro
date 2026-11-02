@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ReactFlow,
   Background,
-  Controls,
   MiniMap,
   Handle,
   Position,
@@ -13,17 +12,19 @@ import {
   type Node,
   type Edge,
   type NodeChange,
+  type ReactFlowInstance,
 } from "@xyflow/react";
-import dagre from "@dagrejs/dagre";
 import {
   ArrowUpRight,
   GitBranch,
-  CircleCheck,
-  CircleDashed,
-  LockKeyhole,
-  CirclePause,
+  CircleHelp,
 } from "lucide-react";
 import type { ProjectState, Spec, SpecState } from "@/packages/core/src";
+import {getCanonicalStatusPresentation,getSpecWorkPresentation} from '@/packages/core/src/work-presentation';
+import {WorkStatus} from './work-status';
+import {InitialGraphViewportFit,useGraphMeasurements,WorkspaceGraphControls} from './workspace-graph-controls';
+import {isExecutingDependency,layoutRoadmap,ROADMAP_FIT_OPTIONS,ROADMAP_MIN_ZOOM,ROADMAP_NODE_HEIGHT,ROADMAP_NODE_WIDTH} from '@/lib/workspace-graph';
+import './workspace-graphs.css';
 
 export const specLabels: Record<SpecState, string> = {
   idea: "Идея",
@@ -34,43 +35,16 @@ export const specLabels: Record<SpecState, string> = {
   invalidated: "Неактуально",
 };
 export function Status({ state }: { state: string }) {
-  const Icon =
-    state === "done" || state === "succeeded" || state === "resolved"
-      ? CircleCheck
-      : state === "blocked" || state === "failed"
-        ? LockKeyhole
-        : state === "paused" || state === "waiting_for_human"
-          ? CirclePause
-          : CircleDashed;
-  const names: Record<string, string> = {
-    ...specLabels,
-    queued: "В очереди",
-    running: "Выполняется",
-    waiting_for_human: "Ожидает человека",
-    paused: "Приостановлено",
-    succeeded: "Попытка успешна",
-    failed: "Ошибка попытки",
-    cancelled: "Отменено",
-    skipped: "Пропущено",
-    pending: "Нужно решение",
-    resolved: "Решение записано",
-    withdrawn: "Отозван",
-    superseded: "Замещён",
-  };
-  return (
-    <span className={`status status-${state}`}>
-      <Icon size={13} />
-      {names[state] ?? state}
-    </span>
-  );
+  return <WorkStatus presentation={getCanonicalStatusPresentation(state)}/>;
 }
 
 type CardData = {
   spec: Spec;
-  count: number;
   revision: number;
   selected: boolean;
   goal: string;
+  presentation:ReturnType<typeof getSpecWorkPresentation>;
+  openRequests?: (id:string)=>void;
 };
 type SpecFlowNode = Node<CardData, "spec">;
 function SpecNode({ data }: NodeProps<SpecFlowNode>) {
@@ -81,18 +55,13 @@ function SpecNode({ data }: NodeProps<SpecFlowNode>) {
         <span className="mono">{data.spec.humanId}</span>
         <ArrowUpRight size={14} />
       </div>
-      <div className="node-title">{data.spec.title}</div>
+      <div className="node-title" title={data.spec.title}>{data.spec.title}</div>
       <p className="node-goal">{data.goal}</p>
       <div className="node-bottom">
-        <Status state={data.spec.state} />
+        <WorkStatus presentation={data.presentation}/>
         <span className="node-revision">r{data.revision}</span>
       </div>
-      {data.count > 0 && (
-        <div className="node-attention">
-          {data.count}{" "}
-          {data.count === 1 ? "запрос человеку" : "запроса человеку"}
-        </div>
-      )}
+      {data.presentation.currentRequestCount>0&&(data.openRequests?<button className="node-attention nodrag nopan" aria-label={`Вопросы спеки ${data.spec.humanId}`} onClick={event=>{event.stopPropagation();data.openRequests?.(data.spec.id);}}><CircleHelp size={12}/>{data.presentation.currentRequestCount} запросов · открыто {data.presentation.pendingRequestCount}</button>:<div className="node-attention"><CircleHelp size={12}/>{data.presentation.currentRequestCount} запросов · открыто {data.presentation.pendingRequestCount}</div>)}
       <Handle type="source" position={Position.Right} />
     </div>
   );
@@ -107,6 +76,10 @@ export default function Roadmap({
   status,
   layoutKey,
   visibleIds,
+  filterMode='dim',
+  onOpenRequests,
+  selectLabel='Открыть процесс',
+  active=true,
 }: {
   state: ProjectState;
   selected: string | null;
@@ -115,34 +88,22 @@ export default function Roadmap({
   status: string;
   layoutKey: number;
   visibleIds?: string[];
+  filterMode?:'dim'|'hide';
+  onOpenRequests?:(id:string)=>void;
+  selectLabel?:string;
+  active?:boolean;
 }) {
+  const containerRef=useRef<HTMLDivElement>(null);
+  const [flowInstance,setFlowInstance]=useState<ReactFlowInstance<SpecFlowNode,Edge>|null>(null);
+  const measurements=useGraphMeasurements<SpecFlowNode>();
   // Positions depend only on the structural graph. Incoming events never move the canvas.
   const structuralKey =
     state.specs.map((s) => s.id).join("|") +
     ";" +
-    state.dependencies.map((d) => `${d.from}:${d.to}`).join("|") +
+    state.dependencies.map((d) => `${d.from}:${d.to}:${d.type}`).join("|") +
     layoutKey;
   const initialPositions = useMemo(() => {
-    const g = new dagre.graphlib.Graph()
-      .setGraph({
-        rankdir: "LR",
-        nodesep: 48,
-        ranksep: 74,
-        marginx: 30,
-        marginy: 30,
-      })
-      .setDefaultEdgeLabel(() => ({}));
-    state.specs.forEach((s) => g.setNode(s.id, { width: 264, height: 195 }));
-    state.dependencies
-      .filter((d) => d.type === "depends_on")
-      .forEach((d) => g.setEdge(d.from, d.to));
-    dagre.layout(g);
-    return Object.fromEntries(
-      state.specs.map((s) => {
-        const n = g.node(s.id);
-        return [s.id, { x: n.x - 132, y: n.y - 97.5 }];
-      }),
-    );
+    return layoutRoadmap(state);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [structuralKey]);
   const [moved, setMoved] = useState<Record<string, { x: number; y: number }>>(
@@ -153,36 +114,42 @@ export default function Roadmap({
   }, [layoutKey]);
   const visible = (s: Spec) =>
     visibleIds ? visibleIds.includes(s.id) :
-    (!query ||
+    (!query.trim() ||
       `${s.title} ${s.humanId}`
         .toLocaleLowerCase()
-        .includes(query.toLocaleLowerCase())) &&
+        .includes(query.trim().toLocaleLowerCase())) &&
     (!status || s.state === status);
-  const nodes: SpecFlowNode[] = state.specs.map((s) => ({
+  const nodes: SpecFlowNode[] = state.specs.map((s) => {
+    const presentation=getSpecWorkPresentation(state,s);
+    const revision=state.revisions.find(r=>r.id===(s.activeRevisionId??s.revisionIds.at(-1)));
+    return ({
     id: s.id,
     type: "spec",
-    width: 264,
-    height: 195,
+    width: ROADMAP_NODE_WIDTH,
+    height: ROADMAP_NODE_HEIGHT,
+    measured:measurements.measured[s.id],
+    hidden:filterMode==='hide'&&!visible(s),
+    selected:s.id===selected,
     position: moved[s.id] ?? initialPositions[s.id] ?? { x: 0, y: 0 },
     data: {
       spec: s,
-      count: state.requests.filter(
-        (r) => r.specId === s.id && r.state === "pending",
-      ).length,
-      revision:
-        state.revisions.find((r) => r.id === s.activeRevisionId)?.revision ?? 1,
-      goal:
-        state.revisions.find((r) => r.id === s.activeRevisionId)?.goal ??
-        "Ожидание ещё не активировано",
+      presentation,
+      openRequests:onOpenRequests,
+      revision:revision?.revision??1,
+      goal:revision?.goal??'Ожидание ещё не описано',
       selected: s.id === selected,
     },
     style: { opacity: visible(s) ? 1 : 0.2 },
-    ariaLabel: `Открыть процесс ${s.humanId}: ${s.title}. ${specLabels[s.state]}`,
-  }));
+    ariaLabel: `${selectLabel} ${s.humanId}: ${s.title}. ${presentation.label}`,
+  });});
+  const hiddenIds=new Set(nodes.filter(node=>node.hidden).map(node=>node.id));
+  const presentations=new Map(nodes.map(node=>[node.id,node.data.presentation]));
   const edges: Edge[] = state.dependencies.map((d) => ({
     id: d.id,
     source: d.from,
     target: d.to,
+    hidden:hiddenIds.has(d.from)||hiddenIds.has(d.to),
+    animated:isExecutingDependency(state,d,presentations.get(d.to)),
     type: "smoothstep",
     markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
     style: {
@@ -194,6 +161,7 @@ export default function Roadmap({
     labelStyle: { fill: "var(--text-muted)", fontSize: 10 },
   }));
   const change = useCallback((changes: NodeChange[]) => {
+    measurements.onChanges(changes as NodeChange<SpecFlowNode>[]);
     const positions = changes.filter(
       (c) => c.type === "position" && c.position,
     );
@@ -206,9 +174,9 @@ export default function Roadmap({
       }
       return next;
     });
-  }, []);
+  }, [measurements.onChanges]);
   return (
-    <div className="graph-container" onKeyDownCapture={event => {
+    <div ref={containerRef} className="graph-container workspace-graph workspace-roadmap" onKeyDownCapture={event => {
       if ((event.key !== 'Enter' && event.key !== ' ') || event.repeat) return;
       const target = event.target;
       if (!(target instanceof HTMLElement) || !target.classList.contains('react-flow__node')) return;
@@ -225,23 +193,24 @@ export default function Roadmap({
         nodeTypes={nodeTypes}
         onNodesChange={change}
         onNodeClick={(_, n) => onSelect(n.id)}
-        fitView
-        fitViewOptions={{ padding: 0.14, maxZoom: 0.9 }}
-        minZoom={0.25}
+        onInit={setFlowInstance}
+        fitViewOptions={ROADMAP_FIT_OPTIONS}
+        minZoom={ROADMAP_MIN_ZOOM}
         maxZoom={1.5}
         nodesConnectable={false}
         deleteKeyCode={null}
         proOptions={{ hideAttribution: false }}
         ariaLabelConfig={{
-          'node.a11yDescription.default': 'Нажмите Enter или пробел, чтобы открыть процесс спеки. Стрелки перемещают карточку.',
+          'node.a11yDescription.default': `Нажмите Enter или пробел: ${selectLabel.toLocaleLowerCase()}. Стрелки перемещают карточку.`,
           "controls.zoomIn.ariaLabel": "Приблизить",
           "controls.zoomOut.ariaLabel": "Отдалить",
-          "controls.fitView.ariaLabel": "Показать весь граф",
+          "controls.fitView.ariaLabel": "Вписать граф",
           "controls.interactive.ariaLabel": "Включить перемещение",
         }}
       >
         <Background gap={24} size={1} color="var(--graph-dot)" />
-        <Controls showInteractive={false} />
+        <InitialGraphViewportFit active={active} containerRef={containerRef} instance={flowInstance} fitOptions={ROADMAP_FIT_OPTIONS}/>
+        <WorkspaceGraphControls containerRef={containerRef} fitOptions={ROADMAP_FIT_OPTIONS}/>
         <MiniMap
           nodeColor="var(--selected)"
           maskColor="var(--minimap-mask)"
@@ -249,6 +218,7 @@ export default function Roadmap({
           zoomable
         />
       </ReactFlow>
+      {filterMode==='hide'&&!nodes.some(node=>!node.hidden)&&<div className="workspace-roadmap-empty" role="status">Ничего не найдено. Измените поиск или фильтры.</div>}
       <div className="graph-caption">
         <GitBranch size={13} />
         <span>A → B: для B нужна принятая A</span>

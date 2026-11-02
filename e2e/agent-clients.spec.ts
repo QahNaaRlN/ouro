@@ -1,7 +1,13 @@
-import {test,expect} from '@playwright/test';
+import {test,expect,type Page} from '@playwright/test';
 import {mkdtemp,readFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+
+async function openConnection(page:Page){
+ await page.getByRole('navigation',{name:'Разделы проекта',exact:true}).getByRole('button',{name:/^Агенты/}).click();
+ await page.getByRole('button',{name:'Подключить агента',exact:true}).click();
+ const dialog=page.getByRole('dialog',{name:'Подключить агента',exact:true});await expect(dialog).toBeVisible();return dialog;
+}
 
 test('CO04/CO05 Cursor and Claude configurations stay project-bound after a one-time key is hidden',async({page,baseURL})=>{
  test.setTimeout(90000);const pageErrors:string[]=[];page.on('pageerror',error=>pageErrors.push(error.message));
@@ -12,13 +18,16 @@ test('CO04/CO05 Cursor and Claude configurations stay project-bound after a one-
   const create=async(rootPath:string,name:string)=>{const response=await page.request.post('/api/projects',{data:{requestId:crypto.randomUUID(),rootPath,name}});expect(response.ok()).toBe(true);return(await response.json()).project as {id:string;name:string};};
   projectA=await create(rootA,`Cursor и Claude ${crypto.randomUUID().slice(0,8)}`);projectB=await create(rootB,`Изолированный клиент ${crypto.randomUUID().slice(0,8)}`);
   await page.goto(`/projects/${projectA.id}`);await expect(page.getByRole('heading',{name:projectA.name,exact:true})).toBeVisible();
-  const panel=page.getByRole('region',{name:'Подключение MCP-агента',exact:true});
+  const dialog=await openConnection(page),panel=dialog.getByRole('region',{name:'Подключение MCP-агента',exact:true});
   const client=panel.getByRole('combobox',{name:'MCP-клиент',exact:true});await expect(client).toBeVisible();await expect(client).toHaveValue('cursor');
-  const name=panel.getByRole('textbox',{name:'Имя подключения',exact:true});await expect(name).toHaveValue('Cursor');
-  await name.fill('Мой Cursor');await client.selectOption('claude-code');await expect(name).toHaveValue('Мой Cursor');await client.selectOption('cursor');
+  await expect(panel.getByRole('textbox',{name:'Имя подключения',exact:true})).toHaveCount(0);
+  await expect(panel.getByText('Имя подключения:',{exact:false})).toContainText(`Cursor · ${projectA.name}`);
+  await client.selectOption('claude-code');await expect(panel.getByText('Имя подключения:',{exact:false})).toContainText(`Claude Code · ${projectA.name}`);await client.selectOption('cursor');
+  await expect(panel.getByRole('button',{name:'Отозвать ключ',exact:true})).toHaveCount(0);
   const registrations:string[]=[];page.on('request',request=>{if(request.method()==='POST'&&new URL(request.url()).pathname===`/api/projects/${projectA!.id}/agents`)registrations.push(request.url());});
   const registration=page.waitForResponse(response=>new URL(response.url()).pathname===`/api/projects/${projectA!.id}/agents`&&response.request().method()==='POST');await panel.getByRole('button',{name:'Зарегистрировать агента',exact:true}).click();
-  const issued=await(await registration).json();agentId=issued.agent.id;const token=await panel.getByLabel('Ключ агента',{exact:true}).inputValue();expect(token===issued.token&&token.length>20).toBe(true);
+  const registered=await registration;expect(registered.request().postDataJSON()).toEqual({name:`Cursor · ${projectA.name}`});const issued=await registered.json();agentId=issued.agent.id;const token=await panel.getByLabel('Ключ агента',{exact:true}).inputValue();expect(token===issued.token&&token.length>20).toBe(true);
+  await page.keyboard.press('Escape');await expect(dialog).not.toBeVisible();await expect(page.getByRole('button',{name:'Подключить агента',exact:true})).toBeFocused();await page.getByRole('button',{name:'Подключить агента',exact:true}).click();await expect(dialog).toBeVisible();expect(await panel.getByLabel('Ключ агента',{exact:true}).inputValue()===token).toBe(true);expect(registrations).toHaveLength(1);
   const config=panel.getByRole('textbox',{name:'Конфигурация MCP проекта',exact:true}),copy=panel.getByRole('button',{name:'Скопировать конфигурацию',exact:true}),download=panel.getByRole('button',{name:'Скачать JSON',exact:true});
   await expect(copy).toBeDisabled();await expect(download).toBeDisabled();await expect(config).toHaveValue('');
   const keyFile=join(rootA,'..',`ключ MCP's ${crypto.randomUUID()}.key`);await panel.getByLabel('Файл ключа агента',{exact:true}).fill(keyFile);
@@ -27,12 +36,14 @@ test('CO04/CO05 Cursor and Claude configurations stay project-bound after a one-
   const received=page.waitForEvent('download');await download.click();const file=await received;expect(file.suggestedFilename()).toBe('ouro-cursor-mcp.json');const data=await readFile((await file.path())!,'utf8');expect(JSON.parse(data)).toEqual(cursor);expect(data.includes(token)).toBe(false);
   await panel.getByRole('button',{name:'Ключ сохранён — скрыть',exact:true}).click();await expect(panel.getByLabel('Ключ агента',{exact:true})).toHaveCount(0);await expect(config).toHaveValue(JSON.stringify(cursor,null,2));
   await client.selectOption('claude-code');const code=await parsed();expect(code.mcpServers[serverName].type).toBe('stdio');await expect(panel.getByTestId('client-config-instructions')).toContainText('.mcp.json');
-  const single=panel.getByRole('textbox',{name:'Server entry для Claude Code',exact:true});await panel.getByText('Одна server entry для Claude Code CLI',{exact:true}).click();expect(JSON.parse(await single.inputValue())).toEqual(code.mcpServers[serverName]);expect(JSON.parse(await single.inputValue())).not.toHaveProperty('mcpServers');
+  const single=panel.getByRole('textbox',{name:'Server entry для Claude Code',exact:true});await panel.getByRole('button',{name:'Одна server entry для Claude Code CLI',exact:true}).click();expect(JSON.parse(await single.inputValue())).toEqual(code.mcpServers[serverName]);expect(JSON.parse(await single.inputValue())).not.toHaveProperty('mcpServers');
   await client.selectOption('claude-desktop');expect((await parsed()).mcpServers[serverName]).not.toHaveProperty('type');await expect(panel.getByTestId('client-config-instructions')).toContainText('claude_desktop_config.json');
   await client.selectOption('chatgpt');await expect(panel.getByTestId('client-config-instructions')).toContainText('Secure MCP Tunnel');await client.selectOption('cursor');
   await panel.getByLabel('Файл ключа агента',{exact:true}).fill('relative.key');await expect(copy).toBeDisabled();await expect(download).toBeDisabled();await expect(config).toHaveValue('');await expect(panel.getByRole('status',{name:'Проверка конфигурации'})).toContainText('абсолют');expect(registrations).toHaveLength(1);
   const storage=await page.evaluate(()=>JSON.stringify({local:{...localStorage},session:{...sessionStorage}}));expect(storage.includes(token)).toBe(false);
+  await page.keyboard.press('Escape');await expect(dialog).not.toBeVisible();
   await page.getByRole('navigation',{name:'Навигация проектов',exact:true}).getByRole('link',{name:'Проекты',exact:true}).click();await page.locator(`a[href="/projects/${projectB.id}"]`).first().click();await expect(page.getByRole('heading',{name:projectB.name,exact:true})).toBeVisible();
+  await openConnection(page);
   await expect(config).toHaveValue('');await expect(panel.getByLabel('Файл ключа агента',{exact:true})).toHaveValue('');await client.selectOption('claude-desktop');await panel.getByLabel('Файл ключа агента',{exact:true}).fill(keyFile);
   const isolated=await parsed();expect(Object.keys(isolated.mcpServers)).toEqual([`ouro-${projectB.id}`]);expect(Object.values(isolated.mcpServers)[0].env.OURO_URL).toBe(new URL(`/api/projects/${projectB.id}/mcp`,baseURL).href);expect(JSON.stringify(isolated).includes(projectA.id)).toBe(false);await expect(panel.getByLabel('Ключ агента',{exact:true})).toHaveCount(0);
   const state=await(await page.request.get(`/api/projects/${projectA.id}`)).json();expect(state.state.executions).toHaveLength(0);expect(state.state.events.some((event:{type:string})=>event.type==='ExecutionStarted')).toBe(false);

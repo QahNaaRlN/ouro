@@ -5,7 +5,7 @@ import './onboarding.css';
 
 type Scope='catalog'|'project';
 type Preference={version:1;status:'dismissed'|'completed'};
-type Step={target:string;title:string;body:string;optional?:boolean};
+export type Step={target:string;title:string;body:string;optional?:boolean};
 type Rect={left:number;top:number;width:number;height:number};
 type Geometry={view:Rect;highlight:Rect|null;card:{left:number;top:number};missing:boolean};
 const memoryPreferences=new Map<string,Preference>();
@@ -38,7 +38,7 @@ function stepsFor(scope:Scope,hasFlow:boolean):Step[]{
   ];
 }
 
-export default function WorkspaceOnboarding({scope,hasFlow=false}:{scope:Scope;hasFlow?:boolean}){
+export default function WorkspaceOnboarding({scope,hasFlow=false,steps:customSteps}:{scope:Scope;hasFlow?:boolean;steps?:readonly Step[]}){
   const key=`ouro:onboarding:${scope}:v1`,launcher=useRef<HTMLButtonElement>(null),returnFocus=useRef<HTMLElement|null>(null);
   const [ready,setReady]=useState(false),[preference,setPreference]=useState<Preference|null>(null),[active,setActive]=useState<{steps:Step[];index:number}|null>(null);
   useEffect(()=>{setPreference(readPreference(key));setReady(true);},[key]);
@@ -46,8 +46,8 @@ export default function WorkspaceOnboarding({scope,hasFlow=false}:{scope:Scope;h
   const start=()=>{
     returnFocus.current=document.activeElement instanceof HTMLElement?document.activeElement:null;
     remember('dismissed');
-    const steps=stepsFor(scope,hasFlow).filter(step=>!step.optional||document.querySelector(step.target));
-    setActive({steps,index:0});
+    const steps=(customSteps??stepsFor(scope,hasFlow)).filter(step=>!step.optional||document.querySelector(step.target));
+    if(steps.length)setActive({steps,index:0});
   };
   const exit=useCallback((completed=false)=>{remember(completed?'completed':'dismissed');setActive(null);},[remember]);
   const restoreFocus=useCallback(()=>{const target=returnFocus.current?.isConnected?returnFocus.current:launcher.current;target?.focus({preventScroll:true});},[]);

@@ -1,0 +1,20 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {applyCommand,emptyState,PROJECT_ID,AGENT_ID,type Actor,type Command,type ProjectState} from '../packages/core/src';
+import {selectWorkspaceContext} from '../lib/workspace-selection';
+const human:Actor={id:'selection-human',kind:'human',projectIds:[PROJECT_ID]};
+const run=(state:ProjectState,body:Record<string,unknown>)=>applyCommand(state,{...body,requestId:crypto.randomUUID(),expectedVersion:state.version} as Command,human).state;
+const content={title:'Контекст выбора',goal:'Не смешивать ревизии и попытки.',dod:[{id:'proof',text:'Проверено',required:true}],constraints:'',assumptions:'',risks:'',inputs:'',comment:''};
+test('workspace selection scopes explicit attempts to the selected revision and rejects foreign IDs',()=>{
+ let state=run(emptyState(),{type:'createSpec',content});const spec=state.specs[0],r1=state.revisions[0];
+ state=run(state,{type:'activateRevision',specId:spec.id,revisionId:r1.id});
+ state=run(state,{type:'startExecution',specId:spec.id,specRevisionId:r1.id,agentId:AGENT_ID});const old=state.executions[0];
+ state=run(state,{type:'proposeRevision',specId:spec.id,content:{...content,title:'Новая ревизия'}});const r2=state.revisions.at(-1)!;
+ const before=JSON.stringify(state);
+ assert.equal(selectWorkspaceContext(state,{specId:spec.id,revisionId:r2.id,executionId:old.id}).execution,undefined);
+ assert.equal(selectWorkspaceContext(state,{specId:spec.id,revisionId:r1.id,executionId:old.id}).execution?.id,old.id);
+ assert.equal(selectWorkspaceContext(state,{specId:spec.id,revisionId:r1.id,executionId:'all'}).execution,undefined);
+ assert.equal(selectWorkspaceContext(state,{specId:'foreign'}).spec,undefined);
+ assert.equal(selectWorkspaceContext(state,{specId:spec.id,revisionId:'foreign'}).revision,undefined);
+ assert.equal(JSON.stringify(state),before);
+});
