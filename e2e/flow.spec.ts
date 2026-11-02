@@ -1,3 +1,4 @@
+import {chooseSelectOption} from './select-helpers';
 import { test, expect, type Page } from '@playwright/test';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -12,7 +13,7 @@ async function openFlow(page:Page,flow?:FlowDefinition){
   expect(response.ok(),await response.text()).toBeTruthy();
   const state=(await response.json()).state as ProjectState,spec=state.specs.at(-1)!;
   await page.getByRole('button',{name:'Спецификации',exact:true}).click();
-  await page.getByLabel('Выбрать спецификацию').selectOption(spec.id);
+  await chooseSelectOption(page.getByLabel('Выбрать спецификацию'),spec.id);
   await page.getByRole('button',{name:'Процесс',exact:true}).click();
   return {state,spec,original:state.revisions.find(r=>r.id===spec.revisionIds.at(-1))!};
 }
@@ -70,7 +71,7 @@ test('F08 explicit MCP facts distinguish chosen and applied paths, unbound facts
     await mutate('ouro.report_fork',{flowNodeId:'choice',title:'Какой путь выбрать?',context:'Сравнили две возможности.',reason:'Нужен явный выбор человека, потому что два допустимых пути имеют разные последствия для проверяемого результата.',options:[{id:'a',title:'A',description:'Первый путь.'},{id:'b',title:'B',description:'Второй путь.'}]});
     const request=(await project(page)).requests.findLast(r=>r.executionId===execution.id)!;
     await expect(flow.locator('.react-flow__node[data-id="choice"]')).toContainText('Ожидает человека');
-    await flow.getByLabel('Попытка процесса',{exact:true}).selectOption(execution.id);
+    await chooseSelectOption(flow.getByLabel('Попытка процесса',{exact:true}),execution.id);
     await expect(flow).toContainText('1 без привязки к схеме');
     await human({type:'resolveDecision',decisionRequestId:request.id,specRevisionId:original.id,outcome:{kind:'approve',chosenOptionId:'a'}});
     const edgeA=flow.locator('.react-flow__edge[data-id="choose-a"]'),edgeB=flow.locator('.react-flow__edge[data-id="choose-b"]');
@@ -99,7 +100,7 @@ test('F08 explicit MCP facts distinguish chosen and applied paths, unbound facts
     const aFacts=table.getByRole('row').filter({hasText:'Выполнить выбранный путь A'}).getByRole('cell').nth(2);
     const bFacts=table.getByRole('row').filter({hasText:'Выполнить альтернативный путь B'}).getByRole('cell').nth(2);
     await expect(aFacts).toHaveText('1');await expect(bFacts).toHaveText('Нет');
-    await flow.getByLabel('Попытка процесса',{exact:true}).selectOption(second.id);
+    await chooseSelectOption(flow.getByLabel('Попытка процесса',{exact:true}),second.id);
     await expect(aFacts).toHaveText('Нет');await expect(bFacts).toHaveText('1');
     await expect(flow).toContainText('0 без привязки к схеме');
     expect((await project(page)).specs.find(s=>s.id===spec.id)?.state).not.toBe('done');
@@ -114,19 +115,20 @@ test('F07/F10 process forms support adding and removing nodes and labelled conne
   if(await edit.count())await edit.click();else await flow.getByRole('button',{name:'Создать схему',exact:true}).click();
   await flow.getByRole('button',{name:'Таблица',exact:true}).click();
   await flow.getByLabel('Название нового узла',{exact:true}).fill('Уточнить вход у человека');
-  await flow.getByRole('combobox',{name:'Тип нового узла',exact:true}).selectOption('question');
+  await chooseSelectOption(flow.getByRole('combobox',{name:'Тип нового узла',exact:true}),'question');
   await flow.getByRole('button',{name:'Добавить узел',exact:true}).click();
   await expect(flow.getByRole('button',{name:'Изменить узел Уточнить вход у человека',exact:true})).toBeVisible();
   await flow.getByRole('button',{name:'Изменить узел Уточнить вход у человека',exact:true}).click();
-  await expect(flow.getByRole('combobox',{name:'Исполнитель узла',exact:true})).toHaveValue('human');
+  await expect(flow.getByRole('combobox',{name:'Исполнитель узла',exact:true})).toHaveAttribute('data-value','human');
+  await expect(flow.getByRole('combobox',{name:'Исполнитель узла',exact:true})).toBeDisabled();
   await flow.getByRole('button',{name:'Удалить выбранный узел',exact:true}).click();
   await expect(flow.getByRole('button',{name:'Изменить узел Уточнить вход у человека',exact:true})).toHaveCount(0);
   const row=flow.getByRole('table',{name:'Связи процесса'}).getByRole('row').nth(1);
   await row.getByRole('button',{name:'Изменить связь',exact:true}).click();
   await flow.getByLabel('Подпись перехода',{exact:true}).fill('Результат проверен и предъявлен');
   await expect(row).toContainText('Результат проверен и предъявлен');
-  await flow.getByRole('combobox',{name:'Начало новой связи',exact:true}).selectOption('start');
-  await flow.getByRole('combobox',{name:'Конец новой связи',exact:true}).selectOption('result');
+  await chooseSelectOption(flow.getByRole('combobox',{name:'Начало новой связи',exact:true}),'start');
+  await chooseSelectOption(flow.getByRole('combobox',{name:'Конец новой связи',exact:true}),'result');
   await flow.getByLabel('Подпись новой связи',{exact:true}).fill('Повторная проверка');
   await flow.getByRole('button',{name:'Добавить связь',exact:true}).click();
   const added=flow.getByRole('table',{name:'Связи процесса'}).getByRole('row').last();

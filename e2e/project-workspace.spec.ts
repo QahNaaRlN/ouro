@@ -1,3 +1,4 @@
+import {chooseSelectOption} from './select-helpers';
 import {test,expect,type Locator,type Page,type Request} from '@playwright/test';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {StreamableHTTPClientTransport} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -46,7 +47,7 @@ async function openSaved(page:Page,project:Project){await page.locator(`a[href="
 async function fillTask(page:Page,agentId:string,title:string,dod='Результат проверен человеком.'){
   if(!await taskDialog(page).isVisible())await page.getByRole('button',{name:'Назначить работу',exact:true}).click();
   const goal=taskDialog(page).getByLabel('Задача для агента',{exact:true});await expect(goal).toBeVisible();
-  await page.getByLabel('Исполнитель задачи',{exact:true}).selectOption(agentId);
+  await chooseSelectOption(page.getByLabel('Исполнитель задачи',{exact:true}),agentId);
   await goal.fill(`Проверить назначение, реальные MCP-факты и отдельную приёмку: ${title}.`);
   await page.getByLabel('Название задачи',{exact:true}).fill(title);await page.getByLabel('Критерии готовности',{exact:true}).fill(dod);
 }

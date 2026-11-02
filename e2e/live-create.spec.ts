@@ -24,7 +24,7 @@ test('a create response selects its own spec even when another human creates a n
     expect(other.ok(),await other.text()).toBeTruthy();const changed=(await other.json()).state as ProjectState;
     await expect(page.locator('footer')).toContainText(`cursor ${changed.version}`);
     release();await expect(dialog).toHaveCount(0);
-    await expect(page.getByLabel('Выбрать спецификацию',{exact:true})).toHaveValue(ownId);
+    await expect(page.getByLabel('Выбрать спецификацию',{exact:true})).toHaveAttribute('data-value',ownId);
     await expect(page.getByRole('heading',{name:title,exact:true})).toBeVisible();
   }finally{release();await page.unroute('**/api/commands');}
 });

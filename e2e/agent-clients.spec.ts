@@ -1,3 +1,4 @@
+import {chooseSelectOption} from './select-helpers';
 import {test,expect,type Page} from '@playwright/test';
 import {mkdtemp,readFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
@@ -19,10 +20,10 @@ test('CO04/CO05 Cursor and Claude configurations stay project-bound after a one-
   projectA=await create(rootA,`Cursor и Claude ${crypto.randomUUID().slice(0,8)}`);projectB=await create(rootB,`Изолированный клиент ${crypto.randomUUID().slice(0,8)}`);
   await page.goto(`/projects/${projectA.id}`);await expect(page.getByRole('heading',{name:projectA.name,exact:true})).toBeVisible();
   const dialog=await openConnection(page),panel=dialog.getByRole('region',{name:'Подключение MCP-агента',exact:true});
-  const client=panel.getByRole('combobox',{name:'MCP-клиент',exact:true});await expect(client).toBeVisible();await expect(client).toHaveValue('cursor');
+  const client=panel.getByRole('combobox',{name:'MCP-клиент',exact:true});await expect(client).toBeVisible();await expect(client).toHaveAttribute('data-value','cursor');
   await expect(panel.getByRole('textbox',{name:'Имя подключения',exact:true})).toHaveCount(0);
   await expect(panel.getByText('Имя подключения:',{exact:false})).toContainText(`Cursor · ${projectA.name}`);
-  await client.selectOption('claude-code');await expect(panel.getByText('Имя подключения:',{exact:false})).toContainText(`Claude Code · ${projectA.name}`);await client.selectOption('cursor');
+  await chooseSelectOption(client,'claude-code');await expect(panel.getByText('Имя подключения:',{exact:false})).toContainText(`Claude Code · ${projectA.name}`);await chooseSelectOption(client,'cursor');
   await expect(panel.getByRole('button',{name:'Отозвать ключ',exact:true})).toHaveCount(0);
   const registrations:string[]=[];page.on('request',request=>{if(request.method()==='POST'&&new URL(request.url()).pathname===`/api/projects/${projectA!.id}/agents`)registrations.push(request.url());});
   const registration=page.waitForResponse(response=>new URL(response.url()).pathname===`/api/projects/${projectA!.id}/agents`&&response.request().method()==='POST');await panel.getByRole('button',{name:'Зарегистрировать агента',exact:true}).click();
@@ -35,16 +36,16 @@ test('CO04/CO05 Cursor and Claude configurations stay project-bound after a one-
   const cursor=await parsed(),serverName=Object.keys(cursor.mcpServers)[0],entry=cursor.mcpServers[serverName];expect(serverName).toBe(`ouro-${projectA.id}`);expect(entry.type).toBe('stdio');expect(entry.env.OURO_URL).toBe(new URL(`/api/projects/${projectA.id}/mcp`,baseURL).href);expect(entry.env.OURO_AGENT_TOKEN_FILE).toBe(keyFile);expect(JSON.stringify(cursor).includes(token)).toBe(false);expect(entry.env).not.toHaveProperty('OURO_AGENT_TOKEN');await expect(copy).toBeEnabled();
   const received=page.waitForEvent('download');await download.click();const file=await received;expect(file.suggestedFilename()).toBe('ouro-cursor-mcp.json');const data=await readFile((await file.path())!,'utf8');expect(JSON.parse(data)).toEqual(cursor);expect(data.includes(token)).toBe(false);
   await panel.getByRole('button',{name:'Ключ сохранён — скрыть',exact:true}).click();await expect(panel.getByLabel('Ключ агента',{exact:true})).toHaveCount(0);await expect(config).toHaveValue(JSON.stringify(cursor,null,2));
-  await client.selectOption('claude-code');const code=await parsed();expect(code.mcpServers[serverName].type).toBe('stdio');await expect(panel.getByTestId('client-config-instructions')).toContainText('.mcp.json');
+  await chooseSelectOption(client,'claude-code');const code=await parsed();expect(code.mcpServers[serverName].type).toBe('stdio');await expect(panel.getByTestId('client-config-instructions')).toContainText('.mcp.json');
   const single=panel.getByRole('textbox',{name:'Server entry для Claude Code',exact:true});await panel.getByRole('button',{name:'Одна server entry для Claude Code CLI',exact:true}).click();expect(JSON.parse(await single.inputValue())).toEqual(code.mcpServers[serverName]);expect(JSON.parse(await single.inputValue())).not.toHaveProperty('mcpServers');
-  await client.selectOption('claude-desktop');expect((await parsed()).mcpServers[serverName]).not.toHaveProperty('type');await expect(panel.getByTestId('client-config-instructions')).toContainText('claude_desktop_config.json');
-  await client.selectOption('chatgpt');await expect(panel.getByTestId('client-config-instructions')).toContainText('Secure MCP Tunnel');await client.selectOption('cursor');
+  await chooseSelectOption(client,'claude-desktop');expect((await parsed()).mcpServers[serverName]).not.toHaveProperty('type');await expect(panel.getByTestId('client-config-instructions')).toContainText('claude_desktop_config.json');
+  await chooseSelectOption(client,'chatgpt');await expect(panel.getByTestId('client-config-instructions')).toContainText('Secure MCP Tunnel');await chooseSelectOption(client,'cursor');
   await panel.getByLabel('Файл ключа агента',{exact:true}).fill('relative.key');await expect(copy).toBeDisabled();await expect(download).toBeDisabled();await expect(config).toHaveValue('');await expect(panel.getByRole('status',{name:'Проверка конфигурации'})).toContainText('абсолют');expect(registrations).toHaveLength(1);
   const storage=await page.evaluate(()=>JSON.stringify({local:{...localStorage},session:{...sessionStorage}}));expect(storage.includes(token)).toBe(false);
   await page.keyboard.press('Escape');await expect(dialog).not.toBeVisible();
   await page.getByRole('navigation',{name:'Навигация проектов',exact:true}).getByRole('link',{name:'Проекты',exact:true}).click();await page.locator(`a[href="/projects/${projectB.id}"]`).first().click();await expect(page.getByRole('heading',{name:projectB.name,exact:true})).toBeVisible();
   await openConnection(page);
-  await expect(config).toHaveValue('');await expect(panel.getByLabel('Файл ключа агента',{exact:true})).toHaveValue('');await client.selectOption('claude-desktop');await panel.getByLabel('Файл ключа агента',{exact:true}).fill(keyFile);
+  await expect(config).toHaveValue('');await expect(panel.getByLabel('Файл ключа агента',{exact:true})).toHaveValue('');await chooseSelectOption(client,'claude-desktop');await panel.getByLabel('Файл ключа агента',{exact:true}).fill(keyFile);
   const isolated=await parsed();expect(Object.keys(isolated.mcpServers)).toEqual([`ouro-${projectB.id}`]);expect(Object.values(isolated.mcpServers)[0].env.OURO_URL).toBe(new URL(`/api/projects/${projectB.id}/mcp`,baseURL).href);expect(JSON.stringify(isolated).includes(projectA.id)).toBe(false);await expect(panel.getByLabel('Ключ агента',{exact:true})).toHaveCount(0);
   const state=await(await page.request.get(`/api/projects/${projectA.id}`)).json();expect(state.state.executions).toHaveLength(0);expect(state.state.events.some((event:{type:string})=>event.type==='ExecutionStarted')).toBe(false);
   await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);expect(pageErrors).toEqual([]);

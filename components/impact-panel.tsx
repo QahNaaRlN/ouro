@@ -1,5 +1,6 @@
 "use client";
 
+import {AppSelect} from './app-select';
 import { useId, useMemo, useState, type FormEvent } from 'react';
 import { ArrowDownToLine, ArrowRight, Clock3, FileText, GitBranch, Info } from 'lucide-react';
 import type { DomainEvent, ProjectState } from '../packages/core/src/types';
@@ -79,10 +80,10 @@ export default function ImpactPanel({state}:{state:ProjectState}){
         </div>
         <div className="impact-control-field">
           <label htmlFor={`${scopeId}-end-mode`}>Конечная точка отчёта</label>
-          <select id={`${scopeId}-end-mode`} value={endMode} onChange={event=>{const value=event.target.value as 'current'|'historical';setEndMode(value);if(value==='historical')setEndDraft(String(state.version));}}>
+          <AppSelect aria-label="Конечная точка отчёта" id={`${scopeId}-end-mode`} value={endMode} onValueChange={selectedValue=>{const value=selectedValue as 'current'|'historical';setEndMode(value);if(value==='historical')setEndDraft(String(state.version));}}>
             <option value="current">Текущий момент · #{state.version}</option>
             <option value="historical">Момент в истории</option>
-          </select>
+          </AppSelect>
           {endMode==='historical'?<div className="impact-control-field impact-nested-field">
             <label htmlFor={`${scopeId}-end`}>Конечная точка истории</label>
             <input id={`${scopeId}-end`} required type="number" min={0} max={state.version} step={1} value={endDraft} onChange={event=>setEndDraft(event.target.value)}/>
@@ -90,10 +91,10 @@ export default function ImpactPanel({state}:{state:ProjectState}){
         </div>
         <div className="impact-control-field">
           <label htmlFor={`${scopeId}-scope`}>Область отчёта</label>
-          <select id={`${scopeId}-scope`} aria-describedby={`${scopeId}-scope-help`} value={scopeMode} onChange={event=>setScopeMode(event.target.value as 'all'|'selected')}>
+          <AppSelect aria-label="Область отчёта" id={`${scopeId}-scope`} aria-describedby={`${scopeId}-scope-help`} value={scopeMode} onValueChange={selectedValue=>setScopeMode(selectedValue as 'all'|'selected')}>
             <option value="all">Все спеки проекта</option>
             <option value="selected">Выбранные спеки</option>
-          </select>
+          </AppSelect>
           <small id={`${scopeId}-scope-help`}>{scopeMode==='all'?'В базу входят действующие спеки с активной ревизией.':`Выбрано: ${specIds.length}. Пустой выбор остаётся пустой областью.`}</small>
         </div>
       </div>

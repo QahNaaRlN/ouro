@@ -7,8 +7,6 @@
 .ws-shell .ws-dialog-content>.ws-panel{margin:0;padding:0;border:0;background:transparent}
 .ws-shell .ws-dialog-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
 .ws-shell button.ws-icon-button{padding:6px;min-width:30px;min-height:30px;flex:0 0 auto;background:transparent}
-.ws-shell select.ws-select{color-scheme:dark;appearance:auto;background:var(--bg);border:1px solid var(--border);border-radius:7px;cursor:pointer}
-:root[data-theme=light] .ws-shell select.ws-select,.light .ws-shell select.ws-select{color-scheme:light}
 .ws-shell textarea.ws-textarea{box-sizing:border-box;resize:none;overflow:hidden;max-height:none}
 .ws-shell .ws-accordion{margin:14px 0;min-width:0}
 .ws-shell button.ws-accordion-trigger{padding:6px 0;justify-content:flex-start;border:0;background:transparent;color:var(--text-muted);text-align:left;gap:7px;font-weight:400}

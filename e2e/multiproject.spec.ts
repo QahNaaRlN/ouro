@@ -1,3 +1,4 @@
+import {chooseSelectOption} from './select-helpers';
 import { test, expect, request as apiRequest, type Browser, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import type { ProjectState } from '../packages/core/src';
@@ -20,9 +21,9 @@ async function acceptInvitation(page: Page, input: { name: string; password: str
 }
 
 async function switchProject(page: Page, projectId: string) {
-  await page.getByLabel('Текущий проект', { exact: true }).selectOption(projectId);
+  await chooseSelectOption(page.getByLabel('Текущий проект', { exact: true }),projectId);
   await expect(page.getByRole('heading', { name: /^Дорожная карта/ })).toBeVisible({ timeout: 15000 });
-  await expect(page.getByLabel('Текущий проект', { exact: true })).toHaveValue(projectId);
+  await expect(page.getByLabel('Текущий проект', { exact: true })).toHaveAttribute('data-value',projectId);
 }
 
 async function createSpec(page: Page, title: string) {

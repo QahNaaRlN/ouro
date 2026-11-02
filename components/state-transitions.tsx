@@ -1,5 +1,6 @@
 'use client';
 
+import {AppSelect} from './app-select';
 import { useMemo, useState } from 'react';
 import { ReactFlow, Background, Controls, Handle, Position, MarkerType, type Node, type NodeProps, type Edge } from '@xyflow/react';
 import { ArrowRight, Check, CircleDot, GitBranch, Info, List, Network } from 'lucide-react';
@@ -62,8 +63,8 @@ export function StateTransitions({state,specId,executionId}:{state:ProjectState;
     <div className="state-axis-tabs" aria-label="Статусная ось">{axes.map(a=><button key={a} type="button" aria-pressed={axis===a} className={axis===a?'selected':''} onClick={()=>{setAxis(a);setSelected(null);}}>{STATE_MODELS[a].title}</button>)}</div>
     <div className="state-view-context">
       <div className="state-current-label"><CircleDot size={15}/><span>{view.current?<>Сейчас: <strong>{label(view.current)}</strong></>:'В выбранном контексте ещё нет этой сущности'}</span></div>
-      {axis==='execution'&&executions.length>0&&<label className="state-entity-picker">Попытка<select aria-label="Попытка на диаграмме состояний" value={actualExecution?.id??''} onChange={e=>{setChosenExecution(e.target.value);setSelected(null);}}>{executions.map((e,i)=><option value={e.id} key={e.id}>{e.kind==='remediation'?'Устранение':'Основная'} · {i+1} · {e.id.slice(0,8)}</option>)}</select></label>}
-      {axis==='request'&&requests.length>0&&<label className="state-entity-picker">Запрос<select aria-label="Запрос на диаграмме состояний" value={actualRequest?.id??''} onChange={e=>{setChosenRequest(e.target.value);setSelected(null);}}>{requests.map(r=><option value={r.id} key={r.id}>{r.kind} · {r.title}</option>)}</select></label>}
+      {axis==='execution'&&executions.length>0&&<label className="state-entity-picker">Попытка<AppSelect aria-label="Попытка на диаграмме состояний" value={actualExecution?.id??''} onValueChange={selectedValue=>{setChosenExecution(selectedValue);setSelected(null);}}>{executions.map((e,i)=><option value={e.id} key={e.id}>{e.kind==='remediation'?'Устранение':'Основная'} · {i+1} · {e.id.slice(0,8)}</option>)}</AppSelect></label>}
+      {axis==='request'&&requests.length>0&&<label className="state-entity-picker">Запрос<AppSelect aria-label="Запрос на диаграмме состояний" value={actualRequest?.id??''} onValueChange={selectedValue=>{setChosenRequest(selectedValue);setSelected(null);}}>{requests.map(r=><option value={r.id} key={r.id}>{r.kind} · {r.title}</option>)}</AppSelect></label>}
     </div>
     {view.notices.length>0&&<div className="state-view-notices" aria-live="polite">{view.notices.map(n=><p key={n.code}><Info size={14}/>{n.text}</p>)}</div>}
     {mode==='graph'&&<div className="state-graph-options"><p>{showAll?'Все возможные переходы; условия доступны в объяснении состояния.':'Показаны факты и возможные выходы выбранного состояния.'}</p><button type="button" className={showAll?'selected':''} aria-pressed={showAll} onClick={()=>setShowAll(value=>!value)}>Все возможные переходы</button></div>}

@@ -1,3 +1,4 @@
+import {chooseSelectOption} from './select-helpers';
 import { test, expect, type Page, type APIRequestContext } from '@playwright/test';
 import { AGENT_ID, type ProjectState } from '../packages/core/src';
 
@@ -124,7 +125,7 @@ test('R06 acceptance evidence stays pinned to r1 after another human activates r
   const completed=await simulate(request,spec.id,'complete');
   await open(page);await expect.poll(()=>cursor(page)).toBe(completed.version);
   await page.getByRole('button',{name:'Спецификации',exact:true}).click();
-  await page.getByLabel('Выбрать спецификацию').selectOption(spec.id);
+  await chooseSelectOption(page.getByLabel('Выбрать спецификацию'),spec.id);
   await page.getByRole('button',{name:'Принять по DoD',exact:true}).click();
   const dialog=page.getByRole('dialog'),evidence=dialog.getByRole('textbox');
   const draft='Наблюдение для первой ревизии; не является доказательством по новому ожиданию.';
@@ -150,7 +151,7 @@ test('R06 a spec draft retains its text and observed base instead of silently re
   const activated=await human(request,{type:'activateRevision',specId:spec.id,revisionId:revision.id});
   await open(page);await expect.poll(()=>cursor(page)).toBe(activated.version);
   await page.getByRole('button',{name:'Спецификации',exact:true}).click();
-  await page.getByLabel('Выбрать спецификацию').selectOption(spec.id);
+  await chooseSelectOption(page.getByLabel('Выбрать спецификацию'),spec.id);
   await page.getByRole('button',{name:'Предложить ревизию',exact:true}).click();
   const dialog=page.getByRole('dialog'),title=dialog.getByLabel('Название',{exact:true}),save=dialog.getByRole('button',{name:'Сохранить предложение',exact:true});
   const draft='Моё название для следующей ревизии сохраняется после внешнего события';

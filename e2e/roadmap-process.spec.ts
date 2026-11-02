@@ -1,3 +1,4 @@
+import {chooseSelectOption} from './select-helpers';
 import {test,expect,type Page} from '@playwright/test';
 import type {FlowDefinition,ProjectState,Spec,SpecRevision} from '../packages/core/src';
 
@@ -18,7 +19,7 @@ async function create(page:Page,title:string,flow?:FlowDefinition){
 async function roadmap(page:Page){await page.getByRole('button',{name:'Дорожная карта',exact:true}).click();await expect(page.getByRole('heading',{name:/^Дорожная карта/})).toBeVisible();}
 async function card(page:Page,spec:Spec){
  await page.getByLabel('Поиск спецификаций',{exact:true}).fill(spec.humanId);
- await page.getByRole('button',{name:'Показать весь граф',exact:true}).click();
+ await page.getByRole('button',{name:'Вписать граф',exact:true}).click();
  const node=page.locator(`.react-flow__node[data-id="${spec.id}"]`);await expect(node).toBeVisible();return node;
 }
 const panel=(page:Page)=>page.getByRole('region',{name:'Процесс спецификации',exact:true});
@@ -33,17 +34,17 @@ test('F11 roadmap graph and table open the exact active process instead of a rem
  await command(page,{type:'activateRevision',specId:b.spec.id,revisionId:b.revision.id});
  const before=await project(page);await page.reload();await expect(page.getByRole('heading',{name:/^Дорожная карта/})).toBeVisible();
  await(await card(page,a.spec)).click();
- await expect(panel(page)).toBeVisible();await expect(page.getByLabel('Ревизия схемы',{exact:true})).toHaveValue(a.revision.id);
+ await expect(panel(page)).toBeVisible();await expect(page.getByLabel('Ревизия схемы',{exact:true})).toHaveAttribute('data-value',a.revision.id);
  await expect(panel(page).locator('.react-flow__node[data-id="work"]')).toContainText('Активный шаг A');
- await page.getByLabel('Ревизия схемы',{exact:true}).selectOption(draft.id);
+ await chooseSelectOption(page.getByLabel('Ревизия схемы',{exact:true}),draft.id);
  await expect(panel(page).locator('.react-flow__node[data-id="work"]')).toContainText('Предложенный шаг A');
  await roadmap(page);await expect(page.getByLabel('Поиск спецификаций',{exact:true})).toHaveValue(a.spec.humanId);
  await page.getByRole('button',{name:'Таблица',exact:true}).click();await page.getByLabel('Поиск спецификаций',{exact:true}).fill(b.spec.humanId);
  await page.getByRole('table').locator('.table-spec').filter({hasText:b.spec.title}).click();
- await expect(panel(page)).toBeVisible();await expect(page.getByLabel('Ревизия схемы',{exact:true})).toHaveValue(b.revision.id);
+ await expect(panel(page)).toBeVisible();await expect(page.getByLabel('Ревизия схемы',{exact:true})).toHaveAttribute('data-value',b.revision.id);
  await expect(panel(page).locator('.react-flow__node[data-id="work"]')).toContainText('Активный шаг B');
  await roadmap(page);await page.getByRole('button',{name:'Граф',exact:true}).click();await(await card(page,a.spec)).click();
- await expect(page.getByLabel('Ревизия схемы',{exact:true})).toHaveValue(a.revision.id);
+ await expect(page.getByLabel('Ревизия схемы',{exact:true})).toHaveAttribute('data-value',a.revision.id);
  expect((await project(page)).version).toBe(before.version);
  expect((await project(page)).specs.find(spec=>spec.id===a.spec.id)?.activeRevisionId).toBe(a.revision.id);
 });
@@ -56,7 +57,7 @@ test('F11 keyboard roadmap activation opens an explicit empty process without in
   const node=await card(page,created.spec);await node.focus();await node.press(key);
   await expect(panel(page)).toBeVisible();await expect(panel(page).getByRole('heading',{name:'Схема ещё не описана',exact:true})).toBeVisible();
   await expect(panel(page).getByRole('button',{name:'Создать схему',exact:true})).toBeVisible();
-  await expect(page.getByLabel('Ревизия схемы',{exact:true})).toHaveValue(created.revision.id);
+  await expect(page.getByLabel('Ревизия схемы',{exact:true})).toHaveAttribute('data-value',created.revision.id);
   await roadmap(page);
  }
  const after=await project(page);expect(after.version).toBe(before.version);

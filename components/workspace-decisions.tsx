@@ -36,7 +36,7 @@ function StartAttemptForm({spec,revision,state,agents,command,disabled,actor}:St
     <h3>Назначить попытку по этому ожиданию</h3><p className="ws-muted">Активация ревизии сама не запускает работу. Выберите зарегистрированного агента и явно назначьте попытку.</p>
     {error&&<p role="alert" className="ws-error">{error}</p>}
     <form onSubmit={submit}>
-      <label>Агент для новой попытки<WorkspaceSelect value={chosen} onChange={event=>setAgentId(event.target.value)} required><option value="">Выберите подключение</option>{available.map(agent=><option key={agent.id} value={agent.id}>{agent.name} · {agent.id.slice(0,8)}</option>)}</WorkspaceSelect></label>
+      <label>Агент для новой попытки<WorkspaceSelect aria-label="Агент для новой попытки" value={chosen} onValueChange={selectedValue=>setAgentId(selectedValue)} required><option value="">Выберите подключение</option>{available.map(agent=><option key={agent.id} value={agent.id}>{agent.name} · {agent.id.slice(0,8)}</option>)}</WorkspaceSelect></label>
       <label className="ws-check"><input type="checkbox" checked={tracking} disabled={!!profileReason} onChange={event=>setTracking(event.target.checked)}/>Строгий учёт проходов</label>
       {profileReason&&<p className="ws-muted">{profileReason}</p>}
       {!gate.allowed&&<p className="ws-muted" role="status">Назначение недоступно: {unavailable}</p>}
@@ -91,7 +91,7 @@ function DecisionCard({request,state,agents,command,disabled,actor}:{request:Dec
     {request.question&&<p><strong>{request.question}</strong></p>}{request.reason&&<p>{request.reason}</p>}{request.expected&&<p><strong>Ожидалось:</strong> {request.expected}</p>}{request.actual&&<p><strong>Наблюдается:</strong> {request.actual}</p>}{request.impact&&<p><strong>Влияние:</strong> {request.impact}</p>}
     {error&&<p role="alert" className="ws-error">{error}</p>}
     {request.state==='pending'&&active?<form onSubmit={submit}>
-      {request.kind==='Question'?<label>Ответ агенту<WorkspaceTextarea aria-label={`Ответ на вопрос ${request.title}`} value={answer} onChange={event=>setAnswer(event.target.value)} required={!reject} rows={3}/></label>:<label>Выбор человека<WorkspaceSelect aria-label={`Решение по запросу ${request.title}`} value={option} onChange={event=>setOption(event.target.value)} disabled={reject}>{request.options.map(item=><option key={item.id} value={item.id}>{item.title}</option>)}</WorkspaceSelect></label>}
+      {request.kind==='Question'?<label>Ответ агенту<WorkspaceTextarea aria-label={`Ответ на вопрос ${request.title}`} value={answer} onChange={event=>setAnswer(event.target.value)} required={!reject} rows={3}/></label>:<label>Выбор человека<WorkspaceSelect aria-label={`Решение по запросу ${request.title}`} value={option} onValueChange={selectedValue=>setOption(selectedValue)} disabled={reject}>{request.options.map(item=><option key={item.id} value={item.id}>{item.title}</option>)}</WorkspaceSelect></label>}
       {request.options.length>0&&<ul>{request.options.map(item=><li key={item.id}><strong>{item.title}</strong> — {item.description}</li>)}</ul>}
       <label className="ws-check"><input type="checkbox" checked={reject} onChange={event=>setReject(event.target.checked)}/>Отклонить с объяснением</label>
       {reject&&<label>Причина отклонения<WorkspaceTextarea value={reason} onChange={event=>setReason(event.target.value)} required rows={2}/></label>}
@@ -104,7 +104,7 @@ function DecisionCard({request,state,agents,command,disabled,actor}:{request:Dec
     </>}
     {request.kind==='Blocker'&&outcome?.kind==='approve'&&active&&!request.clearedEvidence&&<div className="ws-remediation">
       <p>{remediation.length?'Попытки устранения: '+remediation.map(item=>getExecutionPresentation(item).label).join(', '):'План выбран. Разрешите отдельную попытку устранения; снятие блокера подтвердит назначенный агент.'}</p>
-      <label>Агент для устранения<WorkspaceSelect value={chosen} onChange={event=>setAgentId(event.target.value)}><option value="">Выберите подключение</option>{available.map(agent=><option key={agent.id} value={agent.id}>{agent.name}</option>)}</WorkspaceSelect></label>
+      <label>Агент для устранения<WorkspaceSelect aria-label="Агент для устранения" value={chosen} onValueChange={selectedValue=>setAgentId(selectedValue)}><option value="">Выберите подключение</option>{available.map(agent=><option key={agent.id} value={agent.id}>{agent.name}</option>)}</WorkspaceSelect></label>
       {!remediationGate.allowed&&<p className="ws-muted" role="status">Устранение недоступно: {!chosen?'Выберите действующее подключение.':remediationGate.reason}</p>}
       <button disabled={disabled||busy||!chosen||!remediationGate.allowed} onClick={()=>{setBusy(true);setError('');void command({type:'authorizeRemediation',decisionRequestId:request.id,agentId:chosen},`remediation:${request.id}`,'Разрешить устранение блокера').catch(e=>setError(message(e))).finally(()=>setBusy(false));}}>Разрешить устранение блокера</button>
     </div>}

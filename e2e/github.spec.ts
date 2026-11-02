@@ -1,3 +1,4 @@
+import {chooseSelectOption} from './select-helpers';
 import { test, expect } from '@playwright/test';
 
 test('G09 GitHub integrations screen describes server setup and immutable execution context',async({page})=>{
@@ -25,7 +26,7 @@ test('G09 binding form validates repository and ref before any remote verificati
   await page.getByRole('button',{name:'Интеграции',exact:true}).click();
   const form=page.getByRole('region',{name:'Привязать репозиторий к попытке'});
   const execution=before.executions[0],revision=before.revisions.find((r:{id:string})=>r.id===execution.specRevisionId);
-  await form.getByRole('combobox',{name:'Попытка исполнения',exact:true}).selectOption(execution.id);
+  await chooseSelectOption(form.getByRole('combobox',{name:'Попытка исполнения',exact:true}),execution.id);
   await expect(form.getByRole('region',{name:'Контекст привязки'})).toContainText(`Ревизия r${revision.revision}`);
   await expect(form.getByRole('region',{name:'Контекст привязки'})).toContainText(execution.id);
   const repository=form.getByRole('textbox',{name:'Репозиторий',exact:true}),ref=form.getByRole('textbox',{name:'Ветка GitHub',exact:true});

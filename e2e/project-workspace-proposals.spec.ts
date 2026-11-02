@@ -1,3 +1,4 @@
+import {chooseSelectOption} from './select-helpers';
 import {test,expect,type Locator,type Page} from '@playwright/test';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {StreamableHTTPClientTransport} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -103,7 +104,7 @@ test('PW09/PW10 a standard MCP proposal becomes a human-edited draft and exact r
   await projectView(page,'Дорожная карта');const roadmap=page.getByRole('region',{name:'Дорожная карта проекта',exact:true}),draftNode=roadmap.locator(`.react-flow__node[data-id="${draftId}"]`);
   await expect(draftNode).toContainText(editedTitle);await draftNode.click();
   await expect(page.locator('[aria-label="Выбранная задача"]')).toHaveAttribute('data-spec-id',draftId);
-  await expect(page.getByRole('combobox',{name:'Ревизия задачи',exact:true}).locator('option:checked')).toHaveText('r1 · история / предложение');await specTab(page,'Процесс');
+  await expect(page.getByRole('combobox',{name:'Ревизия задачи',exact:true})).toHaveText('r1 · история / предложение');await specTab(page,'Процесс');
   const process=page.getByRole('region',{name:'Текущий процесс',exact:true});await process.getByRole('button',{name:'План',exact:true}).click();const plan=process.getByRole('region',{name:'Процесс спецификации',exact:true});
   for(const node of flow.nodes)await expect(plan.locator(`.react-flow__node[data-id="${node.id}"]`)).toContainText(node.title);
   await expect(plan.locator('.react-flow__edge')).toHaveCount(flow.edges.length);await expect(plan).toContainText('Схема не является фактом исполнения');
@@ -121,7 +122,7 @@ test('PW09/PW10 a standard MCP proposal becomes a human-edited draft and exact r
   await openDraft(page,draftId);const selected=page.locator('[aria-label="Выбранная задача"]');await expect(selected).toHaveAttribute('data-spec-id',draftId);
   await test.step('Explicitly activate the adopted draft revision',async()=>{const activate=selected.locator('button').filter({hasText:/^Активировать предложенную ревизию$/});await reveal(activate);await activate.click();});
   const assign=selected.getByRole('region',{name:'Назначить попытку по ревизии',exact:true});await expect(assign).toBeVisible();
-  await test.step('Select the registered agent for the active revision',async()=>{await assign.getByRole('combobox',{name:'Агент для новой попытки',exact:true}).selectOption(registration!.agent.id);});
+  await test.step('Select the registered agent for the active revision',async()=>{await chooseSelectOption(assign.getByRole('combobox',{name:'Агент для новой попытки',exact:true}),registration!.agent.id);});
   await test.step('Enable strict tracking without submitting the form',async()=>{const checkbox=assign.getByRole('checkbox',{name:'Строгий учёт проходов',exact:true});await checkbox.check();await expect(checkbox).toBeChecked();});
   await test.step('Assign the strict attempt and observe its scoped receipt',async()=>{
    const [response]=await Promise.all([page.waitForResponse(response=>new URL(response.url()).pathname===`${scope(projectA!.id)}/commands`&&response.request().method()==='POST'&&response.request().postDataJSON().type==='startExecution',{timeout:15000}),assign.getByRole('button',{name:'Назначить попытку',exact:true}).click()]);
@@ -137,7 +138,7 @@ test('PW09/PW10 a standard MCP proposal becomes a human-edited draft and exact r
   const forkTitle=`Плановый выбор ${suffix}`;
   await strictCall('ouro.report_fork',{flowStepRunId:current.id,title:forkTitle,context:'Выбор принадлежит человеку этого прохода новой спеки.',reason:'Пути имеют разные последствия для процесса, поэтому назначенный агент запрашивает отдельный явный выбор человека по текущей ревизии.',options:[{id:'finish',title:'Проверить человеком',description:'Перейти к ручной проверке.'},{id:'repair',title:'Уточнить вход',description:'Повторить анализ и человеческий выбор.'}]});
   await projectView(page,'Вопросы');await page.getByRole('region',{name:'Вопросы и решения',exact:true}).getByRole('button',{name:forkTitle,exact:true}).click();const decision=page.getByRole('dialog',{name:'Запрос решения',exact:true}).getByRole('article',{name:`Запрос: ${forkTitle}`,exact:true});await expect(decision).toBeVisible();
-  await decision.getByLabel(`Решение по запросу ${forkTitle}`,{exact:true}).selectOption('finish');await decision.getByRole('button',{name:'Записать решение',exact:true}).click();
+  await chooseSelectOption(decision.getByLabel(`Решение по запросу ${forkTitle}`,{exact:true}),'finish');await decision.getByRole('button',{name:'Записать решение',exact:true}).click();
   await expect(decision).toContainText('Ожидается подтверждение применения агентом');
   const request=(await snapshot(page,projectA.id)).state.requests.find(item=>item.executionId===strict.id)!;
   await strictCall('ouro.confirm_decision_applied',{decisionRequestId:request.id,evidence:`test://project-proposal/${suffix}/choice-applied`});
@@ -149,7 +150,7 @@ test('PW09/PW10 a standard MCP proposal becomes a human-edited draft and exact r
   const forbidden=await client.callTool({name:'ouro.report_flow_step',arguments:{executionId:strict.id,runId:humanRunId,phase:'start',requestId:crypto.randomUUID(),expectedVersion:(await snapshot(page,projectA.id)).cursor}});expect(forbidden.isError).toBe(true);expect((forbidden.structuredContent as {error:{code:string}}).error.code).toBe('FORBIDDEN');
   await specTab(page,'Процесс');await process.getByRole('button',{name:'Фактическое исполнение',exact:true}).click();const currentStep=page.getByRole('region',{name:'Текущий проход процесса',exact:true});await expect(currentStep).toContainText(`Ручная проверка ${suffix}`);await expect(currentStep).toContainText(humanRunId);
   const humanStep=async(phase:'start'|'complete')=>{
-   const form=currentStep.getByRole('form',{name:'Действие человека в текущем проходе',exact:true});await form.getByRole('combobox',{name:'Действие на шаге',exact:true}).selectOption(phase);
+   const form=currentStep.getByRole('form',{name:'Действие человека в текущем проходе',exact:true});await chooseSelectOption(form.getByRole('combobox',{name:'Действие на шаге',exact:true}),phase);
    await form.getByRole('textbox',{name:'Основание действия',exact:true}).fill(`Человек подтвердил ${phase} ручной проверки по точному проходу ${humanRunId}.`);
    const refreshBasis=form.getByRole('button',{name:'Проверил события текущего прохода',exact:true});if(await refreshBasis.count())await refreshBasis.click();
    const committedStep=page.waitForResponse(response=>new URL(response.url()).pathname===`${scope(projectA!.id)}/commands`&&response.request().method()==='POST'&&response.request().postDataJSON().type==='reportFlowStep'&&response.request().postDataJSON().phase===phase);

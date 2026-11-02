@@ -1,3 +1,4 @@
+import {chooseSelectOption} from './select-helpers';
 import { test,expect,type Page } from '@playwright/test';
 import { AGENT_ID,type ProjectState } from '../packages/core/src';
 
@@ -22,7 +23,7 @@ test('F09 state diagrams expose four axes and distinguish human permission, agen
  await human(page,{type:'activateRevision',specId:spec.id,revisionId:revision.id});
  await human(page,{type:'startExecution',specId:spec.id,specRevisionId:revision.id,agentId:AGENT_ID});
  await page.reload();await page.getByRole('button',{name:'Спецификации',exact:true}).click();
- await page.getByLabel('Выбрать спецификацию',{exact:true}).selectOption(spec.id);
+ await chooseSelectOption(page.getByLabel('Выбрать спецификацию',{exact:true}),spec.id);
  await page.getByRole('button',{name:'Состояния',exact:true}).click();
  const panel=page.getByRole('region',{name:'Визуальные переходы состояний',exact:true});
  const axes=panel.locator('.state-axis-tabs');

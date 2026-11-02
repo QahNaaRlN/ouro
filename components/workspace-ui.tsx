@@ -1,6 +1,6 @@
 'use client';
 
-import {forwardRef,useCallback,useEffect,useId,useLayoutEffect,useRef,useState,type ReactNode,type SelectHTMLAttributes,type TextareaHTMLAttributes} from 'react';
+import {forwardRef,useCallback,useEffect,useId,useLayoutEffect,useRef,useState,type ReactNode,type TextareaHTMLAttributes} from 'react';
 import {Check,ChevronRight,Copy,X} from 'lucide-react';
 import './workspace-ui.css';
 
@@ -39,9 +39,7 @@ export function WorkspaceDialog({open,onClose,title,children,footer,className=''
   </dialog>;
 }
 
-export const WorkspaceSelect=forwardRef<HTMLSelectElement,SelectHTMLAttributes<HTMLSelectElement>>(function WorkspaceSelect({className='',...props},ref){
-  return <select {...props} ref={ref} className={`ws-select ${className}`}/>;
-});
+export {AppSelect as WorkspaceSelect} from './app-select';
 
 export const WorkspaceTextarea=forwardRef<HTMLTextAreaElement,TextareaHTMLAttributes<HTMLTextAreaElement>>(function WorkspaceTextarea({className='',onInput,value,defaultValue,rows=3,...props},forwardedRef){
   const textarea=useRef<HTMLTextAreaElement|null>(null);

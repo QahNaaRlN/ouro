@@ -1,3 +1,4 @@
+import {chooseSelectOption} from './select-helpers';
 import {test,expect,type Page} from '@playwright/test';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {StreamableHTTPClientTransport} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -23,12 +24,12 @@ test('FR09/FR11 an uncertain human skip survives navigation and recovers its exa
  try{
   expect((await agentWrite('ouro.confirm_started')).isError).not.toBe(true);
   await page.reload();await expect(page.getByRole('heading',{name:/^Дорожная карта/})).toBeVisible();
-  await page.getByRole('button',{name:'Спецификации',exact:true}).click();await page.getByLabel('Выбрать спецификацию',{exact:true}).selectOption(spec.id);
+  await page.getByRole('button',{name:'Спецификации',exact:true}).click();await chooseSelectOption(page.getByLabel('Выбрать спецификацию',{exact:true}),spec.id);
   await page.getByRole('button',{name:'Процесс',exact:true}).click();
   const flow=page.getByRole('region',{name:'Процесс спецификации',exact:true});
   await flow.getByRole('button',{name:'Таблица',exact:true}).click();await flow.getByRole('button',{name:'Открыть узел Шаг для явного пропуска',exact:true}).click();
   const form=page.getByLabel('Действие человека на шаге',{exact:true});
-  await form.getByLabel('Действие человека',{exact:true}).selectOption({label:'Пропустить шаг'});
+  await chooseSelectOption(form.getByLabel('Действие человека',{exact:true}),{label:'Пропустить шаг'});
   await form.getByLabel('Причина действия',{exact:true}).fill('Этот учебный шаг явно исключён человеком.');
   await form.getByLabel('Основание действия',{exact:true}).fill('test://flow-runtime/recovery/human-skip');
   const sent:Array<Record<string,unknown>>=[];
@@ -79,14 +80,14 @@ test('FR10/FR11 the teaching UI completes a strict process with explicit synthet
  };
  await simulate('apply');
  await page.reload();await expect(page.getByRole('heading',{name:/^Дорожная карта/})).toBeVisible();
- await page.getByRole('button',{name:'Спецификации',exact:true}).click();await page.getByLabel('Выбрать спецификацию',{exact:true}).selectOption(spec.id);
+ await page.getByRole('button',{name:'Спецификации',exact:true}).click();await chooseSelectOption(page.getByLabel('Выбрать спецификацию',{exact:true}),spec.id);
  await page.getByRole('button',{name:'Процесс',exact:true}).click();
  const flow=page.getByRole('region',{name:'Процесс спецификации',exact:true});
  for(let visit=0;visit<2;visit++){
   await flow.getByRole('button',{name:'Открыть текущий шаг',exact:true}).click();
   const form=page.getByLabel('Действие человека на шаге',{exact:true});
   for(const action of ['Начать шаг','Завершить шаг']){
-   await form.getByLabel('Действие человека',{exact:true}).selectOption({label:`Учебный симулятор: ${action}`});
+   await chooseSelectOption(form.getByLabel('Действие человека',{exact:true}),{label:`Учебный симулятор: ${action}`});
    await expect(form).toContainText('Evidence будет явно синтетическим');
    const review=form.getByRole('button',{name:'Проверил события перед действием',exact:true});if(await review.count())await review.click();
    const receipt=page.waitForResponse(response=>response.url().includes('/api/simulator')&&response.request().method()==='POST'&&response.request().postDataJSON().scenario.startsWith('flow_'));
