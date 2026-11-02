@@ -1,5 +1,7 @@
 'use client';
 
+import { projectFetch } from '@/lib/client-project';
+
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowUpRight, Check, CircleCheck, Clock3, Copy, GitBranch, Github, Link2, LoaderCircle, RefreshCw, ShieldCheck, TriangleAlert, Unplug } from 'lucide-react';
 import { Status } from '@/components/roadmap';
@@ -28,7 +30,7 @@ export default function GitHubPanel({state,onSnapshot,readOnly=false}:{state:Pro
     const own=++sequence.current;
     activeRead.current?.abort();const controller=new AbortController();activeRead.current=controller;
     try{
-      const response=await fetch('/api/github',{cache:'no-store',signal:controller.signal}),body=await response.json();
+      const response=await projectFetch('/api/github',{cache:'no-store',signal:controller.signal}),body=await response.json();
       if(!response.ok)throw new Error(body.error?.message??'Не удалось получить состояние GitHub.');
       if(mounted.current&&own===sequence.current){setInfo(body);setLoadError('');}
     }catch(e){if(!controller.signal.aborted&&mounted.current&&own===sequence.current)setLoadError(e instanceof Error?e.message:'Не удалось обновить состояние GitHub.');}
@@ -42,7 +44,7 @@ export default function GitHubPanel({state,onSnapshot,readOnly=false}:{state:Pro
   const mutate=async(url:string,payload:Record<string,unknown>)=>{
     if(readOnly||busy)return false;setBusy(true);setError('');setNotice('');
     try{
-      const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}),body=await response.json();
+      const response=await projectFetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}),body=await response.json();
       if(!response.ok)throw new Error(body.error?.message??'Изменение не принято.');
       if(body.state)await onSnapshot?.(body);
       await reload();return true;

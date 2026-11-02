@@ -184,7 +184,7 @@ async function assertCatalogOperator(tx:Connection,actor:Actor):Promise<void>{
 export async function createStore(options:StoreOptions={}):Promise<Store>{
   const selectedProjectId=projectIdValue(options.projectId??PROJECT_ID),db=await openDatabase(options);
   try{
-    const migrations=await Promise.all(['001_initial.sql','002_agents.sql','003_github.sql','004_participants.sql','005_drafts.sql','006_workspace_projects.sql','007_identity.sql','008_projects_memberships.sql'].map(file=>readFile(path.join(process.cwd(),'db','migrations',file),'utf8')));
+    const migrations=await Promise.all(['001_initial.sql','002_agents.sql','003_github.sql','004_participants.sql','005_drafts.sql','006_workspace_projects.sql','007_identity.sql','008_projects_memberships.sql','009_membership_regrants.sql'].map(file=>readFile(path.join(process.cwd(),'db','migrations',file),'utf8')));
     await db.transaction(async tx=>{
       // External PostgreSQL may have multiple app processes initializing together.
       if(options.databaseUrl)await tx.query('SELECT pg_advisory_xact_lock(187652019)');

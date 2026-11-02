@@ -20,14 +20,13 @@ export function sessionCookie(request: Request, value: string, maxAge = 43_200) 
 
 export function createUserAuthHandlers(dependencies: UserAuthHttpDependencies = {}) {
   const auth = dependencies.getAuth ?? (async () => (await import('./store')).getUserAuth());
-  const clientKey = (request: Request) => request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'direct';
   return {
     async login(request: Request) {
       try {
         requestOrigin(request);
         const input = loginInput.safeParse(await readCommandBody(request));
         if (!input.success) throw new AccessError('UNAUTHENTICATED', 'Email или пароль неверны.', 401);
-        const login = await (await auth()).authenticate(input.data.email, input.data.password, clientKey(request));
+        const login = await (await auth()).authenticate(input.data.email, input.data.password);
         if (!login) throw new AccessError('UNAUTHENTICATED', 'Email или пароль неверны.', 401);
         const headers = new Headers();
         headers.append('Set-Cookie', sessionCookie(request, login.token));

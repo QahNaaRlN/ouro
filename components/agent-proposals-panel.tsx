@@ -1,5 +1,7 @@
 'use client';
 
+import { projectFetch } from '@/lib/client-project';
+
 import {useMemo,useRef,useState,type FormEvent} from 'react';
 import {Bot,Check,ChevronRight,FilePlus2,GitBranch,MessageSquareText,Plus,RefreshCw,Search,ShieldCheck,Trash2,X} from 'lucide-react';
 import {ReactFlow,Background,Controls,MarkerType,type Node,type Edge} from '@xyflow/react';
@@ -62,7 +64,7 @@ function ProposalReviewForm({proposal,initial,latest,shown,state,actorId,onSnaps
  const request=async(body:Record<string,unknown>,expectedActorId=actorId)=>{
   if(readOnly||busy)return;pending.current={actorId:expectedActorId,body};intents.set(intentKey,pending.current);setBusy(true);setError('');setNotice('');
   try{
-   const response=await fetch('/api/commands',{method:'POST',headers:{'Content-Type':'application/json','X-Ouro-Expected-Participant':expectedActorId},body:JSON.stringify(body)}),data=await response.json();
+   const response=await projectFetch('/api/commands',{method:'POST',headers:{'Content-Type':'application/json','X-Ouro-Expected-Participant':expectedActorId},body:JSON.stringify(body)}),data=await response.json();
    if(!response.ok){
     // Auth/rate failures happen before receipt lookup and cannot settle a
     // previously ambiguous write. A domain conflict follows receipt lookup.

@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Box, LogIn, LogOut, Mail, Plus, ShieldCheck, UserPlus, Users } from 'lucide-react';
 import type { Actor } from '@/packages/core/src';
-import { PROJECT_ID } from '@/packages/core/src';
+import { selectedProjectId } from '@/lib/client-project';
+export { selectedProjectId } from '@/lib/client-project';
 import type { ProjectMembership, ProjectMetadata, ProjectRole } from '@/lib/projects';
 import './participants-panel.css';
 
@@ -17,14 +18,6 @@ const post = (url: string, body: unknown, method = 'POST') => request(url, { met
 export const selectProject = (projectId: string) => {
   document.cookie = `ouro_project=${encodeURIComponent(projectId)}; SameSite=Strict; Path=/; Max-Age=31536000${location.protocol === 'https:' ? '; Secure' : ''}`;
   location.reload();
-};
-export const selectedProjectId = () => {
-  if (typeof document === 'undefined') return PROJECT_ID;
-  const value = document.cookie.split(';').map(item => item.trim()).find(item => item.startsWith('ouro_project='))?.slice('ouro_project='.length);
-  try {
-    const id = value ? decodeURIComponent(value) : PROJECT_ID;
-    return /^[A-Za-z0-9_-]{1,200}$/.test(id) ? id : PROJECT_ID;
-  } catch { return PROJECT_ID; }
 };
 
 export function AccountLogout({ identity }: { identity: Actor | null }) {

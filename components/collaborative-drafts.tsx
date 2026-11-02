@@ -1,5 +1,7 @@
 'use client';
 
+import { projectFetch } from '@/lib/client-project';
+
 import { useCallback,useEffect,useLayoutEffect,useRef,useState,type FormEvent } from 'react';
 import { Check,Download,FilePlus2,FileText,LoaderCircle,Plus,RefreshCw,Users,X } from 'lucide-react';
 import type { ProjectState,RevisionContent } from '@/packages/core/src';
@@ -13,7 +15,7 @@ import './collaborative-drafts.css';
 
 const names:Record<DraftTextField,string>={title:'Название черновика',goal:'Цель черновика',constraints:'Ограничения черновика',assumptions:'Предположения черновика',risks:'Риски черновика',inputs:'Входы черновика',comment:'Комментарий черновика'};
 async function requestJSON(url:string,body?:unknown,expectedActorId?:string){
-  const response=await fetch(url,body===undefined?{cache:'no-store'}:{method:'POST',headers:{'Content-Type':'application/json',...(expectedActorId?{'X-Ouro-Expected-Participant':expectedActorId}:{})},body:JSON.stringify(body)});
+  const response=await projectFetch(url,body===undefined?{cache:'no-store'}:{method:'POST',headers:{'Content-Type':'application/json',...(expectedActorId?{'X-Ouro-Expected-Participant':expectedActorId}:{})},body:JSON.stringify(body)});
   let data;try{data=await response.json();}catch{throw Object.assign(new Error('Ответ сервера не подтверждён. Проверьте прежний запрос.'),{code:'INVALID_RESPONSE',status:response.status});}
   if(!response.ok)throw Object.assign(new Error(data.error?.message??'Операция не подтверждена.'),{code:data.error?.code,status:response.status});return data;
 }

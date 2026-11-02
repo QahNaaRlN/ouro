@@ -1,5 +1,7 @@
 'use client';
 
+import { projectFetch } from '@/lib/client-project';
+
 import { useRef, useState, type FormEvent } from 'react';
 import { ArrowRight, BookOpen, Check, FilePlus2, GitBranch, History, Link2, LoaderCircle, Plus, RefreshCw, Search, ShieldCheck, Tags, X } from 'lucide-react';
 import { getLessonCandidates, getLessonSourceSpecIds } from '@/packages/core/src/lessons';
@@ -51,7 +53,7 @@ export default function LessonsPanel({state,onSnapshot,onOpenSpec,readOnly=false
     // Store checks the exact receipt before VERSION_CONFLICT; that response proves this intent was not committed.
     let rejected=false,noReceipt=false;
     try{
-      const response=await fetch('/api/commands',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,expectedVersion:baseVersion,requestId:pending.current.requestId})});
+      const response=await projectFetch('/api/commands',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,expectedVersion:baseVersion,requestId:pending.current.requestId})});
       const body=await response.json();if(!response.ok){rejected=response.status>=400&&response.status<500;noReceipt=response.status===409&&body.error?.code==='VERSION_CONFLICT';throw new Error(body.error?.message??'Команда не принята.');}
       await onSnapshot(body);pending.current=null;setUncertain(false);return body as Result;
     }catch(e){if(hasEditor){if(noReceipt)setUncertain(false);else if(!rejected)setUncertain(true);}setError(e instanceof Error?e.message:'Не удалось сохранить изменение.');return null;}finally{setBusy(false);}

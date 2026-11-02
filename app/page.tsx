@@ -1,5 +1,7 @@
 "use client";
 
+import { projectFetch, projectRequestUrl } from '@/lib/client-project';
+
 import packageInfo from '../package.json';
 import Link from 'next/link';
 import OuroLogo from '@/components/ouro-logo';
@@ -234,7 +236,7 @@ export default function Home() {
     presentSnapshot(result.snapshot);return result.snapshot;
   },[snapshotAdopter,presentSnapshot]);
   const refresh = useCallback(async () => {
-    const response = await fetch("/api/project", { cache: "no-store" });
+    const response = await projectFetch("/api/project", { cache: "no-store" });
     const data = await response.json();
     if (!response.ok)
       throw new Error(data.error?.message ?? "Не удалось прочитать проект");
@@ -252,7 +254,7 @@ export default function Home() {
     let cancelled = false;
     (async () => {
       try {
-        const session = await fetch("/api/session");
+        const session = await projectFetch("/api/session");
         const sessionData=await session.json();
         if (!session.ok) {
           throw new Error(
@@ -263,14 +265,14 @@ export default function Home() {
           const actor=(sessionData.actor??null) as Actor|null;
           setIdentity(actor);
           if(sessionData.account&&actor){
-            const projectsResponse=await fetch('/api/projects',{cache:'no-store'}),projectsData=await projectsResponse.json();
+            const projectsResponse=await projectFetch('/api/projects',{cache:'no-store'}),projectsData=await projectsResponse.json();
             if(!projectsResponse.ok)throw new Error(projectsData.error?.message??'Не удалось прочитать список проектов.');
             const selectedId=selectedProjectId(),current=projectsData.projects.find((project:{id:string})=>project.id===selectedId);
             if(!current&&projectsData.projects[0]){selectProject(projectsData.projects[0].id);return;}
             setProjectRole(current?.role??null);
           }else setProjectRole(actor&&['local-human','human-token'].includes(actor.id)?'Owner':'Contributor');
           await refresh();
-          const agentsResponse=await fetch('/api/agents',{cache:'no-store'});
+          const agentsResponse=await projectFetch('/api/agents',{cache:'no-store'});
           if(agentsResponse.ok){const body=await agentsResponse.json();if(!cancelled)setAgents(body.agents);}
         }
       } catch (e) {
@@ -293,8 +295,8 @@ export default function Home() {
   }, [theme]);
   useEffect(() => {
     if(loading||!snapshotAdopter.getSnapshot())return;
-    const subscription=startProjectSubscription({adopter:snapshotAdopter,onSnapshot:presentSnapshot,onStatus:setStreamStatus,reconcile:async()=>{
-      const response=await fetch('/api/project',{cache:'no-store'});
+    const subscription=startProjectSubscription({adopter:snapshotAdopter,createEventSource:url=>new EventSource(projectRequestUrl(url)),onSnapshot:presentSnapshot,onStatus:setStreamStatus,reconcile:async()=>{
+      const response=await projectFetch('/api/project',{cache:'no-store'});
       if(!response.ok)throw new Error('Не удалось сверить историю');return response.json();
     }});
     const offline=()=>{subscription.reconnect();setStreamStatus(current=>current==='reload-required'?current:'reconnecting');};
@@ -305,7 +307,7 @@ export default function Home() {
   }, [loading,snapshotAdopter,presentSnapshot]);
   useEffect(()=>{
     if(loading)return;let live=true;
-    const timer=setInterval(()=>{void fetch('/api/agents',{cache:'no-store'}).then(async response=>{if(response.ok){const data=await response.json();if(live)setAgents(data.agents);}}).catch(()=>{});},8000);
+    const timer=setInterval(()=>{void projectFetch('/api/agents',{cache:'no-store'}).then(async response=>{if(response.ok){const data=await response.json();if(live)setAgents(data.agents);}}).catch(()=>{});},8000);
     return()=>{live=false;clearInterval(timer);};
   },[loading]);
   useEffect(() => {
@@ -327,7 +329,7 @@ export default function Home() {
     pendingRef.current = true;
     setError("");
     try {
-      const r = await fetch("/api/commands", {
+      const r = await projectFetch("/api/commands", {
         method: "POST",
         headers: { "Content-Type": "application/json",...(identity?{'X-Ouro-Expected-Participant':identity.id}:{}) },
         body: JSON.stringify({
@@ -373,7 +375,7 @@ export default function Home() {
     setBusy(true);pendingRef.current=true;setError('');
     let outcome:Omit<FlowCommandOutcome,'ok'>={};
     try{
-      const response=await fetch('/api/simulator',{method:'POST',headers:{'Content-Type':'application/json','X-Ouro-Expected-Participant':identity.id},body:JSON.stringify({...payload,requestId:typeof payload.requestId==='string'?payload.requestId:crypto.randomUUID(),expectedVersion})});
+      const response=await projectFetch('/api/simulator',{method:'POST',headers:{'Content-Type':'application/json','X-Ouro-Expected-Participant':identity.id},body:JSON.stringify({...payload,requestId:typeof payload.requestId==='string'?payload.requestId:crypto.randomUUID(),expectedVersion})});
       const data=await response.json();outcome={status:response.status,...(typeof data.error?.code==='string'?{code:data.error.code}:{})};
       if(!response.ok){if(data.state)adoptSnapshot(data);else await refresh();setError(`${data.error?.code??'ERROR'}: ${data.error?.message??'Учебное действие не записано.'}`);return {ok:false,...outcome};}
       await adoptMutation(data);setToast('Учебный симулятор записал явно синтетический факт процесса');return {ok:true,...outcome};
@@ -400,7 +402,7 @@ export default function Home() {
     pendingRef.current = true;
     setError("");
     try {
-      const r = await fetch("/api/simulator", {
+      const r = await projectFetch("/api/simulator", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

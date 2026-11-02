@@ -15,6 +15,15 @@ type Database = Connection & { transaction<T>(fn: (tx: Connection) => Promise<T>
 type MembershipRow = { id: string; project_id: string; user_id: string; email: string; name: string; role: ProjectRole; created_at: Date | string; created_by: string; revoked_at: Date | string | null };
 type InvitationRow = { id: string; project_id: string; email: string; role: ProjectRole; created_at: Date | string; created_by: string; expires_at: Date | string; accepted_at: Date | string | null; revoked_at: Date | string | null };
 type AccountRow = { id: string; email: string; name: string; email_verified_at: Date | string | null; created_at: Date | string; created_by: string; disabled_at: Date | string | null };
+type PasswordResetRow = { reset_id: string; user_id: string; expires_at: Date | string; confirmed_at: Date | string | null; disabled_at: Date | string | null };
+const passwordResetSelection = `SELECT t.id AS reset_id,t.user_id,t.expires_at,c.confirmed_at,r.revoked_at AS disabled_at
+  FROM ouro_password_reset_tokens t JOIN ouro_user_accounts a ON a.id=t.user_id
+  LEFT JOIN ouro_password_reset_confirmations c ON c.reset_id=t.id
+  LEFT JOIN ouro_user_account_revocations r ON r.user_id=a.id`;
+const activeReset = (reset: PasswordResetRow | undefined): PasswordResetRow => {
+  if (!reset || reset.confirmed_at || reset.disabled_at || new Date(reset.expires_at).getTime() <= Date.now()) fail('RESET_INVALID', 'Код сброса недействителен или истёк.');
+  return reset!;
+};
 const roles: ProjectRole[] = ['Owner', 'Contributor', 'Viewer'];
 const date = (value: Date | string | null) => value ? new Date(value).toISOString() : null;
 const digest = (token: string) => createHash('sha256').update(token).digest('hex');
@@ -42,11 +51,16 @@ export async function resolveAccountProjectIds(tx: Connection, userId: string): 
 
 export async function projectRole(tx: Connection, actor: Actor, projectId: string): Promise<ProjectRole | null> {
   if (!actor || actor.kind !== 'human' || !validId(actor.id) || !validId(projectId) || !actor.projectIds.includes(projectId)) return null;
-  if (['local-human', 'human-token'].includes(actor.id)) return 'Owner';
+  if (['local-human', 'human-token'].includes(actor.id)) {
+    if (projectId === PROJECT_ID) return 'Owner';
+    const local = await tx.query("SELECT id FROM ouro_workspace_projects WHERE id=$1 AND kind IN ('folder','demo')", [projectId]);
+    if (local.rows.length) return 'Owner';
+  }
   const result = await tx.query<{ role: ProjectRole }>(`${membershipSelection}
     LEFT JOIN ouro_user_account_revocations ar ON ar.user_id=m.user_id
     WHERE m.user_id=$1 AND m.project_id=$2 AND r.membership_id IS NULL AND ar.user_id IS NULL`, [actor.id, projectId]);
   if (result.rows[0]) return result.rows[0].role;
+  if (['local-human', 'human-token'].includes(actor.id)) return null;
   const legacy = await tx.query('SELECT r.id FROM ouro_participant_registrations r LEFT JOIN ouro_participant_revocations v ON v.participant_id=r.id WHERE r.id=$1 AND r.project_id=$2 AND v.participant_id IS NULL', [actor.id, projectId]);
   if (legacy.rows.length) return 'Contributor';
   if (projectId === PROJECT_ID) {
@@ -68,9 +82,12 @@ export function createProjectService(options: { db: Database; serialize: <T>(fn:
   const attempts = new Map<string, { count: number; resetAt: number }>();
   const limit = (key: string, maximum = 10) => {
     const now = Date.now(), current = attempts.get(key);
-    if (current && current.resetAt > now && current.count >= maximum) fail('RATE_LIMITED', 'Слишком много попыток. Повторите позже.');
-    if (current && current.resetAt <= now) attempts.delete(key);
-    attempts.set(key, { count: (current?.count ?? 0) + 1, resetAt: current?.resetAt ?? now + 600_000 });
+    if (!current || current.resetAt <= now) {
+      attempts.set(key, { count: 1, resetAt: now + 600_000 });
+      return;
+    }
+    if (current.count >= maximum) fail('RATE_LIMITED', 'Слишком много попыток. Повторите позже.');
+    attempts.set(key, { count: current.count + 1, resetAt: current.resetAt });
   };
   const admin = (tx: Connection, projectId: string, actorId: string, action: string, targetId: string, details: Record<string, unknown> = {}) => tx.query('INSERT INTO ouro_administrative_facts(id,project_id,actor_id,action,target_id,details) VALUES($1,$2,$3,$4,$5,$6::jsonb)', [randomUUID(), projectId, actorId, action, targetId, JSON.stringify(details)]);
   const lock = (tx: Connection, projectId: string) => tx.query('SELECT version FROM ouro_projects WHERE id=$1 FOR UPDATE', [projectId]);
@@ -78,7 +95,9 @@ export function createProjectService(options: { db: Database; serialize: <T>(fn:
     const target = await tx.query<MembershipRow>(`${membershipSelection} WHERE m.id=$1 AND m.project_id=$2 AND r.membership_id IS NULL`, [membershipId, projectId]);
     if (!target.rows[0]) fail('NOT_FOUND', 'Активное членство не найдено.');
     if (target.rows[0].role !== 'Owner' || nextRole === 'Owner') return target.rows[0];
-    const owners = await tx.query<{ count: string | number }>(`SELECT count(*) AS count FROM ouro_project_memberships m LEFT JOIN ouro_project_membership_revocations r ON r.membership_id=m.id WHERE m.project_id=$1 AND r.membership_id IS NULL AND COALESCE((SELECT c.role FROM ouro_project_membership_role_changes c WHERE c.membership_id=m.id ORDER BY c.changed_at DESC,c.id DESC LIMIT 1),m.role)='Owner'`, [projectId]);
+    const disabled = await tx.query('SELECT user_id FROM ouro_user_account_revocations WHERE user_id=$1', [target.rows[0].user_id]);
+    if (disabled.rows.length) return target.rows[0];
+    const owners = await tx.query<{ count: string | number }>(`SELECT count(*) AS count FROM ouro_project_memberships m LEFT JOIN ouro_project_membership_revocations r ON r.membership_id=m.id LEFT JOIN ouro_user_account_revocations ar ON ar.user_id=m.user_id WHERE m.project_id=$1 AND r.membership_id IS NULL AND ar.user_id IS NULL AND COALESCE((SELECT c.role FROM ouro_project_membership_role_changes c WHERE c.membership_id=m.id ORDER BY c.changed_at DESC,c.id DESC LIMIT 1),m.role)='Owner'`, [projectId]);
     if (Number(owners.rows[0]?.count ?? 0) <= 1) fail('LAST_OWNER', 'Сначала передайте владение другому участнику.');
     return target.rows[0];
   };
@@ -198,10 +217,12 @@ export function createProjectService(options: { db: Database; serialize: <T>(fn:
       limit(`accept:${digest(token)}`, 20);
       const passwordHash = input.password !== undefined && validUserPassword(input.password) ? await hashUserPassword(input.password) : null;
       return db.transaction(async tx => {
+        const scope = await tx.query<{ project_id: string }>('SELECT project_id FROM ouro_project_invitations WHERE token_hash=$1', [digest(token)]);
+        if (!scope.rows[0]) fail('INVITATION_INVALID', 'Приглашение недействительно или истекло.');
+        await lock(tx, scope.rows[0].project_id);
         const found = await tx.query<InvitationRow>(`${invitationSelection} WHERE i.token_hash=$1 FOR UPDATE OF i`, [digest(token)]);
         const invite = found.rows[0];
         if (!invite || invite.accepted_at || invite.revoked_at || new Date(invite.expires_at).getTime() <= Date.now()) fail('INVITATION_INVALID', 'Приглашение недействительно или истекло.');
-        await lock(tx, invite.project_id);
         const existing = await tx.query<AccountRow>(`${accountSelection} WHERE a.email=$1`, [invite.email]);
         let user = existing.rows[0];
         if (user) {
@@ -214,7 +235,7 @@ export function createProjectService(options: { db: Database; serialize: <T>(fn:
           await tx.query('INSERT INTO ouro_user_password_credentials(user_id,password_hash) VALUES($1,$2)', [id, passwordHash]);
           user = (await tx.query<AccountRow>(`${accountSelection} WHERE a.id=$1`, [id])).rows[0];
         }
-        const duplicate = await tx.query(`${membershipSelection} WHERE m.project_id=$1 AND m.user_id=$2`, [invite.project_id, user.id]);
+        const duplicate = await tx.query(`${membershipSelection} WHERE m.project_id=$1 AND m.user_id=$2 AND r.membership_id IS NULL`, [invite.project_id, user.id]);
         if (duplicate.rows.length) fail('ALREADY_MEMBER', 'Членство уже существует.');
         const membershipId = randomUUID();
         await tx.query('INSERT INTO ouro_project_memberships(id,project_id,user_id,role,created_by) VALUES($1,$2,$3,$4,$5)', [membershipId, invite.project_id, user.id, invite.role, invite.created_by]);
@@ -225,11 +246,12 @@ export function createProjectService(options: { db: Database; serialize: <T>(fn:
         return { account: account(user), membership: membership(member.rows[0]), ...session };
       });
     }),
-    requestPasswordReset: (rawEmail: string, rateKey: string): Promise<{ ok: true }> => serialize(async () => {
+    requestPasswordReset: (rawEmail: string, _legacyRateKey?: string): Promise<{ ok: true }> => serialize(async () => {
       if (!mailer) fail('MAIL_NOT_CONFIGURED', 'SMTP не настроен.');
-      const email = normalizeUserEmail(rawEmail); limit(`reset-request:${email}:${rateKey}`, 5);
+      const email = normalizeUserEmail(rawEmail); limit(`reset-request:${email}`, 5);
       const result = await db.transaction(async tx => {
-        const found = await tx.query<AccountRow>(`${accountSelection} WHERE a.email=$1 AND r.revoked_at IS NULL AND a.email_verified_at IS NOT NULL`, [email]);
+        // Issuance and consumption share this account lock, including across processes.
+        const found = await tx.query<AccountRow>(`${accountSelection} WHERE a.email=$1 AND r.revoked_at IS NULL AND a.email_verified_at IS NOT NULL FOR UPDATE OF a`, [email]);
         if (!found.rows[0]) return null;
         const token = code(), expiresAt = new Date(Date.now() + 3_600_000), id = randomUUID();
         await tx.query('INSERT INTO ouro_password_reset_tokens(id,user_id,token_hash,expires_at) VALUES($1,$2,$3,$4)', [id, found.rows[0].id, digest(token), expiresAt]);
@@ -241,19 +263,24 @@ export function createProjectService(options: { db: Database; serialize: <T>(fn:
       }
       return { ok: true };
     }),
-    resetPassword: (token: string, password: string, rateKey: string): Promise<{ account: UserAccount; token: string; expiresAt: string }> => serialize(async () => {
-      limit(`reset-confirm:${rateKey}`, 10);
+    resetPassword: (token: string, password: string, _legacyRateKey?: string): Promise<{ account: UserAccount; token: string; expiresAt: string }> => serialize(async () => {
       if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(token) || !validUserPassword(password)) fail('VALIDATION_ERROR', 'Нужны действительный код и пароль 12–128 символов.');
+      const tokenHash = digest(token);
+      limit(`reset-confirm-token:${tokenHash}`, 10);
+      // Unknown, spent, expired and disabled-account codes do not trigger Argon2.
+      const pending = activeReset((await db.query<PasswordResetRow>(`${passwordResetSelection} WHERE t.token_hash=$1`, [tokenHash])).rows[0]);
+      limit(`reset-confirm-account:${pending.user_id}`, 10);
       const passwordHash = await hashUserPassword(password);
       return db.transaction(async tx => {
-        const found = await tx.query<{ reset_id: string; user_id: string; expires_at: Date | string; confirmed_at: Date | string | null }>(`SELECT t.id AS reset_id,t.user_id,t.expires_at,c.confirmed_at FROM ouro_password_reset_tokens t LEFT JOIN ouro_password_reset_confirmations c ON c.reset_id=t.id WHERE t.token_hash=$1 FOR UPDATE OF t`, [digest(token)]);
-        const reset = found.rows[0];
-        if (!reset || reset.confirmed_at || new Date(reset.expires_at).getTime() <= Date.now()) fail('RESET_INVALID', 'Код сброса недействителен или истёк.');
+        await tx.query('SELECT id FROM ouro_user_accounts WHERE id=$1 FOR UPDATE', [pending.user_id]);
+        const reset = activeReset((await tx.query<PasswordResetRow>(`${passwordResetSelection} WHERE t.token_hash=$1 FOR UPDATE OF t`, [tokenHash])).rows[0]);
+        if (reset.user_id !== pending.user_id) fail('RESET_INVALID', 'Код сброса недействителен или истёк.');
         const user = (await tx.query<AccountRow>(`${accountSelection} WHERE a.id=$1 AND r.revoked_at IS NULL`, [reset.user_id])).rows[0];
         if (!user) fail('RESET_INVALID', 'Код сброса недействителен или истёк.');
         await tx.query('UPDATE ouro_user_password_credentials SET password_hash=$2,algorithm_version=1,updated_at=now() WHERE user_id=$1', [user.id, passwordHash]);
         await tx.query("UPDATE ouro_user_sessions SET revoked_at=now(),revocation_reason='password_reset' WHERE user_id=$1 AND revoked_at IS NULL", [user.id]);
-        await tx.query('INSERT INTO ouro_password_reset_confirmations(reset_id) VALUES($1)', [reset.reset_id]);
+        // Append-only consumption includes all codes issued before this reset.
+        await tx.query('INSERT INTO ouro_password_reset_confirmations(reset_id) SELECT id FROM ouro_password_reset_tokens WHERE user_id=$1 ON CONFLICT DO NOTHING', [user.id]);
         const session = await newSession(tx, user.id);
         return { account: account(user), ...session };
       });

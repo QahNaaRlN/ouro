@@ -1,5 +1,7 @@
 'use client';
 
+import { projectFetch } from '@/lib/client-project';
+
 import {useEffect,useRef,useState,type ChangeEvent,type CSSProperties,type FormEvent} from 'react';
 import {ArrowDownToLine,FileJson,FilePlus2,LoaderCircle,RefreshCw,ShieldQuestion} from 'lucide-react';
 import type {DomainEvent,ProjectState,RevisionContent} from '@/packages/core/src';
@@ -55,7 +57,7 @@ export default function MeridianPanel({state,onSnapshot,onOpenSpec,theme,pending
     const wasUncertain=uncertain;
     let definitiveRejection=false,confirmedNoReceipt=false;
     try{
-      const response=await fetch('/api/meridian/import',{method:'POST',headers:{'Content-Type':'application/json','X-Ouro-Expected-Participant':participantKey},body:JSON.stringify(body)});
+      const response=await projectFetch('/api/meridian/import',{method:'POST',headers:{'Content-Type':'application/json','X-Ouro-Expected-Participant':participantKey},body:JSON.stringify(body)});
       const result=await response.json();
       if(!response.ok){
         definitiveRejection=response.status>=400&&response.status<500;

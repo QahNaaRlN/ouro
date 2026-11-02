@@ -26,7 +26,6 @@ const valid = <T>(schema: z.ZodType<T>, value: unknown): T => {
   if (!result.success) throw new AccessError('VALIDATION_ERROR', 'Поля запроса не соответствуют контракту.', 422);
   return result.data;
 };
-const clientKey = (request: Request) => request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'direct';
 
 export function createProjectHandlers(dependencies: ProjectHttpDependencies = {}) {
   const getStore = dependencies.getStore ?? (async () => (await import('./store')).getUserAuth());
@@ -89,11 +88,11 @@ export function createProjectHandlers(dependencies: ProjectHttpDependencies = {}
     } catch (error) { return apiError(error); } },
     async requestPasswordReset(request: Request) { try {
       requestOrigin(request); const store = await getStore(), input = valid(resetRequestInput, await readCommandBody(request));
-      return json(await store.requestPasswordReset(input.email, clientKey(request)));
+      return json(await store.requestPasswordReset(input.email));
     } catch (error) { return apiError(error); } },
     async resetPassword(request: Request) { try {
       requestOrigin(request); const store = await getStore(), input = valid(resetConfirmInput, await readCommandBody(request));
-      const result = await store.resetPassword(input.code, input.password, clientKey(request));
+      const result = await store.resetPassword(input.code, input.password);
       return json({ account: result.account, expiresAt: result.expiresAt }, 200, mutationHeaders(request, result.token));
     } catch (error) { return apiError(error); } },
   };

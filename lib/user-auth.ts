@@ -72,8 +72,9 @@ export function createUserAuth(options: { db: AuthDatabase; serialize: <T>(fn: (
         throw error;
       }
     }),
-    authenticate: (rawEmail: string, password: string, rateKey: string): Promise<AccountLogin | null> => serialize(async () => {
-      const email = normalizeEmail(rawEmail), key = `${email}:${rateKey}`;
+    authenticate: (rawEmail: string, password: string, _legacyRateKey?: string): Promise<AccountLogin | null> => serialize(async () => {
+      // Forwarded headers are caller-controlled; every account keeps one failure budget.
+      const email = normalizeEmail(rawEmail), key = `login:${email}`;
       rateLimit(key);
       const passwordHash = validPassword(password) ? null : await dummyPasswordHash;
       return db.transaction(async tx => {

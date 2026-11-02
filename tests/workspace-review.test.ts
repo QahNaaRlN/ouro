@@ -41,7 +41,7 @@ test('PW-REVIEW02 canonical projects share one owner but isolate initialization,
  const f=await projects();
  try{
   assert.notEqual(f.projectA.id,f.projectB.id);
-  const alias=path.join(f.base,'alias-a');await symlink(f.rootA,alias,'dir');
+  const alias=path.join(f.base,'alias-a');await symlink(f.rootA,alias,process.platform==='win32'?'junction':'dir');
   const deduplicated=await f.owner.createWorkspaceProject({requestId:crypto.randomUUID(),name:'Другое имя alias',rootPath:alias},operator);
   assert.equal(deduplicated.project.id,f.projectA.id);assert.equal(deduplicated.created,false);
   assert.deepEqual(deduplicated.project.rootIdentity,f.projectA.rootIdentity);

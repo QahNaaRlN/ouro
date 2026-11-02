@@ -1,5 +1,7 @@
 "use client";
 
+import { projectFetch } from '@/lib/client-project';
+
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Bot, Check, Copy, KeyRound, LoaderCircle, Plug, RefreshCw, ShieldCheck, Unplug } from 'lucide-react';
 
@@ -19,7 +21,7 @@ export default function AgentsPanel({onAgentsChange,readOnly=false}:{onAgentsCha
   const [issued,setIssued]=useState<IssuedConnection|null>(null),[client,setClient]=useState<ClientConfig>('stdio');
   const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[copied,setCopied]=useState('');
   const reload=useCallback(async()=>{
-    const response=await fetch('/api/agents',{cache:'no-store'});const body=await response.json();
+    const response=await projectFetch('/api/agents',{cache:'no-store'});const body=await response.json();
     if(!response.ok)throw new Error(body.error?.message??'Не удалось прочитать регистрации агентов');
     setAgents(body.agents);onAgentsChange(body.agents);return body.agents as AgentRegistration[];
   },[onAgentsChange]);
@@ -27,7 +29,7 @@ export default function AgentsPanel({onAgentsChange,readOnly=false}:{onAgentsCha
   const create=async(event:FormEvent)=>{
     event.preventDefault();if(readOnly||busy||!name.trim())return;setBusy(true);setError('');setCopied('');
     try{
-      const response=await fetch('/api/agents',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name.trim()})});
+      const response=await projectFetch('/api/agents',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name.trim()})});
       const body=await response.json();if(!response.ok)throw new Error(body.error?.message??'Не удалось создать подключение');
       setIssued(body);setClient('stdio');setName('');await reload();
     }catch(e){setError((e as Error).message);}finally{setBusy(false);}
@@ -35,7 +37,7 @@ export default function AgentsPanel({onAgentsChange,readOnly=false}:{onAgentsCha
   const revoke=async(agent:AgentRegistration)=>{
     if(readOnly||busy)return;setBusy(true);setError('');
     try{
-      const response=await fetch(`/api/agents/${encodeURIComponent(agent.id)}/revoke`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+      const response=await projectFetch(`/api/agents/${encodeURIComponent(agent.id)}/revoke`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
       const body=await response.json();if(!response.ok)throw new Error(body.error?.message??'Не удалось отозвать ключ');
       if(issued?.agent.id===agent.id)setIssued(null);await reload();
     }catch(e){setError((e as Error).message);}finally{setBusy(false);}
