@@ -30,6 +30,7 @@
     "release:pack": "node scripts/pack-release.mjs",
     "check:conventions": "node scripts/check-conventions.mjs",
     "check:architecture": "node scripts/check-architecture.mjs",
+    "migration:check": "node scripts/check-migration-baseline.mjs",
     "test:e2e:production": "playwright test --config=playwright.production.config.ts",
     "start:hosted": "node scripts/hosted-next.mjs",
     "test:external-pg": "npm run protocol:build && node scripts/qualify-postgres.mjs",
