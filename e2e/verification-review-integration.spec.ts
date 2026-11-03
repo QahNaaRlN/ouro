@@ -33,7 +33,7 @@ test('paired work and verification retain exact request/proposal navigation and 
   await client.connect(new StreamableHTTPClientTransport(new URL(`${scope}/mcp`,baseURL),{requestInit:{headers:{Authorization:`Bearer ${registration.token}`}}}));
   const call=async(execution:Execution,name:string,args:Record<string,unknown>={})=>{
    const result=await client!.callTool({name,arguments:{executionId:execution.id,requestId:crypto.randomUUID(),expectedVersion:(await state()).version,...args}});
-   expect(result.isError,JSON.stringify(result.structuredContent)).not.toBe(true);
+   expect(result.isError,JSON.stringify(result)).not.toBe(true);
   };
   const faces=[{spec:work,revision:workRevision,side:'Работа'},{spec:verification,revision:verificationRevision,side:'Проверка'}];
   for(const face of faces){
@@ -42,7 +42,7 @@ test('paired work and verification retain exact request/proposal navigation and 
    await call(execution,'ouro.report_action',{actionId:crypto.randomUUID(),phase:'completed',title:`Source for ${face.side}`,context:'Assigned execution records an immutable source for exact review navigation.',evidence:'test://verification-review-integration'});
    current=await state();const source=current.events.at(-1)!;
    await call(execution,'ouro.submit_proposal',{sourceCursor:current.version,content:{kind:'reality_summary',title:`Proposal for ${face.side}`,findings:[{text:'This face has its own source.',sourceEventIds:[source.id]}],interpretation:'Human review remains required.',limitations:'Isolated navigation fixture only.'}});
-   await call(execution,'ouro.report_question',{title:`Question for ${face.side}`,context:'The paired-card review links must stay scoped to this exact assigned revision.',reason:'A human must review this face independently.',options:[]});
+   await call(execution,'ouro.report_question',{title:`Question for ${face.side}`,context:'The paired-card review links must stay scoped to this exact assigned revision.',question:'Which evidence should this exact assigned revision use?',blockingScope:'execution'});
   }
   const before=await state();
   await page.emulateMedia({reducedMotion:'reduce'});
