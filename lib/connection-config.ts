@@ -21,6 +21,20 @@ export function assertMcpRequest(request:Request) {
   if(origin&&origin!==expected)throw new AccessError('FORBIDDEN','Origin не разрешён для MCP.');
   if(!request.headers.get('content-type')?.startsWith('application/json'))throw new AccessError('UNSUPPORTED_MEDIA_TYPE','MCP POST требует application/json.',415);
 }
+export function requestedProjectId(request:Request):string{
+  const query=new URL(request.url).searchParams.get('projectId');
+  const header=request.headers.get('X-Ouro-Project-Id');
+  if(query&&header&&query!==header)throw new AccessError('VALIDATION_ERROR','Параметры выбора проекта не совпадают.',422);
+  const cookies=request.headers.get('cookie')?.split(';').map(value=>value.trim())??[];
+  const selected=cookies.filter(value=>value.startsWith('ouro_project='));
+  if(selected.length>1)throw new AccessError('VALIDATION_ERROR','Выбор проекта недействителен. Обновите страницу.',422);
+  let cookie:string|null=null;
+  try{cookie=selected[0]?decodeURIComponent(selected[0].slice('ouro_project='.length)):null;}
+  catch{throw new AccessError('VALIDATION_ERROR','Выбор проекта недействителен. Обновите страницу.',422);}
+  const projectId=header??query??cookie??PROJECT_ID;
+  if(!/^[A-Za-z0-9_-]{1,200}$/.test(projectId))throw new AccessError('VALIDATION_ERROR','Некорректный projectId.',422);
+  return projectId;
+}
 export function connectionConfig(request:Request,projectId=PROJECT_ID) {
   const endpoint=projectId===PROJECT_ID?'/api/mcp':`/api/projects/${encodeURIComponent(projectId)}/mcp`;
   return {httpUrl:`${requestOrigin(request)}${endpoint}`,stdioCommand:process.execPath,stdioArgs:[path.resolve('packages/mcp/bin/ouro-mcp.mjs')],projectId};

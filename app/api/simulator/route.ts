@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { authenticatedParticipant, assertHuman, readCommandBody, AccessError, isLocalDemo } from '@/lib/auth';
 import { apiError } from '@/lib/http';
 import { executeCommand, getProject } from '@/lib/store';
-import { PROJECT_ID, AGENT_ID, replay } from '@/packages/core/src';
+import { AGENT_ID, replay } from '@/packages/core/src';
+import { requestedProjectId } from '@/lib/connection-config';
 import type { Command, Actor } from '@/packages/core/src/types';
 export const runtime = 'nodejs';
 const input = z.object({
@@ -18,14 +19,15 @@ export async function POST(request: Request) {
   try {
     // The simulator is a local teaching tool; it is never an external agent credential.
     if (!isLocalDemo(request)) throw new AccessError('FORBIDDEN', 'Симулятор доступен только в локальном демо.');
-    const operator=await authenticatedParticipant(request, PROJECT_ID, AGENT_ID);assertHuman(operator);
+    const projectId=requestedProjectId(request);
+    const operator=await authenticatedParticipant(request, projectId, AGENT_ID);assertHuman(operator);
     if(!['local-human','human-token'].includes(operator.id))throw new AccessError('FORBIDDEN','Учебным симулятором управляет доверенный локальный оператор.');
     const parsed = input.safeParse(await readCommandBody(request));
     if (!parsed.success) throw new AccessError('VALIDATION_ERROR', 'Нужны scenario, specId, expectedVersion, requestId.', 422);
     const {scenario,specId,expectedVersion,requestId} = parsed.data;
     const current = await getProject();
     // Reconstruct the originally observed version so retries produce the same command.
-    const state = expectedVersion < current.version ? replay(current.events.filter(e=>e.version<=expectedVersion), PROJECT_ID) : current;
+    const state = expectedVersion < current.version ? replay(current.events.filter(e=>e.version<=expectedVersion), projectId) : current;
     const stableId = (label: string) => {
       const hash=createHash('sha256').update(`${requestId}:${label}`).digest('hex');
       return `${hash.slice(0,8)}-${hash.slice(8,12)}-4${hash.slice(13,16)}-a${hash.slice(17,20)}-${hash.slice(20,32)}`;
@@ -74,7 +76,7 @@ export async function POST(request: Request) {
         command={...base,type:'clearBlocker',decisionRequestId:blocker.id,remediationExecutionId:remediation.id,evidence:'simulation://ouro/blocker-cleared — синтетическое evidence устранения'};break;
       }
     }
-    const agent: Actor = {id:AGENT_ID,kind:'agent',name:'Симулятор · не внешний агент',projectIds:[PROJECT_ID]};
+    const agent: Actor = {id:AGENT_ID,kind:'agent',name:'Симулятор · не внешний агент',projectIds:[projectId]};
     return Response.json(await executeCommand(command,agent), {headers:{'Cache-Control':'no-store'}});
   } catch(e) { return apiError(e); }
 }

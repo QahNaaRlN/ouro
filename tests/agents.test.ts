@@ -53,7 +53,7 @@ test('AC02: revocation is append-only, immediate and durable across database reo
     const repeated=await store.revokeAgent(created.agent.id,human);
     assert.equal(repeated.revokedAt,revoked.revokedAt);
     await assert.rejects(store.inspect('UPDATE ouro_agent_credentials SET token_hash=token_hash'),/append-only/);
-    await assert.rejects(store.inspect('DELETE FROM ouro_agent_revocations'),/append-only/);
+    await assert.rejects(store.inspect('DELETE FROM ouro_agent_assignment_revocations'),/append-only/);
     await assert.rejects(store.inspect('TRUNCATE ouro_agent_registrations CASCADE'),/append-only/);
     await store.close();store=await createStore({dataDir:directory});
     assert.equal(await store.authenticateAgentToken(created.token),null);
@@ -109,7 +109,7 @@ test('migration upgrades an existing 001 database without replacing its committe
     assert.equal((await store.authenticateAgentToken(created.token))?.id,created.agent.id);
     assert.deepEqual((await store.getProject()).events,[first]);
     const versions=await store.inspect<{version:number}>('SELECT version FROM ouro_schema_migrations ORDER BY version');
-    assert.deepEqual(versions.rows.map(row=>row.version),[1,2,3,4,5,6]);
+    assert.deepEqual(versions.rows.map(row=>row.version),[1,2,3,4,5,6,7,8,9]);
   }finally {if(store)await store.close();await rm(directory,{recursive:true,force:true});}
 });
 

@@ -1,12 +1,13 @@
 import {AccessError,assertHuman,assertJsonWrite,authenticatedParticipant,assertExpectedParticipant} from '../auth';
 import {apiError} from '../http';
 import {importMeridianScope,type CommandResult} from '../store';
-import {AGENT_ID,PROJECT_ID,type Actor} from '../../packages/core/src';
+import {requestedProjectId} from '../connection-config';
+import {AGENT_ID,type Actor} from '../../packages/core/src';
 
 const MAX_BODY_BYTES=2*1024*1024;
 export type MeridianImportDependencies={
  authenticateHuman?:(request:Request)=>Actor|Promise<Actor>;
- importScope?:(body:unknown,actor:Actor)=>Promise<CommandResult>;
+ importScope?:(body:unknown,actor:Actor,projectId?:string)=>Promise<CommandResult>;
 };
 /** The dedicated envelope budget includes JSON escaping of <=512KiB source.
  * Bytes are bounded while reading, including requests without Content-Length.
@@ -24,14 +25,14 @@ async function readImportBody(request:Request):Promise<unknown>{
  catch{throw new AccessError('VALIDATION_ERROR','Некорректный JSON или UTF-8 импорта.',400);}
 }
 export function createMeridianImportHandler(dependencies:MeridianImportDependencies={}){
- const authenticate=dependencies.authenticateHuman??(request=>authenticatedParticipant(request,PROJECT_ID,AGENT_ID));
+ const authenticate=dependencies.authenticateHuman??((request:Request)=>authenticatedParticipant(request,requestedProjectId(request),AGENT_ID));
  const ingest=dependencies.importScope??importMeridianScope;
  return async(request:Request)=>{
   try{
-   const actor=await authenticate(request);assertHuman(actor);
+   const projectId=requestedProjectId(request),actor=await authenticate(request);assertHuman(actor);
    // Keep this check for injected authentication adapters as well.
    assertExpectedParticipant(request,actor);
-   const result=await ingest(await readImportBody(request),actor);
+   const result=await ingest(await readImportBody(request),actor,projectId);
    return Response.json(result,{status:201,headers:{'Cache-Control':'no-store'}});
   }catch(error){
    if(error instanceof AccessError)return apiError(error);

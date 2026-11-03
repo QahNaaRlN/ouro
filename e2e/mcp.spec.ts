@@ -94,7 +94,7 @@ test('AC03/04/06/07/08 SDK HTTP and stdio agents complete assigned work while hu
     const publicList=await(await request.get('/api/agents')).json();expect(JSON.stringify(publicList)).not.toContain(token);
     expect(JSON.stringify(publicList)).not.toContain(other.token);
 
-    await stdio.connect(new StdioClientTransport({command:process.execPath,args:[path.resolve('packages/mcp/bin/ouro-mcp.mjs')],env:{PATH:process.env.PATH??'',OURO_URL:url.href,OURO_AGENT_TOKEN:token},stderr:'pipe'}));
+    await stdio.connect(new StdioClientTransport({command:process.execPath,args:[path.resolve('packages/mcp/bin/ouro-mcp.mjs')],env:{PATH:process.env.PATH??'',ELECTRON_RUN_AS_NODE:'1',OURO_URL:url.href,OURO_AGENT_TOKEN:token},stderr:'pipe'}));
     expect((await stdio.listTools()).tools.map(t=>t.name)).toContain('ouro.get_context');
     const stdioContext=await stdio.callTool({name:'ouro.get_context',arguments:{executionId:execution.id}});expect(stdioContext.isError).not.toBe(true);
     expect(JSON.stringify(stdioContext.structuredContent)).toContain(spec.title);

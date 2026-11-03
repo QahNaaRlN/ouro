@@ -7,8 +7,8 @@ import {getToolOutputSchema,protocolManifest,createSchemaBundle} from '@ouro/pro
 export type McpDependencies = {
   store: AgentStore;
   actor: Actor;
-  projectId?:string;
-  workspace?:AgentWorkspace;
+  projectId?: string;
+  workspace?: AgentWorkspace;
 };
 
 export function createOuroMcpServer(dependencies: McpDependencies) {

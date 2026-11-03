@@ -14,7 +14,7 @@ test('agent onboarding provides one-time MCP config, truthful presence and persi
   const parsed=JSON.parse(await config.inputValue());
   const entry=parsed.mcpServers.ouro;
   expect(typeof entry.command).toBe('string');
-  expect(entry.args.some((x:string)=>x.endsWith('/packages/mcp/bin/ouro-mcp.mjs'))).toBe(true);
+  expect(entry.args.some((x:string)=>x.replaceAll('\\','/').endsWith('/packages/mcp/bin/ouro-mcp.mjs'))).toBe(true);
   expect(entry.env.OURO_URL.endsWith('/api/mcp')).toBe(true);
   const token=entry.env.OURO_AGENT_TOKEN as string;
   expect(token.startsWith('ouro_agent_')).toBe(true);
