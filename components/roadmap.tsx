@@ -122,16 +122,19 @@ export default function Roadmap({
   };
   const ownerById=new Map(groups.flatMap(group=>[group.work,...group.verifications].map(spec=>[spec.id,group.id])));
   const groupedDependencies=state.dependencies.map(dependency=>({...dependency,from:ownerById.get(dependency.from)??dependency.from,to:ownerById.get(dependency.to)??dependency.to})).filter(dependency=>dependency.from!==dependency.to);
-  // Positions depend only on the structural graph. Incoming events never move the canvas.
+  // Status updates retain positions; intrinsic card geometry participates in layout
+  // so a paired card can grow without overlapping another node.
   const structuralKey =
     groups.map(group=>group.id+':'+group.verifications.map(item=>item.id).join(',')).join('|') +
     ";" +
     state.dependencies.map((d) => `${d.from}:${d.to}:${d.type}`).join("|") +
     layoutKey;
+  const heights=Object.fromEntries(groups.map(group=>[group.id,group.verifications.length?measurements.measured[group.id]?.height??400:ROADMAP_NODE_HEIGHT]));
+  const geometryKey=groups.map(group=>`${group.id}:${heights[group.id]}`).join('|');
   const initialPositions = useMemo(() => {
-    return layoutRoadmap({specs:groups.map(group=>group.work),dependencies:groupedDependencies},Object.fromEntries(groups.map(group=>[group.id,group.verifications.length?300:ROADMAP_NODE_HEIGHT])));
+    return layoutRoadmap({specs:groups.map(group=>group.work),dependencies:groupedDependencies},heights);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [structuralKey]);
+  }, [structuralKey,geometryKey]);
   const [moved, setMoved] = useState<Record<string, { x: number; y: number }>>(
     {},
   );
@@ -153,7 +156,7 @@ export default function Roadmap({
     id: s.id,
     type: "spec",
     width: ROADMAP_NODE_WIDTH,
-    height: group.verifications.length?280:ROADMAP_NODE_HEIGHT,
+    ...(group.verifications.length?{}:{height:ROADMAP_NODE_HEIGHT}),
     measured:measurements.measured[s.id],
     hidden:filterMode==='hide'&&!groupVisible,
     selected:[s,...group.verifications].some(item=>item.id===selected),

@@ -44,17 +44,29 @@ test('paired work and verification retain exact request/proposal navigation and 
    await call(execution,'ouro.submit_proposal',{sourceCursor:current.version,content:{kind:'reality_summary',title:`Proposal for ${face.side}`,findings:[{text:'This face has its own source.',sourceEventIds:[source.id]}],interpretation:'Human review remains required.',limitations:'Isolated navigation fixture only.'}});
    await call(execution,'ouro.report_question',{title:`Question for ${face.side}`,context:'The paired-card review links must stay scoped to this exact assigned revision.',question:'Which evidence should this exact assigned revision use?',blockingScope:'execution'});
   }
+  current=await command({type:'createSpec',content:{...content,title:'Independent second work pair'}});
+  const secondWork=current.specs.at(-1)!,secondRevision=current.revisions.at(-1)!;
+  await command({type:'createSpec',content:{...content,title:'Independent second verification pair',verification:{...verificationRevision.verification!,targetSpecId:secondWork.id,targetRevisionId:secondRevision.id}}});
   const before=await state();
   await page.emulateMedia({reducedMotion:'reduce'});
   for(const face of faces){
    const other=faces.find(candidate=>candidate!==face)!;
    for(const kind of ['proposals','questions'] as const){
     await page.goto(`/projects/${project.id}`);
-    const card=page.locator('.react-flow__node .verification-pair');
+    const card=page.locator(`.react-flow__node .verification-pair[data-pair-id="${work.id}"]`);
+    await expect(page.locator('.react-flow__node .verification-pair')).toHaveCount(2);
+    // The React Flow box must contain its actual card, and adjacent pairs must
+    // leave space for both faces instead of using the old fixed 280px height.
+    await expect.poll(async()=>page.locator('.react-flow__node').evaluateAll(nodes=>{
+     const boxes=nodes.map(node=>{const box=node.getBoundingClientRect(),card=node.querySelector('.verification-pair')!.getBoundingClientRect();return {x:box.x,y:box.y,right:box.right,bottom:box.bottom,contains:card.bottom<=box.bottom+1};});
+     return boxes.every(box=>box.contains)&&boxes.every((box,index)=>boxes.slice(index+1).every(other=>box.right<=other.x||other.right<=box.x||box.bottom<=other.y||other.bottom<=box.y));
+    })).toBe(true);
+    const sizeBefore=await card.boundingBox();
     await card.getByRole('button',{name:face.side,exact:true}).click();
     const visibleFace=card.locator(`[data-spec-id="${face.spec.id}"][aria-hidden="false"]`);
     await expect(visibleFace).toHaveAttribute('data-revision-id',face.revision.id);
     await expect(card.locator(`[data-spec-id="${other.spec.id}"]`)).toHaveAttribute('inert','');
+    const sizeAfter=await card.boundingBox();expect(sizeAfter!.height).toBeCloseTo(sizeBefore!.height,1);expect(sizeAfter!.width).toBeCloseTo(sizeBefore!.width,1);
     await expect(visibleFace.getByRole('button',{name:`Вопросы спеки ${face.spec.humanId}`,exact:true})).toHaveText('1 запросов · открыто 1');
     await expect(visibleFace.getByRole('button',{name:`Предложения спеки ${face.spec.humanId}`,exact:true})).toHaveText('Предложения · 1');
     await expect(visibleFace.locator('time')).toHaveAttribute('datetime',before.events.findLast(event=>event.specId===face.spec.id)!.occurredAt);
