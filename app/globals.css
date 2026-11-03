@@ -70,14 +70,14 @@ body {
 button,
 input,
 textarea,
-select {
+.ouro-select {
   font: inherit;
 }
 button,
 a,
 input,
 textarea,
-select {
+.ouro-select {
   -webkit-tap-highlight-color: transparent;
 }
 button {
@@ -92,8 +92,8 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
-select:focus-visible,
-summary:focus-visible {
+.ouro-select:focus-visible,
+.ws-accordion-trigger:focus-visible {
   outline: 2px solid var(--text);
   outline-offset: 3px;
 }
@@ -107,7 +107,7 @@ a {
 }
 input,
 textarea,
-select {
+.ouro-select {
   color: var(--text);
   border: 1px solid var(--control);
   background: var(--bg);
@@ -524,7 +524,7 @@ pre {
   color: var(--text-muted);
   display: block;
 }
-.simulator-panel select {
+.simulator-panel .ouro-select {
   margin-top: 7px;
   display: block;
   width: 100%;
@@ -1204,7 +1204,7 @@ tbody tr.selected {
 .spec-picker {
   margin-bottom: 25px;
 }
-.spec-picker select {
+.spec-picker .ouro-select {
   font-size: 12px;
   width: 100%;
   border-color: var(--border);
@@ -1744,12 +1744,12 @@ tbody tr.selected {
 .timeline-tags .mono {
   font-size: 12px;
 }
-.timeline details {
+.timeline .ws-accordion {
   margin-top: 10px;
   font-size: 12px;
   color: var(--text-faint);
 }
-.timeline summary {
+.timeline .ws-accordion-trigger {
   cursor: pointer;
 }
 .timeline pre {
@@ -1774,7 +1774,7 @@ tbody tr.selected {
   color: var(--text-faint);
   flex: 1;
 }
-.history-filter select {
+.history-filter .ouro-select {
   display: block;
   width: 100%;
   font-size: 12px;
@@ -1914,7 +1914,7 @@ tbody tr.selected {
 }
 .form-label input,
 .form-label textarea,
-.form-label select {
+.form-label .ouro-select {
   width: 100%;
   font-size: 12px;
   font-weight: 400;
@@ -2402,7 +2402,7 @@ tbody tr.selected {
   .detail-tabs button > svg {
     display: none;
   }
-  .spec-picker select {
+  .spec-picker .ouro-select {
     font-size: 12px;
   }
   .quiet-label {
@@ -2564,7 +2564,7 @@ tbody tr.selected {
   color: var(--text-faint);
   margin-top: 6px;
 }
-.run-toolbar select {
+.run-toolbar .ouro-select {
   font-size: 12px;
   padding: 8px;
   max-width: 100%;
@@ -2616,7 +2616,7 @@ tbody tr.selected {
 .form-label,
 .form-label input,
 .form-label textarea,
-.form-label select {
+.form-label .ouro-select {
   font-size: 14px;
 }
 .btn,
@@ -2635,7 +2635,9 @@ tbody tr.selected {
   overflow: hidden;
 }
 .spec-node {
-  height: 195px;
+  height: 240px;
+  display: flex;
+  flex-direction: column;
 }
 .node-goal {
   min-height: 38px;
@@ -2667,7 +2669,7 @@ tbody tr.selected {
   font-size: 12px;
   white-space: normal;
 }
-.simulator-panel select,
+.simulator-panel .ouro-select,
 .simulator-panel label,
 .simulator-panel p,
 .simulator-footnote {
@@ -2898,10 +2900,10 @@ tbody tr.selected {
 .agent-instructions p { max-width: 1000px; color: var(--text-muted); font-size: 14px; line-height: 1.9; }
 .agent-instructions a { color: var(--text-muted); font-size: 12px; text-decoration: underline; text-underline-offset: 4px; }
 .agent-picker { display: flex; flex-direction: column; gap: 8px; color: var(--text-muted); font-size: 12px; min-width: 0; }
-.agent-picker select { width: 100%; min-height: 36px; max-width: 300px; color: var(--text); background: var(--bg); border-radius: var(--radius); padding: 8px; font-size: 12px; }
+.agent-picker .ouro-select { width: 100%; min-height: 36px; max-width: 300px; color: var(--text); background: var(--bg); border-radius: var(--radius); padding: 8px; font-size: 12px; }
 .agent-assignment-actions { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
 .agent-assignment-vertical { flex-direction: column; align-items: stretch; }
-.agent-assignment-vertical .agent-picker select { max-width: 100%; }
+.agent-assignment-vertical .agent-picker .ouro-select { max-width: 100%; }
 .run-toolbar { flex-wrap: wrap; }
 @media (max-width: 900px) {
   .agent-steps { grid-template-columns: 1fr; gap: 18px; }

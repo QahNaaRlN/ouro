@@ -1,3 +1,4 @@
+import {chooseSelectOption,selectPopup} from './select-helpers';
 import {test,expect,type Page} from '@playwright/test';
 import {Client} from '@modelcontextprotocol/sdk/client/index.js';
 import {StreamableHTTPClientTransport} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -49,7 +50,7 @@ async function prepare(page:Page,flow:FlowDefinition,title:string){
 }
 async function openProcess(page:Page,specId:string){
  await page.reload();await expect(page.getByRole('heading',{name:/^Дорожная карта/})).toBeVisible();
- await page.getByRole('button',{name:'Спецификации',exact:true}).click();await page.getByLabel('Выбрать спецификацию',{exact:true}).selectOption(specId);
+ await page.getByRole('button',{name:'Спецификации',exact:true}).click();await chooseSelectOption(page.getByLabel('Выбрать спецификацию',{exact:true}),specId);
  await page.getByRole('button',{name:'Процесс',exact:true}).click();await expect(flowPanel(page)).toBeVisible();
 }
 const flowPanel=(page:Page)=>page.getByRole('region',{name:'Процесс спецификации',exact:true});
@@ -60,7 +61,7 @@ async function inspectNode(page:Page,title:string){
 }
 async function humanStep(page:Page,action:'retry'|'skip',reason:string,evidence?:string){
  const region=page.getByRole('form',{name:'Действие человека на шаге',exact:true});await expect(region).toBeVisible();
- await region.getByLabel('Действие человека',{exact:true}).selectOption(`human:${action}`);
+ await chooseSelectOption(region.getByLabel('Действие человека',{exact:true}),`human:${action}`);
  await region.getByLabel('Причина действия',{exact:true}).fill(reason);
  if(evidence!==undefined)await region.getByLabel('Основание действия',{exact:true}).fill(evidence);
  const review=region.getByRole('button',{name:'Проверил события перед действием',exact:true});if(await review.isVisible())await review.click();
@@ -78,7 +79,7 @@ async function setup(page:Page,baseURL:string|undefined,flow:FlowDefinition,titl
   const request={executionId:execution.id,requestId:crypto.randomUUID(),expectedVersion:(await project(page)).version,...args},result=await client.callTool({name,arguments:request});
   expect(result.isError,JSON.stringify(result.structuredContent)).not.toBe(true);return {request,result};
  };
- await openProcess(page,fixture.spec.id);await flowPanel(page).getByLabel('Попытка процесса',{exact:true}).selectOption(execution.id);
+ await openProcess(page,fixture.spec.id);await chooseSelectOption(flowPanel(page).getByLabel('Попытка процесса',{exact:true}),execution.id);
  return {...fixture,execution,client,write};
 }
 async function finish(page:Page,fixture:Awaited<ReturnType<typeof setup>>){
@@ -93,8 +94,8 @@ async function finish(page:Page,fixture:Awaited<ReturnType<typeof setup>>){
 test('FR02/FR07 human explicitly enables enforced flow tracking and can skip only the ready action',async({page,baseURL})=>{
  test.setTimeout(90000);const fixture=await prepare(page,linear,'Строгий процесс');
  await page.reload();await expect(page.getByRole('heading',{name:/^Дорожная карта/})).toBeVisible();
- await page.getByRole('button',{name:'Спецификации',exact:true}).click();await page.getByLabel('Выбрать спецификацию',{exact:true}).selectOption(fixture.spec.id);
- await page.getByLabel('Исполнитель попытки',{exact:true}).first().selectOption(fixture.agent.id);
+ await page.getByRole('button',{name:'Спецификации',exact:true}).click();await chooseSelectOption(page.getByLabel('Выбрать спецификацию',{exact:true}),fixture.spec.id);
+ await chooseSelectOption(page.getByLabel('Исполнитель попытки',{exact:true}).first(),fixture.agent.id);
  const tracking=page.getByRole('checkbox',{name:'Строгий учёт проходов',exact:true});await expect(tracking).toBeVisible();await expect(tracking).not.toBeChecked();await tracking.check();
  const assignment=page.waitForResponse(response=>response.url().includes('/api/commands')&&response.request().method()==='POST'&&response.request().postDataJSON().type==='startExecution');
  await page.getByRole('button',{name:'Разрешить одну попытку',exact:true}).first().click();const response=await assignment;
@@ -110,6 +111,9 @@ test('FR02/FR07 human explicitly enables enforced flow tracking and can skip onl
   await write('ouro.confirm_started');await page.getByRole('button',{name:'Процесс',exact:true}).click();await inspectNode(page,'Прочитать назначенное ожидание');
   await expect(runsPanel(page)).toHaveAttribute('data-step-run-id',initial.runs[0].id);
   await expect(runsPanel(page)).toContainText('Запуск подтверждён');
+  const action=page.getByRole('form',{name:'Действие человека на шаге',exact:true}).getByRole('combobox',{name:'Действие человека',exact:true}),actionPopup=await selectPopup(action);
+  await expect(actionPopup.locator('[role="option"][data-value="human:retry"]')).toHaveAttribute('aria-disabled','true');
+  await page.keyboard.press('Escape');await expect(action).toBeFocused();
   await humanStep(page,'skip','В учебном примере шаг намеренно исключён человеком.','test://flow-runtime/human-skip');
   await expect(runsPanel(page)).toContainText('Пропущен');
   const after=runtime(await project(page),execution.id);expect(after.runs.find(run=>run.id===initial.runs[0].id)?.state).toBe('skipped');
@@ -128,7 +132,7 @@ test('FR05/FR07/FR11 retries and loop visits retain prior evidence and the selec
   await inspectNode(page,'Повторяемое действие');await expect(runsPanel(page)).toHaveAttribute('data-step-run-id',run.id);await expect(runsPanel(page)).toContainText('Ошибка');
   await humanStep(page,'retry','Разрешён новый ограниченный проход после разбора ошибки.');
   run=currentRun(await project(page),fixture.execution.id);expect(run).toMatchObject({nodeId:'work',visit:2,state:'ready'});
-  await runsPanel(page).getByLabel('Проход узла',{exact:true}).selectOption(run.id);
+  await chooseSelectOption(runsPanel(page).getByLabel('Проход узла',{exact:true}),run.id);
   await fixture.write('ouro.report_flow_step',{runId:run.id,phase:'start'});
   await fixture.write('ouro.report_action',{flowStepRunId:run.id,actionId:crypto.randomUUID(),phase:'completed',title:'Действие внутри второго прохода',context:'Факт Action не завершает проход.',evidence:'test://flow-runtime/action-only'});
   const lateActionId=crypto.randomUUID();await fixture.write('ouro.report_action',{flowStepRunId:run.id,actionId:lateActionId,phase:'started',title:'Ожидающий отчёт второго прохода',context:'Завершение может быть сообщено позднее.'});
@@ -144,13 +148,13 @@ test('FR05/FR07/FR11 retries and loop visits retain prior evidence and the selec
   await fixture.write('ouro.report_flow_step',{runId:repeated.id,phase:'start'});
   await fixture.write('ouro.report_action',{flowStepRunId:pinned,actionId:lateActionId,phase:'completed',title:'Поздний факт второго прохода',context:'Исходный runId сохраняется после перехода.',evidence:'test://flow-runtime/late-second-visit-action'});
   expect(currentRun(await project(page),fixture.execution.id)).toMatchObject({id:repeated.id,state:'running'});
-  await expect(selector).toHaveValue(pinned);await expect(selector).toBeFocused();await expect(runsPanel(page)).toHaveAttribute('data-step-run-id',pinned);
+  await expect(selector).toHaveAttribute('data-value',pinned);await expect(selector).toBeFocused();await expect(runsPanel(page)).toHaveAttribute('data-step-run-id',pinned);
   await expect(runsPanel(page)).toContainText('test://flow-runtime/second-visit-complete');
   await flowPanel(page).getByRole('button',{name:'Граф',exact:true}).click();
   await expect(flowPanel(page).locator('.react-flow__node[data-id="work"]')).toContainText('Проход 3 · Выполняется');
   await flowPanel(page).getByRole('button',{name:'Таблица',exact:true}).click();
   await expect(flowPanel(page).getByRole('table',{name:'Узлы процесса',exact:true}).getByRole('row').filter({hasText:'Повторяемое действие'})).toContainText('Выполняется');
-  await selector.selectOption(repeated.id);await expect(runsPanel(page)).toContainText('Выполняется');
+  await chooseSelectOption(selector,repeated.id);await expect(runsPanel(page)).toContainText('Выполняется');
   const stored=runtime(await project(page),fixture.execution.id);expect(stored.runs.filter(run=>run.nodeId==='work').map(run=>run.state)).toEqual(['failed','succeeded','running']);
   await fixture.write('ouro.report_flow_step',{runId:repeated.id,phase:'complete',evidence:'test://flow-runtime/third-visit-complete'});
   const finalCheck=currentRun(await project(page),fixture.execution.id);await fixture.write('ouro.report_flow_step',{runId:finalCheck.id,phase:'start'});
@@ -187,7 +191,7 @@ test('FR06 each fork visit needs its own human choice, application and resume be
   const second=currentRun(await project(page),fixture.execution.id);expect(second).toMatchObject({nodeId:'choice',visit:2});await fixture.write('ouro.report_flow_step',{runId:second.id,phase:'start'});
   const before=await project(page),invalid=await fixture.client.callTool({name:'ouro.report_flow_step',arguments:{executionId:fixture.execution.id,runId:second.id,phase:'complete',edgeId:'choose-work',evidence:'test://flow-runtime/old-choice-is-not-permission',requestId:crypto.randomUUID(),expectedVersion:before.version}});
   expect(invalid.isError).toBe(true);expect((await project(page)).version).toBe(before.version);
-  await runsPanel(page).getByLabel('Проход узла',{exact:true}).selectOption(second.id);
+  await chooseSelectOption(runsPanel(page).getByLabel('Проход узла',{exact:true}),second.id);
   await expect(edge.getByText('Недоступен',{exact:true})).toBeVisible();
   const newRequest=await requestChoice(second.id);await decide(newRequest.id,'result');
   await fixture.write('ouro.report_flow_step',{runId:second.id,phase:'complete',edgeId:'choose-result',evidence:'test://flow-runtime/new-human-choice'});

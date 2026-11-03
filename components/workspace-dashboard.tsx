@@ -1,5 +1,6 @@
 'use client';
 
+import {WorkspaceAccordion} from './workspace-ui';
 import {useState} from 'react';
 import type {DomainEvent,ProjectState} from '@/packages/core/src';
 import {currentDecisionRequests} from '@/packages/core/src/decision-lineage';
@@ -20,7 +21,7 @@ function EventDetail({event}:{event:DomainEvent}){
 }
 export function WorkspaceActivityFeed({state,onSelect,specId}:{state:ProjectState;onSelect:(id:string)=>void;specId?:string}){
   const [all,setAll]=useState(false),events=state.events.filter(event=>!specId||event.specId===specId),visible=(all?events:events.slice(-40)).toReversed();
-  return <section className="ws-panel ws-feed" aria-label={specId?'История задачи':'Живая лента событий'}><div className="ws-section-top"><h2>{specId?'История задачи':'Живая лента'}</h2><span className="ws-muted">{events.length} фактов</span></div><ol className="ws-history" aria-live="polite" aria-relevant="additions text">{visible.map(event=><li key={event.id} data-event-id={event.id} data-event-type={event.type}><div><span className="ws-muted">v{event.version} · {new Date(event.occurredAt).toLocaleString('ru-RU')}</span><strong>{workspaceEventNames[event.type]??event.type}</strong><span className="ws-muted">{event.actor.name??event.actor.id}</span></div><EventDetail event={event}/>{event.specId&&<button className="ws-event-link" onClick={()=>onSelect(event.specId!)}>{state.specs.find(spec=>spec.id===event.specId)?.humanId??'Открыть задачу'}</button>}<details><summary>Источник и данные</summary><code>{event.id}</code><pre>{JSON.stringify(event.payload,null,2)}</pre></details></li>)}</ol>{events.length>40&&<button onClick={()=>setAll(!all)}>{all?'Последние 40 событий':'Показать всю историю'}</button>}</section>;
+  return <section className="ws-panel ws-feed" aria-label={specId?'История задачи':'Живая лента событий'}><div className="ws-section-top"><h2>{specId?'История задачи':'Живая лента'}</h2><span className="ws-muted">{events.length} фактов</span></div><ol className="ws-history" aria-live="polite" aria-relevant="additions text">{visible.map(event=><li key={event.id} data-event-id={event.id} data-event-type={event.type}><div><span className="ws-muted">v{event.version} · {new Date(event.occurredAt).toLocaleString('ru-RU')}</span><strong>{workspaceEventNames[event.type]??event.type}</strong><span className="ws-muted">{event.actor.name??event.actor.id}</span></div><EventDetail event={event}/>{event.specId&&<button className="ws-event-link" onClick={()=>onSelect(event.specId!)}>{state.specs.find(spec=>spec.id===event.specId)?.humanId??'Открыть задачу'}</button>}<WorkspaceAccordion title={<>Источник и данные</>}><code>{event.id}</code><pre>{JSON.stringify(event.payload,null,2)}</pre></WorkspaceAccordion></li>)}</ol>{events.length>40&&<button onClick={()=>setAll(!all)}>{all?'Последние 40 событий':'Показать всю историю'}</button>}</section>;
 }
 export function WorkspaceSources({state,rootPath}:{state:ProjectState;rootPath:string|null}){
   const evidence=state.events.filter(event=>typeof event.payload.evidence==='string').slice(-8).toReversed();

@@ -7,7 +7,7 @@ const invitation=(page:Page)=>page.getByRole('region',{name:'Знакомств�
 const tour=(page:Page)=>page.getByRole('dialog');
 const launch=(page:Page)=>page.getByRole('button',{name:'Обучение',exact:true});
 const catalogTitles=['Выберите папку проекта','Возвращайтесь к своим проектам','Подключите MCP-клиент'];
-const projectTitles=['Подключите агента','Опишите задачу и готовность','Следите за дорожной картой','Решайте вопросы и развилки','Проверяйте факты в живой ленте'];
+const projectTitles=['Подключите агента','Опишите задачу и готовность','Следите за дорожной картой','Решайте вопросы и развилки','Проверяйте факты в истории'];
 const scope=(id:string)=>`/api/projects/${encodeURIComponent(id)}`;
 
 async function createProject(page:Page,rootPath:string){
@@ -61,24 +61,26 @@ test('ON03 empty-project tour teaches real controls without registering an agent
   try{
     const project=await createProject(page,folder);await page.goto(`/projects/${project.id}`);await expect(page.getByRole('heading',{name:project.name,exact:true})).toBeVisible();
     const before=await snapshot(page,project.id),writes:string[]=[];page.on('request',request=>{if(['POST','PATCH','DELETE','PUT'].includes(request.method()))writes.push(request.url());});
-    await expect(invitation(page)).toBeVisible();await expect(tour(page)).toHaveCount(0);await page.setViewportSize({width:390,height:844});await launch(page).click();await finishSteps(page,projectTitles);
+    await expect(invitation(page)).toBeVisible();await expect(tour(page)).toHaveCount(0);await page.setViewportSize({width:390,height:844});await launch(page).click();await finishSteps(page,projectTitles);await expect(launch(page)).toBeFocused();
     const after=await snapshot(page,project.id);expect(after.cursor).toBe(before.cursor);expect(after.state).toEqual(before.state);expect(after.agents).toEqual(before.agents);expect(writes).toEqual([]);
     await page.reload();await expect(invitation(page)).toHaveCount(0);
   }finally{await rm(folder,{recursive:true,force:true});}
 });
 
-test('ON04 populated-project tour explains the actual selected Flow and restores a closed setup disclosure',async({page})=>{
+test('ON04 populated-project tour explains visible navigation without opening forms and restores closed controls and focus',async({page})=>{
   const folder=await mkdtemp(join(tmpdir(),'ouro-onboarding-flow-'));let projectId='',agentId='';
   try{
     const project=await createProject(page,folder);projectId=project.id;
     const registered=await page.request.post(`${scope(project.id)}/agents`,{data:{name:'Onboarding acceptance'}});expect(registered.ok()).toBe(true);agentId=(await registered.json()).agent.id;
     const current=await snapshot(page,project.id),content={title:'Настоящая выбранная спека',goal:'Проверить подсказку о Flow без поддельной схемы.',dod:[{id:'criterion-1',text:'Человек проверил подсказку.',required:true}],constraints:'',assumptions:'',risks:'',inputs:'',comment:''};
     const created=await page.request.post(`${scope(project.id)}/tasks`,{data:{requestId:crypto.randomUUID(),expectedVersion:current.cursor,agentId,content}});expect(created.ok(),await created.text()).toBe(true);
-    await page.goto(`/projects/${project.id}`);await expect(page.getByRole('region',{name:'Текущий процесс',exact:true})).toBeVisible();
-    const setup=page.locator('details.ws-setup');await expect(setup).not.toHaveAttribute('open','');const before=await snapshot(page,project.id),writes:string[]=[];page.on('request',request=>{if(request.method()==='POST')writes.push(request.url());});
-    const titles=[...projectTitles.slice(0,3),'Откройте процесс выбранной спеки',...projectTitles.slice(3)];await launch(page).click();await expect(setup).toHaveAttribute('open','');await finishSteps(page,titles);
-    await expect(setup).not.toHaveAttribute('open','');expect((await snapshot(page,project.id)).state).toEqual(before.state);expect(writes).toEqual([]);
-  }finally{if(projectId&&agentId)await page.request.post(`${scope(projectId)}/agents/${agentId}/revoke`,{data:{}});await rm(folder,{recursive:true,force:true});}
+    await page.goto(`/projects/${project.id}`);const roadmap=page.getByRole('region',{name:'Дорожная карта проекта',exact:true});await expect(roadmap).toBeVisible();await roadmap.locator('.react-flow__node').filter({hasText:content.title}).click();
+    const selected=page.locator('[aria-label="Выбранная задача"]'),setup=selected.locator('button.ws-accordion-trigger').filter({hasText:/^Управление попыткой$/});await expect(setup).toHaveAttribute('aria-expanded','false');
+    const before=await snapshot(page,project.id),writes:string[]=[];page.on('request',request=>{if(['POST','PATCH','DELETE','PUT'].includes(request.method()))writes.push(request.url());});
+    await launch(page).click();await finishSteps(page,projectTitles);await expect(launch(page)).toBeFocused();await expect(setup).toHaveAttribute('aria-expanded','false');await expect(selected).toBeVisible();
+    await launch(page).click();await tour(page).getByRole('button',{name:'Далее',exact:true}).click();await page.keyboard.press('Escape');await expect(tour(page)).toHaveCount(0);await expect(launch(page)).toBeFocused();await expect(setup).toHaveAttribute('aria-expanded','false');
+    const after=await snapshot(page,project.id);expect(after.cursor).toBe(before.cursor);expect(after.state).toEqual(before.state);expect(after.agents).toEqual(before.agents);expect(writes).toEqual([]);
+  }finally{if(projectId&&agentId)await page.request.post(`${scope(projectId)}/agents/${agentId}/revoke`,{data:{},timeout:3000}).catch(()=>{});await rm(folder,{recursive:true,force:true});}
 });
 
 test('ON05 spotlight and tooltip stay inside a narrow viewport while scrolling and resizing with reduced motion',async({page})=>{

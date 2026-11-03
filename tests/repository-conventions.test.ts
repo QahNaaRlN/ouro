@@ -24,6 +24,17 @@ test('FRL02 English technical branches and Conventional subjects are accepted',(
  for(const subject of ['feat: add assigned work','fix(scope)!: replace the old transport','docs(client-guide): explain setup','test: verify 500 errors','revert: remove the unsupported option'])assert.equal(check(['--branch','dev','--subject',subject]).status,0,subject);
 });
 
+test('FRL02 codex work branches are discovered from Git and keep strict kebab names and subject checks',async()=>{
+ const f=await fixture();try{
+  await f.commit('ci: check the work branch');f.git('checkout','-b','codex/checked-change');
+  const current=check([],f.directory);assert.equal(current.status,0,current.stderr);assert.match(current.stdout,/branch codex\/checked-change;/);
+  for(const branch of ['codex/','Codex/checked-change','codex/mixedCase','codex/new_task','codex/a/b','codex/-invalid','codex/a-','codex/a--b','codex/русская-ветка'])assert.notEqual(check(['--branch',branch,'--subject','ci: check the rule']).status,0,`Branch must reject: ${branch}`);
+  for(const option of ['--subject','--title']){
+   const invalid=check(['--branch','codex/checked-change',option,'ci: неверное описание']);assert.notEqual(invalid.status,0);assert.match(invalid.stderr,/English ASCII description/);
+  }
+ }finally{await f.close();}
+});
+
 test('FRL02 malformed, mixed-language and noncanonical branch names are rejected',()=>{
  for(const branch of ['master','Feature/Task','feat/русская-ветка','feature/new-task','feat/new_task','feat/a/b','feat/-invalid','feat/a-','release/v1.2.3','release/01.2.3','release/1.2.3-beta.01','release/1.2.3..bad']){
   const r=check(['--branch',branch,'--subject','docs: explain the rule']);assert.notEqual(r.status,0,`Branch must reject: ${branch}`);

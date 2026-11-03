@@ -1,7 +1,7 @@
 import {spawnSync} from 'node:child_process';
 
 const types='feat|fix|docs|chore|refactor|test|ci|build|perf|revert';
-const branchTypes=types+'|hotfix';
+const branchTypes=types+'|hotfix|codex';
 const core='(?:0|[1-9][0-9]*)';
 const pre='(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)';
 const semver=`${core}\\.${core}\\.${core}(?:-${pre}(?:\\.${pre})*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?`;

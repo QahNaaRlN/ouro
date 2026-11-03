@@ -1,3 +1,4 @@
+import {chooseSelectOption} from './select-helpers';
 import {test,expect} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 import {multiprojectFixturePath,type MultiprojectFixture} from './multiproject-global-setup';
@@ -15,15 +16,15 @@ test('R01 a second tab cannot redirect the first tab writes, agents or SSE to an
  await page.context().addCookies([{name:'ouro_project',value:first.id,url:baseURL!}]);
  await page.goto('/');
  await expect(page.getByRole('heading',{name:/^Дорожная карта/})).toBeVisible();
- await expect(page.getByLabel('Текущий проект',{exact:true})).toHaveValue(first.id);
+ await expect(page.getByLabel('Текущий проект',{exact:true})).toHaveAttribute('data-value',first.id);
  const other=await page.context().newPage();
  try{
   await other.goto('/');
-  await expect(other.getByLabel('Текущий проект',{exact:true})).toHaveValue(first.id);
-  await other.getByLabel('Текущий проект',{exact:true}).selectOption(second.id);
-  await expect(other.getByLabel('Текущий проект',{exact:true})).toHaveValue(second.id);
+  await expect(other.getByLabel('Текущий проект',{exact:true})).toHaveAttribute('data-value',first.id);
+  await chooseSelectOption(other.getByLabel('Текущий проект',{exact:true}),second.id);
+  await expect(other.getByLabel('Текущий проект',{exact:true})).toHaveAttribute('data-value',second.id);
   await expect(other.getByRole('heading',{name:/^Дорожная карта/})).toBeVisible();
-  await expect(page.getByLabel('Текущий проект',{exact:true})).toHaveValue(first.id);
+  await expect(page.getByLabel('Текущий проект',{exact:true})).toHaveAttribute('data-value',first.id);
   const title='Pinned tab spec '+Date.now();
   await page.getByRole('button',{name:'Новая спека',exact:true}).click();
   const dialog=page.getByRole('dialog');

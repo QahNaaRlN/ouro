@@ -1,3 +1,4 @@
+import {chooseSelectOption} from './select-helpers';
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import { AGENT_ID, type ProjectState } from '../packages/core/src';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -103,7 +104,7 @@ test('M05 revoked-agent cancellation shows unknown physical stop until separate 
   const client=await connectAgent(request,token);
   try{await agentTool(client,request,'ouro.confirm_started',{executionId:execution.id});}finally{await client.close();}
   const revoked=await request.post(`/api/agents/${agent.id}/revoke`,{data:{}});expect(revoked.ok(),await revoked.text()).toBeTruthy();
-  await open(page);await page.getByRole('button',{name:'Спецификации',exact:true}).click();await page.getByLabel('Выбрать спецификацию').selectOption(spec.id);
+  await open(page);await page.getByRole('button',{name:'Спецификации',exact:true}).click();await chooseSelectOption(page.getByLabel('Выбрать спецификацию'),spec.id);
   await page.getByRole('button',{name:'Завершить авторизацию отозванного агента',exact:true}).first().click();
   const form=page.getByRole('region',{name:'Операторское завершение попытки'}).first();
   await form.getByRole('textbox',{name:'Причина завершения авторизации',exact:true}).fill('Ключ экстренно отозван, связь с процессом отсутствует.');

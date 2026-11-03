@@ -1,5 +1,6 @@
 'use client';
 
+import {AppSelect} from './app-select';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Box, LogIn, LogOut, Mail, Plus, ShieldCheck, UserPlus, Users } from 'lucide-react';
 import type { Actor } from '@/packages/core/src';
@@ -92,10 +93,10 @@ export function ProjectSwitcher({ identity }: { identity: Actor | null }) {
   return <div className="workspace-switch" style={{ display: 'block' }}>
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
       <span className="quiet-label">ТЕКУЩИЙ ПРОЕКТ</span>
-      <select aria-label="Текущий проект" value={projects.some(project => project.id === current) ? current : ''} onChange={event => selectProject(event.target.value)} style={{ width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 6, padding: 8 }}>
+      <AppSelect aria-label="Текущий проект" value={projects.some(project => project.id === current) ? current : ''} onValueChange={selectedValue=> selectProject(selectedValue)} style={{ width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 6, padding: 8 }}>
         {!projects.length && <option value="">Загрузка проектов…</option>}
         {projects.map(project => <option key={project.id} value={project.id}>{project.name} · {project.role}</option>)}
-      </select>
+      </AppSelect>
     </label>
     {identity.id !== 'local-human' && identity.id !== 'human-token' && <button className="text-btn" type="button" onClick={() => setCreating(value => !value)}><Plus size={13}/>Новый проект</button>}
     {creating && <form onSubmit={create} style={{ display: 'flex', gap: 6, marginTop: 8 }}><input aria-label="Название нового проекта" required maxLength={120} value={name} onChange={event => setName(event.target.value)} style={{ minWidth: 0, width: '100%' }}/><button className="btn btn-small" type="submit">Создать</button></form>}
@@ -135,8 +136,8 @@ export function ProjectMembersPanel({ projectId, identity }: { projectId: string
   };
   return <div className="participants-panel"><div className="page-heading"><div><div className="eyebrow">ДОСТУП К ПРОЕКТУ</div><h1><Users size={25}/>Участники</h1><p className="page-description">Ваша роль: {currentRole ?? 'проверяется'}. Изменения сохраняются с отдельным user ID.</p></div></div>
     {error && <p className="participant-error" role="alert">{error}</p>}{notice && <p className="participant-notice" role="status">{notice}</p>}
-    {currentRole === 'Owner' && <section className="participant-section"><div className="section-heading"><h2><UserPlus size={17}/>Пригласить по email</h2></div><form className="participant-create-form" onSubmit={invite}><label><span>Email</span><input type="email" required value={email} onChange={event => setEmail(event.target.value)}/></label><label><span>Роль</span><select value={role} onChange={event => setRole(event.target.value as ProjectRole)}><option>Contributor</option><option>Viewer</option><option>Owner</option></select></label><button className="btn btn-primary" disabled={busy}>Пригласить</button></form></section>}
-    <section className="participant-section"><div className="section-heading"><h2>Участники проекта</h2></div><div className="participant-directory">{members.map(member => <article className="participant-card" key={member.id}><div><strong>{member.name}</strong><small>{member.email}</small><code className="participant-id">{member.userId}</code>{member.revokedAt && <small>Доступ отозван</small>}</div><div>{currentRole === 'Owner' && !member.revokedAt ? <><select aria-label={`Роль ${member.name}`} value={member.role} onChange={event => void changeRole(member.id, event.target.value as ProjectRole)}><option>Owner</option><option>Contributor</option><option>Viewer</option></select><button className="btn btn-small" onClick={() => void revoke(member.id)}>Отозвать доступ</button></> : <span className="participant-badge">{member.role}</span>}</div></article>)}</div></section>
+    {currentRole === 'Owner' && <section className="participant-section"><div className="section-heading"><h2><UserPlus size={17}/>Пригласить по email</h2></div><form className="participant-create-form" onSubmit={invite}><label><span>Email</span><input type="email" required value={email} onChange={event => setEmail(event.target.value)}/></label><label><span>Роль</span><AppSelect aria-label="Роль" value={role} onValueChange={selectedValue=> setRole(selectedValue as ProjectRole)}><option>Contributor</option><option>Viewer</option><option>Owner</option></AppSelect></label><button className="btn btn-primary" disabled={busy}>Пригласить</button></form></section>}
+    <section className="participant-section"><div className="section-heading"><h2>Участники проекта</h2></div><div className="participant-directory">{members.map(member => <article className="participant-card" key={member.id}><div><strong>{member.name}</strong><small>{member.email}</small><code className="participant-id">{member.userId}</code>{member.revokedAt && <small>Доступ отозван</small>}</div><div>{currentRole === 'Owner' && !member.revokedAt ? <><AppSelect aria-label={`Роль ${member.name}`} value={member.role} onValueChange={selectedValue=> void changeRole(member.id, selectedValue as ProjectRole)}><option>Owner</option><option>Contributor</option><option>Viewer</option></AppSelect><button className="btn btn-small" onClick={() => void revoke(member.id)}>Отозвать доступ</button></> : <span className="participant-badge">{member.role}</span>}</div></article>)}</div></section>
     <section className="participant-section"><div className="section-heading"><h2><ShieldCheck size={17}/>Приглашение для {identity.name ?? 'текущего аккаунта'}</h2></div><form className="participant-login-form" onSubmit={accept}><label><span>Одноразовый код</span><input required minLength={43} maxLength={43} value={code} onChange={event => setCode(event.target.value.trim())}/></label><button className="btn">Принять приглашение</button></form></section>
   </div>;
 }
