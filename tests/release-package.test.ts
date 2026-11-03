@@ -23,8 +23,9 @@ async function fixture(){
  await writeFile(path.join(repo,'.gitignore'),'.ouro/\nnode_modules/\n.next/\n.env*\n!.env.example\n');run(repo,['add','.']);run(repo,['commit','-qm','feat: seed release fixture']);
  return {directory,repo,out,commit:run(repo,['rev-parse','HEAD']),close:()=>rm(directory,{recursive:true,force:true})};
 }
-function names(zip:string){const result=spawnSync('unzip',['-Z1',zip],{encoding:'utf8',timeout:15000});assert.equal(result.status,0,result.stderr);return result.stdout.split('\n').filter(Boolean);}
-function zipped(zip:string,file:string){const result=spawnSync('unzip',['-p',zip,file],{encoding:'utf8',timeout:15000});assert.equal(result.status,0,result.stderr);return result.stdout;}
+const windowsZip=process.platform==='win32',zipReader=windowsZip?path.join(process.env.SystemRoot??'C:\\Windows','System32','tar.exe'):'unzip';
+function names(zip:string){const result=spawnSync(zipReader,windowsZip?['-tf',zip]:['-Z1',zip],{encoding:'utf8',timeout:15000});assert.equal(result.status,0,result.error?.message??result.stderr);return result.stdout.split(/\r?\n/).filter(Boolean);}
+function zipped(zip:string,file:string){const result=spawnSync(zipReader,windowsZip?['-xOf',zip,file]:['-p',zip,file],{encoding:'utf8',timeout:15000});assert.equal(result.status,0,result.error?.message??result.stderr);return result.stdout;}
 function protocolTarball(metadata:Record<string,unknown>,extra?:{name:string;text:string}){
  const files=[{name:'package/package.json',text:JSON.stringify(metadata)},...(extra?[extra]:[])],parts:Buffer[]=[];
  for(const file of files){
