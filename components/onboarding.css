@@ -1,3 +1,5 @@
+@layer theme, base, ouro-legacy, utilities;
+@layer ouro-legacy {
 .onboarding-entry{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:0 0 26px}
 .onboarding-entry>button{flex:none}
 .onboarding-invitation{display:flex;align-items:center;gap:16px;flex:1;min-width:0;border-left:2px solid var(--control);padding:5px 0 5px 16px}
@@ -24,3 +26,4 @@
 @media(max-width:700px){.onboarding-invitation{align-items:flex-start;flex-direction:column;gap:10px}.onboarding-entry{align-items:flex-start}.onboarding-card{padding:19px}.ws-shell .onboarding-card h2{font-size:19px}}
 @media(max-width:420px){.onboarding-entry{gap:12px}.onboarding-invitation{flex-basis:100%}.onboarding-controls{gap:10px}.ws-shell .onboarding-card button{font-size:11px;padding:8px 10px}}
 @media(prefers-reduced-motion:reduce){.onboarding-dialog,.onboarding-dialog *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+}

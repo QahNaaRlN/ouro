@@ -1,0 +1,20 @@
+@layer theme, base, ouro-legacy, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@source "./";
+@source "../components";
+
+/** Токены utilities ссылаются на существующую палитру и сохраняют локальную тему Meridian. */
+@theme inline {
+  --spacing: 4px;
+  --font-sans: Inter, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --color-ouro-bg: var(--bg);
+  --color-ouro-subtle: var(--subtle);
+  --color-ouro-muted: var(--muted);
+  --color-ouro-control: var(--control);
+  --color-ouro-border: var(--border);
+  --color-ouro-text: var(--text);
+  --color-ouro-text-muted: var(--text-muted);
+  --color-ouro-positive: var(--positive);
+}
