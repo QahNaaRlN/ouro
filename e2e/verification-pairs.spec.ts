@@ -177,7 +177,10 @@ test('paired verification browser path: create/edit contract, real Playwright im
         const card = page.locator('.react-flow__node .verification-pair');
         await expect(card).toHaveCount(1);
         await page.emulateMedia({reducedMotion:'no-preference'});
-        const rotor=card.locator('.verification-rotor'),originalSize=await card.boundingBox();
+        const rotor=card.locator('.verification-rotor');
+        // Native graph fitting can change screen zoom independently of a flip.
+        const intrinsicSize=()=>card.evaluate(element=>({height:(element as HTMLElement).offsetHeight,width:(element as HTMLElement).offsetWidth}));
+        const originalSize=await intrinsicSize();
         await expect(rotor).toHaveCount(1);
         await expect(rotor).toHaveCSS('transition-duration','0.7s');
         for(const link of await page.locator('.ws-topbar a').all()){await link.hover();await expect(link).toHaveCSS('text-decoration-line','none');}
@@ -189,13 +192,13 @@ test('paired verification browser path: create/edit contract, real Playwright im
         await expect(card.locator('.verification-face-work')).toHaveAttribute('aria-hidden','false');
         await expect(card.locator('.verification-face-verification')).toHaveAttribute('inert','');
         await expect.poll(()=>rotor.evaluate(element=>element.getAnimations().length)).toBe(0);
-        expect((await card.boundingBox())?.height).toBe(originalSize?.height);
+        expect(await intrinsicSize()).toEqual(originalSize);
         await expect(card.getByRole('button',{name:'Работа',exact:true})).toBeFocused();
         await card.getByRole('button', { name: 'Проверка', exact: true }).click();
         await expect(card).toHaveAttribute('data-foreground-id', verification.id);
         await expect(card.locator('.verification-face-work')).toHaveAttribute('inert','');
         await expect.poll(()=>rotor.evaluate(element=>element.getAnimations().length)).toBe(0);
-        expect((await card.boundingBox())?.height).toBe(originalSize?.height);
+        expect(await intrinsicSize()).toEqual(originalSize);
         await page.emulateMedia({reducedMotion:'reduce'});
         await card.getByRole('button',{name:'Работа',exact:true}).click();
         await expect(rotor).toHaveCSS('transition-duration','0s');
