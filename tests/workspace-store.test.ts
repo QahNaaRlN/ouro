@@ -36,7 +36,7 @@ test('PW01 catalog canonical aliases persist with one initialization and do not 
   const legacy=await f.store.getProject(),beforeHashes=await f.store.inspect('SELECT id,content_hash FROM ouro_spec_revisions ORDER BY id');
   const request={requestId:randomUUID(),name:'Мой локальный проект',rootPath:f.rootA},created=await f.store.createWorkspaceProject(request,operator);
   assert.equal(created.created,true);assert.equal(created.replayed,false);assert.equal(created.project.kind,'folder');assert.equal(created.project.rootPath,f.rootA);assert(created.project.rootIdentity);assert(created.project.bindingId);
-  const alias=path.join(f.directory,'alias-a');await symlink(f.rootA,alias,'dir');
+  const alias=path.join(f.directory,'alias-a');await symlink(f.rootA,alias,process.platform==='win32'?'junction':'dir');
   const duplicate=await add(f.store,alias);assert.equal(duplicate.created,false);assert.equal(duplicate.project.id,created.project.id);
   const project=await f.store.forProject(created.project.id);assert.equal(project.projectId,created.project.id);assert.strictEqual(await f.store.forProject(created.project.id),project);
   const fresh=await project.getProject();assert.equal(fresh.version,1);assert.equal(fresh.specs.length,0);assert.equal(fresh.executions.length,0);assert.equal(fresh.events[0].type,'ProjectInitialized');assert.equal(fresh.roadmap.title,created.project.name);assert.deepEqual(replay(fresh.events,created.project.id),fresh);
@@ -113,7 +113,7 @@ test('PW04 catalog and task outbox failures roll back every new row and leave re
 
 test('PW04 canonical alias and task races commit one creation and preserve independent project versions',async()=>{
  const f=await fixture();try{
-  const alias=path.join(f.directory,'alias-a');await symlink(f.rootA,alias,'dir');
+  const alias=path.join(f.directory,'alias-a');await symlink(f.rootA,alias,process.platform==='win32'?'junction':'dir');
   const registration=await Promise.all([add(f.store,f.rootA),add(f.store,alias)]);assert.equal(registration.filter(result=>result.created).length,1);assert.equal(registration[0].project.id,registration[1].project.id);
   const store=await f.store.forProject(registration[0].project.id),actor=scoped(store.projectId),agent=await store.createAgent('ChatGPT',actor),first={type:'startProjectWork',requestId:randomUUID(),expectedVersion:1,agentId:agent.agent.id,content:content('Задача 1')};
   const raced=await Promise.allSettled([store.executeCommand(first,actor),store.executeCommand({...first,requestId:randomUUID(),content:content('Задача 2')},actor)]);
@@ -169,11 +169,16 @@ test('PW08 authorizing remediation rechecks its folder and restores an old recei
 });
 
 test('PW05 simulator registration bypass belongs only to the legacy project',async()=>{
- const projectId=randomUUID(),store=await createStore({dataDir:'memory://',projectId,seedEvents:[]}),actor=scoped(projectId);try{
+ const ownerStore=await createStore({dataDir:'memory://',seedEvents:[]});try{
+  const account=(await ownerStore.createAccount({email:'simulator-scope-owner@example.com',name:'Simulator scope owner',password:'correct horse battery staple'},operator)).account;
+  const actor:Actor={id:account.id,kind:'human',name:account.name,projectIds:[]};
+  const project=await ownerStore.createProject({name:'Hosted simulator scope'},actor);
+  actor.projectIds=[project.id];
+  const store=await ownerStore.forProject(project.id);
   const created=await store.executeCommand({type:'createSpec',content:content(),requestId:randomUUID(),expectedVersion:0},actor),spec=created.state.specs[0],revision=created.state.revisions[0];
   const active=await store.executeCommand({type:'activateRevision',specId:spec.id,revisionId:revision.id,requestId:randomUUID(),expectedVersion:created.cursor},actor);
   await assert.rejects(store.executeCommand({type:'startExecution',specId:spec.id,specRevisionId:revision.id,agentId:AGENT_ID,requestId:randomUUID(),expectedVersion:active.cursor},actor),{code:'FORBIDDEN'});
   const registered=await store.createAgent('Настоящий MCP агент',actor);
   const accepted=await store.executeCommand({type:'startExecution',specId:spec.id,specRevisionId:revision.id,agentId:registered.agent.id,requestId:randomUUID(),expectedVersion:active.cursor},actor);assert.equal(accepted.state.executions[0].agentId,registered.agent.id);
- }finally{await store.close();}
+ }finally{await ownerStore.close();}
 });

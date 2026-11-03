@@ -1,5 +1,8 @@
 'use client';
 
+import {WorkspaceAccordion} from './workspace-ui';
+import { projectFetch } from '@/lib/client-project';
+
 import {useEffect,useRef,useState,type ChangeEvent,type CSSProperties,type FormEvent} from 'react';
 import {ArrowDownToLine,FileJson,FilePlus2,LoaderCircle,RefreshCw,ShieldQuestion} from 'lucide-react';
 import type {DomainEvent,ProjectState,RevisionContent} from '@/packages/core/src';
@@ -15,7 +18,7 @@ export function MeridianPin({label,pin}:{label:string;pin:Pin}){
   return <div className="meridian-pin"><span>{label}</span><strong>{pin.key.id} · r{pin.revision}</strong><code>{pin.sha256}</code></div>;
 }
 
-export default function MeridianPanel({state,onSnapshot,onOpenSpec,theme,pendingIntent,participantKey}:{state:ProjectState;onSnapshot:(data:unknown)=>void|Promise<void>;onOpenSpec?:(id:string)=>void;theme:'light'|'dark';pendingIntent:MeridianIntentCache;participantKey:string}){
+export default function MeridianPanel({state,onSnapshot,onOpenSpec,theme,pendingIntent,participantKey,readOnly=false}:{state:ProjectState;onSnapshot:(data:unknown)=>void|Promise<void>;onOpenSpec?:(id:string)=>void;theme:'light'|'dark';pendingIntent:MeridianIntentCache;participantKey:string;readOnly?:boolean}){
   const [recovered]=useState(()=>{
     const saved=pendingIntent.current;
     if(saved&&saved.projectId===state.projectId&&saved.participantKey===participantKey)return structuredClone(saved);
@@ -31,7 +34,7 @@ export default function MeridianPanel({state,onSnapshot,onOpenSpec,theme,pending
     const saved=pendingIntent.current;
     if(saved?.projectId===state.projectId&&saved.participantKey===participantKey&&saved.body.requestId===body.requestId)pendingIntent.current=null;
   };
-  const sealed=busy||uncertain||createdId!==null;
+  const sealed=busy||uncertain||createdId!==null||readOnly;
   const load=async(event:ChangeEvent<HTMLInputElement>)=>{
     if(sealed)return;const file=event.target.files?.[0],epoch=++readEpoch.current;
     setView(null);setContent(null);setRawDocument('');setError('');setNotice('');setFilename('');pending.current=null;
@@ -55,7 +58,7 @@ export default function MeridianPanel({state,onSnapshot,onOpenSpec,theme,pending
     const wasUncertain=uncertain;
     let definitiveRejection=false,confirmedNoReceipt=false;
     try{
-      const response=await fetch('/api/meridian/import',{method:'POST',headers:{'Content-Type':'application/json','X-Ouro-Expected-Participant':participantKey},body:JSON.stringify(body)});
+      const response=await projectFetch('/api/meridian/import',{method:'POST',headers:{'Content-Type':'application/json','X-Ouro-Expected-Participant':participantKey},body:JSON.stringify(body)});
       const result=await response.json();
       if(!response.ok){
         definitiveRejection=response.status>=400&&response.status<500;
@@ -101,7 +104,7 @@ export default function MeridianPanel({state,onSnapshot,onOpenSpec,theme,pending
         <p className="meridian-trust"><ShieldQuestion size={16}/><span><strong>Подлинность источника не проверена</strong><br/>Содержимое файла — заявленные факты источника. Связь с работающим Meridian не установлена.</span></p>
         <dl className="meridian-meta"><div><dt>Файл</dt><dd>{filename}</dd></div><div><dt>Проект</dt><dd>{facts.project_id}</dd></div><div><dt>Репозиторий</dt><dd>{facts.repository_id}</dd></div><div><dt>Workspace</dt><dd>{facts.subject_ref.workspace_id}</dd></div><div><dt>Провайдер</dt><dd>{facts.subject_ref.provider_id}</dd></div><div><dt>Снимок</dt><dd>{view.snapshot_id}</dd></div></dl>
         <div className="meridian-pins"><MeridianPin label="Спецификация источника" pin={facts.task_specification_pin}/><MeridianPin label="Попытка источника" pin={facts.run_ref.run}/><MeridianPin label="Манифест контекста" pin={facts.context_manifest_pin}/></div>
-        <details><summary>Источники, границы и незакрытые вопросы</summary><div className="meridian-source-details"><h4>Объявленные пути</h4><p>{facts.declared_scope.declared_paths.join(', ')}</p><h4>Проверка источников</h4><p>Внешние источники: не проверены. Готовность действия: не подтверждена. Утверждение снимка о внутренних pins: verified.</p>{facts.authoritative_sources.map(source=><p key={source.id}><strong>{source.id}</strong> · {source.reference}<br/>{source.purpose} · разрешение: {source.resolution}</p>)}{facts.applicable_norms.map(norm=><p key={norm.id}><strong>{norm.id}</strong> · {norm.reference}<br/>{norm.applicability_rationale}</p>)}{facts.decisions.map(decision=><p key={decision.id}><strong>{decision.id}</strong> · {decision.text}</p>)}{facts.resolution.conflicts.map((item,index)=><p key={`conflict-${index}`}>{item.reason}</p>)}{facts.resolution.unresolved_items.map((item,index)=><p key={`unresolved-${index}`}>{item.item}: {item.reason}</p>)}{facts.resolution.unresolved_applicability.map((item,index)=><p key={`applicability-${index}`}>{item.subject}: {item.reason}</p>)}{facts.resolution.requires_reresolution&&<p>Источник требует повторного определения применимости.</p>}{facts.resolution.decomposition_required&&<p>Источник требует декомпозиции.</p>}</div></details>
+        <WorkspaceAccordion title={<>Источники, границы и незакрытые вопросы</>}><div className="meridian-source-details"><h4>Объявленные пути</h4><p>{facts.declared_scope.declared_paths.join(', ')}</p><h4>Проверка источников</h4><p>Внешние источники: не проверены. Готовность действия: не подтверждена. Утверждение снимка о внутренних pins: verified.</p>{facts.authoritative_sources.map(source=><p key={source.id}><strong>{source.id}</strong> · {source.reference}<br/>{source.purpose} · разрешение: {source.resolution}</p>)}{facts.applicable_norms.map(norm=><p key={norm.id}><strong>{norm.id}</strong> · {norm.reference}<br/>{norm.applicability_rationale}</p>)}{facts.decisions.map(decision=><p key={decision.id}><strong>{decision.id}</strong> · {decision.text}</p>)}{facts.resolution.conflicts.map((item,index)=><p key={`conflict-${index}`}>{item.reason}</p>)}{facts.resolution.unresolved_items.map((item,index)=><p key={`unresolved-${index}`}>{item.item}: {item.reason}</p>)}{facts.resolution.unresolved_applicability.map((item,index)=><p key={`applicability-${index}`}>{item.subject}: {item.reason}</p>)}{facts.resolution.requires_reresolution&&<p>Источник требует повторного определения применимости.</p>}{facts.resolution.decomposition_required&&<p>Источник требует декомпозиции.</p>}</div></WorkspaceAccordion>
       </section>
       <form className="meridian-form" onSubmit={submit} aria-label="Ожидание из Meridian">
         <div className="section-heading"><h3>Ожидание для Ouro</h3><span className="quiet-label">ЧЕРНОВИК · БАЗА {baseVersion}</span></div>

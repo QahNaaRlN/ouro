@@ -1,5 +1,7 @@
 'use client';
 
+import { projectFetch } from '@/lib/client-project';
+
 import { useEffect,useRef,useState,type FormEvent } from 'react';
 import { Check,Copy,KeyRound,LoaderCircle,LogIn,LogOut,ShieldCheck,UserPlus,Users } from 'lucide-react';
 import type { Actor } from '@/packages/core/src';
@@ -11,7 +13,7 @@ export function ParticipantLogin({onSignedIn}:{onSignedIn?:()=>void}){
   const login=async(event:FormEvent)=>{
     event.preventDefault();if(busy)return;setBusy(true);setError('');
     try{
-      const response=await fetch('/api/participants/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({credential:credential.trim()})}),body=await response.json();
+      const response=await projectFetch('/api/participants/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({credential:credential.trim()})}),body=await response.json();
       if(!response.ok)throw new Error(body.error?.message??'Не удалось войти.');
       setCredential('');if(onSignedIn)onSignedIn();else window.location.reload();
     }catch(error){setError(error instanceof Error?error.message:'Не удалось войти.');}finally{setBusy(false);}
@@ -19,7 +21,7 @@ export function ParticipantLogin({onSignedIn}:{onSignedIn?:()=>void}){
   const reset=async()=>{
     if(busy)return;setBusy(true);setError('');
     try{
-      const response=await fetch('/api/participants/logout',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}),body=await response.json();
+      const response=await projectFetch('/api/participants/logout',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}),body=await response.json();
       if(!response.ok)throw new Error(body.error?.message??'Не удалось выйти.');
       setCredential('');if(onSignedIn)onSignedIn();else window.location.reload();
     }catch(error){setError(error instanceof Error?error.message:'Не удалось выйти.');setBusy(false);}
@@ -35,14 +37,14 @@ export default function ParticipantsPanel({onIdentityChange}:{onIdentityChange?:
   const reload=async()=>{
     const current=++sequence.current;activeRead.current?.abort();const controller=new AbortController();activeRead.current=controller;
     try{
-      const response=await fetch('/api/participants',{cache:'no-store',signal:controller.signal}),body=await response.json();
+      const response=await projectFetch('/api/participants',{cache:'no-store',signal:controller.signal}),body=await response.json();
       if(!response.ok)throw new Error(body.error?.message??'Не удалось прочитать участников.');
       if(mounted.current&&current===sequence.current){setDirectory(body);setError('');}
     }catch(error){if(!controller.signal.aborted&&mounted.current&&current===sequence.current)setError(error instanceof Error?error.message:'Не удалось прочитать участников.');}
   };
   useEffect(()=>{mounted.current=true;void reload();const timer=setInterval(()=>void reload(),8000);return()=>{mounted.current=false;sequence.current++;activeRead.current?.abort();clearInterval(timer);};},[]);
   const post=async(url:string,payload:unknown)=>{
-    const response=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}),body=await response.json();
+    const response=await projectFetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}),body=await response.json();
     if(!response.ok)throw new Error(body.error?.message??'Изменение не принято.');return body;
   };
   const create=async(event:FormEvent)=>{

@@ -1,3 +1,4 @@
+import {chooseSelectOption} from './select-helpers';
 import { test,expect,type Page,type Browser,type BrowserContext,type APIRequestContext } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import type { ProjectState } from '../packages/core/src';
@@ -27,7 +28,7 @@ const editor=(page:Page)=>page.getByRole('region',{name:'Редактор общ
 const goal=(page:Page)=>editor(page).getByRole('textbox',{name:'Цель черновика',exact:true});
 async function saved(page:Page){await expect(editor(page).getByRole('status').filter({hasText:'Все изменения сохранены'})).toBeVisible();}
 async function createShared(page:Page,specId:string){
-  await page.getByRole('combobox',{name:'Спецификация для черновика',exact:true}).selectOption(specId);
+  await chooseSelectOption(page.getByRole('combobox',{name:'Спецификация для черновика',exact:true}),specId);
   const created=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/drafts'&&response.request().method()==='POST');
   await page.getByRole('button',{name:'Создать общий черновик',exact:true}).click();const response=await created;expect(response.ok(),await response.text()).toBeTruthy();const body=await response.json();
   await expect(editor(page)).toHaveAttribute('data-draft-id',body.draft.id);await saved(page);return body.draft;
@@ -102,7 +103,7 @@ test('C05 browser freezes an uncertain create intent through 401 and login so re
   test.setTimeout(90000);const f=await setup(page,browser,baseURL);
   try{
     const requests:unknown[]=[];let attempts=0,createdId='';
-    await f.pa.getByRole('combobox',{name:'Спецификация для черновика',exact:true}).selectOption(f.spec.id);
+    await chooseSelectOption(f.pa.getByRole('combobox',{name:'Спецификация для черновика',exact:true}),f.spec.id);
     await f.pa.route('**/api/drafts',async route=>{
       if(route.request().method()!=='POST'){await route.continue();return;}
       requests.push(route.request().postDataJSON());attempts++;
@@ -147,7 +148,7 @@ test('C05 a cross-tab participant switch cannot repeat another author\'s committ
   try{
     const aCookie=(await f.ca.cookies()).find(cookie=>cookie.name==='ouro_participant')!,bCookie=(await f.cb.cookies()).find(cookie=>cookie.name==='ouro_participant')!;
     let createdId='',lostCreate=true;const createRequests:unknown[]=[];
-    await f.pa.getByRole('combobox',{name:'Спецификация для черновика',exact:true}).selectOption(f.spec.id);
+    await chooseSelectOption(f.pa.getByRole('combobox',{name:'Спецификация для черновика',exact:true}),f.spec.id);
     await f.pa.route('**/api/drafts',async route=>{
       if(route.request().method()!=='POST'){await route.continue();return;}
       createRequests.push(route.request().postDataJSON());

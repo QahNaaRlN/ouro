@@ -1,3 +1,4 @@
+import {chooseSelectOption} from './select-helpers';
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import { AGENT_ID, type ProjectState } from '../packages/core/src';
 import { getLessonCandidates } from '../packages/core/src/lessons';
@@ -55,8 +56,8 @@ test('L01/L03/L04/L05/L06 human curates a candidate, publishes a snapshot and re
   await specForm.getByRole('textbox',{name:'Название новой спеки',exact:true}).fill(newTitle);
   await specForm.getByRole('textbox',{name:'Цель новой спеки',exact:true}).fill('Показать происхождение задачи из точного опубликованного урока.');
   await specForm.getByRole('textbox',{name:'Definition of Done новой спеки',exact:true}).fill('Сохранена точная ревизия урока\nСпека остаётся неактивным черновиком');
-  await expect(specForm.getByRole('combobox',{name:'Исходная спека для связи derived_from',exact:true})).toHaveValue('');
-  await specForm.getByRole('combobox',{name:'Исходная спека для связи derived_from',exact:true}).selectOption(sourceSpec.id);
+  await expect(specForm.getByRole('combobox',{name:'Исходная спека для связи derived_from',exact:true})).toHaveAttribute('data-value','');
+  await chooseSelectOption(specForm.getByRole('combobox',{name:'Исходная спека для связи derived_from',exact:true}),sourceSpec.id);
   let lost=false,createdSpecId='',firstRequestId='';
   await page.route('**/api/commands',async route=>{
     const payload=route.request().postDataJSON();
@@ -76,7 +77,7 @@ test('L01/L03/L04/L05/L06 human curates a candidate, publishes a snapshot and re
     await expect(specForm.getByRole('button',{name:'Обновить базу после проверки',exact:true})).toBeDisabled();
     await expect(specForm.getByRole('textbox',{name:'Название новой спеки',exact:true})).toBeDisabled();
     await specForm.getByRole('button',{name:'Создать черновик спеки',exact:true}).click();
-    await expect(page.getByRole('combobox',{name:'Выбрать спецификацию',exact:true})).toHaveValue(createdSpecId);
+    await expect(page.getByRole('combobox',{name:'Выбрать спецификацию',exact:true})).toHaveAttribute('data-value',createdSpecId);
   }finally{await page.unroute('**/api/commands');}
   await page.getByRole('button',{name:'Ожидание',exact:true}).click();
   const origin=page.getByRole('region',{name:'Происхождение спеки'});
@@ -89,8 +90,8 @@ test('L01/L03/L04/L05/L06 human curates a candidate, publishes a snapshot and re
   expect(state.dependencies.some(d=>d.type==='derived_from'&&d.from===sourceSpec.id&&d.to===createdSpecId)).toBe(true);
   await page.getByRole('button',{name:'Уроки',exact:true}).click();
   await page.getByRole('searchbox',{name:'Поиск уроков',exact:true}).fill('границы');
-  await page.getByRole('combobox',{name:'Публикация урока',exact:true}).selectOption('published');
-  await page.getByRole('combobox',{name:'Исходная спека урока',exact:true}).selectOption(sourceSpec.id);
+  await chooseSelectOption(page.getByRole('combobox',{name:'Публикация урока',exact:true}),'published');
+  await chooseSelectOption(page.getByRole('combobox',{name:'Исходная спека урока',exact:true}),sourceSpec.id);
   await page.locator('.lesson-list').getByRole('button').filter({hasText:lessonTitle}).click();
   await detail.getByRole('button',{name:'Предложить ревизию урока',exact:true}).click();
   await editor.getByRole('textbox',{name:'Вывод урока',exact:true}).fill('Уточнённый вывод пока остаётся черновиком второй ревизии.');
@@ -99,7 +100,7 @@ test('L01/L03/L04/L05/L06 human curates a candidate, publishes a snapshot and re
   const revised=state.lessons.find(l=>l.id===lesson.id)!;
   expect(revised.latestRevisionId).not.toBe(savedRevision.id);expect(revised.publishedRevisionId).toBe(savedRevision.id);
   expect(state.lessonRevisions.find(r=>r.id===savedRevision.id)).toEqual(savedRevision);
-  await detail.getByRole('combobox',{name:'Версия урока',exact:true}).selectOption(savedRevision.id);
+  await chooseSelectOption(detail.getByRole('combobox',{name:'Версия урока',exact:true}),savedRevision.id);
   await expect(detail).toContainText('Историческая версия доступна только для чтения');
   await expect(detail.getByRole('button',{name:'Предложить ревизию урока',exact:true})).toHaveCount(0);
 });
@@ -114,7 +115,7 @@ test('L02/L06 lesson curation preserves draft focus and requires explicit rebase
   await editor.getByRole('textbox',{name:'Область применимости',exact:true}).fill('Формы с явной optimistic concurrency.');
   await editor.getByRole('textbox',{name:'Основание проверки',exact:true}).fill('Наблюдение текста, фокуса и конфликта версии.');
   const source=(await project(request)).events[0];
-  await editor.getByRole('combobox',{name:'Добавить источник урока',exact:true}).selectOption(source.id);
+  await chooseSelectOption(editor.getByRole('combobox',{name:'Добавить источник урока',exact:true}),source.id);
   await editor.getByRole('button',{name:'Добавить источник',exact:true}).click();
   await title.focus();await title.evaluate((element:HTMLInputElement)=>element.setSelectionRange(3,14));
   const external=await human(request,{type:'createSpec',content:specContent(`Событие при редактировании урока ${Date.now()}`)});

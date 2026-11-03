@@ -7,7 +7,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { ListToolsRequestSchema,CallToolRequestSchema,ListResourcesRequestSchema,ReadResourceRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
 if(process.argv.includes('--help')){
-  process.stderr.write('Ouro MCP stdio bridge\nOURO_URL=http://127.0.0.1:3000/api/mcp\nOURO_AGENT_TOKEN or OURO_AGENT_TOKEN_FILE is required.\nConfiguration is issued in the Ouro Agents screen. stdout is reserved for MCP.\n');
+  process.stderr.write('Ouro MCP stdio bridge\nOURO_URL=http://127.0.0.1:3000/api/mcp\nOURO_PROJECT_ID selects the assigned project.\nOURO_AGENT_TOKEN or OURO_AGENT_TOKEN_FILE is required.\nConfiguration is issued in the Ouro Agents screen. stdout is reserved for MCP.\n');
   process.exit(0);
 }
 let remote,server;
@@ -19,9 +19,11 @@ try{
   if(process.env.OURO_AGENT_TOKEN&&process.env.OURO_AGENT_TOKEN_FILE)throw new Error('Ambiguous credential');
   const token=process.env.OURO_AGENT_TOKEN_FILE?(await readFile(process.env.OURO_AGENT_TOKEN_FILE,'utf8')).trim():process.env.OURO_AGENT_TOKEN;
   if(!token)throw new Error('Credential required');
+  const projectId=process.env.OURO_PROJECT_ID;
+  if(projectId&&!/^[A-Za-z0-9_-]{1,200}$/.test(projectId))throw new Error('Invalid project');
   const {version}=JSON.parse(await readFile(new URL('../../../package.json',import.meta.url),'utf8'));
   remote=new Client({name:'ouro-stdio-bridge',version});
-  await remote.connect(new StreamableHTTPClientTransport(url,{requestInit:{headers:{Authorization:`Bearer ${token}`}}}));
+  await remote.connect(new StreamableHTTPClientTransport(url,{requestInit:{headers:{Authorization:`Bearer ${token}`,...(projectId?{'X-Ouro-Project-Id':projectId}:{})}}}));
   const supportsResources=!!remote.getServerCapabilities()?.resources;
   server=new Server({name:'ouro',version},{capabilities:{tools:{},...(supportsResources?{resources:{}}:{})},instructions:remote.getInstructions()??'Read ouro.get_context first. Human decisions and DoD acceptance remain in Ouro.'});
   server.setRequestHandler(ListToolsRequestSchema,async()=>remote.listTools());

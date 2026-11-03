@@ -1,3 +1,4 @@
+import {chooseSelectOption} from './select-helpers';
 import { test, expect, type Page } from '@playwright/test';
 import type { ProjectState } from '../packages/core/src/types';
 
@@ -7,7 +8,7 @@ async function project(page: Page): Promise<ProjectState> {
 }
 async function simulate(page:Page, scenario:string) {
   const result=page.waitForResponse(r=>r.url().includes('/api/simulator')&&r.request().method()==='POST');
-  await page.getByLabel('Сценарий симулятора').selectOption(scenario);
+  await chooseSelectOption(page.getByLabel('Сценарий симулятора'),scenario);
   const response=await result; expect(response.ok(),await response.text()).toBeTruthy();
   await expect(page.locator('.error-banner')).toHaveCount(0);
 }

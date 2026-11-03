@@ -10,6 +10,7 @@ Use English for branch names, commit messages and pull request titles/descriptio
 | `dev` | Integration for the next release | Feature, fix and documentation changes enter here |
 | `feat/<name>`, `fix/<name>`, `docs/<name>` | Bounded changes started from `dev` | `dev` |
 | `chore/<name>`, `refactor/<name>`, `test/<name>`, `ci/<name>`, `build/<name>`, `perf/<name>`, `revert/<name>` | Maintenance changes started from `dev` | `dev` |
+| `codex/<name>` | Bounded agent work started from `dev` | `dev` |
 | `release/<semver>` | A reviewed release candidate, such as `release/0.1.0-beta.1` | `main` |
 | `hotfix/<name>` | A correction started from the released `main` | `main` |
 

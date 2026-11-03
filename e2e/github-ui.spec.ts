@@ -1,3 +1,4 @@
+import {chooseSelectOption} from './select-helpers';
 import { test, expect, type Page } from '@playwright/test';
 import {
   AGENT_ID, GITHUB_SERVICE_ID, PROJECT_ID, applyCommand, emptyState,
@@ -68,7 +69,7 @@ async function open(page:Page){
 }
 async function fillBinding(page:Page,executionId:string){
   const form=page.getByRole('region',{name:'Привязать репозиторий к попытке'});
-  await form.getByRole('combobox',{name:'Попытка исполнения',exact:true}).selectOption(executionId);
+  await chooseSelectOption(form.getByRole('combobox',{name:'Попытка исполнения',exact:true}),executionId);
   await form.getByRole('textbox',{name:'Репозиторий',exact:true}).fill('review/ouro');
   await form.getByRole('textbox',{name:'Ветка GitHub',exact:true}).fill('refs/heads/work');
   return form;

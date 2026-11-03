@@ -1,3 +1,4 @@
+import {chooseSelectOption} from './select-helpers';
 import {test,expect} from '@playwright/test';
 import type {ProjectState} from '../packages/core/src';
 
@@ -10,7 +11,7 @@ test('text-only revision preserves the original process snapshot',async({page})=
   const spec=state.specs.at(-1)!,original=state.revisions.at(-1)!;
   await mutate({type:'activateRevision',specId:spec.id,revisionId:original.id});
   await page.reload();await page.getByRole('button',{name:'Спецификации',exact:true}).click();
-  await page.getByLabel('Выбрать спецификацию',{exact:true}).selectOption(spec.id);
+  await chooseSelectOption(page.getByLabel('Выбрать спецификацию',{exact:true}),spec.id);
   await page.getByRole('button',{name:'Предложить ревизию',exact:true}).click();
   const dialog=page.getByRole('dialog');
   await dialog.getByRole('textbox',{name:'Цель',exact:true}).fill('Уточнённая цель с прежним процессом.');

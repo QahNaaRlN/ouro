@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {copyFile,mkdtemp,mkdir,writeFile,readFile,readdir,rm,symlink} from 'node:fs/promises';
+import {copyFile,mkdtemp,mkdir,writeFile,readFile,readdir,rm} from 'node:fs/promises';
+import {createTestSymlink} from './symlink-helper';
 import path from 'node:path';
 import {tmpdir} from 'node:os';
 import {spawnSync} from 'node:child_process';
@@ -15,15 +16,16 @@ const run=(cwd:string,args:string[])=>{
 };
 async function fixture(){
  const directory=await mkdtemp(path.join(tmpdir(),"ouro release & данные ' ")),repo=path.join(directory,'repository'),out=path.join(directory,'output');await mkdir(repo);
- run(repo,['init','-q']);run(repo,['config','user.name','Release fixture']);run(repo,['config','user.email','release-fixture@example.invalid']);
+ run(repo,['init','-q']);run(repo,['config','core.autocrlf','false']);run(repo,['config','user.name','Release fixture']);run(repo,['config','user.email','release-fixture@example.invalid']);
  await mkdir(path.join(repo,'packages/protocol'),{recursive:true});
  await writeFile(path.join(repo,'package.json'),JSON.stringify({name:'ouro',version:'0.1.0-beta.1'}));await writeFile(path.join(repo,'packages/protocol/package.json'),JSON.stringify({name:'@ouro/protocol',version:'0.1.2'}));
  await writeFile(path.join(repo,'README.md'),'# Committed release\n');await writeFile(path.join(repo,'.env.example'),'EXAMPLE=value\n');
  await writeFile(path.join(repo,'.gitignore'),'.ouro/\nnode_modules/\n.next/\n.env*\n!.env.example\n');run(repo,['add','.']);run(repo,['commit','-qm','feat: seed release fixture']);
  return {directory,repo,out,commit:run(repo,['rev-parse','HEAD']),close:()=>rm(directory,{recursive:true,force:true})};
 }
-function names(zip:string){const result=spawnSync('unzip',['-Z1',zip],{encoding:'utf8',timeout:15000});assert.equal(result.status,0,result.stderr);return result.stdout.split('\n').filter(Boolean);}
-function zipped(zip:string,file:string){const result=spawnSync('unzip',['-p',zip,file],{encoding:'utf8',timeout:15000});assert.equal(result.status,0,result.stderr);return result.stdout;}
+const windowsZip=process.platform==='win32',zipReader=windowsZip?path.join(process.env.SystemRoot??'C:\\Windows','System32','tar.exe'):'unzip';
+function names(zip:string){const result=spawnSync(zipReader,windowsZip?['-tf',zip]:['-Z1',zip],{encoding:'utf8',timeout:15000});assert.equal(result.status,0,result.error?.message??result.stderr);return result.stdout.split(/\r?\n/).filter(Boolean);}
+function zipped(zip:string,file:string){const result=spawnSync(zipReader,windowsZip?['-xOf',zip,file]:['-p',zip,file],{encoding:'utf8',timeout:15000});assert.equal(result.status,0,result.error?.message??result.stderr);return result.stdout;}
 function protocolTarball(metadata:Record<string,unknown>,extra?:{name:string;text:string}){
  const files=[{name:'package/package.json',text:JSON.stringify(metadata)},...(extra?[extra]:[])],parts:Buffer[]=[];
  for(const file of files){
@@ -62,7 +64,7 @@ test('FRL04 tracked runtime, key files and symlink entries are refused before an
  for(const candidate of ['.ouro/postgres/data','node_modules/package.json','.next/BUILD_ID','credentials.json','keys/id_ed25519','private.key','packages/protocol/dist/index.mjs','linked-source']){
   const f=await fixture();try{
    const file=path.join(f.repo,candidate);await mkdir(path.dirname(file),{recursive:true});
-   if(candidate==='linked-source')await symlink('README.md',file);else await writeFile(file,'FAKE-PRIVATE-FIXTURE');
+   if(candidate==='linked-source'){if(!await createTestSymlink('README.md',file))continue;}else await writeFile(file,'FAKE-PRIVATE-FIXTURE');
    run(f.repo,['add','-f',candidate]);run(f.repo,['commit','-qm','test: add forbidden tracked fixture']);
    await assert.rejects(packRelease({repoDir:f.repo,outDir:f.out}),/tracked|private|runtime|links/i);
    await assert.rejects(readdir(f.out),{code:'ENOENT'});

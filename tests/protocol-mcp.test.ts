@@ -47,7 +47,7 @@ async function httpFixture(create:()=>McpServer){
  });
  await new Promise<void>(resolve=>listener.listen(0,'127.0.0.1',resolve));
  const port=(listener.address() as {port:number}).port,client=new Client({name:'protocol-stdio-acceptance',version:'1'});
- const transport=new StdioClientTransport({command:process.execPath,args:[path.resolve('packages/mcp/bin/ouro-mcp.mjs')],env:{PATH:process.env.PATH??'',OURO_URL:`http://127.0.0.1:${port}/mcp`,OURO_AGENT_TOKEN:token},stderr:'pipe'});
+ const transport=new StdioClientTransport({command:process.execPath,args:[path.resolve('packages/mcp/bin/ouro-mcp.mjs')],env:{PATH:process.env.PATH??'',...(process.versions.electron?{ELECTRON_RUN_AS_NODE:'1'}:{}),OURO_URL:`http://127.0.0.1:${port}/mcp`,OURO_AGENT_TOKEN:token},stderr:'pipe'});
  try{await client.connect(transport);}
  catch(error){await client.close();await new Promise<void>(resolve=>listener.close(()=>resolve()));throw error;}
  return {client,close:async()=>{await client.close();await new Promise<void>(resolve=>listener.close(()=>resolve()));}};

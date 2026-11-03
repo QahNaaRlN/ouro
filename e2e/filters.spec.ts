@@ -1,3 +1,4 @@
+import {chooseSelectOption,selectPopup} from './select-helpers';
 import { test,expect,type Page } from '@playwright/test';
 import { AGENT_ID,type ProjectState,type RequestKind } from '../packages/core/src';
 
@@ -30,13 +31,17 @@ test('R07 graph and table share agent/pending-kind matches while selection, came
  const attention=await page.locator('.attention-counter').textContent();
  const agent=page.getByLabel('Фильтр по агенту',{exact:true});
  const kind=page.getByLabel('Фильтр по открытому запросу',{exact:true});
- await expect(agent.getByRole('option',{name:'Все агенты',exact:true})).toHaveCount(1);
- await expect(kind.getByRole('option',{name:'Все открытые запросы',exact:true})).toHaveCount(1);
- await expect(agent.getByRole('option',{name:'Симулятор агента',exact:true})).toHaveCount(1);
+ const agentPopup=await selectPopup(agent);
+ await expect(agentPopup.getByRole('option',{name:'Все агенты',exact:true})).toHaveCount(1);
+ await expect(agentPopup.getByRole('option',{name:'Симулятор агента',exact:true})).toHaveCount(1);
+ await page.keyboard.press('Escape');
+ const kindPopup=await selectPopup(kind);
+ await expect(kindPopup.getByRole('option',{name:'Все открытые запросы',exact:true})).toHaveCount(1);
+ await page.keyboard.press('Escape');
  await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
  const camera=await page.locator('.react-flow__viewport').getAttribute('style');
- await agent.selectOption(AGENT_ID);
- await kind.selectOption('Fork');
+ await chooseSelectOption(agent,AGENT_ID);
+ await chooseSelectOption(kind,'Fork');
  const fork=matchingPending(state,'Fork');expect(fork.length).toBeGreaterThan(0);
  await expect.poll(()=>brightGraphIds(page)).toEqual(fork.map(spec=>spec.id).sort());
  await expect(page.locator('.react-flow__viewport')).toHaveAttribute('style',camera!);
@@ -45,8 +50,8 @@ test('R07 graph and table share agent/pending-kind matches while selection, came
  await expect(page.locator('.attention-counter')).toHaveText(attention!);
 
  for(const [requestKind,label] of [['Fork','Развилка'],['Question','Вопрос'],['Blocker','Блокер']] as const) {
-  await kind.selectOption(requestKind);
-  await expect(kind.getByRole('option',{name:label,exact:true})).toHaveCount(1);
+  await chooseSelectOption(kind,requestKind);
+  await expect(kind).toHaveText(label);
   const expected=matchingPending(state,requestKind);expect(expected.length).toBeGreaterThan(0);
   await expect(page.locator('.react-flow__node-spec')).toHaveCount(state.specs.length);
   await expect.poll(()=>brightGraphIds(page)).toEqual(expected.map(spec=>spec.id).sort());
@@ -56,7 +61,7 @@ test('R07 graph and table share agent/pending-kind matches while selection, came
   await expect(page.locator('.attention-counter')).toHaveText(attention!);
   await page.getByRole('button',{name:'Граф',exact:true}).click();
  }
- await kind.selectOption('');await agent.selectOption('');
+ await chooseSelectOption(kind,'');await chooseSelectOption(agent,'');
  await expect.poll(()=>brightGraphIds(page)).toEqual(state.specs.map(spec=>spec.id).sort());
  await expect(page.getByRole('status').filter({hasText:'Выбранная спека вне фильтра'})).toHaveCount(0);
  await expect(page.locator('.selection-strip .mono')).toHaveText(held.humanId);
@@ -71,7 +76,7 @@ test('R07 agent and request filters remain usable in light mobile view',async({p
  await page.setViewportSize({width:390,height:844});
  const agent=page.getByLabel('Фильтр по агенту',{exact:true}),kind=page.getByLabel('Фильтр по открытому запросу',{exact:true});
  await expect(agent).toBeVisible();await expect(kind).toBeVisible();
- await agent.selectOption(AGENT_ID);await kind.selectOption('Blocker');
+ await chooseSelectOption(agent,AGENT_ID);await chooseSelectOption(kind,'Blocker');
  const expected=matchingPending(state,'Blocker');expect(expected.length).toBeGreaterThan(0);
  await page.getByRole('button',{name:'Таблица',exact:true}).click();
  await expect.poll(()=>tableHumanIds(page)).toEqual(expected.map(spec=>spec.humanId).sort());

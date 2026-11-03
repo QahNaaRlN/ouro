@@ -1,3 +1,4 @@
+import {chooseSelectOption} from './select-helpers';
 import { test, expect } from '@playwright/test';
 import type { ProjectState } from '../packages/core/src/types';
 
@@ -14,7 +15,7 @@ test('agent onboarding provides one-time MCP config, truthful presence and persi
   const parsed=JSON.parse(await config.inputValue());
   const entry=parsed.mcpServers.ouro;
   expect(typeof entry.command).toBe('string');
-  expect(entry.args.some((x:string)=>x.endsWith('/packages/mcp/bin/ouro-mcp.mjs'))).toBe(true);
+  expect(entry.args.some((x:string)=>x.replaceAll('\\','/').endsWith('/packages/mcp/bin/ouro-mcp.mjs'))).toBe(true);
   expect(entry.env.OURO_URL.endsWith('/api/mcp')).toBe(true);
   const token=entry.env.OURO_AGENT_TOKEN as string;
   expect(token.startsWith('ouro_agent_')).toBe(true);
@@ -52,8 +53,8 @@ test('human assigns a registered agent and simulator cannot acknowledge its exec
   await command({type:'activateRevision',specId:spec.id,revisionId:spec.revisionIds[0]});
   await page.reload();await expect(page.getByRole('heading',{name:'Дорожная карта'})).toBeVisible();
   await page.getByRole('button',{name:'Спецификации',exact:true}).click();
-  await page.getByLabel('Выбрать спецификацию').selectOption(spec.id);
-  await page.getByLabel('Исполнитель попытки').first().selectOption(agent.id);
+  await chooseSelectOption(page.getByLabel('Выбрать спецификацию'),spec.id);
+  await chooseSelectOption(page.getByLabel('Исполнитель попытки').first(),agent.id);
   await page.getByRole('button',{name:'Разрешить одну попытку',exact:true}).click();
   state=await getState();const execution=state.executions.findLast(e=>e.specId===spec.id)!;
   expect(execution.agentId).toBe(agent.id);expect(execution.state).toBe('queued');

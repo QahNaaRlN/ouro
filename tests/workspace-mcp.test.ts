@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
-import {mkdtemp,mkdir,writeFile,rm,symlink} from 'node:fs/promises';
+import {mkdtemp,mkdir,writeFile,rm} from 'node:fs/promises';
+import {createTestSymlink} from './symlink-helper';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {randomUUID,createHash} from 'node:crypto';
@@ -32,7 +33,7 @@ test('PW05/PW07/PW09 official HTTP and stdio clients stay project-bound while re
   const folderA=path.join(directory,'alpha'),folderB=path.join(directory,'beta');await mkdir(folderA);await mkdir(folderB);
   const text='Project alpha source\n';await writeFile(path.join(folderA,'README.md'),text);await writeFile(path.join(folderB,'README.md'),'Project beta source\n');
   await writeFile(path.join(folderA,'.env'),'PRIVATE_WORKSPACE_SECRET');await writeFile(path.join(folderA,'binary.bin'),Buffer.from([0,255,1]));await writeFile(path.join(folderA,'oversize.txt'),'x'.repeat(131073));
-  const outside=path.join(directory,'outside.txt');await writeFile(outside,'PRIVATE_OUTSIDE');await symlink(outside,path.join(folderA,'linked.txt'));
+  const outside=path.join(directory,'outside.txt');await writeFile(outside,'PRIVATE_OUTSIDE');const linked=await createTestSymlink(outside,path.join(folderA,'linked.txt'));
   const projectA=(await owner.createWorkspaceProject({requestId:randomUUID(),rootPath:folderA,name:'Alpha'},operator)).project;
   const projectB=(await owner.createWorkspaceProject({requestId:randomUUID(),rootPath:folderB,name:'Beta'},operator)).project;
   const storeA=await owner.forProject(projectA.id),storeB=await owner.forProject(projectB.id),humanA={...operator,projectIds:[projectA.id]},humanB={...operator,projectIds:[projectB.id]};
@@ -62,7 +63,7 @@ test('PW05/PW07/PW09 official HTTP and stdio clients stay project-bound while re
   const body=context.structuredContent as any;assert.equal(body.project.id,projectA.id);assert.equal(body.workspace.folderName,'alpha');assert.equal(body.workspace.capabilities.readOnlyFiles,true);assert(!JSON.stringify(context).includes(folderA));assert.equal(body.work[0].execution.state,'queued');
   const listing=await http.callTool({name:'ouro.list_workspace_files',arguments:{executionId:executionA.id}});assert.notEqual(listing.isError,true,JSON.stringify(listing));assert((listing.structuredContent as any).entries.some((entry:any)=>entry.path==='README.md'));assert(!JSON.stringify(listing).includes('.env'));assert(!JSON.stringify(listing).includes('linked.txt'));
   const file=await http.callTool({name:'ouro.read_workspace_file',arguments:{executionId:executionA.id,path:'README.md'}});assert.notEqual(file.isError,true,JSON.stringify(file));assert.equal((file.structuredContent as any).text,text);assert.equal((file.structuredContent as any).sha256,createHash('sha256').update(text).digest('hex'));assert.equal((file.structuredContent as any).projectId,projectA.id);
-  for(const filePath of ['../outside.txt',outside,'.env','linked.txt','binary.bin','oversize.txt','C:\\outside.txt']){
+  for(const filePath of ['../outside.txt',outside,'.env',...(linked?['linked.txt']:[]),'binary.bin','oversize.txt','C:\\outside.txt']){
    const denied=await http.callTool({name:'ouro.read_workspace_file',arguments:{executionId:executionA.id,path:filePath}});assert.equal(denied.isError,true,filePath);assert(!JSON.stringify(denied).includes('PRIVATE_'));
   }
   const foreign=await http.callTool({name:'ouro.read_workspace_file',arguments:{executionId:executionB.id,path:'README.md'}});assert.equal(foreign.isError,true);assert.equal((foreign.structuredContent as any).error.code,'FORBIDDEN');
@@ -73,7 +74,7 @@ test('PW05/PW07/PW09 official HTTP and stdio clients stay project-bound while re
   const changed=await fetch(urlA,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${registrationA.token}`,'X-Ouro-Expected-Project':projectB.id},body:rawBody});assert.equal(changed.status,409);
   const keyFile=path.join(directory,'beta-agent-key');await writeFile(keyFile,registrationB.token,{mode:0o600});
   const stdio=new Client({name:'workspace-stdio-acceptance',version:'1'});clients.push(stdio);
-  await stdio.connect(new StdioClientTransport({command:process.execPath,args:[path.resolve('packages/mcp/bin/ouro-mcp.mjs')],env:{PATH:process.env.PATH??'',OURO_URL:urlB,OURO_AGENT_TOKEN_FILE:keyFile},stderr:'pipe'}));
+  await stdio.connect(new StdioClientTransport({command:process.execPath,args:[path.resolve('packages/mcp/bin/ouro-mcp.mjs')],env:{PATH:process.env.PATH??'',...(process.versions.electron?{ELECTRON_RUN_AS_NODE:'1'}:{}),OURO_URL:urlB,OURO_AGENT_TOKEN_FILE:keyFile},stderr:'pipe'}));
   const stdioTools=await stdio.listTools();assert.equal(stdioTools.tools.length,18);
   const betaFile=await stdio.callTool({name:'ouro.read_workspace_file',arguments:{executionId:executionB.id,path:'README.md'}});assert.notEqual(betaFile.isError,true,JSON.stringify(betaFile));assert.equal((betaFile.structuredContent as any).text,'Project beta source\n');assert.equal((betaFile.structuredContent as any).projectId,projectB.id);
   const stillAlpha=await http.callTool({name:'ouro.get_context',arguments:{executionId:executionA.id}});assert.equal((stillAlpha.structuredContent as any).project.id,projectA.id);

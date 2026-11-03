@@ -33,8 +33,8 @@ const encoder = new TextEncoder();
 
 function cursorFrom(request: Request) {
   const query = new URL(request.url).searchParams;
-  if ([...query.keys()].some(key => key !== 'after')) {
-    throw new AccessError('VALIDATION_ERROR', 'Поток принимает только параметр after; ключ доступа передаётся вне URL.', 422);
+  if ([...query.keys()].some(key => !['after','projectId'].includes(key))) {
+    throw new AccessError('VALIDATION_ERROR', 'Поток принимает только параметры after и projectId; ключ доступа передаётся вне URL.', 422);
   }
   const value = request.headers.get('last-event-id') ?? query.get('after') ?? '0';
   const after = Number(value);
