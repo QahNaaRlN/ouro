@@ -1,8 +1,10 @@
-# Рабочее место проекта · текущий UI-срез
+# Рабочее место проекта · beta.3
 
 [SDD дашборда](specs/project-workspace.md) · [Cursor и Claude](agent-clients-guide.md) · [ChatGPT](chatgpt-guide.md) · [Прочитанные источники](project-workspace-research.md) · [Проверки и границы](plans/project-workspace.md).
 
-03.11.2026. Инструкция соответствует принятому коду приложения `47b05f8` после функционального обзора `1e894ad` и Base UI `3aded9c`. Локально подтверждены 25/25 целевых unit, 100/100 production browser, TypeScript/build. Публичный beta.3 готовится; CI/развёртывание — IN_PROGRESS, выпуск и поставка пока не подтверждены. [Итоговый отчёт](plans/review-followups.md).
+03.11.2026. Инструкция соответствует опубликованному и установленному [beta.3](https://github.com/QahNaaRlN/ouro/releases/tag/v0.1.0-beta.3), source/tag `93d42be`; принятый UI-срез `47b05f8` входит в выпуск. Точные main/prerelease CI `checks`/`browser` прошли: Linux 426/426 unit без skipped,100/100 browser; свежий Windows 420 PASS / 6 platform SKIP / 0 FAIL, TypeScript/49 schemas/build/replay PASS. Канонический ZIP прошёл чистый Windows `NODE_ENV=production npm run launch` без Git. [Поставка и ограничения](plans/release-beta-3.md) · [Валидация](validation.md).
+
+Основная локальная установка работает на loopback-порту 3000; сохранность существующих данных подтверждена после offline-backup и точной before/after сверки. Fresh Windows protocol `npm pack` остаётся FAIL/UNQUALIFIED (CLI 0644); предоставленный неизменённый canonical protocol 0.1.2 проверен отдельно по Git T/106 tar modes и Windows consumer. Изменения статусных правил и контрактов остаются только [предложением](proposals/status-contract-followups.md), без внедрения.
 
 Вход — <http://127.0.0.1:3000/projects>. Выберите папку на машине, где работает Ouro, и откройте рабочее место. В навигации проекта доступны **«Дорожная карта»**, **«Вопросы»**, **«Агенты»**, **«Предложения»** и **«История»**. Выбор спеки открывает её подробности с ревизиями и попытками. Любой совместимый агент сообщает данные через общий версионированный MCP-контракт. ChatGPT — пример подключения; запуск модели остаётся в клиенте агента.
 
@@ -101,6 +103,6 @@
 
 ## Граница проверки
 
-Текущие UI-проверки ведутся в журналах [функционального обзора](plans/functional-status-comments.md), [Base UI](plans/base-ui-selects.md) и [оставшихся критериев](plans/review-followups.md). Ранние проверки дашборда сохранены в [журнале alpha.14](plans/project-workspace.md), клиентских профилей — в [журнале alpha.15](plans/client-onboarding.md); общий индекс — [валидация](validation.md). Локальный gate не подтверждает CI и развёртывание. SDK-проверка endpoint/stdio не подтверждает вход и запуск модели в пользовательском Cursor/Claude. Для ChatGPT нужны доступный workspace, настроенный tunnel-client и успешный вызов инструмента из ChatGPT.
+Исторические UI-проверки сохранены в журналах [функционального обзора](plans/functional-status-comments.md), [Base UI](plans/base-ui-selects.md) и [оставшихся критериев](plans/review-followups.md). Ранние проверки дашборда находятся в [журнале alpha.14](plans/project-workspace.md), клиентских профилей — в [журнале alpha.15](plans/client-onboarding.md). Публикация, реальные CI и обновление основной beta.3 фиксируются отдельно в [журнале поставки](plans/release-beta-3.md); общий индекс — [валидация](validation.md). SDK-проверка endpoint/stdio не подтверждает вход и запуск модели в пользовательском Cursor/Claude. Для ChatGPT нужны доступный workspace, настроенный tunnel-client и успешный вызов инструмента из ChatGPT.
 
 Файловые инструменты Ouro остаются read-only. Собственные edit/shell tools Cursor/Claude Code определяются разрешениями этих клиентов; наблюдение в дашборде охватывает только явно отправленные в Ouro факты.

@@ -2,31 +2,69 @@
 
 03.11.2026. [Критерии поставки](../specs/release-beta-3.md). Пользователь разрешил обновление основной локальной установки, актуализацию репозитория и публичный GitHub prerelease beta.3.
 
+## Итог поставки
+
+**Опубликовано и развёрнуто.** [v0.1.0-beta.3](https://github.com/QahNaaRlN/ouro/releases/tag/v0.1.0-beta.3) опубликован 03.11.2026 в 12:43:13 UTC. Annotated tag закрепляет код `93d42be34478c49e07f9074face79806f1d7e274`; его дерево точно равно принятому кандидату `0052ed4`. После публикации этот отчёт актуализируется отдельной документальной фиксацией, которая не меняет код, тег или файлы выпуска.
+
+| Область | Результат |
+|---|---|
+| GitHub release candidate | [PR24 / CI41633019450](https://github.com/QahNaaRlN/ouro/actions/runs/41633019450): checks/browser PASS. |
+| Точный main/source | [CI 41634368705](https://github.com/QahNaaRlN/ouro/actions/runs/41634368705): checks/browser PASS; Linux 426/426 unit, 100/100 production browser, самостоятельный protocol package 1/1. |
+| Windows Node 24.19.0 | Свежий полный unit/integration: 420 PASS / 6 предусмотренных platform SKIP / 0 FAIL. TypeScript, 49 schemas, durable replay и production build PASS. Ранние отказы сохранены ниже как история. |
+| Чистая установка | Реальный опубликованный LF ZIP, новая папка с пробелом, без .git/dependencies/build; NODE_ENV=production и PATH без Git. Штатный npm run launch выполнил ci→build→start, HTTP/version/catalog/icon PASS. |
+| Рабочая установка | На прежнем loopback-порту 3000 работает beta.3 на Node 24.19.0 и исходном абсолютном dataDir. Фактическая версия проверена в UI. Новая полная offline-копия: 1 146 файлов / 27 каталогов / 139 506 266 байт, source/copy hash равен до старта. |
+| Данные | После переключения свежие snapshots совпали: 3 проекта, 238 событий, 2 регистрации, 0 различий состояния/cursor/eventprefix/регистраций. Простой — 14,402 секунды, rollback не потребовался. Старые папка установки, keyfiles и backups сохранены. |
+| Миграция копии | Перед live-switch отдельный old-code→beta.3 drill: 6 → 9 версий схемы, 25 → 41 таблица; единственное изменение counts прежних таблиц — schema migrations 6 → 9. Доменные события, проекты, регистрации и полное состояние неизменны, mutating HTTP requests — 0. Живая PGlite напрямую диагностическим SQL не открывалась. |
+| Доставка | Четыре файла скачаны сначала из draft, затем анонимно по публичным URLs без OAuth/Authorization/cookies. Все байты/хеши совпали; CRC 590 entries и raw 492/492 Git blobs PASS. Старый beta.2/tag/asset metadata сохранены. |
+
+### Точные артефакты
+
+- Source ZIP: 1 382 825 байт; SHA-256 `8f063370c10d14fd11af0581bbb0e62c28f92de16cf8f9510fbf3eee9f14bf78`.
+- Protocol TGZ: 84 601 байт; SHA-256 `83ae0850a93877853b0ac50eeb3a03493bbbbd69614ffac288c608f256156cf3`.
+- `release-manifest.json` и `SHA256SUMS` закрепляют версии и source SHA; все четыре файла доступны в [выпуске](https://github.com/QahNaaRlN/ouro/releases/tag/v0.1.0-beta.3).
+- Canonical protocol 0.1.2 сохранён без пересборки из другого исходника: Git tree `974bcabe87e7fc1c54c441715e1643d3db4f2ba1` совпадает с beta.2. Проверены 106 файлов и permissions 0755 для bin / 0644 для остальных, old manifest/SHA256SUMS/GitHub digest и независимый Windows consumer ESM/CJS/types/schemas/CLI.
+
+Свежий Windows npm pack остаётся **FAIL/UNQUALIFIED** по 0755; выдаваемый проверенный canonical TGZ — отдельная успешная квалификация. Это ограничение producer не скрыто ослаблением теста и не перенесено на публичный архив как PASS. От первоначального source ZIP с Windows CRLF отказались: окончательный экспорт выполнен с process-scoped core.autocrlf=false. Все 492 файла окончательного ZIP совпадают с Git blobs без нормализации; executable shebangs LF.
+
+### Репозиторий и границы
+
+PR20/PR23/PR24 интегрированы без переписывания общей истории. На момент публикации main/dev указывают на 93d42be; последующая фиксация отчёта меняет только Markdown. В основной рабочей копии настроен tracking main→origin/main и обычный fetch refs; исходный next-env.d.ts сохранён побайтно вместе с приватным patch/backup. Прежние feature branches/worktrees не удалялись.
+
+Операционные snapshots, backup/hash manifests, пути и среда находятся в приватном git-ignored каталоге `.ouro/deployment-beta3` на машине оператора; их нет в Git и ZIP. GitHub API unauthenticated metadata после успешного public GET достиг rate limit; проверка новых файлов выполнена прямыми анонимными downloads и Git smart HTTP. Сохранность beta.2 metadata отдельно подтверждена authenticated GET относительно исходной записи; эти методы не смешиваются.
+
+Новый порядок применения/resume, самостоятельная project-target proposal, сохраняемый client type, desktop path bridge и дополнительные event payload остаются [предложением для согласования](../proposals/status-contract-followups.md). Выпуск не активирует их и не является публичным hosted-развёртыванием.
+
+### Выводы по способу поставки
+
+Независимый аудит обнаружил различия Windows export/архивных инструментов до публикации, а проверка копии БД отделила новые schema metadata от неизменной доменной истории. Для следующих выпусков полезно начинать с canonical LF export и проверенного protocol producer, затем проверять фактические скачанные bytes и старую БД. Это уменьшит повторные чистые сборки; новый Windows protocol producer требует отдельной исправляющей задачи.
+
+Ниже сохранён журнал подготовки и первоначальные неуспешные результаты. Их промежуточные статусы относятся к тому этапу.
+
 ## Исходное состояние
 
-- Принятый UI-код: `47b05f8` на `codex/functional-status-comments`; до начала поставки worktree чистый. Сохранены локальные 25/25 целевых unit и 100/100 production browser на Node24.16.0, TypeScript/build PASS; это не новый полный release gate.
+- Принятый UI-код: `47b05f8` на `codex/functional-status-comments`; до начала поставки worktree чистый. Сохранены локальные 25/25 целевых unit и 100/100 production browser на Node 24.16.0, TypeScript/build PASS; это не новый полный release gate.
 - Remote main и dev: `c4ce0d9`, опубликован beta.2. PR20 (`918aadd`) содержит базу принятого кода, его прежний CI прошёл. PR перенаправлен в dev согласно CONTRIBUTING; фактическая проверка текущего PR выполняется отдельно.
 - Основной checkout был `feat/local-start@1ffe248`, с прежним автогенерируемым изменением next-env.d.ts. Оно не отбрасывается при синхронизации.
-- Основной сервис: loopback-порт3000, установка из source ZIP beta.2, embedded PostgreSQL, без DATABASE_URL и явного OURO_DATA_DIR. Фактический путь данных установлен по рабочему каталогу процесса. Отдельные порты3486/3491/3501 относятся к проверочным просмотрам и не являются рабочей БД.
-- От опубликованного beta.2 к кандидату добавлены migrations007–009. Migration009 также отзывает прежние приглашения и меняет membership constraints. Откат одним старым кодом не квалифицирован.
+- Основной сервис: loopback-порт 3000, установка из source ZIP beta.2, embedded PostgreSQL, без DATABASE_URL и явного OURO_DATA_DIR. Фактический путь данных установлен по рабочему каталогу процесса. Отдельные порты 3486/3491/3501 относятся к проверочным просмотрам и не являются рабочей БД.
+- От опубликованного beta.2 к кандидату добавлены migrations 007–009. Migration 009 также отзывает прежние приглашения и меняет membership constraints. Откат одним старым кодом не квалифицирован.
 
 ## Подготовка и проверки
 
-Исправлена проверка веток: codex получает тот же строгий english-kebab суффикс, subject/title/range/SemVer проверки сохранены. Профильный regression сначала дал ожидаемый RED, после исправления все7 тестов PASS; текущая настоящая ветка проходит без branch/env override.
+Исправлена проверка веток: codex получает тот же строгий english-kebab суффикс, subject/title/range/SemVer проверки сохранены. Профильный regression сначала дал ожидаемый RED, после исправления все 7 тестов PASS; текущая настоящая ветка проходит без branch/env override.
 
-Версия приложения готовится как0.1.0-beta.3, протокол остаётся0.1.2. Живые roadmap/validation/implementation и руководства синхронизируются с принятой функциональностью. Исторические свидетельства и старые releases сохраняются. Контрактный RFC остаётся proposal-only.
+На подготовительном этапе версия приложения задана как 0.1.0-beta.3, протокол оставлен 0.1.2. Живые roadmap/validation/implementation и руководства синхронизированы с принятой функциональностью. Исторические свидетельства и старые releases сохранены. Контрактный RFC остаётся proposal-only.
 
-Итог полного release gate, точные GitHub CI/source SHA, backup/restore/migration, запуск установки и проверка опубликованных assets добавляются по факту. На этой записи поставка ещё **IN_PROGRESS**.
+На этом этапе итог поставки ещё не был подтверждён; окончательные факты добавлены отдельным разделом выше.
 
 ### Интеграция и Windows-проверки
 
-PR20 прошёл повторный [CI41628008213](https://github.com/QahNaaRlN/ouro/actions/runs/41628008213) и вошёл в dev коммитом `6d35f36`; его дерево равно `918aadd`. UI и подготовка версии вошли через [PR23](https://github.com/QahNaaRlN/ouro/pull/23): [CI41629095034](https://github.com/QahNaaRlN/ouro/actions/runs/41629095034) прошёл на `873d082`. Integration commit `a2c7519` сохраняет оба merge-родителя и точно то же дерево, что `873d082`; общая история не переписывалась.
+PR20 прошёл повторный [CI 41628008213](https://github.com/QahNaaRlN/ouro/actions/runs/41628008213) и вошёл в dev коммитом `6d35f36`; его дерево равно `918aadd`. UI и подготовка версии вошли через [PR23](https://github.com/QahNaaRlN/ouro/pull/23): [CI 41629095034](https://github.com/QahNaaRlN/ouro/actions/runs/41629095034) прошёл на `873d082`. Integration commit `a2c7519` сохраняет оба merge-родителя и точно то же дерево, что `873d082`; общая история не переписывалась.
 
-На чистой Windows-копии с закреплённым Node24.19.0 выполнены npm ci, TypeScript,49canonical schemas, durable database replay и production build — PASS. Первый полный unit-набор:426тестов,418PASS/2FAIL/6платформенныхSKIP. Два отказа вызваны отсутствующим Unix unzip в тестовых ZIP-reader, сам packer создал архивы. Windows-ветка helpers использует системный bsdtar; Linux сохраняет прежний unzip. Все исходные assertions сохранены, полный файл release-package.test.ts прошёл9/9 без skips. Эти результаты не выдаются за один новый полный Windows-прогон.
+На чистой Windows-копии с закреплённым Node 24.19.0 выполнены npm ci, TypeScript, 49 canonical schemas, durable database replay и production build — PASS. Первый полный unit-набор: 426 тестов, 418 PASS / 2 FAIL / 6 платформенных SKIP. Два отказа вызваны отсутствующим Unix unzip в тестовых ZIP-reader, сам packer создал архивы. Windows-ветка helpers использует системный bsdtar; Linux сохраняет прежний unzip. Все исходные assertions сохранены, полный файл release-package.test.ts прошёл 9/9 без skips. Эти результаты не выдаются за один новый полный Windows-прогон.
 
-Самостоятельный npm pack протокола на Windows выявил отдельное ограничение: реальный tar header CLI имеет0644 вместо ожидаемого0755; metadata assertion сохранён и результат этого прогона остаётся FAIL. Windows npm exec потребителя при этом работает. Linux CI самостоятельного package прошёл; выбор canonical protocol asset и проверка его точного исходника/байтов фиксируются отдельно перед публикацией. Уменьшением требований к permissions проблема не скрывается.
+Самостоятельный npm pack протокола на Windows выявил отдельное ограничение: реальный tar header CLI имеет 0644 вместо ожидаемого 0755; metadata assertion сохранён и результат этого прогона остаётся FAIL. Windows npm exec потребителя при этом работает. Linux CI самостоятельного package прошёл; выбор canonical protocol asset и проверка его точного исходника/байтов фиксируются отдельно перед публикацией. Уменьшением требований к permissions проблема не скрывается.
 
-Основная beta.2 была остановлена для резервирования и восстановлена прежним кодом с прежним окружением. Offline-copy:1143файла/27каталогов/138408538байт; source/copy hash совпал до рестарта. Все первоначальные206событий сохранены, к следующему read-only снимку добавились32реальных факта. Они не откатывались. Идентификаторы, raw snapshots, среда и backup paths хранятся только в закрытом git-ignored операционном каталоге; в release assets и этот публичный журнал не копируются.
+Основная beta.2 была остановлена для резервирования и восстановлена прежним кодом с прежним окружением. Offline-copy: 1 143 файла / 27 каталогов / 138 408 538 байт; source/copy hash совпал до рестарта. Все первоначальные 206 событий сохранены, к следующему read-only снимку добавились 32 реальных факта. Они не откатывались. Идентификаторы, raw snapshots, среда и backup paths хранятся только в закрытом git-ignored операционном каталоге; в release assets и этот публичный журнал не копируются.
 
 ## Работа с данными и возврат
 
