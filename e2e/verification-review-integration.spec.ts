@@ -61,12 +61,15 @@ test('paired work and verification retain exact request/proposal navigation and 
      const boxes=nodes.map(node=>{const box=node.getBoundingClientRect(),card=node.querySelector('.verification-pair')!.getBoundingClientRect();return {x:box.x,y:box.y,right:box.right,bottom:box.bottom,contains:card.bottom<=box.bottom+1};});
      return boxes.every(box=>box.contains)&&boxes.every((box,index)=>boxes.slice(index+1).every(other=>box.right<=other.x||other.right<=box.x||box.bottom<=other.y||other.bottom<=box.y));
     })).toBe(true);
-    const sizeBefore=await card.boundingBox();
+    // The initial native fit can change screen zoom while this test is running.
+    // Flip geometry is the intrinsic layout size, independent of that viewport.
+    const intrinsicSize=()=>card.evaluate(node=>({height:(node as HTMLElement).offsetHeight,width:(node as HTMLElement).offsetWidth}));
+    const sizeBefore=await intrinsicSize();
     await card.getByRole('button',{name:face.side,exact:true}).click();
     const visibleFace=card.locator(`[data-spec-id="${face.spec.id}"][aria-hidden="false"]`);
     await expect(visibleFace).toHaveAttribute('data-revision-id',face.revision.id);
     await expect(card.locator(`[data-spec-id="${other.spec.id}"]`)).toHaveAttribute('inert','');
-    const sizeAfter=await card.boundingBox();expect(sizeAfter!.height).toBeCloseTo(sizeBefore!.height,1);expect(sizeAfter!.width).toBeCloseTo(sizeBefore!.width,1);
+    expect(await intrinsicSize()).toEqual(sizeBefore);
     await expect(visibleFace.getByRole('button',{name:`Вопросы спеки ${face.spec.humanId}`,exact:true})).toHaveText('1 запросов · открыто 1');
     await expect(visibleFace.getByRole('button',{name:`Предложения спеки ${face.spec.humanId}`,exact:true})).toHaveText('Предложения · 1');
     await expect(visibleFace.locator('time')).toHaveAttribute('datetime',before.events.findLast(event=>event.specId===face.spec.id)!.occurredAt);

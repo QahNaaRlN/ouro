@@ -28,7 +28,13 @@ test('paired verification browser path: create/edit contract, real Playwright im
         const result = spawnSync(process.execPath, ['node_modules/@playwright/test/cli.js', 'test', '--config=tests/fixtures/verification/playwright.config.ts'], { cwd: process.cwd(), env: { ...process.env, OURO_VERIFICATION_SCENARIO: scenario }, encoding: 'utf8', timeout: 30000 });
         expect(result.status).toBe(['green', 'partial'].includes(scenario) ? 0 : 1);
         reports[scenario] = result.stdout;
-        JSON.parse(result.stdout);
+        const parsedReport=JSON.parse(result.stdout);
+        expect(result.stdout.length,`${scenario} fixture must fit the unchanged browser import limit`).toBeLessThanOrEqual(160000);
+        expect(Buffer.byteLength(result.stdout),`${scenario} fixture must fit the bounded import request`).toBeLessThanOrEqual(160000);
+        if(scenario==='infra'){
+            expect(parsedReport.errors).toHaveLength(1);
+            expect(parsedReport.errors[0].message).toContain('Isolated fixture prerequisite unavailable');
+        }
         await writeFile(path.join(artifactDir, scenario + '.json'), result.stdout);
     }
     const testIds = JSON.parse(reports.green).suites.flatMap((suite: any) => suite.specs ?? suite.suites?.flatMap((item: any) => item.specs) ?? []).map((item: any) => item.id);
@@ -118,6 +124,7 @@ test('paired verification browser path: create/edit contract, real Playwright im
                 const body=await response.json(),posted=response.request().postDataJSON();
                 const apiDiagnostic={status:response.status(),error:body.error??null,replayed:body.replayed,cursor:body.cursor,runCount:body.state?.verificationRuns?.length,eventTypes:body.events?.map((event:{type:string})=>event.type),expectedVersion:posted.expectedVersion,postedRawSha256:createHash('sha256').update(posted.report.rawReport).digest('hex')};
                 console.log('Verification import diagnostic: '+JSON.stringify({report:reportDiagnostic,api:apiDiagnostic}));
+                expect(apiDiagnostic.postedRawSha256,'The browser must submit the exact original Playwright JSON bytes').toBe(reportDiagnostic.sha256);
                 expect(response.ok(),JSON.stringify(apiDiagnostic)).toBe(true);
                 await expect.poll(async () => (await getState()).verificationRuns.length,{message:JSON.stringify(apiDiagnostic)}).toBe(count+1);
             }catch(error){
