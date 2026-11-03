@@ -197,7 +197,9 @@ export async function createStore(options:StoreOptions={}):Promise<Store>{
       // External PostgreSQL may have multiple app processes initializing together.
       if(options.databaseUrl)await tx.query('SELECT pg_advisory_xact_lock(187652019)');
       for(const migration of migrations)await tx.exec(migration);
-      await tx.query('INSERT INTO ouro_projects(id,version) VALUES($1,0) ON CONFLICT DO NOTHING',[PROJECT_ID]);
+      // Migration 008 has already run: new rows must have its metadata now,
+      // otherwise the next startup/restore would backfill and change them.
+      await tx.query("INSERT INTO ouro_projects(id,version,name,slug,created_at) VALUES($1,0,'Project '||left($1::text,8),$1,now()) ON CONFLICT DO NOTHING",[PROJECT_ID]);
       const legacy=await tx.query<{version:string|number}>('SELECT version FROM ouro_projects WHERE id=$1 FOR UPDATE',[PROJECT_ID]);
       if(Number(legacy.rows[0]?.version)===0){
         const events=selectedProjectId===PROJECT_ID?(options.seedEvents??createSeedEvents()):createSeedEvents();
@@ -205,7 +207,7 @@ export async function createStore(options:StoreOptions={}):Promise<Store>{
       }
       await tx.query(`INSERT INTO ouro_workspace_projects(id,name,kind,created_by) VALUES($1,$2,'demo','ouro-bootstrap') ON CONFLICT(id) DO NOTHING`,[PROJECT_ID,'Учебный проект Ouro']);
       if(selectedProjectId!==PROJECT_ID){
-        await tx.query('INSERT INTO ouro_projects(id,version) VALUES($1,0) ON CONFLICT DO NOTHING',[selectedProjectId]);
+        await tx.query("INSERT INTO ouro_projects(id,version,name,slug,created_at) VALUES($1,0,'Project '||left($1::text,8),$1,now()) ON CONFLICT DO NOTHING",[selectedProjectId]);
         const selected=await tx.query<{version:string|number}>('SELECT version FROM ouro_projects WHERE id=$1 FOR UPDATE',[selectedProjectId]);
         if(Number(selected.rows[0]?.version)===0&&options.seedEvents?.length)await append(tx,options.seedEvents,replay(options.seedEvents,selectedProjectId));
       }
@@ -480,7 +482,7 @@ function createProjectStore(projectId:string,owner:StoreOwner){
       }else{
         const id=randomUUID(),bindingId=randomUUID(),name=input.name?.trim()||folder.displayName;
         if(!name||name.length>200||!isWellFormedUnicode(name)||/[\x00-\x1f\x7f]/.test(name))throw new StoreError('VALIDATION_ERROR','Укажите допустимое название проекта.');
-        await tx.query('INSERT INTO ouro_projects(id,version) VALUES($1,0)',[id]);
+        await tx.query("INSERT INTO ouro_projects(id,version,name,slug,created_at) VALUES($1,0,'Project '||left($1::text,8),$1,now())",[id]);
         const initialized=applyCommand(replay([],id),{type:'initializeProject',name,requestId:`workspace-init:${id}`,expectedVersion:0},{...actor,projectIds:[id]});
         await append(tx,initialized.events,initialized.state,id);
         const row=await tx.query<WorkspaceProjectRow>(`INSERT INTO ouro_workspace_projects(id,name,root_path,kind,binding_id,root_dev,root_ino,created_by) VALUES($1,$2,$3,'folder',$4,$5,$6,$7) RETURNING *`,[id,name,folder.canonicalPath,bindingId,folder.identity.dev,folder.identity.ino,actor.id]);

@@ -26,7 +26,12 @@ async function docker(args,input){
 // Isolated client uses the same Docker network, never a published host port.
 async function probe({origin,owner,projectId}){
  const streams=[],password=owner.password;
- const request=(path,options={})=>fetch('http://app:3000'+path,{...options,headers:{host:new URL(origin).host,...options.headers},signal:options.signal??AbortSignal.timeout(15000)});
+ const request=(path,options={})=>new Promise((resolve,reject)=>{
+  const outgoing=httpRequest('http://app:3000'+path,{method:options.method??'GET',headers:{host:new URL(origin).host,...options.headers},signal:options.signal??AbortSignal.timeout(15000)},incoming=>{
+   const headers=new Headers();for(const [key,value]of Object.entries(incoming.headers))for(const item of Array.isArray(value)?value:[value])if(item!==undefined)headers.append(key,item);
+   resolve(new Response(Readable.toWeb(incoming),{status:incoming.statusCode,headers}));
+  });outgoing.once('error',reject);outgoing.end(options.body);
+ });
  const post=(path,body,cookie)=>request(path,{method:'POST',headers:{origin,'content-type':'application/json',...(cookie?{cookie}:{})},body:JSON.stringify(body)});
  try{
  const icon=await request('/icon.svg');assert.equal(icon.status,200);assert((await icon.text()).includes('<svg'));
@@ -71,7 +76,7 @@ const r=spawnSync(process.execPath,['.operations/bootstrap-cloud-owner.mjs'],{en
 rmSync(file);if(r.status!==0){console.error('Isolated owner bootstrap failed.');process.exit(r.status??1);}process.stdout.write(r.stdout);
 `],JSON.stringify(owner));
  const created=JSON.parse(bootstrap);assert.equal(created.ok,true);assert.equal(created.role,'Owner');
- const clientCode="import assert from 'node:assert/strict';import{setTimeout as pause}from'node:timers/promises';const probe="+probe.toString()+";console.log(JSON.stringify(await probe("+JSON.stringify({origin,owner,projectId:created.projectId})+")));";
+ const clientCode="import assert from 'node:assert/strict';import{setTimeout as pause}from'node:timers/promises';import{request as httpRequest}from'node:http';import{Readable}from'node:stream';const probe="+probe.toString()+";console.log(JSON.stringify(await probe("+JSON.stringify({origin,owner,projectId:created.projectId})+")));";
  const result=JSON.parse(await docker(['run','--rm','-i','--name',client,'--network',network,'--memory','128m','--cap-drop','ALL','--security-opt','no-new-privileges:true','node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df','node','--input-type=module','-'],clientCode));assert.equal(result.ok,true);
  const inspect=JSON.parse(await docker(['inspect','--format','{"user":{{json .Config.User}},"memory":{{.HostConfig.Memory}},"oom":{{.State.OOMKilled}},"restarts":{{.RestartCount}},"running":{{.State.Running}}}',name]));
  assert.equal(inspect.user,'node');assert.equal(inspect.memory,384*1024*1024);assert.equal(inspect.oom,false);assert.equal(inspect.restarts,0);assert.equal(inspect.running,true);
