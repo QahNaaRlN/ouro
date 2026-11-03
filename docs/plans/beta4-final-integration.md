@@ -1,0 +1,13 @@
+# Beta.4 final functional integration
+
+2026-11-03. Candidate branch `codex/beta4-final-integration` combines dev `f4f90b6cdf2069e74caeb0557c1ceccc90c5ce7e` with functional commit `acdefd92552ebca57af7f22b1c2e5dba9b86f10d`. This journal does not claim deployment, owner acceptance or a new public release/tag. The status-contract follow-up proposal remains unapproved.
+
+The candidate preserves the accepted Base UI workspace, questions/proposals and exact revision navigation on both verification-card faces, measured graph geometry, account roles and hosted task assignment. The three fresh-project metadata INSERT fixes remain in place so reopening/restoring cannot invent metadata later.
+
+Recovery adds migration 012 and two immutable operational tables: 12 migrations / 45 tables. Existing010/011 files are unchanged. Protocol remains 0.3.0 (20 tools / 71 schemas); app version remains 0.1.0-beta.4. Inspection and confirmation use the local workspace capability before store lookup/probe. Direct store calls also deny cloud mode, nonlocal account identities and agents. Confirmation records a new binding overlay and its own exact receipt; it does not rewrite domain history or assign work. A prior UNKNOWN command remains UNKNOWN until its exact positive receipt is recovered.
+
+The production browser suite now includes both binding-recovery scenarios in addition to the existing 104. The native successful dev=0 recovery remains Windows-only; Linux explicitly skips that scenario rather than fabricating a Windows server environment. Replaced-root rejection runs on both platforms. Other HTTP/storage tests cover ticket integrity, rollback, duplicate/revoked authority, hosted denials before probes and exact request recovery.
+
+Database rehearsal creates historical schemas 9 and11 directly from their SQL, seeds nondefault project metadata, events, revisions and exact command receipts (plus verification-run and runtime receipts for 11), then upgrades to 12. It compares every old table fingerprint except the expected schema-version additions, checks all 45 final tables, exact receipt replay and a second reopen. The external PostgreSQL job runs the same two upgrade cases plus the existing five strict role/concurrency/scope/backup cases. Backup comparison includes all 45 tables.
+
+Current checks: TypeScript PASS; isolated file-backed rehearsals 9→12 and11→12 PASS. Full unit, production build/browser and real PostgreSQL gates are in progress. Authoritative Linux CI and subsequent dev→main exact-image qualification remain required before deployment. Historical counts in earlier journals belong to their recorded commits.

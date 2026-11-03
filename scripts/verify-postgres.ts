@@ -10,12 +10,12 @@ try{
  const role=(await preflight.query('SELECT rolsuper,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls FROM pg_roles WHERE rolname=current_user')).rows[0];
  assert(role&&!role.rolsuper&&!role.rolcreatedb&&!role.rolcreaterole&&!role.rolreplication&&!role.rolbypassrls,'Verifier must use the bounded application role.');
  const rows=await preflight.query('SELECT version FROM ouro_schema_migrations ORDER BY version');
- assert.deepEqual(rows.rows.map(r=>r.version),Array.from({length:11},(_,i)=>i+1),'Verifier refuses to migrate an unknown/older schema.');
+ assert.deepEqual(rows.rows.map(r=>r.version),Array.from({length:12},(_,i)=>i+1),'Verifier refuses to migrate an unknown/older schema.');
 }finally{await preflight.end();}
 const store=await createStore({databaseUrl,seedEvents:[]});
 try{
  const migrations=await store.inspect<{version:number}>('SELECT version FROM ouro_schema_migrations ORDER BY version');
- assert.deepEqual(migrations.rows.map(r=>r.version),Array.from({length:11},(_,i)=>i+1));
+ assert.deepEqual(migrations.rows.map(r=>r.version),Array.from({length:12},(_,i)=>i+1));
  const projects=(await store.inspect<{id:string;version:string}>('SELECT id,version FROM ouro_projects ORDER BY id')).rows;
  const summaries=[];
  for(const project of projects){
@@ -24,6 +24,7 @@ try{
   summaries.push({id:project.id,cursor:state.version,stateHash:createHash('sha256').update(canonicalJSON(state)).digest('hex')});
  }
  const tables=(await store.inspect<{table_name:string}>("SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name")).rows;
+ assert.equal(tables.length,45,'Expected the complete 12-migration table catalog.');
  const rows=[];
  for(const {table_name}of tables){
   if(!/^ouro_[a-z_]+$/.test(table_name))throw new Error('Unexpected public table in dedicated Ouro database.');
@@ -31,7 +32,7 @@ try{
   rows.push({table:table_name,count:data.length,sha256:createHash('sha256').update(canonicalJSON(data)).digest('hex')});
  }
  // Only aggregate fingerprints, never raw state, credentials or account details.
- console.log(JSON.stringify({ok:true,migrations:11,projects:summaries.length,events:summaries.reduce((n,p)=>n+p.cursor,0),stateFingerprint:createHash('sha256').update(canonicalJSON(summaries)).digest('hex'),rows}));
+ console.log(JSON.stringify({ok:true,migrations:12,projects:summaries.length,events:summaries.reduce((n,p)=>n+p.cursor,0),stateFingerprint:createHash('sha256').update(canonicalJSON(summaries)).digest('hex'),rows}));
 }finally{await store.close();}
 }
 void main().catch(()=>{console.error('PostgreSQL verification failed; no raw database records or connection settings were printed.');process.exitCode=1;});
