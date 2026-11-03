@@ -16,12 +16,14 @@ Date: 2026-11-04. Status: local checks PASS; exact-head CI and integration PENDI
 | Node.js 24.19.0 archive | PASS | Official SHASUMS256; Windows x64 ZIP SHA256 `57F71AB3652E797D84ACDDC79C81CC9FF1C6DDB2A1974CDB83F00FEE9BFF4C73` |
 | Route inventory RED | PASS | Node24.19 + `tsx --test tests/migration-baseline.test.ts`: initial 4 tests, 1 PASS / 3 expected assertion failures; changed/added/duplicate records incorrectly accepted by the initial checker |
 | Route inventory GREEN | PASS | 5/5 CLI tests, including changed handler, changed methods, added/removed paths, duplicate/policy corruption and Windows/Linux newline equivalence |
+| Review regression: JavaScript routes | PASS | Independent review found default Next `route.js` files escaped scanning. Added fixture produced 1 real assertion failure / 5 PASS, then 6/6 GREEN after scanning `.js`, `.jsx`, `.ts`, `.tsx` with their actual script kinds. Existing 47/59 baseline is unchanged |
 | Canonical route audit | PASS | `npm run migration:check`: 47 routes / 59 explicit method exports, without importing handlers or opening a profile |
 | Existing full unit/integration baseline | PASS with platform limits | `npm test`: 551 tests, 538 PASS / 13 Windows platform SKIP / 0 FAIL; 400.65 seconds, before the 5 new RVF tests were added to the runner's captured file list |
 | TypeScript and protocol regeneration | PASS | `npm run typecheck`; protocol0.3.0,71 schemas; generated files have no normalized Git content diff |
 | Branch/subject convention and documentation links | PASS | Exact branch and intended Conventional subject accepted; local links/fences checked |
 | Portable-contract architecture guard | Separate story | `codex/portable-client-contracts`; this foundation slice does not claim P1 completion |
-| Exact feature-head CI and merge to epic | PENDING | Pending |
+| First feature-head CI | PASS | [Run 41716907291](https://github.com/QahNaaRlN/ouro/actions/runs/41716907291), `621b8ad`: checks, browser and PostgreSQL all passed; a new exact-head run is required after the review fix |
+| Final feature-head CI and merge to epic | PENDING | Pending after JavaScript route regression fix |
 
 ## Remaining epic work
 

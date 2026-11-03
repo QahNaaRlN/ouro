@@ -77,3 +77,15 @@ test('RVF03 rejects duplicate baseline paths and corrupted implicit method polic
     assert.notEqual(run(f.root, '--baseline', f.baseline).status, 0, 'implicit method behavior is part of the baseline');
   } finally { await f.close(); }
 });
+
+test('RVF03 rejects newly added JavaScript route handlers supported by Next default page extensions', async () => {
+  const f = await fixture();
+  try {
+    const added = path.join(f.root, 'app/api/javascript/route.js');
+    await mkdir(path.dirname(added), { recursive: true });
+    await writeFile(added, 'export async function GET() { return Response.json({ value: 2 }); }');
+    const result = run(f.root, '--baseline', f.baseline);
+    assert.notEqual(result.status, 0, 'JavaScript route files must not silently escape the inventory');
+    assert.match(result.stderr, /app\/api\/javascript\/route\.js/);
+  } finally { await f.close(); }
+});

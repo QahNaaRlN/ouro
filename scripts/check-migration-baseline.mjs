@@ -7,7 +7,7 @@ const httpMethods = new Set(['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH', 'O
 
 /** Утилита, которая читает объявления методов без загрузки обработчиков и хранилища. */
 function exportedMethods(file, source) {
-  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const parsed = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
   if (parsed.parseDiagnostics.length) throw new Error(`Cannot parse route: ${file}`);
   const methods = new Set();
   for (const statement of parsed.statements) {
@@ -48,12 +48,12 @@ async function scanRoutes(root) {
     for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
       const absolute = path.join(current, entry.name);
       if (entry.isDirectory()) await visit(absolute);
-      else if (entry.isFile() && entry.name === 'route.ts') {
+      else if (entry.isFile() && /^route\.[jt]sx?$/.test(entry.name)) {
         const bytes = await readFile(absolute);
         const file = path.relative(root, absolute).split(path.sep).join('/');
         const source = bytes.toString('utf8').replace(/\r\n?/g, '\n');
         const methods = exportedMethods(file, source);
-        routes.push({ file, path: '/' + file.slice(4, -'/route.ts'.length), methods, sha256: createHash('sha256').update(source, 'utf8').digest('hex'), implicit: implicitMethods(methods) });
+        routes.push({ file, path: '/' + file.slice(4, file.lastIndexOf('/')), methods, sha256: createHash('sha256').update(source, 'utf8').digest('hex'), implicit: implicitMethods(methods) });
       }
     }
   }
