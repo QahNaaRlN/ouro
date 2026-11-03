@@ -1,18 +1,18 @@
-# @ouro/protocol · контракт 0.1.2
+# @ouro/protocol · контракт 0.3.0
 
-Переносимая библиотека предметных контрактов Ouro: Flow, проходы шагов, входы 18 MCP tools, SUCCESS-ответы и ошибки. Включает Zod-валидаторы, TypeScript declarations, 49 JSON Schema Draft2020-12, каталог версии, примеры и CLI.
+Переносимая библиотека предметных контрактов Ouro: Flow, проходы шагов, входы 19 MCP tools, SUCCESS-ответы и ошибки. Включает Zod-валидаторы, TypeScript declarations, 60 JSON Schema Draft2020-12, каталог версии, примеры и CLI.
 
 Пакет работает отдельно от приложения Ouro. Runtime-зависимость — `zod`; Next.js, PostgreSQL, MCP SDK и браузер не нужны. Сам пакет не является MCP-сервером, не выдаёт полномочий и не исполняет задачи. Он также не генерирует план автоматически.
 
 ## Отдельная сборка из исходников
 
-Нужны Git, Node.js 20.9+ и npm; рекомендуемая проверенная версия Node 24.19.0. Исходники находятся в ветке `feat/project-workspace`:
+Нужны Git, Node.js 20.9+ и npm; рекомендуемая проверенная версия Node 24.19.0. Исходники находятся в ветке `feat/verification-pairs`:
 
 ```sh
 git clone --branch feat/project-workspace --single-branch https://github.com/QahNaaRlN/ouro.git
 cd ouro/packages/protocol
 npm ci
-npm pack
+npm run pack:portable
 ```
 
 `npm pack` сам собирает ESM, CommonJS, declarations и JSON-файлы. Получается **`ouro-protocol-0.1.2.tgz`**. Устанавливать зависимости корневого приложения для этого не требуется.
@@ -173,9 +173,18 @@ ChatGPT служит одним из примеров MCP-клиента. У н�
 npm ci
 npm run build
 npm run check
-npm pack
+npm run pack:portable
 ```
 
 `check` сверяет JSON с исходными схемами. В полном репозитории `npm run protocol:test-package` копирует исходники в независимую папку, устанавливает собственные зависимости, собирает tarball и проверяет его установку в чистый consumer. Для использования готового `.tgz` TypeScript-компилятор не требуется.
 
 Применены [JSON Schema Core2020-12](https://json-schema.org/draft/2020-12/json-schema-core), [MCP Tools](https://modelcontextprotocol.io/specification/2026-07-28/server/tools) и [Node ESM](https://nodejs.org/api/esm.html). Поведение transport проверяется по реально закреплённому SDK; библиотека не объявляет поддержку всех возможностей новейшей спецификации MCP.
+# Verification capabilities in 0.3.0
+
+The optional revision field `verification` binds logical cases to one exact work revision and its criterion IDs. The contract includes immutable runs/reviews, per-case aggregate readiness, TDD/preservation cycles, human test-refactor admissions, optional mutation-quality policy, observed input manifests and manual evidence. The package exports 20 tools and 71 canonical schemas.
+
+Read `ouro.get_context` first. Optional `protocolVersion` and `requiredCapabilities` negotiate support; an explicit unsupported version or capability is rejected. Explicit 0.1.2 and 0.2.0 support only visible work/proposals without verification data and advertise no verification capabilities. Assigned verification or a visible verification proposal requires 0.3.0 and fails closed for those legacy versions; facts are never silently dropped. The check covers the authorized projected context, not unrelated assignments/projects. Omitted negotiation selects the current contract and preserves existing arguments. This is context negotiation, not a session-wide downgrade of other tools or event replay. Event-replaying clients must update with the server and reject unknown events.
+
+`ouro.report_verification_run` imports a bounded Playwright JSON report for a running assigned verification execution. Its provenance stays `imported_report`, including after human review. `ouro.report_verification_cycle` reports allowed phases for that same assignment; starting/cancelling cycles, accepting refactors, configuring observations and accepting DoD remain human actions. Stop/resume and execution authority are unchanged.
+
+Human HTTP inputs for observation, fixed Playwright execution and manual records have their own exported schemas. Server-owned execution records `local_runner` and an exact artifact manifest; manual records use `human_attested`. Neither a hash nor a process result proves external CI attestation or human acceptance. The fixed runner copies only approved files, does not accept executable/shell/argv/environment input, and does not expose a general command tool.

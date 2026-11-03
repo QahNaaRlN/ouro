@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "productRevision": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "testRevision": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "fixtureRevision": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "environmentDigest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "required": [
+    "productRevision",
+    "testRevision",
+    "fixtureRevision",
+    "environmentDigest"
+  ],
+  "additionalProperties": false,
+  "$id": "urn:ouro:protocol:0.3.0:verification-slice"
+}

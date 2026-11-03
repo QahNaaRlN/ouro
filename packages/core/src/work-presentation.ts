@@ -2,6 +2,7 @@ import {applyCommand} from './engine';
 import {currentDecisionRequests,openPhysicalBlockers} from './decision-lineage';
 import {buildStateView} from './state-view';
 import type {Actor,Command,DomainEvent,Execution,ProjectState,Spec,SpecState} from './types';
+import {getVerificationPresentation} from './verification-presentation';
 
 export type WorkTone='neutral'|'blue'|'amber'|'green'|'red'|'purple';
 export type WorkIcon='circle-dashed'|'file-check-2'|'loader-circle'|'circle-help'|'pause'|'clipboard-check'|'circle-check'|'circle-x'|'ban'|'lock-keyhole'|'triangle-alert'|'clock-3';
@@ -14,6 +15,7 @@ export type SpecWorkPresentation=StatusPresentation&{
   pendingRequestCount:number;
   currentRequestCount:number;
   lastUpdatedAt:string|null;
+  verification?:ReturnType<typeof getVerificationPresentation>;
   axes:{spec:StatusPresentation;attempt:StatusPresentation|null;acceptance:StatusPresentation};
 };
 export type WorkActionAvailability={allowed:boolean;reason?:string;code?:string};
@@ -84,7 +86,8 @@ export function getSpecWorkPresentation(state:ProjectState,spec:Spec):SpecWorkPr
     else if(primaryExecution?.state==='succeeded')work=status('Ожидает приёмки','AWAITING_ACCEPTANCE','amber','clipboard-check');
     else if(attempt)work=attempt;
   }
-  return {...work,specState:spec.state,primaryExecution,isRunning:primaryExecution?.state==='running'&&!primaryExecution.stopRequested&&spec.state==='in_progress',pendingRequestCount:requests.filter(request=>request.state==='pending').length,currentRequestCount:requests.length,lastUpdatedAt:lastSpecUpdate(state,spec),axes:{spec:specAxis,attempt,acceptance}};
+  const revision=state.revisions.find(item=>item.id===(spec.activeRevisionId??spec.revisionIds.at(-1)));
+  return {...work,specState:spec.state,primaryExecution,isRunning:primaryExecution?.state==='running'&&!primaryExecution.stopRequested&&spec.state==='in_progress',pendingRequestCount:requests.filter(request=>request.state==='pending').length,currentRequestCount:requests.length,lastUpdatedAt:lastSpecUpdate(state,spec),axes:{spec:specAxis,attempt,acceptance},...(revision?.verification?{verification:getVerificationPresentation(state,revision)}:{})};
 }
 
 /**

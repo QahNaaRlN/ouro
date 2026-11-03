@@ -14,7 +14,7 @@ const pending=new Map<string,WorkspaceIntent>(),listeners=new Set<()=>void>();
 let pendingVersion=0,unloadInstalled=false;
 function notify(){pendingVersion++;listeners.forEach(listener=>listener());}
 function subscribe(listener:()=>void){listeners.add(listener);return()=>{listeners.delete(listener);};}
-const provenRejections=new Set(['VERSION_CONFLICT','REVISION_CONFLICT','INVALID_TRANSITION','VALIDATION_ERROR','DECISION_ALREADY_RESOLVED','IDEMPOTENCY_CONFLICT','REQUEST_ID_CONFLICT','DEPENDENCY_CYCLE','PENDING_LIMIT_EXCEEDED','CORRECTION_REQUIRES_REVISION']);
+const provenRejections=new Set(['VERSION_CONFLICT','REVISION_CONFLICT','INVALID_TRANSITION','VALIDATION_ERROR','DECISION_ALREADY_RESOLVED','IDEMPOTENCY_CONFLICT','REQUEST_ID_CONFLICT','DEPENDENCY_CYCLE','PENDING_LIMIT_EXCEEDED','CORRECTION_REQUIRES_REVISION','VERIFICATION_INPUT_UNAVAILABLE','RUNNER_ERROR']);
 
 export async function readWorkspaceJSON<T>(url:string,signal?:AbortSignal):Promise<T>{
   const response=await fetch(url,{cache:'no-store',credentials:'same-origin',signal}),body=await response.json() as T&WireError;

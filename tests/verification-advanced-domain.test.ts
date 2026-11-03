@@ -1,0 +1,111 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import {applyCommand,getVerificationReadiness,getWorkPairGroups,getWorkPairPresentation,replay,type VerificationContract,type Command} from '../packages/core/src';
+import {verificationCommandSchema,verificationQualitySchema} from '@ouro/protocol';
+import {fixture,human,agent,slice,report,workContent} from './verification-fixture';
+import {importPlaywrightReport} from '../lib/verification/playwright';
+
+function changeContract(f:ReturnType<typeof fixture>,contract:VerificationContract){
+ f.send({type:'requestStop',executionId:f.execution.id,reason:'New verification contract'});
+ f.send({type:'confirmStopped',executionId:f.execution.id},agent);
+ f.send({type:'cancelExecution',executionId:f.execution.id,reason:'Replace attempt'});
+ f.send({type:'proposeRevision',specId:f.spec.id,content:{...workContent,verification:contract,comment:'Owner explicitly revised test policy'}});
+ const revision=f.state.revisions.at(-1)!;f.send({type:'activateRevision',specId:f.spec.id,revisionId:revision.id});
+ f.send({type:'startExecution',specId:f.spec.id,specRevisionId:revision.id,agentId:agent.id});const execution=f.state.executions.at(-1)!;
+ f.send({type:'confirmResumed',executionId:execution.id,ackPhase:'start'},agent);
+ f.send({type:'setVerificationSlice',verificationRevisionId:revision.id,slice,reason:'Current fixture inputs'});
+ return {revision,execution};
+}
+test('aggregate coverage uses latest case evidence and never resurrects a pass after skip or unreviewed attempt',()=>{
+ const f=fixture();f.current();
+ const first=report(['passed','missing']);first.scopeCaseIds=['case-1'];f.importRun(first);f.review('usable');
+ assert.equal(getVerificationReadiness(f.state,f.revision).ready,false);
+ const second=report(['missing','passed']);second.scopeCaseIds=['case-2'];f.importRun(second);f.review('usable');
+ const aggregate=getVerificationReadiness(f.state,f.revision);assert.equal(aggregate.ready,true);assert.equal(aggregate.runIds.length,2);
+ const skipped=report(['skipped','missing']);skipped.scopeCaseIds=['case-1'];f.importRun(skipped);
+ assert.equal(getVerificationReadiness(f.state,f.revision).ready,false);assert.equal(getVerificationReadiness(f.state,f.revision).caseEvidence[0].outcome,'skipped');
+ f.importRun(first);assert.equal(getVerificationReadiness(f.state,f.revision).ready,false,'new unreviewed PASS does not fall back to an older admitted pass');
+ f.review('usable');assert.equal(getVerificationReadiness(f.state,f.revision).ready,true);
+});
+test('manual outcomes require human authority and exact manual procedures; mutation quality never substitutes functional success',()=>{
+ const f=fixture('verification'),contract=structuredClone(f.revision.verification!);
+ for(const item of contract.cases)item.procedure={kind:'manual',instructions:'Inspect actual observable result'};
+ contract.cases[0].quality={mutation:{required:true,minimumScore:80}};
+ const {revision,execution}=changeContract(f,contract);
+ const base={type:'reportManualVerificationRun',executionId:execution.id,slice,results:[{caseId:'case-1',outcome:'passed',actual:'Observed five'},{caseId:'case-2',outcome:'passed',actual:'Observed seven'}],startedAt:'2026-11-03T00:00:00.000Z',finishedAt:'2026-11-03T00:00:01.000Z',evidence:'Human observed the two procedures'};
+ assert.throws(()=>f.send(base,agent),/человека/);f.send(base);f.review('usable');
+ assert.equal(getVerificationReadiness(f.state,revision).ready,false,'functional pass alone does not satisfy required mutation policy');
+ const quality={mutation:[{caseId:'case-1',killed:9,survived:1,noCoverage:0,timedOut:0,total:10}]};
+ f.send({...base,quality});f.review('usable');assert.equal(getVerificationReadiness(f.state,revision).ready,true);
+ assert.equal(f.state.verificationRuns.at(-1)?.source.kind,'human_attested');
+ f.send({...base,quality,results:[{caseId:'case-1',outcome:'failed',actual:'Wrong sum'},{caseId:'case-2',outcome:'passed',actual:'Seven'}]});f.review('usable');
+ assert.equal(getVerificationReadiness(f.state,revision).ready,false,'mutation percentage never proves a failed requirement');
+ assert.equal(verificationQualitySchema.safeParse({mutation:[{caseId:'case-1',killed:9,survived:1,noCoverage:0,timedOut:0,total:99}]}).success,false);
+ const ordinary=fixture();assert.throws(()=>ordinary.send({...base,executionId:ordinary.execution.id}),/ручной процедуры/);
+});
+test('persistent TDD cycle binds RED and GREEN IDs across product revisions, preserves ordered phases and never accepts DoD',()=>{
+ const f=fixture();f.current();const red=f.importRun(report(['failed','failed']));f.review('expected_red');
+ f.send({type:'beginVerificationCycle',verificationRevisionId:f.revision.id,scopeCaseIds:['case-1','case-2'],baselineRunIds:[red.id],reason:'Bounded TDD iteration'});
+ const cycle=f.state.verificationCycles[0];assert.equal(cycle.phase,'preparation');
+ assert.throws(()=>f.send({type:'advanceVerificationCycle',cycleId:cycle.id,phase:'acceptance',evidence:'Skip implementation'}),/пропускать/);
+ assert.throws(()=>f.send({type:'advanceVerificationCycle',cycleId:cycle.id,phase:'implementation',evidence:'No assigned work'}),/фактически/);
+ f.send({type:'startExecution',specId:f.work.id,specRevisionId:f.workRevision.id,agentId:agent.id});const work=f.state.executions.at(-1)!;f.send({type:'confirmResumed',executionId:work.id,ackPhase:'start'},agent);
+ f.send({type:'advanceVerificationCycle',cycleId:cycle.id,phase:'implementation',evidence:'Implement the two examples'});
+ f.send({type:'advanceVerificationCycle',cycleId:cycle.id,phase:'verification',evidence:'Run tests against implemented product'});
+ const greenSlice={...slice,productRevision:'product-green'};f.current(greenSlice);const green=f.importRun(report(['passed','passed'],greenSlice));f.review('usable');
+ f.send({type:'advanceVerificationCycle',cycleId:cycle.id,phase:'refactoring',greenRunIds:[green.id],evidence:'Green achieved; refactoring now'});
+ assert.equal(f.state.verificationPhases.at(-1)?.phase,'refactoring');const pair=getWorkPairPresentation(f.state,getWorkPairGroups(f.state)[0]);assert.equal(pair.phaseLabel,'Рефакторинг');assert.equal(pair.foreground.id,f.work.id);
+ f.send({type:'advanceVerificationCycle',cycleId:cycle.id,phase:'verification',evidence:'Recheck after refactoring'});
+ assert.throws(()=>f.send({type:'advanceVerificationCycle',cycleId:cycle.id,phase:'refactoring',greenRunIds:[green.id],evidence:'Reuse old GREEN'}),/текущего входа/);
+ const rechecked=f.importRun(report(['passed','passed'],greenSlice));f.review('usable');
+ assert.throws(()=>f.send({type:'advanceVerificationCycle',cycleId:cycle.id,phase:'acceptance',greenRunIds:[red.id],evidence:'Do not substitute old RED'}));
+ f.send({type:'completeExecution',executionId:work.id,result:'succeeded',evidence:'Work result presented'},agent);
+ f.send({type:'advanceVerificationCycle',cycleId:cycle.id,phase:'acceptance',greenRunIds:[rechecked.id],evidence:'Present checked result'});
+ const saved=f.state.verificationCycles[0];assert.deepEqual(saved.baselineRunIds,[red.id]);assert.deepEqual(saved.greenRunIds,[rechecked.id]);assert.equal(saved.phase,'acceptance');
+ assert.equal(f.state.specs[0].acceptance,undefined);assert.deepEqual(replay(f.state.events),f.state);
+});
+test('changed tests cannot reuse RED without exact human refactor admission; revised assessments revoke readiness',()=>{
+ const f=fixture();f.current();const red=f.importRun(report(['failed','failed']));f.review('expected_red');
+ const next={...slice,testRevision:'tests-refactored',productRevision:'product-new'};f.current(next);
+ assert.equal(getVerificationReadiness(f.state,f.revision).implementationReady,false);
+ const admission={type:'admitVerificationRefactor',verificationRevisionId:f.revision.id,fromSlice:slice,toSlice:next,scopeCaseIds:['case-1'],reason:'Renamed implementation without changing expected behavior',evidence:'Reviewed assertion equivalence'};
+ assert.throws(()=>f.send(admission,agent));f.send(admission);
+ assert.equal(getVerificationReadiness(f.state,f.revision,['case-1']).implementationReady,true);assert.equal(getVerificationReadiness(f.state,f.revision).implementationReady,false,'a partial admission cannot cover another case');
+ assert.throws(()=>f.send({...admission,toSlice:{...next,fixtureRevision:'different-fixture'}}));
+ f.send({type:'reviewVerificationRun',runId:red.id,assessment:'invalid_test',reason:'Original assertion was wrong',prerequisitesEvidence:'Fixture was healthy'});
+ assert.equal(getVerificationReadiness(f.state,f.revision,['case-1']).implementationReady,false);
+});
+test('observation facts are service-scoped and unavailable observations invalidate readiness without rewriting a run',()=>{
+ const f=fixture();f.current();f.importRun();f.review('usable');const before=JSON.stringify(f.state.verificationRuns);
+ f.send({type:'configureVerificationObservation',verificationRevisionId:f.revision.id,config:{files:[{path:'product.ts',role:'product'}],playwrightConfigPath:'playwright.config.ts'},reason:'Observe a contained fixture'});
+ assert.equal(getVerificationReadiness(f.state,f.revision).ready,false,'new config cannot reuse an older declared snapshot before observation');
+ const config=f.state.verificationObservationConfigs[0],observation={files:[],capabilities:{node:'24.19.0'},digest:'a'.repeat(64),slice,status:'unavailable',reason:'Product file disappeared'};
+ assert.throws(()=>f.send({type:'observeVerificationWorkspace',verificationRevisionId:f.revision.id,configId:config.id,observation}));
+ f.send({type:'observeVerificationWorkspace',verificationRevisionId:f.revision.id,configId:config.id,observation},{id:'ouro-verification-observer',kind:'service',projectIds:human.projectIds});
+ assert.equal(getVerificationReadiness(f.state,f.revision).applicability,'unknown');assert.equal(JSON.stringify(f.state.verificationRuns),before);assert.deepEqual(replay(f.state.events),f.state);
+});
+test('only server-proof runner can record a late result for the original immutable binding; it does not revive execution',()=>{
+ const f=fixture();f.current();const input=report(),proof=importPlaywrightReport(input,f.revision.verification!);
+ const artifactManifest={files:[{path:'product.ts',role:'product' as const,sha256:'b'.repeat(64),size:1}],capabilities:{node:'24.19.0'},digest:'c'.repeat(64)};
+ const source={kind:'local_runner' as const,adapter:'playwright-json/v1' as const,verificationMethod:'server-owned-playwright-process' as const,artifactRef:input.artifactRef,sha256:proof.sha256,rawReport:input.rawReport,submittedBy:human.id,runnerVersion:'1',exitCode:0,inputStability:'unchanged' as const};
+ f.send({type:'proposeRevision',specId:f.work.id,content:{...workContent,goal:'Changed requirement'}});const next=f.state.revisions.at(-1)!;f.send({type:'activateRevision',specId:f.work.id,revisionId:next.id});
+ f.send({type:'requestStop',executionId:f.execution.id,reason:'Stop old verification'});f.send({type:'confirmStopped',executionId:f.execution.id},agent);
+ const command={type:'reportVerificationRun',requestId:randomUUID(),expectedVersion:f.state.version,executionId:f.execution.id,report:input} as Command;
+ assert.throws(()=>applyCommand(f.state,command,agent,{now:'2026-11-03T00:00:02.000Z',verificationImport:proof}));
+ const observer={id:'ouro-verification-observer',kind:'service' as const,projectIds:human.projectIds};
+ assert.throws(()=>applyCommand(f.state,command,observer,{now:'2026-11-03T00:00:02.000Z',verificationImport:{...proof,source}}),/снимку/);
+ const recorded=applyCommand(f.state,command,observer,{now:'2026-11-03T00:00:02.000Z',verificationImport:{...proof,source,artifactManifest}}).state;
+ assert.equal(recorded.verificationRuns.at(-1)?.targetRevisionId,f.workRevision.id);assert.equal(recorded.executions.find(item=>item.id===f.execution.id)?.state,'paused');assert.equal(getVerificationReadiness(recorded,f.revision).applicability,'stale');assert.deepEqual(replay(recorded.events),recorded);
+});
+test('trusted late runner fact keeps its started historical FlowStepRun after the process advances and pauses',()=>{
+ const f=fixture();f.send({type:'requestStop',executionId:f.execution.id,reason:'Use tracked process'});f.send({type:'confirmStopped',executionId:f.execution.id},agent);f.send({type:'cancelExecution',executionId:f.execution.id,reason:'Replace attempt'});
+ const flow={entryNodeId:'test',nodes:[{id:'test',kind:'action',title:'Run verification',description:'Execute bounded tests',owner:'agent'},{id:'end',kind:'result',title:'Present',description:'Present result',owner:'agent'}],edges:[{id:'next',source:'test',target:'end',label:''}]};
+ f.send({type:'proposeRevision',specId:f.spec.id,content:{...workContent,verification:f.revision.verification,flow}});const revision=f.state.revisions.at(-1)!;f.send({type:'activateRevision',specId:f.spec.id,revisionId:revision.id});
+ f.send({type:'startExecution',specId:f.spec.id,specRevisionId:revision.id,agentId:agent.id,flowTracking:'enforced'});const execution=f.state.executions.at(-1)!,stepId=execution.flowRuntime!.currentRunId!;f.send({type:'confirmResumed',executionId:execution.id,ackPhase:'start'},agent);
+ f.send({type:'reportFlowStep',executionId:execution.id,runId:stepId,phase:'start'},agent);f.send({type:'reportFlowStep',executionId:execution.id,runId:stepId,phase:'complete',evidence:'Process advanced while an already authorized report was in flight'},agent);
+ f.send({type:'requestStop',executionId:execution.id,reason:'Pause'});f.send({type:'confirmStopped',executionId:execution.id},agent);
+ const input={...report(),flowStepRunId:stepId},proof=importPlaywrightReport(input,revision.verification!),source={kind:'local_runner' as const,adapter:'playwright-json/v1' as const,verificationMethod:'server-owned-playwright-process' as const,artifactRef:input.artifactRef,sha256:proof.sha256,rawReport:input.rawReport,submittedBy:human.id,runnerVersion:'1',exitCode:0,inputStability:'unchanged' as const},artifactManifest={files:[{path:'test.ts',role:'test' as const,sha256:'b'.repeat(64),size:1}],capabilities:{node:'24.19.0'},digest:'c'.repeat(64)};
+ const recorded=applyCommand(f.state,{type:'reportVerificationRun',executionId:execution.id,report:input,requestId:randomUUID(),expectedVersion:f.state.version},{id:'ouro-verification-observer',kind:'service',projectIds:human.projectIds},{now:'2026-11-03T00:00:02.000Z',verificationImport:{...proof,source,artifactManifest}}).state;
+ assert.equal(recorded.verificationRuns.at(-1)?.flowStepRunId,stepId);assert.equal(recorded.executions.at(-1)?.state,'paused');assert.notEqual(recorded.executions.at(-1)?.flowRuntime?.currentRunId,stepId);
+});

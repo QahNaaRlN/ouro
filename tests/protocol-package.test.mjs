@@ -4,6 +4,7 @@ import {cp,mkdtemp,mkdir,readFile,writeFile,rm} from 'node:fs/promises';
 import {spawnSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
+import {gunzipSync} from 'node:zlib';
 
 test('protocol builds independently and its tarball supports JS, types, schemas and CLI without Ouro', {timeout:180000},async()=>{
  const origin=path.resolve('packages/protocol');
@@ -20,13 +21,15 @@ test('protocol builds independently and its tarball supports JS, types, schemas 
   const source=path.join(directory,'standalone source'),consumer=path.join(directory,'consumer');
   await cp(origin,source,{recursive:true,filter:file=>!path.relative(origin,file).split(path.sep).some(part=>['node_modules','dist'].includes(part))});
   npm(source,'ci','--no-audit','--no-fund');
-  const output=npm(source,'pack','--json','--pack-destination',directory);
+  const output=npm(source,'run','pack:portable','--','--json','--pack-destination',directory);
   const packed=JSON.parse(output.slice(output.indexOf('[\n')))[0];
   assert(packed.files.some(file=>file.path==='README.md'),'Standalone documentation must be in the tarball');
   for(const file of packed.files){
    assert(/^(?:package\.json|README\.md|LICENSE)$|^(?:dist|schemas|examples|bin)\//.test(file.path),file.path);
    assert.equal(file.mode&0o777,file.path.startsWith('bin/')?0o755:0o644,`Portable distribution permissions: ${file.path}`);
   }
+  const tar=gunzipSync(await readFile(path.join(directory,packed.filename)));
+  for(let offset=0;offset<tar.length;){const header=tar.subarray(offset,offset+512);if(header.every(byte=>byte===0))break;const name=header.subarray(0,100).toString().replace(/\0.*$/s,''),size=parseInt(header.subarray(124,136).toString(),8),mode=parseInt(header.subarray(100,108).toString(),8);if(header[156]!==53)assert.equal(mode,name.startsWith('package/bin/')?0o755:0o644,`Actual tar header: ${name}`);offset+=512+Math.ceil(size/512)*512;}
   await mkdir(consumer);await writeFile(path.join(consumer,'package.json'),JSON.stringify({private:true,type:'module'}));
   npm(consumer,'install','--ignore-scripts','--no-audit','--no-fund',path.join(directory,packed.filename));
   const installed=path.join(consumer,'node_modules/@ouro/protocol');
