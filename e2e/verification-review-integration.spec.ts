@@ -55,6 +55,10 @@ test('paired work and verification retain exact request/proposal navigation and 
     await page.goto(`/projects/${project.id}`);
     const card=page.locator(`.react-flow__node .verification-pair[data-pair-id="${work.id}"]`);
     await expect(page.locator('.react-flow__node .verification-pair')).toHaveCount(2);
+    await expect(card).toBeVisible();
+    // Inter uses font-display:swap. Its fallback can wrap the same title one
+    // line shorter; measure the loaded layout before attributing changes to a flip.
+    await page.evaluate(async()=>{await document.fonts.ready;});
     // The React Flow box must contain its actual card, and adjacent pairs must
     // leave space for both faces instead of using the old fixed 280px height.
     await expect.poll(async()=>page.locator('.react-flow__node').evaluateAll(nodes=>{

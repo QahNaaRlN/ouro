@@ -7,6 +7,7 @@ import {randomBytes} from 'node:crypto';
 import {createStore} from '../lib/store';
 import {PROJECT_ID,type Actor,type Command} from '../packages/core/src';
 import {fixture,report} from './verification-fixture';
+import {prepareUpgrade,tableFingerprints,assertUpgradePreserved} from './migration-upgrade-fixture';
 const databaseUrl=process.env.OURO_TEST_DATABASE_URL,emptyDatabaseUrl=process.env.OURO_TEST_EMPTY_DATABASE_URL,adminDatabaseUrl=process.env.OURO_TEST_ADMIN_DATABASE_URL;
 const enabled=!!databaseUrl&&!!emptyDatabaseUrl&&!!adminDatabaseUrl&&process.env.OURO_TEST_DB_CONFIRM==='DEDICATED_DISPOSABLE_DATABASES';
 const skip=enabled?false:'Real PostgreSQL qualification requires dedicated disposable database URLs and explicit confirmation.';
@@ -14,6 +15,23 @@ const human:Actor={id:'local-human',kind:'human',projectIds:[PROJECT_ID]};
 const content={title:'PostgreSQL qualification',goal:'Prove real durable store behaviour.',dod:[{id:'durable',text:'Preserved after reopen',required:true}],constraints:'',assumptions:'',risks:'',inputs:'',comment:''};
 const body=(expectedVersion:number,requestId:string):Command=>({type:'createSpec',requestId,expectedVersion,content});
 const code=(expected:string)=>(e:unknown)=>(e as {code?:string}).code===expected;
+
+for(const version of [9,11] as const)test(`real PostgreSQL ${version}→12 preserves all old rows, metadata, replay and exact receipts`,{skip},async()=>{
+ const suffix=randomBytes(6).toString('hex'),name=`ouro_upgrade_${version}_${suffix}`,url=new URL(databaseUrl!);url.pathname='/'+name;
+ const admin=new Pool({connectionString:adminDatabaseUrl}),pool=new Pool({connectionString:url.href});let created=false,store:Awaited<ReturnType<typeof createStore>>|undefined;
+ try{
+  await admin.query(`CREATE DATABASE "${name}" OWNER ouro`);created=true;
+  const query=(sql:string,values?:unknown[])=>pool.query(sql,values);
+  const historical=await prepareUpgrade(query,version),before=await tableFingerprints(query);
+  store=await createStore({databaseUrl:url.href,seedEvents:[]});
+  const after=await assertUpgradePreserved(query,before);
+  assert.deepEqual(await store.getProject(),historical.state);
+  assert.deepEqual(await store.executeCommand(historical.command,historical.actor),{...historical.response,replayed:true});
+  assert.deepEqual(await tableFingerprints(query),after,'Exact replay must not change any historical row.');
+  await store.close();store=await createStore({databaseUrl:url.href,seedEvents:[]});
+  assert.deepEqual(await store.getProject(),historical.state);assert.deepEqual(await tableFingerprints(query),after);
+ }finally{if(store)await store.close();await pool.end();if(created){assert(/^ouro_upgrade_(?:9|11)_[a-f0-9]{12}$/.test(name));await admin.query(`DROP DATABASE "${name}"`);}await admin.end();}
+});
 
 test('real PostgreSQL application role cannot administer the cluster and owns only its dedicated database',{skip},async()=>{
  const pool=new Pool({connectionString:databaseUrl});
@@ -26,14 +44,14 @@ test('real PostgreSQL application role cannot administer the cluster and owns on
  }finally{await pool.end()}
 });
 
-test('real PostgreSQL applies 001–011, enforces immutable history and command receipts across reopen',{skip},async()=>{
+test('real PostgreSQL applies 001–012, enforces immutable history and command receipts across reopen',{skip},async()=>{
  let store=await createStore({databaseUrl,seedEvents:[]});
  try{
-  assert.deepEqual((await store.inspect<{version:number}>('SELECT version FROM ouro_schema_migrations ORDER BY version')).rows.map(r=>r.version),Array.from({length:11},(_,i)=>i+1));
+  assert.deepEqual((await store.inspect<{version:number}>('SELECT version FROM ouro_schema_migrations ORDER BY version')).rows.map(r=>r.version),Array.from({length:12},(_,i)=>i+1));
   const start=await store.getProject(),command=body(start.version,'hosted-pg-receipt'),first=await store.executeCommand(command,human);
   await assert.rejects(store.executeCommand({...command,content:{...content,title:'Different'}},human),code('IDEMPOTENCY_CONFLICT'));
   await assert.rejects(store.executeCommand(body(start.version,'hosted-pg-stale'),human),code('VERSION_CONFLICT'));
-  for(const sql of ['UPDATE ouro_domain_events SET event_type=event_type','DELETE FROM ouro_domain_events','TRUNCATE ouro_spec_revisions CASCADE','TRUNCATE ouro_verification_runs'])await assert.rejects(store.inspect(sql),/append-only/);
+  for(const sql of ['UPDATE ouro_domain_events SET event_type=event_type','DELETE FROM ouro_domain_events','TRUNCATE ouro_spec_revisions CASCADE','TRUNCATE ouro_verification_runs','TRUNCATE ouro_workspace_binding_recoveries','TRUNCATE ouro_workspace_binding_recovery_receipts'])await assert.rejects(store.inspect(sql),/append-only/);
   await store.close();store=await createStore({databaseUrl,seedEvents:[]});
   assert.deepEqual(await store.getProject(),first.state);const retry=await store.executeCommand(command,human);assert.equal(retry.replayed,true);assert.deepEqual(retry.events,first.events);
  }finally{await store.close();}
@@ -87,6 +105,7 @@ test('real PostgreSQL custom-format backup restores all table rows, replay and e
   const readers=[new Pool({connectionString:url(sourceName)}),new Pool({connectionString:url(restoreName)})];
   try{
    const tables=(await readers[0].query("SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name")).rows;
+   assert.equal(tables.length,45);
    for(const {table_name}of tables){assert(/^ouro_[a-z_]+$/.test(table_name));const rows=await Promise.all(readers.map(async p=>(await p.query(`SELECT to_jsonb(t) AS row FROM "${table_name}" t`)).rows.map(r=>JSON.stringify(r.row)).sort()));assert.deepEqual(rows[0],rows[1],table_name);}
   }finally{await Promise.all(readers.map(p=>p.end()));}
  }finally{
