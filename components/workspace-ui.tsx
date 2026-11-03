@@ -2,6 +2,7 @@
 
 import {forwardRef,useCallback,useEffect,useId,useLayoutEffect,useRef,useState,type ReactNode,type TextareaHTMLAttributes} from 'react';
 import {Check,ChevronRight,Copy,X} from 'lucide-react';
+import {twMerge} from 'tailwind-merge';
 import './workspace-ui.css';
 
 type DialogProps={open:boolean;onClose:()=>void;title:ReactNode;children:ReactNode;footer?:ReactNode;className?:string};
@@ -22,7 +23,7 @@ export function WorkspaceDialog({open,onClose,title,children,footer,className=''
     else if(!open&&node.open){node.close();restoreFocus();}
   },[open,restoreFocus]);
   useEffect(()=>()=>{if(dialog.current?.open)dialog.current.close();restoreFocus();},[restoreFocus]);
-  return <dialog ref={dialog} className={`ws-dialog ${className}`} aria-labelledby={heading}
+  return <dialog ref={dialog} className={twMerge('ws-dialog box-border w-[min(680px,calc(100vw_-_40px))] max-w-[calc(100vw_-_40px)] max-h-[calc(100dvh_-_48px)] overflow-auto rounded-[12px] border border-solid border-ouro-border bg-ouro-subtle p-0 text-ouro-text shadow-[0_24px_80px_#0007] [&:not([open])]:hidden backdrop:bg-[#0009] backdrop:backdrop-blur-[3px] [@media(max-width:560px)]:w-[calc(100vw_-_24px)] [@media(max-width:560px)]:max-w-[calc(100vw_-_24px)] [@media(max-width:560px)]:max-h-[calc(100dvh_-_24px)]',className)} aria-labelledby={heading}
     onKeyDown={event=>{
       if(event.key!=='Tab'||event.altKey||event.ctrlKey||event.metaKey||event.defaultPrevented)return;
       const targets=dialogFocusTargets(event.currentTarget),first=targets[0],last=targets.at(-1),active=document.activeElement;
@@ -33,9 +34,9 @@ export function WorkspaceDialog({open,onClose,title,children,footer,className=''
     onCancel={event=>{event.preventDefault();latest.current.onClose();}}
     onClose={event=>{if(event.currentTarget.open)return;restoreFocus();if(latest.current.open)latest.current.onClose();}}
     onClick={event=>{if(event.target!==event.currentTarget)return;const bounds=event.currentTarget.getBoundingClientRect();if(event.clientX<bounds.left||event.clientX>bounds.right||event.clientY<bounds.top||event.clientY>bounds.bottom)latest.current.onClose();}}>
-    <header className="ws-dialog-heading"><h2 id={heading}>{title}</h2><button type="button" className="ws-icon-button" aria-label="Закрыть окно" onClick={onClose}><X size={18}/></button></header>
-    <div className="ws-dialog-content">{children}</div>
-    {footer&&<footer className="ws-dialog-footer">{footer}</footer>}
+    <header className="ws-dialog-heading flex items-center justify-between gap-[20px] border-0 border-b border-solid border-ouro-border px-[24px] pt-[22px] pb-[18px] [@media(max-width:560px)]:p-[18px]"><h2 id={heading} className="m-0 text-[19px] leading-[1.4] font-medium tracking-[-0.4px]">{title}</h2><button type="button" className="ws-icon-button min-h-[30px] min-w-[30px] flex-[0_0_auto] bg-transparent p-[6px]" aria-label="Закрыть окно" onClick={onClose}><X size={18}/></button></header>
+    <div className="ws-dialog-content min-w-0 px-[24px] py-[22px] [&>.ws-panel]:m-0 [&>.ws-panel]:border-0 [&>.ws-panel]:bg-transparent [&>.ws-panel]:p-0 [@media(max-width:560px)]:p-[18px]">{children}</div>
+    {footer&&<footer className="ws-dialog-footer flex flex-wrap justify-end gap-[10px] border-0 border-t border-solid border-ouro-border px-[24px] py-[16px]">{footer}</footer>}
   </dialog>;
 }
 

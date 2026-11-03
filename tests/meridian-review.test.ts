@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
-import {parseMeridianScope,mapMeridianExpectation} from '../packages/meridian/src/context';
+import {parseMeridianScope} from '../packages/meridian/src/context';
+import {mapMeridianExpectation} from '../packages/core/src/meridian-import';
 import {createStore} from '../lib/store';
 import {PROJECT_ID,type Actor} from '../packages/core/src';
 

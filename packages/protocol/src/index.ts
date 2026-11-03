@@ -7,3 +7,4 @@ export * from './outputs.js';
 export * from './manifest.js';
 export * from './verification.js';
 export * from './capabilities.js';
+export { isWellFormedUnicode } from './unicode.js';

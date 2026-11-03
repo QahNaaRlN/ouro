@@ -1,3 +1,5 @@
+@layer theme, base, ouro-legacy, utilities;
+@layer ouro-legacy {
 .verification-pair{position:relative;width:100%;padding:0}
 .verification-layers{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
 .verification-layers button,.verification-auto{font:inherit;font-size:11px;padding:4px 7px}
@@ -26,3 +28,4 @@
 .verification-card-context{display:grid;grid-template-rows:minmax(16px,auto) minmax(16px,auto) minmax(30px,auto);gap:4px;margin-top:auto;font-size:11px}
 .verification-card-context button{font:inherit;text-align:left;background:none;border:0;padding:0;color:var(--text-muted);cursor:pointer}
 .verification-card-context .node-updated{margin:0;font-size:10px;line-height:15px;color:var(--text-faint)}
+}

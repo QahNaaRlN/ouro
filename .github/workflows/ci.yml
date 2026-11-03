@@ -103,10 +103,20 @@ jobs:
         run: npm ci
       - name: Install isolated web shell dependencies
         run: npm --prefix apps/web ci
+      - name: Install isolated service qualification dependencies
+        run: npm --prefix apps/service ci
       - name: Run unit and integration tests
         run: npm test
+      - name: Qualify the Node HTTP service adapter over TCP
+        run: npm --prefix apps/service test
+      - name: Check and build the isolated service adapter
+        run: |
+          npm --prefix apps/service run typecheck
+          npm --prefix apps/service run build
       - name: Check TypeScript
         run: npm run typecheck
+      - name: Check portable architecture boundaries
+        run: npm run check:architecture
       - name: Check migration compatibility inventory
         run: npm run migration:check
       - name: Verify canonical protocol schemas

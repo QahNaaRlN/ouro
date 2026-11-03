@@ -1,3 +1,5 @@
+@layer theme, base, ouro-legacy, utilities;
+@layer ouro-legacy {
 .workspace-graph:fullscreen{width:100vw!important;height:100vh!important;min-height:0;background:var(--bg);border:0;border-radius:0}
 .workspace-graph .workspace-graph-controls .lucide{fill:none;stroke:currentColor;max-width:15px;max-height:15px}
 .workspace-graph .workspace-graph-controls button:disabled{opacity:.4;cursor:not-allowed}
@@ -22,3 +24,4 @@
 .workspace-reality-empty{padding:24px;color:var(--text-muted);font-size:13px}
 .workspace-reality .react-flow__node:focus-visible{outline:2px solid var(--text);outline-offset:3px}
 @media(prefers-reduced-motion:reduce){.workspace-graph .react-flow__edge.animated path{animation:none!important}}
+}
