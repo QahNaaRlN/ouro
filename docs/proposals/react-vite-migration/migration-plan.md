@@ -9,9 +9,9 @@
 | Этап | Состояние |
 |---|---|
 | P0 Фиксация поведения и подготовка | IN_PROGRESS |
-| P1 Контракты и архитектурный контроль | NOT_STARTED |
-| P2 Backend и storage ownership | NOT_STARTED |
-| P3 Самостоятельный React/Vite клиент | NOT_STARTED |
+| P1 Контракты и архитектурный контроль | IN_PROGRESS; P1.1 ports/import guard в эпике, session/Query wiring проверяется отдельно |
+| P2 Backend и storage ownership | IN_PROGRESS; HTTP transport qualification в эпике, extraction/lifecycle проверяются отдельно |
+| P3 Самостоятельный React/Vite клиент | IN_PROGRESS; standalone shell и первый Tailwind-срез, полный UI/CSS-паритет ещё не завершён |
 | P4 Живые данные и восстановление | NOT_STARTED |
 | P5 Поставка и consumer compatibility | NOT_STARTED |
 | P6 Основа Meridian | NOT_STARTED |
