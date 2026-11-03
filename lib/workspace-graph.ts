@@ -8,13 +8,13 @@ export const ROADMAP_NODE_HEIGHT=240;
 export const ROADMAP_MIN_ZOOM=0.01;
 export const ROADMAP_FIT_OPTIONS={padding:0.14,minZoom:ROADMAP_MIN_ZOOM,maxZoom:0.9};
 
-export function layoutRoadmap(state:Pick<ProjectState,'specs'|'dependencies'>):Record<string,{x:number;y:number}>{
+export function layoutRoadmap(state:Pick<ProjectState,'specs'|'dependencies'>,heights:Record<string,number>={}):Record<string,{x:number;y:number}>{
   const ids=new Set(state.specs.map(spec=>spec.id));
   const graph=new dagre.graphlib.Graph().setGraph({rankdir:'LR',nodesep:48,ranksep:74,marginx:30,marginy:30}).setDefaultEdgeLabel(()=>({}));
-  for(const spec of state.specs)graph.setNode(spec.id,{width:ROADMAP_NODE_WIDTH,height:ROADMAP_NODE_HEIGHT});
+  for(const spec of state.specs)graph.setNode(spec.id,{width:ROADMAP_NODE_WIDTH,height:heights[spec.id]??ROADMAP_NODE_HEIGHT});
   for(const dependency of state.dependencies)if(dependency.type==='depends_on'&&ids.has(dependency.from)&&ids.has(dependency.to))graph.setEdge(dependency.from,dependency.to);
   dagre.layout(graph);
-  return Object.fromEntries(state.specs.map(spec=>{const position=graph.node(spec.id);return [spec.id,{x:position.x-ROADMAP_NODE_WIDTH/2,y:position.y-ROADMAP_NODE_HEIGHT/2}];}));
+  return Object.fromEntries(state.specs.map(spec=>{const position=graph.node(spec.id);return [spec.id,{x:position.x-ROADMAP_NODE_WIDTH/2,y:position.y-(heights[spec.id]??ROADMAP_NODE_HEIGHT)/2}];}));
 }
 
 export function isExecutingDependency(state:ProjectState,dependency:Dependency,presentation?:{isRunning:boolean}):boolean{

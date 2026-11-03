@@ -1,6 +1,6 @@
 {
   "name": "ouro",
-  "version": "0.1.0-beta.3",
+  "version": "0.1.0-beta.4",
   "private": true,
   "engines": {
     "node": ">=20.9.0"
@@ -29,7 +29,10 @@
     "launch": "node scripts/launch.mjs",
     "release:pack": "node scripts/pack-release.mjs",
     "check:conventions": "node scripts/check-conventions.mjs",
-    "test:e2e:production": "playwright test --config=playwright.production.config.ts"
+    "test:e2e:production": "playwright test --config=playwright.production.config.ts",
+    "start:hosted": "node scripts/hosted-next.mjs",
+    "test:external-pg": "npm run protocol:build && node scripts/qualify-postgres.mjs",
+    "hosting:verify": "tsx scripts/verify-postgres.ts"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",

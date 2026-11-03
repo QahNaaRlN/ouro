@@ -295,6 +295,214 @@
                     "edges"
                   ],
                   "additionalProperties": false
+                },
+                "verification": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "number",
+                      "const": 1
+                    },
+                    "targetSpecId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "targetRevisionId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "criterionIds": {
+                      "minItems": 1,
+                      "maxItems": 50,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      }
+                    },
+                    "workflow": {
+                      "type": "string",
+                      "enum": [
+                        "tdd",
+                        "preservation",
+                        "verification"
+                      ]
+                    },
+                    "cases": {
+                      "minItems": 1,
+                      "maxItems": 50,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "criterionIds": {
+                            "minItems": 1,
+                            "maxItems": 50,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            }
+                          },
+                          "given": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 4000
+                          },
+                          "action": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 4000
+                          },
+                          "expected": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 4000
+                          },
+                          "data": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 4000
+                          },
+                          "prerequisites": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 4000
+                          },
+                          "level": {
+                            "type": "string",
+                            "enum": [
+                              "unit",
+                              "component",
+                              "integration",
+                              "e2e"
+                            ]
+                          },
+                          "purpose": {
+                            "type": "string",
+                            "enum": [
+                              "regression",
+                              "acceptance"
+                            ]
+                          },
+                          "required": {
+                            "type": "boolean"
+                          },
+                          "quality": {
+                            "type": "object",
+                            "properties": {
+                              "mutation": {
+                                "type": "object",
+                                "properties": {
+                                  "required": {
+                                    "type": "boolean"
+                                  },
+                                  "minimumScore": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 100
+                                  }
+                                },
+                                "required": [
+                                  "required",
+                                  "minimumScore"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "additionalProperties": false
+                          },
+                          "procedure": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "playwright"
+                                  },
+                                  "testId": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "testId"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "manual"
+                                  },
+                                  "instructions": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 4000
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "instructions"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "unlinked"
+                                  }
+                                },
+                                "required": [
+                                  "kind"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "criterionIds",
+                          "given",
+                          "action",
+                          "expected",
+                          "data",
+                          "prerequisites",
+                          "level",
+                          "purpose",
+                          "required",
+                          "procedure"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "targetSpecId",
+                    "targetRevisionId",
+                    "criterionIds",
+                    "workflow",
+                    "cases"
+                  ],
+                  "additionalProperties": false
                 }
               },
               "required": [
@@ -339,5 +547,5 @@
     "content"
   ],
   "additionalProperties": false,
-  "$id": "urn:ouro:protocol:0.1.2:input:ouro.submit_proposal"
+  "$id": "urn:ouro:protocol:0.3.0:input:ouro.submit_proposal"
 }

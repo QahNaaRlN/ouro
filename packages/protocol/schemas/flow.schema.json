@@ -109,5 +109,5 @@
     "edges"
   ],
   "additionalProperties": false,
-  "$id": "urn:ouro:protocol:0.1.2:flow"
+  "$id": "urn:ouro:protocol:0.3.0:flow"
 }

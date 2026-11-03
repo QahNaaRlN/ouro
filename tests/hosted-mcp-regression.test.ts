@@ -63,7 +63,7 @@ test('R03 issued hosted-project MCP URL connects real HTTP and stdio clients and
   const execution=await assign(store,owner,project.id,issued.agent.id);
   const http=new Client({name:'hosted-http-regression',version:'1'});clients.push(http);
   await http.connect(new StreamableHTTPClientTransport(new URL(issued.connection.httpUrl),{requestInit:{headers:{Authorization:`Bearer ${issued.token}`}}}));
-  const inventory=await http.listTools();assert.equal(inventory.tools.length,18);
+  const inventory=await http.listTools();assert.equal(inventory.tools.length,20);
   const context=await http.callTool({name:'ouro.get_context',arguments:{executionId:execution.id}});
   assert.notEqual(context.isError,true,JSON.stringify(context));
   assert.equal(((context.structuredContent as ContextOutput)?.project as {id:string}).id,project.id);

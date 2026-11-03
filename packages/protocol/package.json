@@ -1,6 +1,6 @@
 {
   "name": "@ouro/protocol",
-  "version": "0.1.2",
+  "version": "0.3.0",
   "description": "Portable Ouro domain contracts, Flow validation and MCP tool schemas",
   "private": true,
   "license": "UNLICENSED",
@@ -39,6 +39,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "check": "node scripts/build.mjs --check",
+    "pack:portable": "node scripts/pack.mjs",
     "prepack": "npm run build"
   },
   "dependencies": {

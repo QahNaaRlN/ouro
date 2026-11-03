@@ -2,6 +2,7 @@ import * as Y from 'yjs';
 import { createDecoder,hasContent } from 'lib0/decoding';
 import type { FlowDefinition, RevisionContent } from '../../core/src/types';
 import { isWellFormedUnicode } from '../../core/src/unicode';
+import {verificationContractSchema} from '@ouro/protocol';
 
 export { Y };
 export const DRAFT_TEXT_FIELDS=['title','goal','constraints','assumptions','risks','inputs','comment'] as const;
@@ -20,6 +21,7 @@ export function base64ToBytes(value:string,limit=128*1024):Uint8Array{
 export function createDraftDocument(content:RevisionContent):Y.Doc{
   const doc=new Y.Doc({gc:false}),root=doc.getMap('draft');
   doc.transact(()=>{
+    if(content.verification)root.set('verification',structuredClone(content.verification));
     for(const field of DRAFT_TEXT_FIELDS)root.set(field,new Y.Text(content[field]));
     const criteria=new Y.Array<Y.Map<unknown>>();root.set('dod',criteria);
     criteria.insert(0,content.dod.map(criterion=>{const map=new Y.Map<unknown>();map.set('id',criterion.id);map.set('text',new Y.Text(criterion.text));map.set('required',criterion.required);return map;}));
@@ -46,7 +48,9 @@ export function readDraftContent(doc:Y.Doc,flow?:FlowDefinition):RevisionContent
   if(doc.share.size!==1||!doc.share.has('draft'))return invalid('Документ содержит неизвестный корневой тип.');
   let root:Y.Map<unknown>;try{root=doc.getMap('draft');}catch{return invalid('Корень черновика должен быть Y.Map.');}
   if(root.constructor!==Y.Map||root._start!==null||root._length!==0)return invalid('Корень Y.Map не должен содержать скрытый список.');
-  const keys=[...root.keys()];if(keys.length!==8||keys.some(key=>![...DRAFT_TEXT_FIELDS,'dod'].includes(key as DraftTextField)))return invalid('Набор полей черновика изменён.');
+  const keys=[...root.keys()];if(keys.length!==(root.has('verification')?9:8)||keys.some(key=>![...DRAFT_TEXT_FIELDS,'dod','verification'].includes(key as DraftTextField)))return invalid('Набор полей черновика изменён.');
+  const verification=root.has('verification')?verificationContractSchema.safeParse(root.get('verification')):undefined;
+  if(verification&&!verification.success)return invalid('Некорректный проверочный контракт черновика.');
   const text=Object.fromEntries(DRAFT_TEXT_FIELDS.map(field=>[field,plainText(root.get(field),field)])) as Pick<RevisionContent,DraftTextField>;
   const criteria=root.get('dod');if(!(criteria instanceof Y.Array)||criteria.constructor!==Y.Array||criteria._map.size||criteria.length>50)return invalid('DoD должен быть обычным Y.Array до 50 критериев без скрытых свойств.');
   const dod=criteria.toArray().map((criterion:unknown)=>{
@@ -55,7 +59,7 @@ export function readDraftContent(doc:Y.Doc,flow?:FlowDefinition):RevisionContent
     if(typeof id!=='string'||!id.trim()||id.length>200||id.includes('\0')||!isWellFormedUnicode(id)||typeof required!=='boolean')return invalid('Нужны ID и обязательность критерия DoD.');
     return {id,text:plainText(criterion.get('text'),'DoD'),required};
   });
-  return {...text,dod,...(flow?{flow:structuredClone(flow)}:{})};
+  return {...text,dod,...(flow?{flow:structuredClone(flow)}:{}),...(verification?.success?{verification:structuredClone(verification.data)}:{})};
 }
 
 /** Minimal UTF-16 edit; keep surrogate pairs together when the changed glyph differs. */

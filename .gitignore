@@ -1,6 +1,7 @@
 node_modules/
 .next/
 .ouro/
+.operations/
 .env*
 !.env.example
 playwright-report/

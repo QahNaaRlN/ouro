@@ -37,5 +37,6 @@ export function requestedProjectId(request:Request):string{
 }
 export function connectionConfig(request:Request,projectId=PROJECT_ID) {
   const endpoint=projectId===PROJECT_ID?'/api/mcp':`/api/projects/${encodeURIComponent(projectId)}/mcp`;
+  if(process.env.OURO_DEPLOYMENT_MODE==='cloud')return {httpUrl:`${requestOrigin(request)}${endpoint}`,stdioCommand:'',stdioArgs:[] as string[],projectId,localBridgeRequired:true};
   return {httpUrl:`${requestOrigin(request)}${endpoint}`,stdioCommand:process.execPath,stdioArgs:[path.resolve('packages/mcp/bin/ouro-mcp.mjs')],projectId};
 }

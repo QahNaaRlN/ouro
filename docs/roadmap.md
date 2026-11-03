@@ -8,6 +8,8 @@
 
 | Порядок | Результат | Статус |
 |---|---|---|
+| Подготовка облака | Новый закрытый проект на ouroapp.ru, тот же workspace UI с аккаунтами, отдельная PostgreSQL, TLS и SMTP | Базовая модель согласована; исходники и отдельные проверки готовятся в `codex/cloud-deployment`. [Журнал](plans/cloud-deployment.md), [runbook](hosting-guide.md), [границы синхронизации](proposals/local-cloud-modes.md). Работающий сервер и доставка почты подтверждаются отдельно. |
+| Текущая интеграция | Версионируемые проверки и парные карточки работы / проверки | PR26 влит в `dev@15bf826` после CI472/472 + browser103/103; общий выпуск через `dev` → `main` готовится вместе с облачным пакетом. [Журнал интеграции](plans/verification-production.md), [контракт](specs/verification-pairs.md), [прежние проверки и ограничения](verification-validation.md). Облачный деплой, детальные контракты [local/cloud](proposals/local-cloud-modes.md) и живой Concord-пилот имеют отдельные границы. |
 | 0 | Human View, статусное ядро, immutable история, Roadmap/Reality | alpha.1, PR #1 |
 | 0 | Реальные MCP HTTP/stdio, регистрации и назначения агентов | alpha.2, PR #2 |
 | 1 | Процессные схемы внутри ревизий и визуальные статусные переходы | alpha.3: OURO-ENG-000002, 63 unit/integration +13 E2E |

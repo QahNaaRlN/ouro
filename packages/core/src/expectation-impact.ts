@@ -23,7 +23,8 @@ class UnknownHistory extends Error {constructor(public reason:string){super(reas
 function unknown(reason:string):never {throw new UnknownHistory(reason);}
 const identity=(value:unknown):string=>typeof value==='string'&&value.trim().length?value:unknown('invalid-history');
 const normalizeText=(value:unknown):string=>typeof value==='string'?value.replace(/\r\n?/g,'\n').trim():unknown('unavailable-revision');
-const fields=['goal','dod','constraints','assumptions','risks','inputs','flow'] as const;
+const fields=['goal','dod','constraints','assumptions','risks','inputs','flow','verification'] as const;
+const normalizedJSON=(value:unknown):unknown=>Array.isArray(value)?value.map(normalizedJSON):record(value)?Object.fromEntries(Object.keys(value).sort(ordered).map(key=>[key,normalizedJSON(value[key])])):value;
 
 /** Only the agreed contract fields participate; view coordinates and labels outside them do not. */
 function normalizedContract(revision:SpecRevision):Record<typeof fields[number],unknown> {
@@ -47,7 +48,7 @@ function normalizedContract(revision:SpecRevision):Record<typeof fields[number],
     }).sort((a,b)=>ordered(a.id,b.id))};
     validateFlowDefinition(normalized);flow=normalized;
   }
-  return {goal:normalizeText(revision.goal),dod,constraints:normalizeText(revision.constraints),assumptions:normalizeText(revision.assumptions),risks:normalizeText(revision.risks),inputs:normalizeText(revision.inputs),flow};
+  return {goal:normalizeText(revision.goal),dod,constraints:normalizeText(revision.constraints),assumptions:normalizeText(revision.assumptions),risks:normalizeText(revision.risks),inputs:normalizeText(revision.inputs),flow,verification:normalizedJSON(revision.verification??null)};
 }
 
 function uniqueIds(items:readonly {id:string}[]):Set<string> {

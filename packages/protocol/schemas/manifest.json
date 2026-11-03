@@ -1,6 +1,6 @@
 {
   "name": "ouro-domain-contract",
-  "version": "0.1.2",
+  "version": "0.3.0",
   "dialect": "https://json-schema.org/draft/2020-12/schema",
   "resources": {
     "manifest": "ouro://protocol/manifest",
@@ -29,351 +29,511 @@
   },
   "tools": [
     {
+      "name": "ouro.report_verification_cycle",
+      "inputSchema": "urn:ouro:protocol:0.3.0:input:ouro.report_verification_cycle",
+      "outputSchema": "urn:ouro:protocol:0.3.0:output:ouro.report_verification_cycle"
+    },
+    {
+      "name": "ouro.report_verification_run",
+      "inputSchema": "urn:ouro:protocol:0.3.0:input:ouro.report_verification_run",
+      "outputSchema": "urn:ouro:protocol:0.3.0:output:ouro.report_verification_run"
+    },
+    {
       "name": "ouro.get_context",
-      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.get_context",
-      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.get_context"
+      "inputSchema": "urn:ouro:protocol:0.3.0:input:ouro.get_context",
+      "outputSchema": "urn:ouro:protocol:0.3.0:output:ouro.get_context"
     },
     {
       "name": "ouro.get_updates",
-      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.get_updates",
-      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.get_updates"
+      "inputSchema": "urn:ouro:protocol:0.3.0:input:ouro.get_updates",
+      "outputSchema": "urn:ouro:protocol:0.3.0:output:ouro.get_updates"
     },
     {
       "name": "ouro.list_workspace_files",
-      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.list_workspace_files",
-      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.list_workspace_files"
+      "inputSchema": "urn:ouro:protocol:0.3.0:input:ouro.list_workspace_files",
+      "outputSchema": "urn:ouro:protocol:0.3.0:output:ouro.list_workspace_files"
     },
     {
       "name": "ouro.read_workspace_file",
-      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.read_workspace_file",
-      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.read_workspace_file"
+      "inputSchema": "urn:ouro:protocol:0.3.0:input:ouro.read_workspace_file",
+      "outputSchema": "urn:ouro:protocol:0.3.0:output:ouro.read_workspace_file"
     },
     {
       "name": "ouro.report_flow_step",
-      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.report_flow_step",
-      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.report_flow_step"
+      "inputSchema": "urn:ouro:protocol:0.3.0:input:ouro.report_flow_step",
+      "outputSchema": "urn:ouro:protocol:0.3.0:output:ouro.report_flow_step"
     },
     {
       "name": "ouro.report_action",
-      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.report_action",
-      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.report_action"
+      "inputSchema": "urn:ouro:protocol:0.3.0:input:ouro.report_action",
+      "outputSchema": "urn:ouro:protocol:0.3.0:output:ouro.report_action"
     },
     {
       "name": "ouro.report_question",
-      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.report_question",
-      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.report_question"
+      "inputSchema": "urn:ouro:protocol:0.3.0:input:ouro.report_question",
+      "outputSchema": "urn:ouro:protocol:0.3.0:output:ouro.report_question"
     },
     {
       "name": "ouro.report_fork",
-      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.report_fork",
-      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.report_fork"
+      "inputSchema": "urn:ouro:protocol:0.3.0:input:ouro.report_fork",
+      "outputSchema": "urn:ouro:protocol:0.3.0:output:ouro.report_fork"
     },
     {
       "name": "ouro.report_blocker",
-      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.report_blocker",
-      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.report_blocker"
+      "inputSchema": "urn:ouro:protocol:0.3.0:input:ouro.report_blocker",
+      "outputSchema": "urn:ouro:protocol:0.3.0:output:ouro.report_blocker"
     },
     {
       "name": "ouro.withdraw_decision",
-      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.withdraw_decision",
-      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.withdraw_decision"
+      "inputSchema": "urn:ouro:protocol:0.3.0:input:ouro.withdraw_decision",
+      "outputSchema": "urn:ouro:protocol:0.3.0:output:ouro.withdraw_decision"
     },
     {
       "name": "ouro.submit_decision_clarification",
-      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.submit_decision_clarification",
-      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.submit_decision_clarification"
+      "inputSchema": "urn:ouro:protocol:0.3.0:input:ouro.submit_decision_clarification",
+      "outputSchema": "urn:ouro:protocol:0.3.0:output:ouro.submit_decision_clarification"
     },
     {
       "name": "ouro.confirm_started",
-      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.confirm_started",
-      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.confirm_started"
+      "inputSchema": "urn:ouro:protocol:0.3.0:input:ouro.confirm_started",
+      "outputSchema": "urn:ouro:protocol:0.3.0:output:ouro.confirm_started"
     },
     {
       "name": "ouro.confirm_resumed",
-      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.confirm_resumed",
-      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.confirm_resumed"
+      "inputSchema": "urn:ouro:protocol:0.3.0:input:ouro.confirm_resumed",
+      "outputSchema": "urn:ouro:protocol:0.3.0:output:ouro.confirm_resumed"
     },
     {
       "name": "ouro.confirm_stopped",
-      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.confirm_stopped",
-      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.confirm_stopped"
+      "inputSchema": "urn:ouro:protocol:0.3.0:input:ouro.confirm_stopped",
+      "outputSchema": "urn:ouro:protocol:0.3.0:output:ouro.confirm_stopped"
     },
     {
       "name": "ouro.confirm_decision_applied",
-      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.confirm_decision_applied",
-      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.confirm_decision_applied"
+      "inputSchema": "urn:ouro:protocol:0.3.0:input:ouro.confirm_decision_applied",
+      "outputSchema": "urn:ouro:protocol:0.3.0:output:ouro.confirm_decision_applied"
     },
     {
       "name": "ouro.complete_execution",
-      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.complete_execution",
-      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.complete_execution"
+      "inputSchema": "urn:ouro:protocol:0.3.0:input:ouro.complete_execution",
+      "outputSchema": "urn:ouro:protocol:0.3.0:output:ouro.complete_execution"
     },
     {
       "name": "ouro.clear_blocker",
-      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.clear_blocker",
-      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.clear_blocker"
+      "inputSchema": "urn:ouro:protocol:0.3.0:input:ouro.clear_blocker",
+      "outputSchema": "urn:ouro:protocol:0.3.0:output:ouro.clear_blocker"
     },
     {
       "name": "ouro.submit_proposal",
-      "inputSchema": "urn:ouro:protocol:0.1.2:input:ouro.submit_proposal",
-      "outputSchema": "urn:ouro:protocol:0.1.2:output:ouro.submit_proposal"
+      "inputSchema": "urn:ouro:protocol:0.3.0:input:ouro.submit_proposal",
+      "outputSchema": "urn:ouro:protocol:0.3.0:output:ouro.submit_proposal"
     }
   ],
-  "errorSchema": "urn:ouro:protocol:0.1.2:error",
+  "errorSchema": "urn:ouro:protocol:0.3.0:error",
   "schemas": [
     {
+      "name": "verification-observe-input",
+      "id": "urn:ouro:protocol:0.3.0:verification-observe-input",
+      "file": "verification-observe-input.schema.json"
+    },
+    {
+      "name": "verification-runner-input",
+      "id": "urn:ouro:protocol:0.3.0:verification-runner-input",
+      "file": "verification-runner-input.schema.json"
+    },
+    {
+      "name": "verification-cycle",
+      "id": "urn:ouro:protocol:0.3.0:verification-cycle",
+      "file": "verification-cycle.schema.json"
+    },
+    {
+      "name": "verification-refactor-admission",
+      "id": "urn:ouro:protocol:0.3.0:verification-refactor-admission",
+      "file": "verification-refactor-admission.schema.json"
+    },
+    {
+      "name": "verification-observation-config",
+      "id": "urn:ouro:protocol:0.3.0:verification-observation-config",
+      "file": "verification-observation-config.schema.json"
+    },
+    {
+      "name": "verification-observation",
+      "id": "urn:ouro:protocol:0.3.0:verification-observation",
+      "file": "verification-observation.schema.json"
+    },
+    {
+      "name": "verification-artifact-manifest",
+      "id": "urn:ouro:protocol:0.3.0:verification-artifact-manifest",
+      "file": "verification-artifact-manifest.schema.json"
+    },
+    {
+      "name": "verification-quality",
+      "id": "urn:ouro:protocol:0.3.0:verification-quality",
+      "file": "verification-quality.schema.json"
+    },
+    {
+      "name": "verification-manual-input",
+      "id": "urn:ouro:protocol:0.3.0:verification-manual-input",
+      "file": "verification-manual-input.schema.json"
+    },
+    {
+      "name": "verification-contract",
+      "id": "urn:ouro:protocol:0.3.0:verification-contract",
+      "file": "verification-contract.schema.json"
+    },
+    {
+      "name": "verification-run",
+      "id": "urn:ouro:protocol:0.3.0:verification-run",
+      "file": "verification-run.schema.json"
+    },
+    {
+      "name": "verification-slice",
+      "id": "urn:ouro:protocol:0.3.0:verification-slice",
+      "file": "verification-slice.schema.json"
+    },
+    {
+      "name": "verification-import",
+      "id": "urn:ouro:protocol:0.3.0:verification-import",
+      "file": "verification-import.schema.json"
+    },
+    {
+      "name": "verification-command",
+      "id": "urn:ouro:protocol:0.3.0:verification-command",
+      "file": "verification-command.schema.json"
+    },
+    {
+      "name": "verification-review",
+      "id": "urn:ouro:protocol:0.3.0:verification-review",
+      "file": "verification-review.schema.json"
+    },
+    {
+      "name": "verification-phase-record",
+      "id": "urn:ouro:protocol:0.3.0:verification-phase-record",
+      "file": "verification-phase-record.schema.json"
+    },
+    {
+      "name": "verification-slice-record",
+      "id": "urn:ouro:protocol:0.3.0:verification-slice-record",
+      "file": "verification-slice-record.schema.json"
+    },
+    {
+      "name": "verification-readiness",
+      "id": "urn:ouro:protocol:0.3.0:verification-readiness",
+      "file": "verification-readiness.schema.json"
+    },
+    {
       "name": "flow",
-      "id": "urn:ouro:protocol:0.1.2:flow",
+      "id": "urn:ouro:protocol:0.3.0:flow",
       "file": "flow.schema.json"
     },
     {
       "name": "enforced-flow",
-      "id": "urn:ouro:protocol:0.1.2:enforced-flow",
+      "id": "urn:ouro:protocol:0.3.0:enforced-flow",
       "file": "enforced-flow.schema.json"
     },
     {
       "name": "flow-runtime",
-      "id": "urn:ouro:protocol:0.1.2:flow-runtime",
+      "id": "urn:ouro:protocol:0.3.0:flow-runtime",
       "file": "flow-runtime.schema.json"
     },
     {
       "name": "flow-step-run",
-      "id": "urn:ouro:protocol:0.1.2:flow-step-run",
+      "id": "urn:ouro:protocol:0.3.0:flow-step-run",
       "file": "flow-step-run.schema.json"
     },
     {
       "name": "flow-traversal",
-      "id": "urn:ouro:protocol:0.1.2:flow-traversal",
+      "id": "urn:ouro:protocol:0.3.0:flow-traversal",
       "file": "flow-traversal.schema.json"
     },
     {
       "name": "flow-runtime-view",
-      "id": "urn:ouro:protocol:0.1.2:flow-runtime-view",
+      "id": "urn:ouro:protocol:0.3.0:flow-runtime-view",
       "file": "flow-runtime-view.schema.json"
     },
     {
       "name": "workspace",
-      "id": "urn:ouro:protocol:0.1.2:workspace",
+      "id": "urn:ouro:protocol:0.3.0:workspace",
       "file": "workspace.schema.json"
     },
     {
       "name": "workspace-file-entry",
-      "id": "urn:ouro:protocol:0.1.2:workspace-file-entry",
+      "id": "urn:ouro:protocol:0.3.0:workspace-file-entry",
       "file": "workspace-file-entry.schema.json"
     },
     {
       "name": "workspace-file-list",
-      "id": "urn:ouro:protocol:0.1.2:workspace-file-list",
+      "id": "urn:ouro:protocol:0.3.0:workspace-file-list",
       "file": "workspace-file-list.schema.json"
     },
     {
       "name": "workspace-file",
-      "id": "urn:ouro:protocol:0.1.2:workspace-file",
+      "id": "urn:ouro:protocol:0.3.0:workspace-file",
       "file": "workspace-file.schema.json"
     },
     {
       "name": "error",
-      "id": "urn:ouro:protocol:0.1.2:error",
+      "id": "urn:ouro:protocol:0.3.0:error",
       "file": "error.schema.json"
     },
     {
       "name": "proposal-content",
-      "id": "urn:ouro:protocol:0.1.2:proposal-content",
+      "id": "urn:ouro:protocol:0.3.0:proposal-content",
       "file": "proposal-content.schema.json"
     },
     {
       "name": "revision-content",
-      "id": "urn:ouro:protocol:0.1.2:revision-content",
+      "id": "urn:ouro:protocol:0.3.0:revision-content",
       "file": "revision-content.schema.json"
     },
     {
+      "name": "input:ouro.report_verification_cycle",
+      "id": "urn:ouro:protocol:0.3.0:input:ouro.report_verification_cycle",
+      "file": "input-ouro.report_verification_cycle.schema.json"
+    },
+    {
+      "name": "output:ouro.report_verification_cycle",
+      "id": "urn:ouro:protocol:0.3.0:output:ouro.report_verification_cycle",
+      "file": "output-ouro.report_verification_cycle.schema.json"
+    },
+    {
+      "name": "input:ouro.report_verification_run",
+      "id": "urn:ouro:protocol:0.3.0:input:ouro.report_verification_run",
+      "file": "input-ouro.report_verification_run.schema.json"
+    },
+    {
+      "name": "output:ouro.report_verification_run",
+      "id": "urn:ouro:protocol:0.3.0:output:ouro.report_verification_run",
+      "file": "output-ouro.report_verification_run.schema.json"
+    },
+    {
       "name": "input:ouro.get_context",
-      "id": "urn:ouro:protocol:0.1.2:input:ouro.get_context",
+      "id": "urn:ouro:protocol:0.3.0:input:ouro.get_context",
       "file": "input-ouro.get_context.schema.json"
     },
     {
       "name": "output:ouro.get_context",
-      "id": "urn:ouro:protocol:0.1.2:output:ouro.get_context",
+      "id": "urn:ouro:protocol:0.3.0:output:ouro.get_context",
       "file": "output-ouro.get_context.schema.json"
     },
     {
       "name": "input:ouro.get_updates",
-      "id": "urn:ouro:protocol:0.1.2:input:ouro.get_updates",
+      "id": "urn:ouro:protocol:0.3.0:input:ouro.get_updates",
       "file": "input-ouro.get_updates.schema.json"
     },
     {
       "name": "output:ouro.get_updates",
-      "id": "urn:ouro:protocol:0.1.2:output:ouro.get_updates",
+      "id": "urn:ouro:protocol:0.3.0:output:ouro.get_updates",
       "file": "output-ouro.get_updates.schema.json"
     },
     {
       "name": "input:ouro.list_workspace_files",
-      "id": "urn:ouro:protocol:0.1.2:input:ouro.list_workspace_files",
+      "id": "urn:ouro:protocol:0.3.0:input:ouro.list_workspace_files",
       "file": "input-ouro.list_workspace_files.schema.json"
     },
     {
       "name": "output:ouro.list_workspace_files",
-      "id": "urn:ouro:protocol:0.1.2:output:ouro.list_workspace_files",
+      "id": "urn:ouro:protocol:0.3.0:output:ouro.list_workspace_files",
       "file": "output-ouro.list_workspace_files.schema.json"
     },
     {
       "name": "input:ouro.read_workspace_file",
-      "id": "urn:ouro:protocol:0.1.2:input:ouro.read_workspace_file",
+      "id": "urn:ouro:protocol:0.3.0:input:ouro.read_workspace_file",
       "file": "input-ouro.read_workspace_file.schema.json"
     },
     {
       "name": "output:ouro.read_workspace_file",
-      "id": "urn:ouro:protocol:0.1.2:output:ouro.read_workspace_file",
+      "id": "urn:ouro:protocol:0.3.0:output:ouro.read_workspace_file",
       "file": "output-ouro.read_workspace_file.schema.json"
     },
     {
       "name": "input:ouro.report_flow_step",
-      "id": "urn:ouro:protocol:0.1.2:input:ouro.report_flow_step",
+      "id": "urn:ouro:protocol:0.3.0:input:ouro.report_flow_step",
       "file": "input-ouro.report_flow_step.schema.json"
     },
     {
       "name": "output:ouro.report_flow_step",
-      "id": "urn:ouro:protocol:0.1.2:output:ouro.report_flow_step",
+      "id": "urn:ouro:protocol:0.3.0:output:ouro.report_flow_step",
       "file": "output-ouro.report_flow_step.schema.json"
     },
     {
       "name": "input:ouro.report_action",
-      "id": "urn:ouro:protocol:0.1.2:input:ouro.report_action",
+      "id": "urn:ouro:protocol:0.3.0:input:ouro.report_action",
       "file": "input-ouro.report_action.schema.json"
     },
     {
       "name": "output:ouro.report_action",
-      "id": "urn:ouro:protocol:0.1.2:output:ouro.report_action",
+      "id": "urn:ouro:protocol:0.3.0:output:ouro.report_action",
       "file": "output-ouro.report_action.schema.json"
     },
     {
       "name": "input:ouro.report_question",
-      "id": "urn:ouro:protocol:0.1.2:input:ouro.report_question",
+      "id": "urn:ouro:protocol:0.3.0:input:ouro.report_question",
       "file": "input-ouro.report_question.schema.json"
     },
     {
       "name": "output:ouro.report_question",
-      "id": "urn:ouro:protocol:0.1.2:output:ouro.report_question",
+      "id": "urn:ouro:protocol:0.3.0:output:ouro.report_question",
       "file": "output-ouro.report_question.schema.json"
     },
     {
       "name": "input:ouro.report_fork",
-      "id": "urn:ouro:protocol:0.1.2:input:ouro.report_fork",
+      "id": "urn:ouro:protocol:0.3.0:input:ouro.report_fork",
       "file": "input-ouro.report_fork.schema.json"
     },
     {
       "name": "output:ouro.report_fork",
-      "id": "urn:ouro:protocol:0.1.2:output:ouro.report_fork",
+      "id": "urn:ouro:protocol:0.3.0:output:ouro.report_fork",
       "file": "output-ouro.report_fork.schema.json"
     },
     {
       "name": "input:ouro.report_blocker",
-      "id": "urn:ouro:protocol:0.1.2:input:ouro.report_blocker",
+      "id": "urn:ouro:protocol:0.3.0:input:ouro.report_blocker",
       "file": "input-ouro.report_blocker.schema.json"
     },
     {
       "name": "output:ouro.report_blocker",
-      "id": "urn:ouro:protocol:0.1.2:output:ouro.report_blocker",
+      "id": "urn:ouro:protocol:0.3.0:output:ouro.report_blocker",
       "file": "output-ouro.report_blocker.schema.json"
     },
     {
       "name": "input:ouro.withdraw_decision",
-      "id": "urn:ouro:protocol:0.1.2:input:ouro.withdraw_decision",
+      "id": "urn:ouro:protocol:0.3.0:input:ouro.withdraw_decision",
       "file": "input-ouro.withdraw_decision.schema.json"
     },
     {
       "name": "output:ouro.withdraw_decision",
-      "id": "urn:ouro:protocol:0.1.2:output:ouro.withdraw_decision",
+      "id": "urn:ouro:protocol:0.3.0:output:ouro.withdraw_decision",
       "file": "output-ouro.withdraw_decision.schema.json"
     },
     {
       "name": "input:ouro.submit_decision_clarification",
-      "id": "urn:ouro:protocol:0.1.2:input:ouro.submit_decision_clarification",
+      "id": "urn:ouro:protocol:0.3.0:input:ouro.submit_decision_clarification",
       "file": "input-ouro.submit_decision_clarification.schema.json"
     },
     {
       "name": "output:ouro.submit_decision_clarification",
-      "id": "urn:ouro:protocol:0.1.2:output:ouro.submit_decision_clarification",
+      "id": "urn:ouro:protocol:0.3.0:output:ouro.submit_decision_clarification",
       "file": "output-ouro.submit_decision_clarification.schema.json"
     },
     {
       "name": "input:ouro.confirm_started",
-      "id": "urn:ouro:protocol:0.1.2:input:ouro.confirm_started",
+      "id": "urn:ouro:protocol:0.3.0:input:ouro.confirm_started",
       "file": "input-ouro.confirm_started.schema.json"
     },
     {
       "name": "output:ouro.confirm_started",
-      "id": "urn:ouro:protocol:0.1.2:output:ouro.confirm_started",
+      "id": "urn:ouro:protocol:0.3.0:output:ouro.confirm_started",
       "file": "output-ouro.confirm_started.schema.json"
     },
     {
       "name": "input:ouro.confirm_resumed",
-      "id": "urn:ouro:protocol:0.1.2:input:ouro.confirm_resumed",
+      "id": "urn:ouro:protocol:0.3.0:input:ouro.confirm_resumed",
       "file": "input-ouro.confirm_resumed.schema.json"
     },
     {
       "name": "output:ouro.confirm_resumed",
-      "id": "urn:ouro:protocol:0.1.2:output:ouro.confirm_resumed",
+      "id": "urn:ouro:protocol:0.3.0:output:ouro.confirm_resumed",
       "file": "output-ouro.confirm_resumed.schema.json"
     },
     {
       "name": "input:ouro.confirm_stopped",
-      "id": "urn:ouro:protocol:0.1.2:input:ouro.confirm_stopped",
+      "id": "urn:ouro:protocol:0.3.0:input:ouro.confirm_stopped",
       "file": "input-ouro.confirm_stopped.schema.json"
     },
     {
       "name": "output:ouro.confirm_stopped",
-      "id": "urn:ouro:protocol:0.1.2:output:ouro.confirm_stopped",
+      "id": "urn:ouro:protocol:0.3.0:output:ouro.confirm_stopped",
       "file": "output-ouro.confirm_stopped.schema.json"
     },
     {
       "name": "input:ouro.confirm_decision_applied",
-      "id": "urn:ouro:protocol:0.1.2:input:ouro.confirm_decision_applied",
+      "id": "urn:ouro:protocol:0.3.0:input:ouro.confirm_decision_applied",
       "file": "input-ouro.confirm_decision_applied.schema.json"
     },
     {
       "name": "output:ouro.confirm_decision_applied",
-      "id": "urn:ouro:protocol:0.1.2:output:ouro.confirm_decision_applied",
+      "id": "urn:ouro:protocol:0.3.0:output:ouro.confirm_decision_applied",
       "file": "output-ouro.confirm_decision_applied.schema.json"
     },
     {
       "name": "input:ouro.complete_execution",
-      "id": "urn:ouro:protocol:0.1.2:input:ouro.complete_execution",
+      "id": "urn:ouro:protocol:0.3.0:input:ouro.complete_execution",
       "file": "input-ouro.complete_execution.schema.json"
     },
     {
       "name": "output:ouro.complete_execution",
-      "id": "urn:ouro:protocol:0.1.2:output:ouro.complete_execution",
+      "id": "urn:ouro:protocol:0.3.0:output:ouro.complete_execution",
       "file": "output-ouro.complete_execution.schema.json"
     },
     {
       "name": "input:ouro.clear_blocker",
-      "id": "urn:ouro:protocol:0.1.2:input:ouro.clear_blocker",
+      "id": "urn:ouro:protocol:0.3.0:input:ouro.clear_blocker",
       "file": "input-ouro.clear_blocker.schema.json"
     },
     {
       "name": "output:ouro.clear_blocker",
-      "id": "urn:ouro:protocol:0.1.2:output:ouro.clear_blocker",
+      "id": "urn:ouro:protocol:0.3.0:output:ouro.clear_blocker",
       "file": "output-ouro.clear_blocker.schema.json"
     },
     {
       "name": "input:ouro.submit_proposal",
-      "id": "urn:ouro:protocol:0.1.2:input:ouro.submit_proposal",
+      "id": "urn:ouro:protocol:0.3.0:input:ouro.submit_proposal",
       "file": "input-ouro.submit_proposal.schema.json"
     },
     {
       "name": "output:ouro.submit_proposal",
-      "id": "urn:ouro:protocol:0.1.2:output:ouro.submit_proposal",
+      "id": "urn:ouro:protocol:0.3.0:output:ouro.submit_proposal",
       "file": "output-ouro.submit_proposal.schema.json"
     }
   ],
   "compatibility": {
     "supportedVersions": [
-      "0.1.2"
+      "0.3.0"
     ],
     "legacyToolArguments": true,
     "mcpWireDialect": "draft-07",
     "outputExtensions": "additional JSON properties are preserved; Flow and inputs remain closed"
+  },
+  "negotiation": {
+    "tool": "ouro.get_context",
+    "optional": true,
+    "clientVersions": [
+      "0.1.2",
+      "0.2.0",
+      "0.3.0"
+    ],
+    "capabilities": [
+      "verification.v1",
+      "verification.cycles.v1",
+      "verification.observation.v1",
+      "verification.local-runner.v1",
+      "verification.manual.v1",
+      "verification.mutation.v1"
+    ],
+    "legacyContexts": "verification-free-visible-work-and-proposals-only",
+    "legacyVerificationCapabilities": [],
+    "unknownRequirements": "fail-closed"
+  },
+  "verification": {
+    "version": 1,
+    "optional": true,
+    "tool": "ouro.report_verification_run",
+    "adapter": "playwright-json/v1",
+    "provenance": [
+      "imported_report",
+      "human_attested",
+      "local_runner"
+    ],
+    "readiness": "latest-per-case-evidence-at-current-observed-or-declared-slice",
+    "cycles": true,
+    "manualProcedures": true,
+    "mutationQuality": "independent-axis",
+    "automaticObservation": "human-configured-bounded-files",
+    "localRunner": "human-authorized-fixed-playwright-process",
+    "acceptance": "human-only",
+    "legacyRevisions": "unchanged",
+    "eventReplay": "upgrade clients together; unknown events fail closed"
   },
   "semantics": [
     "JSON Schema checks structure. Application validation additionally checks references, reachability, authority, lifecycle and idempotency.",
