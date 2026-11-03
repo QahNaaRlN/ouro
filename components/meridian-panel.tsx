@@ -6,7 +6,8 @@ import { projectFetch } from '@/lib/client-project';
 import {useEffect,useRef,useState,type ChangeEvent,type CSSProperties,type FormEvent} from 'react';
 import {ArrowDownToLine,FileJson,FilePlus2,LoaderCircle,RefreshCw,ShieldQuestion} from 'lucide-react';
 import type {DomainEvent,ProjectState,RevisionContent} from '@/packages/core/src';
-import {mapMeridianExpectation,parseMeridianScope,type Pin,type WorkScopeView} from '@/packages/meridian/src/context';
+import {parseMeridianScope,type Pin,type WorkScopeView} from '@/packages/meridian/src/context';
+import {mapMeridianExpectation} from '@/packages/core/src/meridian-import';
 import {getMeridianThemeVariables} from '@/packages/meridian/src/theme';
 import './meridian-panel.css';
 
