@@ -105,6 +105,8 @@ jobs:
         run: npm test
       - name: Check TypeScript
         run: npm run typecheck
+      - name: Check portable architecture boundaries
+        run: npm run check:architecture
       - name: Check migration compatibility inventory
         run: npm run migration:check
       - name: Verify canonical protocol schemas

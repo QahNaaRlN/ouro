@@ -1,0 +1,219 @@
+[
+  {
+    "name": "pure ports accept a public type and a neutral contract",
+    "entries": ["packages/client/src/ports/project.port.ts"],
+    "files": {
+      "packages/client/src/ports/project.port.ts": "import type {Project} from '@/packages/core/src/types'; export interface ProjectPort { readSnapshot(scope: {projectId:string}): Promise<Project> }",
+      "packages/core/src/types.ts": "export type Project = {id:string}"
+    },
+    "codes": []
+  },
+  {
+    "name": "an alias cannot hide server types in a client port",
+    "entries": ["packages/client/src/ports/project.port.ts"],
+    "files": {
+      "packages/client/src/ports/project.port.ts": "import type {Store} from '@/lib/store'; export type Snapshot = Store",
+      "lib/store.ts": "export type Store = {secret:string}"
+    },
+    "codes": ["server-boundary"]
+  },
+  {
+    "name": "relative reexports cannot expose a server module",
+    "entries": ["packages/client/src/ports/index.ts"],
+    "files": {
+      "packages/client/src/ports/index.ts": "export {credential} from '../../../../lib/auth';",
+      "lib/auth.ts": "export const credential = 'fixture'"
+    },
+    "codes": ["server-boundary"]
+  },
+  {
+    "name": "import types cannot hide a framework dependency",
+    "entries": ["packages/client/src/ports/project.port.ts"],
+    "files": {
+      "packages/client/src/ports/project.port.ts": "export type Render = import('react').ReactNode;"
+    },
+    "codes": ["framework-boundary"]
+  },
+  {
+    "name": "dynamic import and require obey the same pure boundary",
+    "entries": ["packages/core/src/unsafe.ts"],
+    "files": {
+      "packages/core/src/unsafe.ts": "export const first = () => import('node:fs'); export const second = () => require('node:child_process');"
+    },
+    "codes": ["node-boundary", "node-boundary"]
+  },
+  {
+    "name": "nonliteral imports cannot bypass static boundary inspection",
+    "entries": ["packages/core/src/unsafe.ts"],
+    "files": {
+      "packages/core/src/unsafe.ts": "export const load = (name:string) => import(name);"
+    },
+    "codes": ["unresolved-dynamic-import"]
+  },
+  {
+    "name": "runtime package exports are inspected instead of their harmless types branch",
+    "entries": ["packages/client/src/ports/unsafe.ts"],
+    "files": {
+      "packages/client/src/ports/unsafe.ts": "import {value} from '@fixture/contracts'; export const result=value;",
+      "packages/contracts/package.json": "{\"name\":\"@fixture/contracts\",\"type\":\"module\",\"exports\":{\".\":{\"types\":\"./safe.d.ts\",\"import\":\"./runtime.ts\"}}}",
+      "packages/contracts/safe.d.ts": "export declare const value: string;",
+      "packages/contracts/runtime.ts": "import fs from 'node:fs'; export const value=fs;"
+    },
+    "codes": ["node-boundary"]
+  },
+  {
+    "name": "type-only package imports select the declared types export",
+    "entries": ["packages/client/src/ports/safe.ts"],
+    "files": {
+      "packages/client/src/ports/safe.ts": "import type {Value} from '@fixture/contracts'; export type Model=Value;",
+      "packages/contracts/package.json": "{\"name\":\"@fixture/contracts\",\"type\":\"module\",\"exports\":{\".\":{\"types\":\"./safe.d.ts\",\"import\":\"./runtime.ts\"}}}",
+      "packages/contracts/safe.d.ts": "export type Value = {id:string};",
+      "packages/contracts/runtime.ts": "import fs from 'node:fs'; export const value=fs;"
+    },
+    "codes": []
+  },
+  {
+    "name": "Meridian context cannot depend back on core even through a type",
+    "entries": ["packages/meridian/src/context.ts"],
+    "files": {
+      "packages/meridian/src/context.ts": "import type {Revision} from '../../core/src/types'; export type Scope=Revision;",
+      "packages/core/src/types.ts": "export type Revision={title:string};"
+    },
+    "codes": ["context-core-boundary"]
+  },
+  {
+    "name": "public ports cannot expose generic HTTP arguments",
+    "entries": ["packages/client/src/ports/unsafe.port.ts"],
+    "files": {
+      "packages/client/src/ports/unsafe.port.ts": "type TransportOptions={url:string; method:string; headers:Record<string,string>}; export interface UnsafePort { request(options:TransportOptions):Promise<unknown> }"
+    },
+    "codes": ["transport-port"]
+  },
+  {
+    "name": "new client barrels have explicit public exports",
+    "entries": ["packages/client/src/ports/index.ts"],
+    "files": {
+      "packages/client/src/ports/index.ts": "export * from './model';",
+      "packages/client/src/ports/model.ts": "export type Model={id:string}"
+    },
+    "codes": ["implicit-public-api"]
+  },
+  {
+    "name": "frontend type imports use another entity public API",
+    "entries": ["packages/frontend/src/entities/spec/model/spec.types.ts"],
+    "files": {
+      "packages/frontend/src/entities/spec/model/spec.types.ts": "import type {Project} from '../../project'; export type Spec={project:Project};",
+      "packages/frontend/src/entities/project/index.ts": "export type {Project} from './model/project.types';",
+      "packages/frontend/src/entities/project/model/project.types.ts": "export type Project={id:string}"
+    },
+    "codes": []
+  },
+  {
+    "name": "frontend deep imports and upward imports are rejected",
+    "entries": ["packages/frontend/src/entities/spec/model/spec.types.ts"],
+    "files": {
+      "packages/frontend/src/entities/spec/model/spec.types.ts": "import type {Project} from '../../project/model/project.types'; import {run} from '../../../features/run'; export type Spec=Project; export const execute=run;",
+      "packages/frontend/src/entities/project/model/project.types.ts": "export type Project={id:string}",
+      "packages/frontend/src/features/run/index.ts": "export const run=()=>true;"
+    },
+    "codes": ["deep-slice-import", "hfsd-direction"]
+  },
+  {
+    "name": "a legacy browser helper remains inspected transitively",
+    "entries": ["components/panel.tsx"],
+    "files": {
+      "components/panel.tsx": "import {value} from '@/lib/select-availability'; export const panel=value;",
+      "lib/select-availability.ts": "import fs from 'node:fs'; export const value=fs;"
+    },
+    "codes": ["node-boundary"]
+  },
+  {
+    "name": "a legacy helper cannot smuggle server code into portable ports",
+    "entries": ["packages/client/src/ports/safe.ts"],
+    "files": {
+      "packages/client/src/ports/safe.ts": "export {value} from '@/lib/select-availability';",
+      "lib/select-availability.ts": "export {value} from './store';",
+      "lib/store.ts": "export const value='server-only';"
+    },
+    "codes": ["server-boundary"]
+  },
+  {
+    "name": "inherited port methods cannot hide transport arguments",
+    "entries": ["packages/client/src/ports/unsafe.port.ts"],
+    "files": {
+      "packages/client/src/ports/unsafe.port.ts": "interface Base {readSnapshot(input:{url:string}):Promise<unknown>} export interface UnsafePort extends Base {}"
+    },
+    "codes": ["transport-port"]
+  },
+  {
+    "name": "port results cannot expose a browser Response object",
+    "entries": ["packages/client/src/ports/unsafe.port.ts"],
+    "files": {
+      "packages/client/src/ports/unsafe.port.ts": "export interface UnsafePort {readSnapshot(projectId:string):Promise<Response>}"
+    },
+    "codes": ["transport-port"]
+  },
+  {
+    "name": "portable ports cannot acquire a browser zone by importing frontend",
+    "entries": ["packages/client/src/ports/unsafe.ts"],
+    "files": {
+      "packages/client/src/ports/unsafe.ts": "export {Panel} from '../../../frontend/src/shared/Panel';",
+      "packages/frontend/src/shared/Panel.tsx": "import React from 'react'; export const Panel=()=>React.createElement('div');",
+      "node_modules/react/package.json": "{\"name\":\"react\",\"type\":\"module\",\"exports\":\"./index.js\"}",
+      "node_modules/react/index.js": "export default {createElement:()=>({})};"
+    },
+    "codes": ["pure-browser-boundary"]
+  },
+  {
+    "name": "core cannot acquire a browser zone through an HTTP adapter",
+    "entries": ["packages/core/src/unsafe.ts"],
+    "files": {
+      "packages/core/src/unsafe.ts": "import {send} from '../../client/src/http/request'; export const run=send;",
+      "packages/client/src/http/request.ts": "export const send=()=>fetch('/api/project');"
+    },
+    "codes": ["pure-browser-boundary"]
+  },
+  {
+    "name": "an intermediate barrel preserves its caller's pure boundary",
+    "entries": ["packages/client/src/ports/unsafe.ts"],
+    "files": {
+      "packages/client/src/ports/unsafe.ts": "export {Panel} from '../../../bridge/src/index';",
+      "packages/bridge/src/index.ts": "export {Panel} from '../../frontend/src/shared/Panel';",
+      "packages/frontend/src/shared/Panel.tsx": "import React from 'react'; export const Panel=()=>React.createElement('div');",
+      "node_modules/react/package.json": "{\"name\":\"react\",\"type\":\"module\",\"exports\":\"./index.js\"}",
+      "node_modules/react/index.js": "export default {createElement:()=>({})};"
+    },
+    "codes": ["pure-browser-boundary"]
+  },
+  {
+    "name": "core cannot depend back on client ports",
+    "entries": ["packages/core/src/unsafe.ts"],
+    "files": {
+      "packages/core/src/unsafe.ts": "import type {Scope} from '../../client/src/ports/scope'; export type CoreScope=Scope;",
+      "packages/client/src/ports/scope.ts": "export type Scope={projectId:string};"
+    },
+    "codes": ["package-direction"]
+  },
+  {
+    "name": "a package exports map cannot fall back from a blocked runtime to safe declarations",
+    "entries": ["packages/client/src/ports/unsafe.ts"],
+    "files": {
+      "packages/client/src/ports/unsafe.ts": "import {value} from '@fixture/contracts'; export const result=value;",
+      "packages/contracts/package.json": "{\"name\":\"@fixture/contracts\",\"type\":\"module\",\"types\":\"./safe.d.ts\",\"exports\":{\".\":{\"types\":\"./safe.d.ts\",\"import\":null,\"default\":\"./safe.d.ts\"}}}",
+      "packages/contracts/safe.d.ts": "export declare const value:string;"
+    },
+    "codes": ["unresolved-module"]
+  },
+  {
+    "name": "require resolves its own package runtime branch",
+    "entries": ["packages/core/src/unsafe.ts"],
+    "files": {
+      "packages/core/src/unsafe.ts": "export const value=require('@fixture/contracts');",
+      "packages/contracts/package.json": "{\"name\":\"@fixture/contracts\",\"exports\":{\".\":{\"types\":\"./safe.d.ts\",\"import\":\"./safe.ts\",\"require\":\"./unsafe.cjs\"}}}",
+      "packages/contracts/safe.d.ts": "export declare const value:string;",
+      "packages/contracts/safe.ts": "export const value='safe';",
+      "packages/contracts/unsafe.cjs": "module.exports=require('node:fs');"
+    },
+    "codes": ["node-boundary"]
+  }
+]
