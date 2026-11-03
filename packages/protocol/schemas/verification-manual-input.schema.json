@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "executionId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "slice": {
+      "type": "object",
+      "properties": {
+        "productRevision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "testRevision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "fixtureRevision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "environmentDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "productRevision",
+        "testRevision",
+        "fixtureRevision",
+        "environmentDigest"
+      ],
+      "additionalProperties": false
+    },
+    "results": {
+      "minItems": 1,
+      "maxItems": 50,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "caseId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed",
+              "error",
+              "skipped",
+              "not_run"
+            ]
+          },
+          "actual": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8000
+          }
+        },
+        "required": [
+          "caseId",
+          "outcome",
+          "actual"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "startedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+    },
+    "finishedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+    },
+    "evidence": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "flowStepRunId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "quality": {
+      "type": "object",
+      "properties": {
+        "mutation": {
+          "minItems": 1,
+          "maxItems": 50,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "caseId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "killed": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "survived": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "noCoverage": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "timedOut": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "total": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "caseId",
+              "killed",
+              "survived",
+              "noCoverage",
+              "timedOut",
+              "total"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "mutation"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "executionId",
+    "slice",
+    "results",
+    "startedAt",
+    "finishedAt",
+    "evidence"
+  ],
+  "additionalProperties": false,
+  "$id": "urn:ouro:protocol:0.3.0:verification-manual-input"
+}

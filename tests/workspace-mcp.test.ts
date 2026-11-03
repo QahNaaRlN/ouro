@@ -58,7 +58,7 @@ test('PW05/PW07/PW09 official HTTP and stdio clients stay project-bound while re
   const base=`http://127.0.0.1:${(listener.address() as {port:number}).port}`,urlA=`${base}/api/projects/${projectA.id}/mcp`,urlB=`${base}/api/projects/${projectB.id}/mcp`;
   const http=new Client({name:'workspace-http-acceptance',version:'1'});clients.push(http);
   await http.connect(new StreamableHTTPClientTransport(new URL(urlA),{requestInit:{headers:{Authorization:`Bearer ${registrationA.token}`,Cookie:'ouro_participant=changed-in-browser'}}}));
-  const tools=await http.listTools();assert.equal(tools.tools.length,18);assert(tools.tools.find(tool=>tool.name==='ouro.read_workspace_file')?.outputSchema);
+  const tools=await http.listTools();assert.equal(tools.tools.length,20);assert(tools.tools.find(tool=>tool.name==='ouro.read_workspace_file')?.outputSchema);
   const context=await http.callTool({name:'ouro.get_context',arguments:{executionId:executionA.id}});assert.notEqual(context.isError,true,JSON.stringify(context));
   const body=context.structuredContent as any;assert.equal(body.project.id,projectA.id);assert.equal(body.workspace.folderName,'alpha');assert.equal(body.workspace.capabilities.readOnlyFiles,true);assert(!JSON.stringify(context).includes(folderA));assert.equal(body.work[0].execution.state,'queued');
   const listing=await http.callTool({name:'ouro.list_workspace_files',arguments:{executionId:executionA.id}});assert.notEqual(listing.isError,true,JSON.stringify(listing));assert((listing.structuredContent as any).entries.some((entry:any)=>entry.path==='README.md'));assert(!JSON.stringify(listing).includes('.env'));assert(!JSON.stringify(listing).includes('linked.txt'));
@@ -75,7 +75,7 @@ test('PW05/PW07/PW09 official HTTP and stdio clients stay project-bound while re
   const keyFile=path.join(directory,'beta-agent-key');await writeFile(keyFile,registrationB.token,{mode:0o600});
   const stdio=new Client({name:'workspace-stdio-acceptance',version:'1'});clients.push(stdio);
   await stdio.connect(new StdioClientTransport({command:process.execPath,args:[path.resolve('packages/mcp/bin/ouro-mcp.mjs')],env:{PATH:process.env.PATH??'',...(process.versions.electron?{ELECTRON_RUN_AS_NODE:'1'}:{}),OURO_URL:urlB,OURO_AGENT_TOKEN_FILE:keyFile},stderr:'pipe'}));
-  const stdioTools=await stdio.listTools();assert.equal(stdioTools.tools.length,18);
+  const stdioTools=await stdio.listTools();assert.equal(stdioTools.tools.length,20);
   const betaFile=await stdio.callTool({name:'ouro.read_workspace_file',arguments:{executionId:executionB.id,path:'README.md'}});assert.notEqual(betaFile.isError,true,JSON.stringify(betaFile));assert.equal((betaFile.structuredContent as any).text,'Project beta source\n');assert.equal((betaFile.structuredContent as any).projectId,projectB.id);
   const stillAlpha=await http.callTool({name:'ouro.get_context',arguments:{executionId:executionA.id}});assert.equal((stillAlpha.structuredContent as any).project.id,projectA.id);
   const call=async(name:string,args:Record<string,unknown>)=>{const result=await http.callTool({name,arguments:{executionId:executionA.id,requestId:randomUUID(),expectedVersion:(await storeA.getProject()).version,...args}});assert.notEqual(result.isError,true,JSON.stringify(result));return result.structuredContent as any;};

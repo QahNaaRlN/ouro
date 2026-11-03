@@ -47,7 +47,7 @@ test('CO03 generated Cursor and Claude entries launch the actual bridge with sep
    const entry=JSON.parse(JSON.stringify(generated.config)).mcpServers[generated.serverName] as {command:string;args:string[];env:Record<string,string>};
    const client=new Client({name:`generated-${profile}-acceptance`,version:'1'});clients.push(client);
    await client.connect(new StdioClientTransport({command:entry.command,args:entry.args,env:{...getDefaultEnvironment(),...(process.versions.electron?{ELECTRON_RUN_AS_NODE:'1'}:{}),...entry.env},stderr:'pipe'}));
-   const inventory=await client.listTools();assert.equal(inventory.tools.length,18);assert(inventory.tools.some(tool=>tool.name==='ouro.report_flow_step'));
+   const inventory=await client.listTools();assert.equal(inventory.tools.length,20);assert(inventory.tools.some(tool=>tool.name==='ouro.report_flow_step'));
    const resources=await client.listResources();assert(resources.resources.some(resource=>resource.uri==='ouro://protocol/manifest'));
    const context=await client.callTool({name:'ouro.get_context',arguments:{executionId:execution.id}}),body=context.structuredContent as ContextOutput;
    assert.notEqual(context.isError,true);assert.equal(body.project.id,projectA.id);assert.equal(body.agent.id,issued.agent.id);assert.equal(body.work.length,1);assert.equal(body.work[0].execution.state,'queued');assert(!JSON.stringify(context).includes('OTHER_PROJECT_ONLY'));

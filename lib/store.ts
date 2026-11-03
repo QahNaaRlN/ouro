@@ -14,6 +14,10 @@ import { createCollaborativeDraftService } from './collaborative-drafts';
 import { isWellFormedUnicode } from '../packages/core/src/unicode';
 import {parseMeridianScope} from '../packages/meridian/src/context';
 import {resolveWorkspaceFolder,assertWorkspaceFolder} from './workspace-files';
+import {importPlaywrightReport,type PlaywrightImportProof} from './verification/playwright';
+import {observeVerificationWorkspace,observationHash,type ObservationConfig} from './verification/observation';
+import {runLocalVerification,type LocalRunnerProof} from './verification/local-runner';
+import {verificationObserveInputSchema,verificationRunnerInputSchema} from '@ouro/protocol';
 
 export class StoreError extends Error {
   constructor(public code: string, message: string, public details?: Record<string, unknown>) {
@@ -30,7 +34,7 @@ export type StoreOptions = { dataDir?: string; databaseUrl?: string; seedEvents?
 export type WorkspaceBinding={id:string;canonicalPath:string;identity:{dev:string;ino:string}};
 export type WorkspaceProject={id:string;name:string;rootPath:string|null;kind:'folder'|'demo';createdAt:string;createdBy:string;bindingId:string|null;rootIdentity:{dev:string;ino:string}|null};
 type WorkspaceProjectRow={id:string;name:string;root_path:string|null;kind:'folder'|'demo';created_at:Date|string;created_by:string;binding_id:string|null;root_dev:string|null;root_ino:string|null};
-type StoreOwner={db:Database;storage:'postgres'|'embedded-postgres';serialize:<T>(fn:()=>Promise<T>)=>Promise<T>;close:()=>Promise<void>;mailer?:OuroMailer};
+type StoreOwner={registerObserver:(id:string,poll:()=>Promise<unknown>)=>void;db:Database;storage:'postgres'|'embedded-postgres';serialize:<T>(fn:()=>Promise<T>)=>Promise<T>;close:()=>Promise<void>;mailer?:OuroMailer};
 export type AgentRegistration = { id:string; projectId:string; name:string; createdAt:string; createdBy:string; lastSeenAt:string|null; revokedAt:string|null };
 export type PublicGitHubDelivery = {id:string;deliveryId:string;repositoryId:number;repositoryFullName:string;ref:string;status:'pending'|'processing'|'retryable'|'processed'|'needs_review';attempts:number;reason:string|null;lastError:string|null;receivedAt:string;updatedAt:string;nextAttemptAt:string;commitCount:number};
 export type ClaimedGitHubDelivery = {id:string;deliveryId:string;projectId:string;payload:NormalizedGitHubPush;bindingIds:string[];leaseToken:string;attempts:number};
@@ -159,6 +163,10 @@ async function append(tx: Connection, events: DomainEvent[], state: ProjectState
     const persisted = await tx.query<{ content_hash: string }>('SELECT content_hash FROM ouro_spec_revisions WHERE id=$1', [revision.id]);
     if (persisted.rows[0]?.content_hash !== hash(revision)) throw new StoreError('IMMUTABLE_REVISION_CONFLICT', 'Содержание сохранённой ревизии изменилось.');
   }
+  for(const event of events.filter(item=>item.type==='VerificationRunRecorded')){
+    const run=state.verificationRuns.find(item=>item.id===(event.payload.run as {id:string}).id)!;
+    await tx.query('INSERT INTO ouro_verification_runs(id,project_id,event_id,verification_revision_id,target_revision_id,content,content_hash) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7)',[run.id,projectId,event.id,run.verificationRevisionId,run.targetRevisionId,JSON.stringify(run),hash(run)]);
+  }
   await tx.query('UPDATE ouro_projects SET version=$2 WHERE id=$1', [projectId, state.version]);
 }
 
@@ -184,7 +192,7 @@ async function assertCatalogOperator(tx:Connection,actor:Actor):Promise<void>{
 export async function createStore(options:StoreOptions={}):Promise<Store>{
   const selectedProjectId=projectIdValue(options.projectId??PROJECT_ID),db=await openDatabase(options);
   try{
-    const migrations=await Promise.all(['001_initial.sql','002_agents.sql','003_github.sql','004_participants.sql','005_drafts.sql','006_workspace_projects.sql','007_identity.sql','008_projects_memberships.sql','009_membership_regrants.sql'].map(file=>readFile(path.join(process.cwd(),'db','migrations',file),'utf8')));
+    const migrations=await Promise.all(['001_initial.sql','002_agents.sql','003_github.sql','004_participants.sql','005_drafts.sql','006_workspace_projects.sql','007_identity.sql','008_projects_memberships.sql','009_membership_regrants.sql','010_verification.sql','011_verification_runtime.sql'].map(file=>readFile(path.join(process.cwd(),'db','migrations',file),'utf8')));
     await db.transaction(async tx=>{
       // External PostgreSQL may have multiple app processes initializing together.
       if(options.databaseUrl)await tx.query('SELECT pg_advisory_xact_lock(187652019)');
@@ -210,8 +218,10 @@ export async function createStore(options:StoreOptions={}):Promise<Store>{
       if(closing)return Promise.reject(new StoreError('STORE_CLOSED','Хранилище закрыто.'));
       const run=tail.then(fn,fn);tail=run.catch(()=>undefined);return run;
     };
-    const owner:StoreOwner={db,storage:options.databaseUrl?'postgres':'embedded-postgres',serialize,mailer:options.mailer,close:()=>{
-      if(!closePromise){closing=true;closePromise=tail.then(()=>db.close());tail=closePromise.catch(()=>undefined);}
+    const observerPolls=new Map<string,()=>Promise<unknown>>();let observing=false;
+    const observerTimer=setInterval(()=>{if(closing||observing)return;observing=true;void Promise.allSettled([...observerPolls.values()].map(poll=>poll())).finally(()=>{observing=false;});},1000);observerTimer.unref();
+    const owner:StoreOwner={registerObserver:(id,poll)=>{observerPolls.set(id,poll);},db,storage:options.databaseUrl?'postgres':'embedded-postgres',serialize,mailer:options.mailer,close:()=>{
+      if(!closePromise){closing=true;clearInterval(observerTimer);observerPolls.clear();closePromise=tail.then(()=>db.close());tail=closePromise.catch(()=>undefined);}
       return closePromise;
     }};
     const cache=new Map<string,Store>();
@@ -224,7 +234,10 @@ export async function createStore(options:StoreOptions={}):Promise<Store>{
         const scoped=Object.assign(createProjectStore(projectId,owner),{forProject});cache.set(projectId,scoped);return scoped;
       });
     };
-    return await forProject(selectedProjectId);
+    const selected=await forProject(selectedProjectId);
+    const allProjects=await serialize(()=>db.query<{id:string}>('SELECT id FROM ouro_projects'));
+    for(const item of allProjects.rows)await forProject(item.id);
+    return selected;
   }catch(error){await db.close();throw error;}
 }
 
@@ -233,12 +246,12 @@ function createProjectStore(projectId:string,owner:StoreOwner){
   const scopedActor=(actor:Actor)=>assertActor(actor,projectId);
   const scopedHuman=(tx:Connection,actor:Actor)=>assertHumanActor(tx,actor,projectId);
   const projectEvents=(tx:Connection,after=0)=>readEvents(tx,after,projectId);
-  async function commitCommandInTransaction(tx:Connection,body:unknown,actor:Actor,internal=false,selectedProjectId=projectId):Promise<CommandResult>{
+  async function commitCommandInTransaction(tx:Connection,body:unknown,actor:Actor,internal=false,selectedProjectId=projectId,verificationOverride?:LocalRunnerProof):Promise<CommandResult>{
     assertActor(actor,selectedProjectId);
     if(!body||typeof body!=='object'||Array.isArray(body))throw new StoreError('VALIDATION_ERROR','Ожидается JSON-команда.');
     if('projectId' in body&&(body as {projectId?:unknown}).projectId!==selectedProjectId)throw new StoreError('FORBIDDEN','Команда не может изменить projectId, выбранный сервером.');
     const command=body as Command;
-    if(!internal&&['createGitHubBinding','recordGitHubCommit','importMeridianScope','initializeProject'].includes(command.type))throw new StoreError('FORBIDDEN','Команда доступна только соответствующему серверному адаптеру.');
+    if(!internal&&['createGitHubBinding','recordGitHubCommit','importMeridianScope','initializeProject','observeVerificationWorkspace'].includes(command.type))throw new StoreError('FORBIDDEN','Команда доступна только соответствующему серверному адаптеру.');
     if(typeof command.requestId!=='string'||command.requestId.length<8||command.requestId.length>200||!isWellFormedUnicode(command.requestId)||command.requestId.includes('\u0000')||!Number.isSafeInteger(command.expectedVersion)||command.expectedVersion<0)throw new StoreError('VALIDATION_ERROR','Нужны допустимый requestId и неотрицательная expectedVersion.');
     const payloadHash=hash(body);
       await tx.query('SELECT version FROM ouro_projects WHERE id=$1 FOR UPDATE',[selectedProjectId]);
@@ -251,6 +264,10 @@ function createProjectStore(projectId:string,owner:StoreOwner){
       if(duplicate.rows[0]){
         if(duplicate.rows[0].payload_hash!==payloadHash)throw new StoreError('IDEMPOTENCY_CONFLICT','Этот requestId уже использован с другим содержимым.');
         return {...duplicate.rows[0].response,replayed:true};
+      }
+      if(!internal){
+        const reserved=await tx.query('SELECT request_id FROM ouro_verification_runner_requests WHERE project_id=$1 AND actor_id=$2 AND request_id=$3',[selectedProjectId,actor.id,command.requestId]);
+        if(reserved.rows.length)throw new StoreError('IDEMPOTENCY_CONFLICT','Этот requestId уже принадлежит другой операции verification.');
       }
       if(['startProjectWork','startExecution','authorizeRemediation'].includes(command.type)){
         const binding=workspaceBinding(await readWorkspaceProject(tx,selectedProjectId));
@@ -274,7 +291,15 @@ function createProjectStore(projectId:string,owner:StoreOwner){
         meridianImport={rawDocument:command.rawDocument,documentSha256:createHash('sha256').update(command.rawDocument,'utf8').digest('hex')};
       }
       let applied:ReturnType<typeof applyCommand>;
-      try{applied=applyCommand(state,command,actor,{revokedAgent,meridianImport});}
+      let verificationImport:PlaywrightImportProof|LocalRunnerProof|undefined;
+      if(command.type==='reportVerificationRun'){
+        const execution=state.executions.find(item=>item.id===command.executionId);
+        if(!execution||actor.kind==='agent'&&execution.agentId!==actor.id)throw new StoreError('FORBIDDEN','Прогон не соответствует назначению.');
+        const contract=state.revisions.find(item=>item.id===execution.specRevisionId)?.verification;
+        if(!contract)throw new StoreError('VALIDATION_ERROR','Назначенная ревизия не содержит проверочного контракта.');
+        verificationImport=verificationOverride??importPlaywrightReport(command.report,contract);
+      }
+      try{applied=applyCommand(state,command,actor,{revokedAgent,meridianImport,verificationImport});}
       catch(error){
         if(command.type==='importMeridianScope'&&error instanceof DomainError&&error.code==='VERSION_CONFLICT')throw new StoreError(error.code,error.message,{...error.details,meridianReceipt:'absent'});
         throw error;
@@ -299,8 +324,124 @@ function createProjectStore(projectId:string,owner:StoreOwner){
   const drafts=createCollaborativeDraftService({projectId,db,serialize,lockProject:(tx,id)=>lockProject(tx as Connection,id),assertHuman:(tx,actor,id)=>assertHumanActor(tx as Connection,actor,id),assertWrite:async(tx,actor,id)=>{await assertHumanActor(tx as Connection,actor,id);await requireProjectRole(tx as Connection,actor,id,['Owner','Contributor']);},state:async(tx,id)=>replay(await readEvents(tx as Connection,0,id),id),commit:(tx,body,actor,id)=>commitCommandInTransaction(tx as Connection,body,actor,false,id),hash});
   const projects=createProjectService({db,serialize,mailer:owner.mailer});
   const userAuth=createUserAuth({db,serialize,resolveProjectIds:resolveAccountProjectIds});
+
+  const observerActor:Actor={id:'ouro-verification-observer',kind:'service',name:'Наблюдатель проверки Ouro',projectIds:[projectId]};
+  const readState=()=>serialize(()=>db.transaction(async tx=>replay(await readEvents(tx,0,projectId),projectId)));
+  const observerBinding=()=>serialize(async()=>workspaceBinding(await readWorkspaceProject(db,projectId)));
+  const recordObservation=async(verificationRevisionId:string,configId:string,config:ObservationConfig)=>{
+    const binding=await observerBinding();
+    if(!binding)throw new StoreError('INVALID_TRANSITION','Наблюдение требует привязку к папке проекта.');
+    const observation=await observeVerificationWorkspace(binding,config),state=await readState();
+    const previous=state.verificationObservations.findLast(item=>item.verificationRevisionId===verificationRevisionId&&item.configId===configId);
+    if(previous?.observation.digest===observation.digest)return {state,events:[],cursor:state.version,replayed:true} satisfies CommandResult;
+    const requestId='verification-observer-'+observationHash({configId,previous:previous?.id??null,digest:observation.digest});
+    return commitCommand({type:'observeVerificationWorkspace',verificationRevisionId,configId,observation,requestId,expectedVersion:state.version},observerActor,true);
+  };
+  owner.registerObserver(projectId,async()=>{
+    const state=await readState();
+    const active=state.specs.filter(spec=>spec.activeRevisionId&&spec.state!=='invalidated').map(spec=>spec.activeRevisionId);
+    const configurations=state.verificationObservationConfigs.filter((item,index,all)=>active.includes(item.verificationRevisionId)&&!all.slice(index+1).some(later=>later.verificationRevisionId===item.verificationRevisionId));
+    for(const configuration of configurations){try{await recordObservation(configuration.verificationRevisionId,configuration.id,configuration.config);}catch(error){if((error as {code?:string}).code==='STORE_CLOSED')return;/* A concurrent revision/CAS change is retried by the next bounded tick. */}}
+  });
+  type RuntimeInput={requestId:string;expectedVersion:number};
+  const runtimeInFlight=new Map<string,{digest:string;promise:Promise<CommandResult>}>();
+  const runtimeOperation=(kind:string,input:RuntimeInput,actor:Actor,work:(state:ProjectState)=>Promise<CommandResult>):Promise<CommandResult>=>{
+    const key=actor.id+':'+input.requestId,payloadHash=hash({kind,input}),existing=runtimeInFlight.get(key);
+    if(existing)return serialize(()=>db.transaction(async tx=>{
+      assertActor(actor,projectId);await assertHumanActor(tx,actor,projectId);await requireProjectRole(tx,actor,projectId,['Owner','Contributor']);
+      if(existing.digest!==payloadHash)throw new StoreError('IDEMPOTENCY_CONFLICT','Этот requestId уже используется с другим содержимым.');
+    })).then(()=>existing.promise);
+    const promise=(async()=>{
+      const prepared=await serialize(()=>db.transaction(async tx=>{
+        assertActor(actor,projectId);await assertHumanActor(tx,actor,projectId);await requireProjectRole(tx,actor,projectId,['Owner','Contributor']);
+        await registerActor(tx,actor);await lockProject(tx);
+        const commandReceipt=await tx.query('SELECT request_id FROM ouro_command_receipts WHERE project_id=$1 AND actor_id=$2 AND request_id=$3',[projectId,actor.id,input.requestId]);
+        if(commandReceipt.rows.length)throw new StoreError('IDEMPOTENCY_CONFLICT','Этот requestId уже принадлежит доменной команде.');
+        const duplicate=await tx.query<{payload_hash:string;status:string;response:CommandResult|null;failure:{code:string;message:string;details?:Record<string,unknown>}|null}>('SELECT payload_hash,status,response,failure FROM ouro_verification_runner_requests WHERE project_id=$1 AND actor_id=$2 AND request_id=$3',[projectId,actor.id,input.requestId]);
+        if(duplicate.rows[0]){
+          const row=duplicate.rows[0];if(row.payload_hash!==payloadHash)throw new StoreError('IDEMPOTENCY_CONFLICT','Этот requestId уже использован с другим содержимым.');
+          if(row.status==='completed'&&row.response)return {response:{...row.response,replayed:true}};
+          if(row.status==='pending'||row.status==='failed'){
+            const resultKey=(kind==='runVerification'?'verification-local-result-':'verification-observe-result-')+hash({actor:actor.id,requestId:input.requestId});
+            const recovered=await tx.query<{response:CommandResult}>('SELECT response FROM ouro_command_receipts WHERE project_id=$1 AND actor_id=$2 AND request_id=$3',[projectId,observerActor.id,resultKey]);
+            if(recovered.rows[0]){await tx.query("UPDATE ouro_verification_runner_requests SET status='completed',response=$4::jsonb,failure=NULL,finished_at=now() WHERE project_id=$1 AND actor_id=$2 AND request_id=$3 AND status IN ('pending','failed')",[projectId,actor.id,input.requestId,JSON.stringify(recovered.rows[0].response)]);return {response:{...recovered.rows[0].response,replayed:true}};}
+          }
+          if(row.status==='failed'&&row.failure)throw new StoreError(row.failure.code,row.failure.message,row.failure.details);
+          throw new StoreError('RUNNER_OUTCOME_UNKNOWN','Операция уже зарезервирована. Сохраните прежний requestId/body и проверьте исход; новый процесс автоматически не запускается.',{outcomeUnknown:true,requestId:input.requestId});
+        }
+        const state=replay(await readEvents(tx,0,projectId),projectId);
+        if(state.version!==input.expectedVersion)throw new StoreError('VERSION_CONFLICT','Состояние изменилось. Перечитайте проект.',{currentVersion:state.version});
+        await tx.query("INSERT INTO ouro_verification_runner_requests(project_id,actor_id,request_id,payload_hash,request,status) VALUES($1,$2,$3,$4,$5::jsonb,'pending')",[projectId,actor.id,input.requestId,payloadHash,JSON.stringify({kind,input})]);
+        return {state};
+      }));
+      if('response'in prepared)return prepared.response!;
+      let response:CommandResult;
+      try{response=await work(prepared.state!);}catch(error){
+        const failure={code:(error as {code?:string}).code??'VERIFICATION_RUNTIME_ERROR',message:(error as Error).message,details:(error as {details?:Record<string,unknown>}).details};
+        await serialize(()=>db.query("UPDATE ouro_verification_runner_requests SET status='failed',failure=$4::jsonb,finished_at=now() WHERE project_id=$1 AND actor_id=$2 AND request_id=$3 AND status='pending'",[projectId,actor.id,input.requestId,JSON.stringify(failure)]));
+        throw error;
+      }
+      try{
+        await serialize(()=>db.query("UPDATE ouro_verification_runner_requests SET status='completed',response=$4::jsonb,finished_at=now() WHERE project_id=$1 AND actor_id=$2 AND request_id=$3 AND status='pending'",[projectId,actor.id,input.requestId,JSON.stringify(response)]));
+      }catch{
+        // The immutable receipt already committed. Never turn that success into a failed admission.
+        throw new StoreError('RUNNER_OUTCOME_UNKNOWN','Доменный результат сохранён; подтверждение ответа не завершено. Повторите прежний requestId и тело для получения сохранённой квитанции.',{outcomeUnknown:true,requestId:input.requestId});
+      }
+      return response;
+    })();
+    runtimeInFlight.set(key,{digest:payloadHash,promise});void promise.finally(()=>runtimeInFlight.delete(key)).catch(()=>undefined);return promise;
+  };
+  const observeVerification=(body:unknown,actor:Actor):Promise<CommandResult>=>{
+    const parsed=verificationObserveInputSchema.safeParse(body);if(!parsed.success)return Promise.reject(new StoreError('VALIDATION_ERROR','Некорректная конфигурация наблюдения.'));
+    const input=parsed.data;
+    return runtimeOperation('observeVerification',input,actor,async initial=>{
+      const existing=initial.verificationObservationConfigs.findLast(item=>item.verificationRevisionId===input.verificationRevisionId);
+      const config=input.config??existing?.config,binding=await observerBinding();
+      if(!config||!binding)throw new StoreError('INVALID_TRANSITION','Нужно определить наблюдаемые файлы и папку проекта.');
+      const observation=await observeVerificationWorkspace(binding,config);
+      // Configuration admission and its first observation are one atomic transaction.
+      return serialize(()=>db.transaction(async tx=>{
+        await lockProject(tx);
+        let state=replay(await readEvents(tx,0,projectId),projectId);
+        if(state.version!==initial.version)throw new StoreError('VERSION_CONFLICT','Состояние изменилось во время наблюдения.',{currentVersion:state.version});
+        if(input.config){
+          const configured=await commitCommandInTransaction(tx,{type:'configureVerificationObservation',verificationRevisionId:input.verificationRevisionId,config:input.config,reason:input.reason!,requestId:'verification-configure-'+hash({actor:actor.id,requestId:input.requestId}),expectedVersion:state.version},actor);
+          state=configured.state;
+        }
+        const current=state.verificationObservationConfigs.findLast(item=>item.verificationRevisionId===input.verificationRevisionId);
+        if(!current)throw new StoreError('NOT_FOUND','Конфигурация наблюдения не найдена.');
+        return commitCommandInTransaction(tx,{type:'observeVerificationWorkspace',verificationRevisionId:input.verificationRevisionId,configId:current.id,observation,requestId:'verification-observe-result-'+hash({actor:actor.id,requestId:input.requestId}),expectedVersion:state.version},observerActor,true);
+      }));
+    });
+  };
+  const runVerification=(body:unknown,actor:Actor):Promise<CommandResult>=>{
+    const parsed=verificationRunnerInputSchema.safeParse(body);if(!parsed.success)return Promise.reject(new StoreError('VALIDATION_ERROR','Запуск принимает только назначение, границу и ключ повторного запроса.'));
+    const input=parsed.data;
+    return runtimeOperation('runVerification',input,actor,async state=>{
+      const execution=state.executions.find(item=>item.id===input.executionId),revision=state.revisions.find(item=>item.id===execution?.specRevisionId);
+      if(!execution||!revision?.verification)throw new StoreError('NOT_FOUND','Назначение проверочной ревизии не найдено.');
+      const config=state.verificationObservationConfigs.findLast(item=>item.verificationRevisionId===revision.id),binding=await observerBinding();
+      if(!config||!binding)throw new StoreError('INVALID_TRANSITION','Нужно сначала определить наблюдаемый срез в папке проекта.');
+      await serialize(()=>assertRegisteredAgentActive(db,{id:execution.agentId,kind:'agent',projectIds:[projectId]},projectId));
+      // Reuse ordinary report guards as a discarded preflight, rather than a second authority machine.
+      const probeReport={slice:{productRevision:'preflight',testRevision:'preflight',fixtureRevision:'preflight',environmentDigest:'0'.repeat(64)},scopeCaseIds:input.scopeCaseIds,artifactRef:'preflight://not-a-run',rawReport:JSON.stringify({suites:[],errors:[],stats:{expected:0,unexpected:0,flaky:0,skipped:0}}),startedAt:new Date().toISOString(),finishedAt:new Date().toISOString(),...(execution.flowRuntime?.currentRunId?{flowStepRunId:execution.flowRuntime.currentRunId}:{})};
+      applyCommand(state,{type:'reportVerificationRun',executionId:execution.id,report:probeReport,requestId:'verification-runtime-preflight',expectedVersion:state.version},actor,{verificationImport:importPlaywrightReport(probeReport,revision.verification)});
+      const result=await runLocalVerification({binding,config:config.config,contract:revision.verification,scopeCaseIds:input.scopeCaseIds,submittedBy:actor.id,...(execution.flowRuntime?.currentRunId?{flowStepRunId:execution.flowRuntime.currentRunId}:{}),shouldStop:async()=>{
+        const current=await readState(),attempt=current.executions.find(item=>item.id===execution.id),spec=current.specs.find(item=>item.id===execution.specId),target=current.specs.find(item=>item.id===revision.verification!.targetSpecId);
+        if(!attempt||attempt.state!=='running'||attempt.stopRequested||spec?.activeRevisionId!==revision.id||target?.activeRevisionId!==revision.verification!.targetRevisionId||current.roadmap.state!=='active')return true;
+        try{await serialize(async()=>{await assertHumanActor(db,actor,projectId);await requireProjectRole(db,actor,projectId,['Owner','Contributor']);await assertRegisteredAgentActive(db,{id:execution.agentId,kind:'agent',projectIds:[projectId]},projectId);});return false;}catch{return true;}
+      }});
+      try{await recordObservation(revision.id,config.id,config.config);}catch(error){if(!['REVISION_CONFLICT','INVALID_TRANSITION','VERSION_CONFLICT'].includes((error as {code:string}).code))throw error;}
+      return serialize(()=>db.transaction(async tx=>{
+        await lockProject(tx);
+        const latest=replay(await readEvents(tx,0,projectId),projectId);
+        return commitCommandInTransaction(tx,{type:'reportVerificationRun',executionId:execution.id,report:result.proof.report,requestId:'verification-local-result-'+hash({actor:actor.id,requestId:input.requestId}),expectedVersion:latest.version},observerActor,true,projectId,result.proof);
+      }));
+    });
+  };
   return {
     ...participants,...drafts,...projects,...userAuth,
+    observeVerification,runVerification,
     projectId,
     storage:owner.storage,
     getWorkspaceProject:(id:string):Promise<WorkspaceProject|null>=>serialize(()=>readWorkspaceProject(db,projectIdValue(id))),

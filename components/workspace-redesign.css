@@ -1,3 +1,4 @@
+.ws-shell .ws-topbar a,.ws-shell .ws-topbar a:hover{text-decoration:none}
 .ws-shell{--primary:#93dfbf;--primary-text:#12231c}
 .ws-shell [hidden]{display:none!important}
 .ws-shell .ws-brand:hover{text-decoration:none}

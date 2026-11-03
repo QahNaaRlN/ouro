@@ -8,6 +8,7 @@
 
 | Порядок | Результат | Статус |
 |---|---|---|
+| Текущая интеграция | Версионируемые проверки и парные карточки работы / проверки | `feat/verification-pairs@d9e8e44` опубликована; по поручению владельца готовится путь через `dev` → `main` поверх beta.3. [Журнал интеграции](plans/verification-production.md), [контракт](specs/verification-pairs.md), [прежние проверки и ограничения](verification-validation.md). Облачный деплой, согласование [local/cloud](proposals/local-cloud-modes.md) и живой Concord-пилот имеют отдельные границы. |
 | 0 | Human View, статусное ядро, immutable история, Roadmap/Reality | alpha.1, PR #1 |
 | 0 | Реальные MCP HTTP/stdio, регистрации и назначения агентов | alpha.2, PR #2 |
 | 1 | Процессные схемы внутри ревизий и визуальные статусные переходы | alpha.3: OURO-ENG-000002, 63 unit/integration +13 E2E |

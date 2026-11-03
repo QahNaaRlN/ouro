@@ -70,5 +70,5 @@
       ]
     }
   },
-  "$id": "urn:ouro:protocol:0.1.2:flow-traversal"
+  "$id": "urn:ouro:protocol:0.3.0:flow-traversal"
 }
