@@ -18,6 +18,14 @@ Use lowercase English kebab-case for `<name>`, for example `feat/agent-clients` 
 
 After a release or hotfix, bring the accepted `main` changes back into `dev`. Preserve feature branches needed for existing work. Do not force-push or delete `main` or `dev`.
 
+### React and Vite epic
+
+The owner authorized `codex/react-vite-epic` as an integration branch started from current `origin/dev`. Bounded migration stories start from that epic and open pull requests **into the epic**, not directly into `dev` or `main`. This is the explicit epic exception to the ordinary bounded-branch targets above. Keep approved branch names and Conventional Commit subjects, including merge commit subjects.
+
+Each atomic branch has a specification, meaningful checks and an implementation journal. Merge it into the epic only after its exact head passes the applicable checks and review. Preserve the individual story history. The complete epic enters `dev` after the migration compatibility gates; release branches still target `main`. Creating the epic does not authorize production deployment or changing user data.
+
+Current stories: `codex/react-vite-foundation`, `codex/portable-client-contracts`, `codex/service-qualification` and `codex/tailwind-primitives`. The full conversion of ordinary UI CSS to Tailwind CSS 4 is an epic acceptance requirement; a first primitive conversion is only one bounded contribution.
+
 ## Commit and pull request messages
 
 Follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/):
