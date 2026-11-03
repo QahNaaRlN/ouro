@@ -6,6 +6,9 @@ import {submitProposalCommandSchema,reviewProposalCommandSchema,adoptProposalCom
 import {parseMeridianScope,mapMeridianExpectation} from '../../meridian/src/context';
 import {isWellFormedUnicode} from './unicode';
 import {createFlowRuntime,createFlowRun,currentFlowRun,requireFlowRuntime,flowForExecution,flowNode,assertFlowStepActor,selectFlowEdge,assertFlowHumanFacts,assertFlowInterruptFacts,currentFlowRequest,projectFlowRuntimeEvent} from './flow-runtime';
+import {verificationRunSchema,verificationSliceSchema,verificationAssessmentSchema,verificationPhaseSchema,verificationImportSchema,verificationCommandSchema} from '@ouro/protocol';
+import {validateVerificationContract,verificationChanges,getVerificationReadiness,qualifiedVerificationBaseline,verificationInputsComparable,sameSlice} from './verification';
+import type {VerificationRun,VerificationReview,VerificationSliceRecord,VerificationPhaseRecord,VerificationPhase,VerificationImport,VerificationCycle,VerificationRefactorAdmission,VerificationObservationConfigRecord,VerificationObservationRecord,VerificationArtifactManifest} from './types';
 import type { Actor, Command, DecisionRequest, DomainEvent, Execution, FlowDefinition, FlowNodeKind, FlowStepRun, GitHubBinding, GitHubCommitSource, Lesson, LessonContent, LessonRevision, ProjectState, RevisionContent, Spec, SpecRevision, AgentProposal, AgentProposalRevision, AgentProposalContent } from './types';
 
 export const PROJECT_ID = '6c7c62dc-694c-4c7b-9cb1-d9e605164001';
@@ -29,7 +32,7 @@ export function validateFlowDefinition(value:unknown):asserts value is FlowDefin
   }
 }
 export function emptyState(projectId = PROJECT_ID): ProjectState {
-  return { projectId, version: 0, roadmap: { id: '7fa3e5d0-e946-4684-9a1a-540eaa334001', title: 'Ouro · Human View', goal: 'От ожидания к проверяемому результату', state: 'active' }, specs: [], revisions: [], executions: [], requests: [], dependencies: [], events: [],githubBindings:[],lessons:[],lessonRevisions:[],agentProposals:[],agentProposalRevisions:[] };
+  return { projectId, version: 0, roadmap: { id: '7fa3e5d0-e946-4684-9a1a-540eaa334001', title: 'Ouro · Human View', goal: 'От ожидания к проверяемому результату', state: 'active' }, specs: [], revisions: [], executions: [], requests: [], dependencies: [], events: [],githubBindings:[],lessons:[],lessonRevisions:[],agentProposals:[],agentProposalRevisions:[],verificationRuns:[],verificationReviews:[],verificationSlices:[],verificationPhases:[],verificationCycles:[],verificationRefactorAdmissions:[],verificationObservationConfigs:[],verificationObservations:[] };
 }
 
 /** Deterministic projection. Authoritative events and historical revisions are never updated. */
@@ -40,6 +43,18 @@ export function replay(events: readonly DomainEvent[], projectId = PROJECT_ID,on
     if (event.causationId && !state.events.some(prior => prior.id === event.causationId)) fail('INVALID_EVENT_STREAM', 'Причинная ссылка должна указывать на ранее зафиксированное событие');
     const p = copy(event.payload);
     switch (event.type) {
+      case 'VerificationRunRecorded':state.verificationRuns.push(p.run as VerificationRun);break;
+      case 'VerificationRunReviewed':state.verificationReviews.push(p.review as VerificationReview);break;
+      case 'VerificationSliceDeclared':state.verificationSlices.push(p.sliceRecord as VerificationSliceRecord);break;
+      case 'VerificationPhaseRecorded':state.verificationPhases.push(p.phaseRecord as VerificationPhaseRecord);break;
+      case 'VerificationCycleStarted':state.verificationCycles.push(p.cycle as VerificationCycle);break;
+      case 'VerificationCycleAdvanced':{
+        const cycle=state.verificationCycles.find(item=>item.id===p.cycleId)!;
+        const transition=p.transition as VerificationCycle['transitions'][number];cycle.phase=transition.phase;cycle.transitions.push(transition);if(transition.greenRunIds)cycle.greenRunIds=transition.greenRunIds;break;
+      }
+      case 'VerificationRefactorAdmitted':state.verificationRefactorAdmissions.push(p.admission as VerificationRefactorAdmission);break;
+      case 'VerificationObservationConfigured':state.verificationObservationConfigs.push(p.configRecord as VerificationObservationConfigRecord);break;
+      case 'VerificationWorkspaceObserved':state.verificationObservations.push(p.observationRecord as VerificationObservationRecord);if(p.sliceRecord)state.verificationSlices.push(p.sliceRecord as VerificationSliceRecord);break;
       case 'ProjectInitialized': state.roadmap=copy(p.roadmap) as ProjectState['roadmap'];break;
       case 'SpecCreated': state.specs.push(p.spec as Spec); state.revisions.push(p.revision as SpecRevision); break;
       case 'RevisionProposed': {
@@ -194,8 +209,9 @@ function rejectClaimedAdapterOrigin(command:Command,content:RevisionContent):voi
 }
 
 /** A command creates facts; only replay derives current state. No external process is executed here. */
-export function applyCommand(state: ProjectState, command: Command, actor: Actor, environment: { now?: string; id?: () => string; revokedAgent?:{id:string;revokedAt:string;revokedBy:string};meridianImport?:{rawDocument:string;documentSha256:string} } = {}): { state: ProjectState; events: DomainEvent[] } {
+export function applyCommand(state: ProjectState, command: Command, actor: Actor, environment: { now?: string; id?: () => string; revokedAgent?:{id:string;revokedAt:string;revokedBy:string};meridianImport?:{rawDocument:string;documentSha256:string};verificationImport?:{report:VerificationImport;results:VerificationRun['results'];outcome:VerificationRun['outcome'];sha256:string;source?:VerificationRun['source'];artifactManifest?:VerificationArtifactManifest} } = {}): { state: ProjectState; events: DomainEvent[] } {
   if (!command || typeof command !== 'object') fail('VALIDATION_ERROR', 'Команда должна быть объектом');
+  if(['reportVerificationRun','reviewVerificationRun','setVerificationSlice','recordVerificationPhase','reportManualVerificationRun','beginVerificationCycle','advanceVerificationCycle','admitVerificationRefactor','configureVerificationObservation','observeVerificationWorkspace'].includes(command.type)&&!verificationCommandSchema.safeParse(command).success)fail('VALIDATION_ERROR','Команда проверки не соответствует закрытой схеме.');
   text(command.requestId, 'requestId');
   if (!Number.isSafeInteger(command.expectedVersion) || command.expectedVersion < 0) fail('VALIDATION_ERROR', 'expectedVersion должен быть целым неотрицательным числом');
   if (!actor || !['human', 'agent', 'service'].includes(actor.kind) || !Array.isArray(actor.projectIds) || !actor.projectIds.includes(state.projectId)) fail('FORBIDDEN', 'Нет доступа к проекту');
@@ -249,7 +265,152 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
     ['FlowEdgeTraversed','FlowStepRetried'].includes(event.type)&&(event.payload.run as {id?:string}|undefined)?.id===runId||
     event.type==='ExecutionCreated'&&(event.payload.execution as Execution|undefined)?.flowRuntime?.runs.some(run=>run.id===runId)===true
   ));
+  const verificationRevision=(revisionId:string)=>{
+    const revision=state.revisions.find(item=>item.id===revisionId&&item.verification)??fail('NOT_FOUND','Проверочная ревизия не найдена.');
+    const spec=getSpec(revision.specId);activeRevision(spec,revision.id);
+    const target=getSpec(revision.verification!.targetSpecId);activeRevision(target,revision.verification!.targetRevisionId);
+    return revision;
+  };
+  const contentContract=(content:RevisionContent,specId?:string)=>{
+    validateVerificationContract(state,content.verification,specId);
+    if(specId){const first=state.revisions.find(item=>item.id===getSpec(specId).revisionIds[0]);
+      if(!!first?.verification!==!!content.verification)fail('VALIDATION_ERROR','Роль спеки не меняется между ревизиями.');
+      const previous=state.revisions.find(item=>item.id===getSpec(specId).revisionIds.at(-1));
+      if(verificationChanges(previous?.verification,content.verification).length)text(content.comment,'Основание изменения проверочного ожидания');
+    }
+  };
   switch (command.type) {
+    case 'configureVerificationObservation':{
+      human();const revision=verificationRevision(command.verificationRevisionId);
+      const configRecord:VerificationObservationConfigRecord={id:id(),verificationRevisionId:revision.id,config:copy(command.config),reason:command.reason,actorId:actor.id,at:now};
+      emit('VerificationObservationConfigured',{configRecord},{specId:revision.specId,specRevisionId:revision.id});break;
+    }
+    case 'observeVerificationWorkspace':{
+      if(actor.kind!=='service'||actor.id!=='ouro-verification-observer')fail('FORBIDDEN','Наблюдение записывает только серверный адаптер.');
+      const revision=verificationRevision(command.verificationRevisionId),config=state.verificationObservationConfigs.findLast(item=>item.verificationRevisionId===revision.id);
+      if(config?.id!==command.configId)fail('REVISION_CONFLICT','Настройка наблюдения изменилась.');
+      const previous=state.verificationObservations.findLast(item=>item.verificationRevisionId===revision.id);
+      if(previous?.configId===command.configId&&JSON.stringify(previous.observation)===JSON.stringify(command.observation))break;
+      const observationRecord:VerificationObservationRecord={id:id(),verificationRevisionId:revision.id,configId:command.configId,observation:copy(command.observation),at:now};
+      const sliceRecord=command.observation.status==='observed'?{id:id(),verificationRevisionId:revision.id,slice:copy(command.observation.slice),reason:'Сервер наблюдал ограниченный набор файлов и capabilities.',actorId:actor.id,at:now}:undefined;
+      emit('VerificationWorkspaceObserved',{observationRecord,...(sliceRecord?{sliceRecord}:{})},{specId:revision.specId,specRevisionId:revision.id});break;
+    }
+    case 'admitVerificationRefactor':{
+      human();const revision=verificationRevision(command.verificationRevisionId),contract=revision.verification!;
+      if(command.scopeCaseIds.some(caseId=>!contract.cases.some(item=>item.id===caseId)))fail('VALIDATION_ERROR','Случай вне проверочного контракта.');
+      if(command.fromSlice.fixtureRevision!==command.toSlice.fixtureRevision||command.fromSlice.environmentDigest!==command.toSlice.environmentDigest||command.fromSlice.testRevision===command.toSlice.testRevision)fail('VALIDATION_ERROR','Допуск refactor связывает разные версии тестов при неизменных данных и окружении.');
+      if(!state.verificationRuns.some(run=>run.verificationRevisionId===revision.id&&sameSlice(run.slice,command.fromSlice)))fail('VALIDATION_ERROR','Для refactor нужен исходный наблюдаемый прогон.');
+      const admission:VerificationRefactorAdmission={id:id(),verificationRevisionId:revision.id,fromSlice:copy(command.fromSlice),toSlice:copy(command.toSlice),scopeCaseIds:copy(command.scopeCaseIds),reason:command.reason,evidence:command.evidence,actorId:actor.id,at:now};
+      emit('VerificationRefactorAdmitted',{admission},{specId:revision.specId,specRevisionId:revision.id});break;
+    }
+    case 'beginVerificationCycle':{
+      human();const revision=verificationRevision(command.verificationRevisionId),contract=revision.verification!,current=state.verificationSlices.findLast(item=>item.verificationRevisionId===revision.id);
+      if(contract.workflow==='verification'||!current)fail('INVALID_TRANSITION','Для цикла нужен TDD/preservation контракт и текущий срез.');
+      if(!getVerificationReadiness(state,revision,command.scopeCaseIds).implementationReady)fail('INVALID_TRANSITION','Текущий срез не подтверждает условия начала цикла.');
+      if(command.scopeCaseIds.some(caseId=>!contract.cases.some(item=>item.id===caseId)))fail('VALIDATION_ERROR','Случай вне проверочного контракта.');
+      if(state.verificationCycles.some(item=>item.verificationRevisionId===revision.id&&!['acceptance','cancelled'].includes(item.phase)&&item.scopeCaseIds.some(caseId=>command.scopeCaseIds.includes(caseId))))fail('INVALID_TRANSITION','Для выбранных случаев уже открыт цикл.');
+      const baseline=qualifiedVerificationBaseline(state,revision,command.scopeCaseIds,current.slice,command.baselineRunIds);
+      if(!baseline.length||command.baselineRunIds.some(runId=>!baseline.some(run=>run.id===runId))||baseline.some(run=>run.slice.productRevision!==current.slice.productRevision))fail('INVALID_TRANSITION','Нужны точные подтверждённые RED/baseline прогоны текущего продукта и выбранной границы.');
+      const cycle:VerificationCycle={id:id(),verificationRevisionId:revision.id,targetRevisionId:contract.targetRevisionId,workflow:contract.workflow as 'tdd'|'preservation',scopeCaseIds:copy(command.scopeCaseIds),phase:'preparation',baselineRunIds:copy(command.baselineRunIds),greenRunIds:[],createdBy:actor.id,createdAt:now,transitions:[{phase:'preparation',actorId:actor.id,at:now,evidence:command.reason}]};
+      emit('VerificationCycleStarted',{cycle},{specId:revision.specId,specRevisionId:revision.id});break;
+    }
+    case 'advanceVerificationCycle':{
+      const cycle=state.verificationCycles.find(item=>item.id===command.cycleId)??fail('NOT_FOUND','Цикл не найден.');
+      if(command.phase==='cancelled')human();
+      const revision=command.phase==='cancelled'?state.revisions.find(item=>item.id===cycle.verificationRevisionId)!:verificationRevision(cycle.verificationRevisionId),contract=revision.verification!;
+      if(['acceptance','cancelled'].includes(cycle.phase))fail('INVALID_TRANSITION','Цикл закрыт; следующий цикл имеет новый ID.');
+      if(actor.kind!=='human'){
+        if(actor.kind!=='agent')fail('FORBIDDEN','Фаза требует человека или назначенного агента.');
+        const execution=getExecution(command.executionId??'');agent(execution);flowCanAdvance(execution);if(execution.specRevisionId!==revision.id)fail('FORBIDDEN','Цикл не соответствует назначению.');
+      }else if(command.executionId&&getExecution(command.executionId).specRevisionId!==revision.id)fail('FORBIDDEN','Цикл не соответствует назначению.');
+      const allowed:Record<VerificationCycle['phase'],string[]>={preparation:['implementation','cancelled'],implementation:['verification','cancelled'],verification:['refactoring','acceptance','cancelled'],refactoring:['verification','cancelled'],acceptance:[],cancelled:[]};
+      if(!allowed[cycle.phase].includes(command.phase))fail('INVALID_TRANSITION','Этап цикла нельзя пропускать.');
+      if(command.phase!=='cancelled'){
+        const current=state.verificationSlices.findLast(item=>item.verificationRevisionId===revision.id)??fail('INVALID_TRANSITION','Нужен текущий срез.');
+        if(!getVerificationReadiness(state,revision,cycle.scopeCaseIds).implementationReady)fail('INVALID_TRANSITION','Условия текущего наблюдаемого среза не подтверждены.');
+        if(!qualifiedVerificationBaseline(state,revision,cycle.scopeCaseIds,current.slice,cycle.baselineRunIds).length)fail('INVALID_TRANSITION','Исходный RED/baseline больше не сопоставим или его заключение пересмотрено.');
+      }
+      const work=state.executions.findLast(item=>item.specId===contract.targetSpecId&&item.specRevisionId===contract.targetRevisionId&&item.kind==='primary');
+      if(['implementation','refactoring'].includes(command.phase)&&(!work||work.state!=='running'||work.stopRequested))fail('INVALID_TRANSITION','Реализация/refactoring требуют фактически выполняемую назначенную работу.');
+      if(command.phase==='verification'&&(!work||!['running','succeeded'].includes(work.state)||work.stopRequested))fail('INVALID_TRANSITION','Нужна фактическая назначенная работа на целевой ревизии.');
+      let greenRunIds:string[]|undefined;
+      if(['refactoring','acceptance'].includes(command.phase)){
+        const readiness=getVerificationReadiness(state,revision,cycle.scopeCaseIds);greenRunIds=command.greenRunIds??readiness.runIds;
+        if(!readiness.ready||greenRunIds.length!==readiness.runIds.length||readiness.runIds.some(runId=>!greenRunIds!.includes(runId)))fail('INVALID_TRANSITION','Нужны точные последние применимые GREEN прогоны всей границы цикла.');
+        const verificationVisit=cause(event=>event.type==='VerificationCycleAdvanced'&&event.payload.cycleId===cycle.id&&(event.payload.transition as {phase?:string})?.phase==='verification');
+        const visitVersion=state.events.find(event=>event.id===verificationVisit)?.version??Number.MAX_SAFE_INTEGER;
+        if(greenRunIds.some(runId=>!state.events.some(event=>event.type==='VerificationRunRecorded'&&(event.payload.run as VerificationRun)?.id===runId&&event.version>visitVersion)))fail('INVALID_TRANSITION','GREEN должен быть получен после текущего входа в verification; прежний baseline/прогон не подставляется.');
+        if(command.phase==='acceptance'&&work?.state!=='succeeded')fail('INVALID_TRANSITION','К приёмке предъявляется результат завершённой работы.');
+      }else if(command.greenRunIds!==undefined)fail('VALIDATION_ERROR','GREEN-ссылки записываются при refactoring или acceptance.');
+      const transition={phase:command.phase,actorId:actor.id,at:now,evidence:command.evidence,...(greenRunIds?{greenRunIds:copy(greenRunIds)}:{})};
+      const advanced=emit('VerificationCycleAdvanced',{cycleId:cycle.id,transition},{specId:revision.specId,specRevisionId:revision.id,...(command.executionId?{executionId:command.executionId}:{})});
+      if(command.phase!=='cancelled'){
+        const phase=command.phase;
+        const phaseRecord:VerificationPhaseRecord={id:id(),verificationRevisionId:revision.id,targetRevisionId:contract.targetRevisionId,scopeCaseIds:copy(cycle.scopeCaseIds),phase:phase as VerificationPhase,evidence:command.evidence,actorId:actor.id,at:now};
+        emit('VerificationPhaseRecorded',{phaseRecord},{specId:revision.specId,specRevisionId:revision.id,causationId:advanced.id});
+      }
+      break;
+    }
+    case 'reportManualVerificationRun':{
+      human();const execution=getExecution(command.executionId);flowCanAdvance(execution);const revision=verificationRevision(execution.specRevisionId),contract=revision.verification!;
+      if(command.results.some(result=>contract.cases.find(item=>item.id===result.caseId)?.procedure.kind!=='manual'))fail('VALIDATION_ERROR','Ручной прогон содержит случай без ручной процедуры.');
+      if(Date.parse(command.finishedAt)>Date.parse(now))fail('VALIDATION_ERROR','Прогон не может завершиться в будущем.');
+      if(execution.flowRuntime){const run=currentFlowRun(execution,command.flowStepRunId??'');if(!['running','waiting'].includes(run.state))fail('INVALID_TRANSITION','Нужен начатый проход процесса.');}else if(command.flowStepRunId!==undefined)fail('VALIDATION_ERROR','У попытки нет строгого процесса.');
+      if(command.quality?.mutation.some(item=>!command.results.some(result=>result.caseId===item.caseId)))fail('VALIDATION_ERROR','Mutation result вне границы прогона.');
+      const runId=id(),outcome=command.results.some(item=>item.outcome==='error')?'error':command.results.some(item=>item.outcome==='failed')?'failed':command.results.some(item=>['skipped','not_run'].includes(item.outcome))?'partial':'passed';
+      const run:VerificationRun={id:runId,projectId:state.projectId,executionId:execution.id,verificationSpecId:execution.specId,verificationRevisionId:revision.id,targetSpecId:contract.targetSpecId,targetRevisionId:contract.targetRevisionId,slice:copy(command.slice),scopeCaseIds:command.results.map(item=>item.caseId),startedAt:command.startedAt,finishedAt:command.finishedAt,recordedAt:now,results:copy(command.results),outcome,source:{kind:'human_attested',adapter:'manual/v1',artifactRef:'manual://'+runId,evidence:command.evidence,submittedBy:actor.id},...(command.flowStepRunId?{flowStepRunId:command.flowStepRunId}:{}),...(command.quality?{quality:copy(command.quality)}:{})};
+      emit('VerificationRunRecorded',{run},{...context(execution),causationId:cause(event=>event.executionId===execution.id)});break;
+    }
+    case 'reportVerificationRun':{
+      const execution=getExecution(command.executionId),trusted=environment.verificationImport?.source?.kind==='local_runner';
+      if(!(trusted&&actor.kind==='service'&&actor.id==='ouro-verification-observer')&&actor.kind!=='human'){if(actor.kind!=='agent')fail('FORBIDDEN','Импорт доступен человеку, назначенному агенту или подтверждённому серверному раннеру.');agent(execution);}
+      if(!trusted)flowCanAdvance(execution);
+      const revision=trusted?state.revisions.find(item=>item.id===execution.specRevisionId&&item.verification)??fail('NOT_FOUND','Назначенный проверочный контракт не найден.'):verificationRevision(execution.specRevisionId),contract=revision.verification!;
+      const parsed=verificationImportSchema.safeParse(command.report);if(!parsed.success)fail('VALIDATION_ERROR','Некорректный импорт прогона.');
+      if(Date.parse(command.report.finishedAt)>Date.parse(now))fail('VALIDATION_ERROR','Прогон не может завершиться в будущем.');
+      if(command.specId!==undefined&&command.specId!==execution.specId||command.specRevisionId!==undefined&&command.specRevisionId!==execution.specRevisionId)fail('FORBIDDEN','Прогон не соответствует назначению.');
+      if(command.report.scopeCaseIds.some(caseId=>!contract.cases.some(item=>item.id===caseId)))fail('VALIDATION_ERROR','Случай вне проверочного контракта.');
+      const proof=environment.verificationImport??fail('FORBIDDEN','Нужен серверный адаптер отчёта.');
+      if(JSON.stringify(proof.report)!==JSON.stringify(parsed.data))fail('FORBIDDEN','Входы не соответствуют проверенному импорту.');
+      if(proof.source?.kind==='local_runner'&&(proof.source.sha256!==proof.sha256||proof.source.rawReport!==command.report.rawReport||!proof.artifactManifest))fail('FORBIDDEN','Подтверждение раннера не соответствует исходному отчёту и снимку входов.');
+      if(execution.flowRuntime){const run=trusted?execution.flowRuntime.runs.find(item=>item.id===command.report.flowStepRunId&&item.startedAt):currentFlowRun(execution,command.report.flowStepRunId??'');if(!run||!trusted&&!['running','waiting'].includes(run.state))fail('INVALID_TRANSITION','Нужен начатый проход процесса.');}
+      else if(command.report.flowStepRunId!==undefined)fail('VALIDATION_ERROR','У попытки нет строгого процесса.');
+      const run:VerificationRun={id:id(),projectId:state.projectId,executionId:execution.id,verificationSpecId:execution.specId,verificationRevisionId:revision.id,targetSpecId:contract.targetSpecId,targetRevisionId:contract.targetRevisionId,
+        slice:copy(command.report.slice),scopeCaseIds:copy(command.report.scopeCaseIds),startedAt:command.report.startedAt,finishedAt:command.report.finishedAt,recordedAt:now,
+        results:copy(proof.results),outcome:proof.outcome,source:proof.source??{kind:'imported_report',adapter:'playwright-json/v1',artifactRef:command.report.artifactRef,sha256:proof.sha256,rawReport:command.report.rawReport,submittedBy:actor.id},...(command.report.flowStepRunId?{flowStepRunId:command.report.flowStepRunId}:{}),...(proof.artifactManifest?{artifactManifest:copy(proof.artifactManifest)}:{}),...(command.report.quality?{quality:copy(command.report.quality)}:{})};
+      if(command.report.quality?.mutation.some(item=>!run.scopeCaseIds.includes(item.caseId)))fail('VALIDATION_ERROR','Mutation result вне границы прогона.');
+      if(!verificationRunSchema.safeParse(run).success)fail('VALIDATION_ERROR','Адаптер вернул недопустимый прогон.');
+      emit('VerificationRunRecorded',{run},{...context(execution),causationId:cause(event=>event.executionId===execution.id)});break;
+    }
+    case 'reviewVerificationRun':{
+      human();text(command.reason,'Основание заключения');text(command.prerequisitesEvidence,'Подтверждение условий стенда');
+      if(!verificationAssessmentSchema.safeParse(command.assessment).success)fail('VALIDATION_ERROR','Неизвестное заключение.');
+      const run=state.verificationRuns.find(item=>item.id===command.runId)??fail('NOT_FOUND','Прогон не найден.');
+      const runContract=state.revisions.find(item=>item.id===run.verificationRevisionId)?.verification??fail('NOT_FOUND','Контракт прогона не найден.');
+      if(['expected_red','baseline','usable'].includes(command.assessment)&&run.results.some(item=>['error','not_run','skipped'].includes(item.outcome)&&(command.assessment!=='usable'||runContract.cases.find(candidate=>candidate.id===item.caseId)?.required)))fail('INVALID_TRANSITION','Ошибку стенда, пропуск или отсутствие обязательного результата нельзя квалифицировать как доказательство.');
+      if(command.assessment==='expected_red'&&(run.outcome!=='failed'||!run.results.some(item=>item.outcome==='failed')))fail('INVALID_TRANSITION','RED требует наблюдаемого поведенческого падения.');
+      if(command.assessment==='baseline'&&run.outcome!=='passed')fail('INVALID_TRANSITION','Baseline требует успешного прогона.');
+      const review:VerificationReview={id:id(),runId:run.id,assessment:command.assessment,reason:command.reason,prerequisitesEvidence:command.prerequisitesEvidence,actorId:actor.id,at:now};
+      emit('VerificationRunReviewed',{review},{specId:run.verificationSpecId,specRevisionId:run.verificationRevisionId,executionId:run.executionId,causationId:cause(event=>event.type==='VerificationRunRecorded'&&(event.payload.run as VerificationRun)?.id===run.id)});break;
+    }
+    case 'setVerificationSlice':{
+      human();const revision=verificationRevision(command.verificationRevisionId);text(command.reason,'Основание выбора текущего среза');
+      const parsed=verificationSliceSchema.safeParse(command.slice);if(!parsed.success)fail('VALIDATION_ERROR','Нужны точные версии и digest окружения.');
+      const sliceRecord:VerificationSliceRecord={id:id(),verificationRevisionId:revision.id,slice:copy(parsed.data!),reason:command.reason,actorId:actor.id,at:now};
+      emit('VerificationSliceDeclared',{sliceRecord},{specId:revision.specId,specRevisionId:revision.id});break;
+    }
+    case 'recordVerificationPhase':{
+      const revision=verificationRevision(command.verificationRevisionId),contract=revision.verification!;text(command.evidence,'Основание этапа');
+      if(command.executionId!==undefined&&getExecution(command.executionId).specRevisionId!==revision.id)fail('FORBIDDEN','Фаза не соответствует назначению.');
+      if(actor.kind!=='human'){if(actor.kind!=='agent')fail('FORBIDDEN','Фаза требует человека или назначенного агента.');const execution=getExecution(command.executionId??'');agent(execution);flowCanAdvance(execution);if(execution.specRevisionId!==revision.id)fail('FORBIDDEN','Фаза не соответствует назначению.');}
+      if(!verificationPhaseSchema.safeParse(command.phase).success||!Array.isArray(command.scopeCaseIds)||!command.scopeCaseIds.length||new Set(command.scopeCaseIds).size!==command.scopeCaseIds.length||command.scopeCaseIds.some(id=>!contract.cases.some(item=>item.id===id)))fail('VALIDATION_ERROR','Недопустимая фаза или граница.');
+      const readiness=getVerificationReadiness(state,revision,command.scopeCaseIds);
+      if(command.phase==='implementation'&&!readiness.implementationReady)fail('INVALID_TRANSITION','Для реализации нужен сопоставимый подтверждённый RED или baseline этой границы.');
+      if(command.phase==='refactoring'&&(!readiness.ready||!readiness.implementationReady||!state.executions.some(item=>item.specId===contract.targetSpecId&&item.specRevisionId===contract.targetRevisionId&&item.kind==='primary'&&item.state==='running'&&!item.stopRequested)))fail('INVALID_TRANSITION','Refactoring требует применимый GREEN, условия процесса и фактически выполняемую назначенную работу.');
+      if(command.phase==='acceptance'&&(!getVerificationReadiness(state,revision).ready||!state.executions.some(item=>item.specId===contract.targetSpecId&&item.specRevisionId===contract.targetRevisionId&&item.kind==='primary'&&item.state==='succeeded')))fail('INVALID_TRANSITION','Для предъявления к приёмке нужны полный применимый результат проверок и результат работы.');
+      const phaseRecord:VerificationPhaseRecord={id:id(),verificationRevisionId:revision.id,targetRevisionId:contract.targetRevisionId,scopeCaseIds:copy(command.scopeCaseIds),phase:command.phase,evidence:command.evidence,actorId:actor.id,at:now};
+      emit('VerificationPhaseRecorded',{phaseRecord},{specId:revision.specId,specRevisionId:revision.id,...(command.executionId?{executionId:command.executionId}:{})});break;
+    }
     case 'initializeProject':{
       human();text(command.name,'Название проекта');
       if(state.version!==0||state.events.length||state.specs.length)fail('INVALID_TRANSITION','Начальные данные проекта уже зафиксированы.');
@@ -257,6 +418,7 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
     }
     case 'startProjectWork':{
       human();text(command.agentId,'agentId');validateContent(command.content);rejectClaimedAdapterOrigin(command,command.content);
+      contentContract(command.content);
       if(state.roadmap.state!=='active')fail('INVALID_TRANSITION','Начать новую работу можно только в активной дорожной карте.');
       const specId=id(),revisionId=id(),executionId=id();
       const nextNumber=Math.max(0,...state.specs.map(spec=>Number(spec.humanId.split('-').at(-1))||0))+1;
@@ -303,6 +465,7 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
       if(proposalRevision.content.kind!=='spec_proposal')fail('INVALID_TRANSITION','Сводка не содержит предложения спеки.');
       if(command.sourceSpecId!==undefined&&command.sourceSpecId!==proposal.specId)fail('VALIDATION_ERROR','Связь происхождения может указывать только на исходную спеку предложения.');
       validateContent(command.content);
+      contentContract(command.content);
       const specId=id(),revisionId=id(),nextNumber=Math.max(0,...state.specs.map(spec=>Number(spec.humanId.split('-').at(-1))||0))+1;
       const spec:Spec={id:specId,projectId:state.projectId,humanId:`OURO-S-${String(nextNumber).padStart(6,'0')}`,title:command.content.title,state:'idea',activeRevisionId:null,revisionIds:[revisionId],origin:{kind:'agent_proposal',proposalId:proposal.id,proposalRevisionId:proposalRevision.id}};
       const revision:SpecRevision={...copy(command.content),id:revisionId,specId,revision:1,createdAt:now,authorId:actor.id};
@@ -332,6 +495,7 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
     }
     case 'createSpec': case 'createSpecFromLesson': case 'importMeridianScope': {
       human();validateContent(command.content);
+      contentContract(command.content);
       if(command.type!=='importMeridianScope')rejectClaimedAdapterOrigin(command,command.content);
       let origin:Spec['origin'],publicationCause:string|undefined,sourceSpecId:string|undefined;
       if(command.type==='importMeridianScope'){
@@ -368,6 +532,7 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
     }
     case 'proposeRevision': {
       const spec = getSpec(command.specId); validateContent(command.content);
+      contentContract(command.content,spec.id);
       rejectClaimedAdapterOrigin(command,command.content);
       if (spec.state === 'invalidated') fail('INVALID_TRANSITION', 'Неактуальная цель требует новой спецификации');
       const revision: SpecRevision = { ...copy(command.content), id: id(), specId: spec.id, revision: spec.revisionIds.length + 1, parentRevisionId: spec.revisionIds.at(-1), createdAt: now, authorId: actor.id };
@@ -378,6 +543,8 @@ export function applyCommand(state: ProjectState, command: Command, actor: Actor
       const revision = state.revisions.find(r => r.id === command.revisionId && r.specId === spec.id) ?? fail('NOT_FOUND', 'Ревизия не найдена');
       if (spec.state === 'invalidated' || spec.activeRevisionId === revision.id) fail('INVALID_TRANSITION', 'Ревизию нельзя активировать');
       validateContent(revision);
+      validateVerificationContract(state,revision.verification,spec.id);
+      if(revision.verification)activeRevision(getSpec(revision.verification.targetSpecId),revision.verification.targetRevisionId);
       const activated = emit('RevisionActivated', { revisionId: revision.id }, { specId: spec.id, specRevisionId: revision.id, causationId: cause(e => e.type === 'RevisionProposed' ? (e.payload.revision as SpecRevision)?.id === revision.id : e.type === 'SpecCreated' && (e.payload.revision as SpecRevision)?.id === revision.id) });
       for (const request of state.requests.filter(r => r.specId === spec.id && r.specRevisionId === spec.activeRevisionId && r.state === 'pending')) {
         emit('DecisionSuperseded', { decisionRequestId: request.id, replacingRevisionId: revision.id, reason: 'Человек активировал новую ревизию. Запрос прежнего контракта не переносится автоматически.' }, { specId: spec.id, specRevisionId: request.specRevisionId, executionId: request.executionId, causationId: activated.id });

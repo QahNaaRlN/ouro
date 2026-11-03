@@ -4,6 +4,7 @@
 
 | Порядок | Результат | Статус |
 |---|---|---|
+| Feature branch | Версионируемые проверки и парные карточки работы / проверки | Локальная реализация в `feat/verification-pairs`, без commit/push/release; [контракт](specs/verification-pairs.md), [проверки и ограничения](verification-validation.md). Приёмка владельцем и живой Concord-пилот отдельно. |
 | 0 | Human View, статусное ядро, immutable история, Roadmap/Reality | alpha.1, PR #1 |
 | 0 | Реальные MCP HTTP/stdio, регистрации и назначения агентов | alpha.2, PR #2 |
 | 1 | Процессные схемы внутри ревизий и визуальные статусные переходы | alpha.3: OURO-ENG-000002, 63 unit/integration +13 E2E |

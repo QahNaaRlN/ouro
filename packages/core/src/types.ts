@@ -1,6 +1,13 @@
 import type {FlowDefinition,FlowRuntime} from '@ouro/protocol';
 export type {FlowDefinition,FlowNode,FlowEdge,FlowNodeKind,FlowOwner,FlowRuntime,FlowStepRun,FlowTraversal,FlowRuntimeView} from '@ouro/protocol';
 import type {ManagedSubject,Pin,RunRef} from '../../meridian/src/context';
+import type {VerificationContract,VerificationSlice,VerificationRun,VerificationImport,VerificationAssessment,VerificationPhase} from '@ouro/protocol';
+import type {VerificationCycle,VerificationRefactorAdmission,ManualVerificationInput,VerificationObservationConfigRecord,VerificationObservationRecord,VerificationObservationConfig,VerificationWorkspaceObservation} from '@ouro/protocol';
+export type {VerificationCycle,VerificationRefactorAdmission,ManualVerificationInput,VerificationQuality,VerificationObservationConfigRecord,VerificationObservationRecord,VerificationObservationConfig,VerificationWorkspaceObservation,VerificationArtifactManifest} from '@ouro/protocol';
+export type {VerificationContract,VerificationSlice,VerificationRun,VerificationImport,VerificationAssessment,VerificationPhase} from '@ouro/protocol';
+export type VerificationReview={id:string;runId:string;assessment:VerificationAssessment;reason:string;prerequisitesEvidence:string;actorId:string;at:string};
+export type VerificationSliceRecord={id:string;verificationRevisionId:string;slice:VerificationSlice;reason:string;actorId:string;at:string};
+export type VerificationPhaseRecord={id:string;verificationRevisionId:string;targetRevisionId:string;scopeCaseIds:string[];phase:VerificationPhase;evidence:string;actorId:string;at:string};
 
 export type SpecState = 'idea' | 'specified' | 'in_progress' | 'blocked' | 'done' | 'invalidated';
 export type ExecutionState = 'queued' | 'running' | 'waiting_for_human' | 'paused' | 'succeeded' | 'failed' | 'cancelled' | 'skipped';
@@ -11,7 +18,7 @@ export type Criterion = { id: string; text: string; required: boolean };
 export type SpecRevision = {
   id: string; specId: string; revision: number; title: string; goal: string; dod: Criterion[];
   constraints: string; assumptions: string; risks: string; inputs: string; comment: string;
-  parentRevisionId?: string; createdAt: string; authorId: string; flow?: FlowDefinition;
+  parentRevisionId?: string; createdAt: string; authorId: string; flow?: FlowDefinition; verification?:VerificationContract;
 };
 export type Spec = {
   id: string; projectId: string; humanId: string; title: string; state: SpecState;
@@ -93,14 +100,26 @@ export type ProjectState = {
   executions: Execution[]; requests: DecisionRequest[]; dependencies: Dependency[]; events: DomainEvent[];
   githubBindings: GitHubBinding[]; lessons:Lesson[]; lessonRevisions:LessonRevision[];
   agentProposals:AgentProposal[];agentProposalRevisions:AgentProposalRevision[];
+  verificationRuns:VerificationRun[];verificationReviews:VerificationReview[];verificationSlices:VerificationSliceRecord[];verificationPhases:VerificationPhaseRecord[];
+  verificationCycles:VerificationCycle[];verificationRefactorAdmissions:VerificationRefactorAdmission[];verificationObservationConfigs:VerificationObservationConfigRecord[];verificationObservations:VerificationObservationRecord[];
 };
-export type RevisionContent = Pick<SpecRevision, 'title' | 'goal' | 'dod' | 'constraints' | 'assumptions' | 'risks' | 'inputs' | 'comment' | 'flow'>;
+export type RevisionContent = Pick<SpecRevision, 'title' | 'goal' | 'dod' | 'constraints' | 'assumptions' | 'risks' | 'inputs' | 'comment' | 'flow' | 'verification'>;
 type CommandBase = { requestId: string; expectedVersion: number; specId?: string; specRevisionId?: string };
 type ReportBase = { specId: string; specRevisionId: string; executionId: string; title: string; context: string; flowNodeId?: string;flowStepRunId?:string };
 export type Command = CommandBase & (
   | { type:'initializeProject';name:string }
   | { type:'startProjectWork';agentId:string;content:RevisionContent }
   | { type: 'createSpec'; content: RevisionContent }
+  | { type:'reportVerificationRun';executionId:string;report:VerificationImport }
+  | { type:'reviewVerificationRun';runId:string;assessment:VerificationAssessment;reason:string;prerequisitesEvidence:string }
+  | { type:'setVerificationSlice';verificationRevisionId:string;slice:VerificationSlice;reason:string }
+  | { type:'recordVerificationPhase';verificationRevisionId:string;scopeCaseIds:string[];phase:VerificationPhase;evidence:string;executionId?:string }
+  | ({type:'reportManualVerificationRun'}&ManualVerificationInput)
+  | {type:'beginVerificationCycle';verificationRevisionId:string;scopeCaseIds:string[];baselineRunIds:string[];reason:string}
+  | {type:'advanceVerificationCycle';cycleId:string;phase:'implementation'|'verification'|'refactoring'|'acceptance'|'cancelled';evidence:string;greenRunIds?:string[];executionId?:string}
+  | {type:'admitVerificationRefactor';verificationRevisionId:string;fromSlice:VerificationSlice;toSlice:VerificationSlice;scopeCaseIds:string[];reason:string;evidence:string}
+  | {type:'configureVerificationObservation';verificationRevisionId:string;config:VerificationObservationConfig;reason:string}
+  | {type:'observeVerificationWorkspace';verificationRevisionId:string;configId:string;observation:VerificationWorkspaceObservation}
   | { type:'importMeridianScope';rawDocument:string;content:RevisionContent }
   | { type:'createLesson'; content:LessonContent }
   | { type:'reviseLesson'; lessonId:string; content:LessonContent }

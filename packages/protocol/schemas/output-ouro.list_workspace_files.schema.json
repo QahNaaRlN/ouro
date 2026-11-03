@@ -211,5 +211,5 @@
       ]
     }
   },
-  "$id": "urn:ouro:protocol:0.1.2:output:ouro.list_workspace_files"
+  "$id": "urn:ouro:protocol:0.3.0:output:ouro.list_workspace_files"
 }

@@ -1,0 +1,68 @@
+# Ouro verification — локальная реализация и квалификация
+
+2026-11-03. Ветка `feat/verification-pairs`, каталог `D:/PersonalProjects/ouro-worktrees/verification`. Исходный ограниченный объём ТЗ/ТС реализован и локально квалифицирован на изолированных данных. **Итоговая техническая квалификация PASS.** Приёмка владельцем и выпуск **PENDING / NOT_RUN**. На момент завершения технической квалификации commit/push не выполнялись. Последующим поручением владелец разрешил commit и push текущей `feat/verification-pairs`; merge и deployment остаются отдельно.
+
+Сверка V-01…V-12 и границ исходной ТС — [матрица объёма](verification-requirements-status.md). Готовность кода не подменяет результаты последних проверок и человеческую приёмку. Открытых пунктов реализации в исходном ограниченном объёме не осталось; человеческая приёмка и интеграция не объявляются завершёнными.
+
+## База и границы
+
+База реализации: `3aded9c53a5edf9174ccdadef0b87ac219e1a289`. На старте GitHub `dev/main` проверены на `c4ce0d9053d9e4a8db8710219f0eb64f36b95ff4`; зарегистрированный корень имел более старый `1ffe248`. Выбран отдельный worktree от сохранённого multi-project/UI-коммита. Незакоммиченные изменения исходных каталогов не переносились и не изменялись.
+
+Соседняя ветка `codex/functional-status-comments` во время работы продвинулась до `873d082363086bfcc139287531a14eb9632fcc8f`. Этот пакет с ней **не объединён и совместно не квалифицирован**. По прямому указанию владельца commit/push/merge выполняются отдельно; текущая проверка относится к базе `3aded9c` и локальным изменениям этого worktree.
+
+Все прогоны используют синтетические данные/отдельные тестовые БД. Живой Concord, его предложения/принятие/назначения, CBS-код, реальные пользовательские профили и нативный хост Meridian не изменялись. Синтетический продукт Playwright-примера не является квалификацией Concord.
+
+## Реализовано
+
+- Опциональный immutable `RevisionContent.verification`: точная рабочая ревизия, критерии, логические случаи, given/action/expected, данные/prerequisites, уровень/назначение/required, связь Playwright, ручная процедура или unlinked. Роль определяется первой ревизией; старые JSON/content_hash не дополняются defaults. Активация и назначение остаются отдельными человеческими решениями.
+- Отдельные append-only run/review/slice/phase/cycle/refactor-admission/observation факты. Миграция 010 добавляет индекс прогонов в одной транзакции с событием, outbox и квитанцией; 011 — операционные receipts наблюдения/запуска. FlowStepRun остаётся отдельным фактом исполнения.
+- Ограниченный импорт настоящего Playwright JSON: исходные байты, серверный SHA-256, artifact reference, версии и per-case results; проверки counts, test IDs, неоднозначных повторов/конфигураций, ошибок раннера и размера. Команды/URL из отчёта не выполняются. Source `imported_report` требует отдельного человеческого заключения с prerequisites evidence.
+- Ручные результаты регистрируются человеком только для manual cases на назначенной running verification execution, с actual/evidence и source `human_attested`. Для готовности сохраняется отдельная человеческая оценка; ручное свидетельство не выдаётся за машинный запуск.
+- Наблюдение по человеческой конфигурации 1–32 разрешённых файлов продукта/тестов/данных/config и требованиям capabilities. Сервер сохраняет manifest с hashes/размерами/ролями, измеряемыми capabilities и digest, выводит текущий slice и замечает его изменения без переписывания старых runs. Недоступность даёт unknown. Наблюдатель не подтверждает неуказанные зависимости, внешние сервисы или все свойства среды; read-only GET не создаёт доменных записей.
+- Фиксированный server-owned Playwright runner без произвольного shell/argv выполняет копии наблюдённых точных байтов, сохраняет before/after stability, raw report/hash, exit code и source `local_runner`. Применимый стабильный успешный запуск может дать функциональный GREEN без import review; содержательный RED/baseline по-прежнему оценивает человек. Процесс не удерживает project lock, проверяет stop/authority и сохраняет поздний факт на исходном назначении без возобновления работы. Durable pending/unknown receipt не запускает процесс повторно.
+- Применимость applicable/stale/incomplete/unknown и агрегирование последних per-case результатов нескольких частичных прогонов. Более поздние skip/error/неоценённый/stale результат отзывают прежний PASS. Каждая часть покрытия сохраняет точный run ID и основание допуска; обязательный непривязанный/непройденный случай блокирует готовность.
+- Mutation-quality — независимая опциональная политика/результаты с порогом 0–100 и counts killed/survived/noCoverage/timedOut. Она не заменяет функциональный PASS. Отдельный mutation runner не входит в исходный ограниченный пакет.
+- Persistent TDD/preservation cycle: exact revision/scope, admitted RED/baseline IDs, fresh GREEN IDs и ordered phase history. Implementation/refactoring требуют фактически running bound work; приёмочная фаза цикла — succeeded work и применимый scoped GREEN, полученный после соответствующего входа в verification. Begin/cancel/refactor admission — human-only; назначенный verification agent может сообщать разрешённые переходы своего running execution. Цикл не создаёт assignment и не принимает рабочую spec/DoD.
+- Human refactor admission фиксирует exact from/to slices, scope, reason и evidence; допускает сравнимость квалифицированного RED/baseline при изменённых тестах, сохраняя fixture/environment. Прежний PASS не переносится; пересмотр review может отозвать baseline. RED/GREEN допускают разные версии продукта при подтверждённой сопоставимости остальных входов.
+- Protocol **0.3.0: 20 tools / 71 canonical schemas**, включая контекст evidence/cycles и `ouro.report_verification_cycle`. Старые arguments, CAS и exact-request recovery сохранены. Optional version/required-capability negotiation отклоняет несовместимые требования. Неизвестные replay events не игнорируются; старые revision hashes и сохранённые receipts не переписываются.
+- Канонический portable pack нормализует реальные tar headers: каталоги/CLI 0755, обычные файлы 0644; checksums/integrity вычисляются по итоговому архиву. Независимые установки Windows/Linux проверяют package runtime и фактический executable mode.
+- Yjs create/edit/publish сохраняет verification content. Изменения expected/required/случаев/связей/scope видны в diff и истории; сравнение не зависит от порядка ключей JSONB. Единая pair/readiness-проекция используется графом, списком, подробностями и event-prefix history. Ручной flip остаётся локальным состоянием.
+
+## Фактические проверки
+
+Среда Windows: закреплённый `.nvmrc` Node **24.19.0** из отдельного portable-каталога, архив проверен по официальному SHA-256. Системная установка Node не менялась. POSIX/platform и independent package gates дополнительно выполнены на Linux. Логи находятся в `artifacts/` этого worktree. Полный набор выполнен до финальных исправлений раннера/совместимости; после них прошли указанные целевые наборы, production build и оба browser-сценария. Пересекающиеся прогоны не суммируются в число уникальных тестов.
+
+| Проверка | Результат и evidence |
+|---|---|
+| Domain и advanced regressions | **21/21 PASS**: `tests/verification.test.ts`, `tests/verification-advanced-domain.test.ts`; scope/assignment/stop/CAS, aggregate revocation, manual/mutation, циклы и свежий GREEN, scoped refactor admission, unavailable observation, late trusted fact и исторический FlowStepRun. |
+| SSR/presentation | **4/4 PASS**, `tests/verification-ui.test.ts`; формы, общая карточка, readonly/history и фаза refactoring. |
+| Observer/trusted runner/runtime, Windows | **11/11 PASS**, `artifacts/verification-runtime-tests.log`, 31.1 s; native production resolver, exact receipts без второго процесса, atomic observe, stop/revocation/in-flight authority, недоступные capabilities, изменение исходных/скопированных входов, literal filename/CLI boundaries. |
+| Финальный целевой Windows-набор | **48/48 PASS**, `artifacts/verification-final-targeted.log`, 15.7 s; домен, storage/reopen/rollback, SSR/history, expectation-impact, negotiation по настоящим старым схемам, legacy receipt и HTTP. |
+| Linux POSIX/platform | **19/19 PASS / 0 SKIP**, `artifacts/verification-full-linux-platform.log`; POSIX/process/filesystem boundaries. |
+| Linux workspace-review | **6/6 PASS / 0 SKIP**, `artifacts/verification-full-linux-boundaries.log`; проектная изоляция, receipts, special files, symlink/relocation boundaries. |
+| Независимый protocol tarball, Windows | **1/1 PASS**, `artifacts/verification-full-package.log`; чистая установка ESM/CJS/types/schemas/CLI и actual CLI mode **0755**. |
+| Независимый protocol tarball, Linux | **1/1 PASS**, `artifacts/verification-full-linux-package.log`; чистая установка и actual CLI mode **0755**. |
+| Production build / TypeScript | **PASS**, `artifacts/verification-full-build.log`; окончательные протокол и приложение собраны без compiler warnings. |
+| Generated protocol | **71/71 схем совпали**, `npm run protocol:check`; protocol 0.3.0, 20 tools. |
+| Полный Windows unit/integration-набор | **452 PASS / 0 FAIL / 6 platform SKIP**, всего 458, 484.6 s; `artifacts/verification-full-windows.log`. После этого прогона финальные исправления подтверждены отдельными целевыми наборами и browser gate. |
+| Production browser, два сценария | **2/2 PASS**, workers=1/retries=0, 46.0 s; `artifacts/verification-full-browser.log`, `test-results/production-results.json`. |
+| Linux feature / final runtime | **37/37 PASS**, `artifacts/verification-full-linux-feature.log`; после последнего argv/UTF-8 уточнения — **11/11 runtime PASS**, `artifacts/verification-final-linux-runtime.log`. Без пропусков. |
+| Repository conventions / whitespace | **PASS**: `npm run check:conventions`, `git diff --check`. |
+
+Платформенные проверки, которые первоначально пропускались на Windows, теперь имеют отдельное Linux evidence без skips. Это подтверждает перечисленные POSIX/workspace сценарии и независимый package runtime, а не произвольную полную матрицу всех Linux-дистрибутивов.
+
+История ранних ошибок сохранена в прежних логах: restricted Windows PGlite initialization, отсутствующий test CSS loader, устаревшие tool/migration inventories, отсутствующий `unzip`, JSONB key-order drift и browser request до готовности session были исправлены. Первоначальные полный набор 430 PASS / 6 platform SKIP и browser 1/1 относятся к прежнему объёму, а не к финальному расширенному пакету. Ранний POSIX-mode FAIL (0644 вместо 0755) устранён канонической упаковкой; текущие независимые Windows/Linux package gates прошли. Поздние CJS/production Webpack resolver ошибки устранены; первоначальный runtime browser FAIL сохранён в `artifacts/verification-browser-before-webpack-fix.log`. Финальный build и оба browser-сценария прошли. Linux harness был исправлен для пустого artifacts и ожидания фактического старта процесса; исходный FAIL сохранён в `artifacts/verification-linux-feature-before-final-fixes.log`. Последние аудиторские исправления покрыты адресными регрессиями.
+
+## Одна карточка и локальный пример
+
+Карточка поворачивается вокруг вертикальной оси на 180° за **700 ms**. Обе стороны и footer сохраняют одну геометрию; controls находятся вне вращающейся поверхности. Неактивная сторона `inert`/`aria-hidden`, её ссылка исключена из клавиатурного обхода. При `prefers-reduced-motion: reduce` переход мгновенный. У ссылок `.ws-topbar` нет подчёркивания, включая hover. Назначения и доменная история от flip не меняются.
+
+Эти настройки отдельно подтверждались до расширения пакета: `artifacts/verification-preview-tuning-build.log` и `artifacts/verification-preview-tuning-browser.log`. Ранее просмотрены desktop-снимки 1440×1000 в `artifacts/verification-browser/`. Финальные два production browser-сценария прошли на расширенном объёме. Визуально просмотрены свежие `artifacts/verification-browser/pair-graph.png` и `artifacts/verification-observed-browser/aggregate-and-provenance.png`: карточка, формы и evidence читаемы, обрезания по ширине не видно. Мобильная/pixel/Figma-приёмка не заявляется. Локальный пример использует отдельную demo-БД и синтетический продукт.
+
+## Остаётся отдельно
+
+1. Рассмотрение и приёмка владельцем. Возможное объединение с соседней веткой `873d082` и квалификация итоговой базы требуют отдельного поручения; merge/release/deployment сейчас не выполняются; commit/push текущей feature-ветки разрешены последующим отдельным поручением.
+2. M:N, универсальный CI, отдельный mutation runner и multi-project/retry/flaky acceptance находятся вне исходного ограниченного адаптера. Manifest/observer гарантируют только перечисленные файлы и измеренные capabilities, без автоматического доказательства всех транзитивных зависимостей, внешних условий или эквивалентности assertions. Код выбранных тестов/config рассматривается человеком; изоляция ОС и независимая CI-аттестация не заявляются.
+3. Живой Concord-пилот и нативный Meridian остаются за границами этой работы. Proposal IDs `7ce2fe00-0481-49db-b856-afd2a60ef4aa` / `14b2250d-b91d-40c8-90d5-e3c848cba633` не использовались как accepted revision/execution.
+
+Два browser-сценария покрывают создание/редактирование контракта, реальные RED/infra/skip/GREEN отчёты, человеческие заключения, TDD/refactor/fresh GREEN, stale без изменения старых runs, граф/список/flip и клавиатуру, 700 ms/reduced-motion/no-underline; также настройку наблюдения, настоящий server-owned запуск, manual failure при mutation 100%, manual success с отдельной оценкой, агрегирование с автоматическим результатом и фоновое устаревание. Подготовка рабочего fixture/назначения частично использует API: это не браузерный onboarding всех возможностей Ouro.

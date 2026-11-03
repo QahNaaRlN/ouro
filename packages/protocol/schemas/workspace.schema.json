@@ -108,5 +108,5 @@
       ]
     }
   },
-  "$id": "urn:ouro:protocol:0.1.2:workspace"
+  "$id": "urn:ouro:protocol:0.3.0:workspace"
 }

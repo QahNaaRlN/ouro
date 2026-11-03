@@ -48,7 +48,7 @@ export function createProjectSnapshotAdopter(projectId:string) {
   const adopt=(value:unknown):SnapshotAdoption=>{
     const checked=inspect(value);
     if(!checked.valid)return {status:'invalid',reason:checked.reason,snapshot:current};
-    const candidate=checked.snapshot;
+    let candidate=checked.snapshot;
     let candidateHistory:string[];
     try{candidateHistory=candidate.state.events.map(canonicalJSON);}
     catch{return {status:'invalid',reason:'invalid-event-history',snapshot:current};}
@@ -59,7 +59,16 @@ export function createProjectSnapshotAdopter(projectId:string) {
     // Use the authoritative core projection, rather than a second client state
     // machine, to reject statuses/expectations unsupported by the delivered facts.
     try{
-      if(canonicalJSON(replay(candidate.state.events,projectId))!==canonicalJSON(candidate.state))return {status:'invalid',reason:'projection-mismatch',snapshot:current};
+      const projected=replay(candidate.state.events,projectId);
+      // Old immutable command receipts predate these derived collections. Accept
+      // absence only when replay proves an empty collection; never pad revision
+      // JSON, alter the original receipt, or ignore a missing nonempty fact set.
+      const stateForComparison={...candidate.state};let legacyProjection=false;
+      for(const field of ['verificationRuns','verificationReviews','verificationSlices','verificationPhases','verificationCycles','verificationRefactorAdmissions','verificationObservationConfigs','verificationObservations'] as const){
+        if(!(field in stateForComparison)&&projected[field].length===0){(stateForComparison as unknown as Record<string,unknown>)[field]=[];legacyProjection=true;}
+      }
+      if(canonicalJSON(projected)!==canonicalJSON(stateForComparison))return {status:'invalid',reason:'projection-mismatch',snapshot:current};
+      if(legacyProjection)candidate={...candidate,state:projected};
     }catch{return {status:'invalid',reason:'invalid-project-projection',snapshot:current};}
     if(current){
       if(candidate.cursor<current.cursor)return {status:'stale',snapshot:current};

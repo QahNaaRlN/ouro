@@ -6,8 +6,22 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 200
+    },
+    "protocolVersion": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "requiredCapabilities": {
+      "maxItems": 20,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100
+      }
     }
   },
   "additionalProperties": false,
-  "$id": "urn:ouro:protocol:0.1.2:input:ouro.get_context"
+  "$id": "urn:ouro:protocol:0.3.0:input:ouro.get_context"
 }

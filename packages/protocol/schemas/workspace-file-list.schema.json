@@ -132,5 +132,5 @@
       ]
     }
   },
-  "$id": "urn:ouro:protocol:0.1.2:workspace-file-list"
+  "$id": "urn:ouro:protocol:0.3.0:workspace-file-list"
 }

@@ -1,6 +1,8 @@
 import { applyCommand, buildFlowRuntimeView, DomainError, PROJECT_ID, type Actor, type Command, type DomainEvent, type ProjectState, type Execution, type DecisionRequest } from '../../core/src';
 import { AGENT_TOOLS } from './tools';
 import {isExecutionProposalSource,hasRealityProposalSource} from '../../core/src/agent-proposals';
+import {getVerificationReadiness,type VerificationImport} from '../../core/src';
+import {negotiateProtocol} from '@ouro/protocol';
 import {agentErrorSchema,validateToolBody,type AgentResultBody,type WorkspaceMetadata,type WorkspaceFileList,type WorkspaceFile} from '@ouro/protocol';
 
 export type AgentStore = {
@@ -88,6 +90,7 @@ export function createAgentService({ store, actor, projectId=PROJECT_ID, workspa
       flowProgress:buildFlowRuntimeView(state,execution.id),
       spec:{id:spec.id,humanId:spec.humanId,title:spec.title,state:spec.state,activeRevisionId:spec.activeRevisionId},
       revision:state.revisions.find(r=>r.id===execution.specRevisionId),
+      ...(state.revisions.find(r=>r.id===execution.specRevisionId)?.verification?{verification:{cycles:(state.verificationCycles??[]).filter(item=>item.verificationRevisionId===execution.specRevisionId),refactorAdmissions:(state.verificationRefactorAdmissions??[]).filter(item=>item.verificationRevisionId===execution.specRevisionId),observationConfigs:(state.verificationObservationConfigs??[]).filter(item=>item.verificationRevisionId===execution.specRevisionId),observations:(state.verificationObservations??[]).filter(item=>item.verificationRevisionId===execution.specRevisionId),targetRevision:state.revisions.find(item=>item.id===state.revisions.find(revision=>revision.id===execution.specRevisionId)!.verification!.targetRevisionId)!,runs:state.verificationRuns.filter(run=>run.verificationRevisionId===execution.specRevisionId),reviews:state.verificationReviews.filter(review=>state.verificationRuns.some(run=>run.id===review.runId&&run.verificationRevisionId===execution.specRevisionId)),slices:state.verificationSlices.filter(item=>item.verificationRevisionId===execution.specRevisionId),phases:state.verificationPhases.filter(item=>item.verificationRevisionId===execution.specRevisionId),readiness:getVerificationReadiness(state,state.revisions.find(r=>r.id===execution.specRevisionId)!)}}:{}),
       requests,clarifications,
       proposals,
       proposalRevisions:state.agentProposalRevisions.filter(revision=>proposals.some(proposal=>proposal.id===revision.proposalId)),
@@ -126,9 +129,12 @@ export function createAgentService({ store, actor, projectId=PROJECT_ID, workspa
         const state=await store.getProject();
         if(state.projectId!==projectId)fail('FORBIDDEN','Недоступный проект.');
         if(name==='ouro.get_context'){
+          const contract=negotiateProtocol(input as {protocolVersion?:string;requiredCapabilities?:string[]});
           const work=input.executionId?[assigned(state,String(input.executionId))]:state.executions.filter(e=>e.agentId===actor.id);
+          const projectedWork=work.map(execution=>workItem(state,execution));
+          if(input.protocolVersion&&input.protocolVersion!==contract.version&&projectedWork.some(item=>item.revision?.verification||item.proposalRevisions.some(revision=>revision.content.kind==='spec_proposal'&&revision.content.draft.verification)))fail('UNSUPPORTED_CAPABILITY','Проверочные данные назначенного контекста требуют контракт 0.3.0; обновите клиент.');
           const metadata=work.length&&workspace?await workspace.getMetadata():null;
-          return result(name,{ok:true,project:{id:state.projectId,title:state.roadmap.title,roadmapState:state.roadmap.state},agent:{id:actor.id,name:actor.name},version:state.version,cursor:state.version,work:work.map(e=>workItem(state,e)),...(metadata?{workspace:metadata}:{}),instructions:[
+          return result(name,{ok:true,contract,project:{id:state.projectId,title:state.roadmap.title,roadmapState:state.roadmap.state},agent:{id:actor.id,name:actor.name},version:state.version,cursor:state.version,work:projectedWork,...(metadata?{workspace:metadata}:{}),instructions:[
             'Работайте только в назначенной попытке и по её immutable revision. Отсутствие назначения не разрешает самостоятельный запуск.',
             'ACK разрешённого запуска/продолжения отправляется отдельно от решения человека. При stopRequested остановите затронутую работу и подтвердите фактическую остановку.',
             'Question/Fork/Blocker требуют человека. Пока ожидаете, читайте get_updates/get_context; отсутствие ответа и confidence не означают согласие.',
@@ -157,6 +163,8 @@ export function createAgentService({ store, actor, projectId=PROJECT_ID, workspa
         const context={...base,specId:execution.specId,specRevisionId:execution.specRevisionId};
         let command:Command|undefined;
         switch(name){
+          case 'ouro.report_verification_cycle':command={...base,type:'advanceVerificationCycle',cycleId:input.cycleId as string,phase:input.phase as 'implementation'|'verification'|'refactoring'|'acceptance',evidence:input.evidence as string,...(input.greenRunIds?{greenRunIds:input.greenRunIds as string[]}:{})};break;
+          case 'ouro.report_verification_run':command={...base,type:'reportVerificationRun',report:input.report as VerificationImport};break;
           case 'ouro.report_flow_step':command={...base,type:'reportFlowStep',runId:input.runId as string,phase:input.phase as 'start'|'complete'|'fail',...(input.evidence!==undefined?{evidence:input.evidence as string}:{}),...(input.edgeId!==undefined?{edgeId:input.edgeId as string}:{})};break;
           case 'ouro.report_action':command={...input,...context,type:'reportAction'} as Command;break;
           case 'ouro.report_question':command={...input,...context,type:'reportQuestion'} as Command;break;

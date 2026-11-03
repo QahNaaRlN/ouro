@@ -10,7 +10,7 @@ test('PW07 standalone contract publishes bounded read-only workspace tools and c
  const list=protocol.AGENT_TOOLS.find(tool=>tool.name==='ouro.list_workspace_files');
  const read=protocol.AGENT_TOOLS.find(tool=>tool.name==='ouro.read_workspace_file');
  assert(list,'Workspace listing tool is required');assert(read,'Workspace reading tool is required');
- assert.equal(protocol.AGENT_TOOLS.length,18);assert.equal(list.annotations.readOnlyHint,true);assert.equal(read.annotations.readOnlyHint,true);
+ assert.equal(protocol.AGENT_TOOLS.length,20);assert.equal(list.annotations.readOnlyHint,true);assert.equal(read.annotations.readOnlyHint,true);
  assert(list.inputSchema.safeParse({executionId:'execution'}).success);
  assert(read.inputSchema.safeParse({executionId:'execution',path:'README.md'}).success);
  for(const tool of [list,read])assert.equal(tool.inputSchema.safeParse({executionId:'execution',path:'README.md',projectId:'spoof'}).success,false);

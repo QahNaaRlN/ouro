@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "verificationRevisionId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "targetRevisionId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "workflow": {
+      "type": "string",
+      "enum": [
+        "tdd",
+        "preservation"
+      ]
+    },
+    "scopeCaseIds": {
+      "minItems": 1,
+      "maxItems": 50,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200
+      }
+    },
+    "phase": {
+      "type": "string",
+      "enum": [
+        "preparation",
+        "implementation",
+        "verification",
+        "refactoring",
+        "acceptance",
+        "cancelled"
+      ]
+    },
+    "baselineRunIds": {
+      "minItems": 1,
+      "maxItems": 50,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200
+      }
+    },
+    "greenRunIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200
+      }
+    },
+    "createdBy": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+    },
+    "transitions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "phase": {
+            "type": "string",
+            "enum": [
+              "preparation",
+              "implementation",
+              "verification",
+              "refactoring",
+              "acceptance",
+              "cancelled"
+            ]
+          },
+          "actorId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          },
+          "greenRunIds": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        },
+        "required": [
+          "phase",
+          "actorId",
+          "at",
+          "evidence"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "id",
+    "verificationRevisionId",
+    "targetRevisionId",
+    "workflow",
+    "scopeCaseIds",
+    "phase",
+    "baselineRunIds",
+    "greenRunIds",
+    "createdBy",
+    "createdAt",
+    "transitions"
+  ],
+  "additionalProperties": false,
+  "$id": "urn:ouro:protocol:0.3.0:verification-cycle"
+}

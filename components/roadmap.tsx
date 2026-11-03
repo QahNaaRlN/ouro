@@ -20,6 +20,8 @@ import {
   CircleHelp,
 } from "lucide-react";
 import type { ProjectState, Spec, SpecState } from "@/packages/core/src";
+import {getWorkPairGroups,getWorkPairPresentation,type WorkPairGroup} from '@/packages/core/src';
+import {VerificationPairCard} from './verification-pair-card';
 import {getCanonicalStatusPresentation,getSpecWorkPresentation} from '@/packages/core/src/work-presentation';
 import {WorkStatus} from './work-status';
 import {InitialGraphViewportFit,useGraphMeasurements,WorkspaceGraphControls} from './workspace-graph-controls';
@@ -39,6 +41,9 @@ export function Status({ state }: { state: string }) {
 }
 
 type CardData = {
+  state:ProjectState;
+  group:WorkPairGroup;
+  openLayer:(specId:string,revisionId:string)=>void;
   spec: Spec;
   revision: number;
   selected: boolean;
@@ -48,6 +53,7 @@ type CardData = {
 };
 type SpecFlowNode = Node<CardData, "spec">;
 function SpecNode({ data }: NodeProps<SpecFlowNode>) {
+  if(data.group.verifications.length)return <div className={`spec-node verification-graph-node ${data.selected?'is-selected':''}`}><Handle type="target" position={Position.Left}/><VerificationPairCard state={data.state} group={data.group} onOpen={data.openLayer}/><Handle type="source" position={Position.Right}/></div>;
   return (
     <div className={`spec-node ${data.selected ? "is-selected" : ""}`}>
       <Handle type="target" position={Position.Left} />
@@ -78,6 +84,7 @@ export default function Roadmap({
   visibleIds,
   filterMode='dim',
   onOpenRequests,
+  onSelectRevision,
   selectLabel='Открыть процесс',
   active=true,
 }: {
@@ -90,20 +97,33 @@ export default function Roadmap({
   visibleIds?: string[];
   filterMode?:'dim'|'hide';
   onOpenRequests?:(id:string)=>void;
+  onSelectRevision?:(id:string,revisionId:string)=>void;
   selectLabel?:string;
   active?:boolean;
 }) {
   const containerRef=useRef<HTMLDivElement>(null);
   const [flowInstance,setFlowInstance]=useState<ReactFlowInstance<SpecFlowNode,Edge>|null>(null);
   const measurements=useGraphMeasurements<SpecFlowNode>();
+  const groups=getWorkPairGroups(state);
+  const openNode=(id:string)=>{
+    const group=groups.find(item=>item.id===id);
+    if(group?.verifications.length&&onSelectRevision){
+      const pair=getWorkPairPresentation(state,group),spec=pair.foreground;
+      const bound=pair.verifications.toSorted((a,b)=>b.phaseVersion-a.phaseVersion)[0];
+      const revisionId=spec.id===group.work.id?bound.revision.verification!.targetRevisionId:spec.activeRevisionId??spec.revisionIds.at(-1)!;
+      onSelectRevision(spec.id,revisionId);
+    }else onSelect(id);
+  };
+  const ownerById=new Map(groups.flatMap(group=>[group.work,...group.verifications].map(spec=>[spec.id,group.id])));
+  const groupedDependencies=state.dependencies.map(dependency=>({...dependency,from:ownerById.get(dependency.from)??dependency.from,to:ownerById.get(dependency.to)??dependency.to})).filter(dependency=>dependency.from!==dependency.to);
   // Positions depend only on the structural graph. Incoming events never move the canvas.
   const structuralKey =
-    state.specs.map((s) => s.id).join("|") +
+    groups.map(group=>group.id+':'+group.verifications.map(item=>item.id).join(',')).join('|') +
     ";" +
     state.dependencies.map((d) => `${d.from}:${d.to}:${d.type}`).join("|") +
     layoutKey;
   const initialPositions = useMemo(() => {
-    return layoutRoadmap(state);
+    return layoutRoadmap({specs:groups.map(group=>group.work),dependencies:groupedDependencies},Object.fromEntries(groups.map(group=>[group.id,group.verifications.length?300:ROADMAP_NODE_HEIGHT])));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [structuralKey]);
   const [moved, setMoved] = useState<Record<string, { x: number; y: number }>>(
@@ -119,32 +139,34 @@ export default function Roadmap({
         .toLocaleLowerCase()
         .includes(query.trim().toLocaleLowerCase())) &&
     (!status || s.state === status);
-  const nodes: SpecFlowNode[] = state.specs.map((s) => {
+  const nodes: SpecFlowNode[] = groups.map((group) => {
+    const s=group.work,groupVisible=[s,...group.verifications].some(visible);
     const presentation=getSpecWorkPresentation(state,s);
     const revision=state.revisions.find(r=>r.id===(s.activeRevisionId??s.revisionIds.at(-1)));
     return ({
     id: s.id,
     type: "spec",
     width: ROADMAP_NODE_WIDTH,
-    height: ROADMAP_NODE_HEIGHT,
+    height: group.verifications.length?280:ROADMAP_NODE_HEIGHT,
     measured:measurements.measured[s.id],
-    hidden:filterMode==='hide'&&!visible(s),
-    selected:s.id===selected,
+    hidden:filterMode==='hide'&&!groupVisible,
+    selected:[s,...group.verifications].some(item=>item.id===selected),
     position: moved[s.id] ?? initialPositions[s.id] ?? { x: 0, y: 0 },
     data: {
+      state,group,openLayer:(id,revisionId)=>onSelectRevision?onSelectRevision(id,revisionId):onSelect(id),
       spec: s,
       presentation,
       openRequests:onOpenRequests,
       revision:revision?.revision??1,
       goal:revision?.goal??'Ожидание ещё не описано',
-      selected: s.id === selected,
+      selected: [s,...group.verifications].some(item=>item.id===selected),
     },
-    style: { opacity: visible(s) ? 1 : 0.2 },
+    style: { opacity: groupVisible ? 1 : 0.2 },
     ariaLabel: `${selectLabel} ${s.humanId}: ${s.title}. ${presentation.label}`,
   });});
   const hiddenIds=new Set(nodes.filter(node=>node.hidden).map(node=>node.id));
   const presentations=new Map(nodes.map(node=>[node.id,node.data.presentation]));
-  const edges: Edge[] = state.dependencies.map((d) => ({
+  const edges: Edge[] = groupedDependencies.map((d) => ({
     id: d.id,
     source: d.from,
     target: d.to,
@@ -184,7 +206,7 @@ export default function Roadmap({
       if (!id) return;
       event.preventDefault();
       event.stopPropagation();
-      onSelect(id);
+      openNode(id);
     }}>
       <ReactFlow<SpecFlowNode, Edge>
         key={layoutKey}
@@ -192,7 +214,7 @@ export default function Roadmap({
         edges={edges}
         nodeTypes={nodeTypes}
         onNodesChange={change}
-        onNodeClick={(_, n) => onSelect(n.id)}
+        onNodeClick={(_, n) => openNode(n.id)}
         onInit={setFlowInstance}
         fitViewOptions={ROADMAP_FIT_OPTIONS}
         minZoom={ROADMAP_MIN_ZOOM}

@@ -21,5 +21,5 @@
     "executionId"
   ],
   "additionalProperties": false,
-  "$id": "urn:ouro:protocol:0.1.2:input:ouro.list_workspace_files"
+  "$id": "urn:ouro:protocol:0.3.0:input:ouro.list_workspace_files"
 }

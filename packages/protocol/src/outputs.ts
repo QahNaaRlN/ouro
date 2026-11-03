@@ -2,6 +2,7 @@ import {z} from 'zod';
 import {flowDefinitionSchema} from './flow.js';
 import {flowRuntimeSchema,flowRuntimeViewSchema} from './flow-runtime.js';
 import {workspaceMetadataSchema,workspaceFileListSchema,workspaceFileSchema} from './workspace.js';
+import {verificationContractSchema,verificationRunSchema,verificationReviewSchema,verificationSliceRecordSchema,verificationPhaseRecordSchema,verificationReadinessSchema,verificationCycleSchema,verificationRefactorAdmissionSchema,verificationObservationConfigRecordSchema,verificationObservationRecordSchema} from './verification.js';
 
 /** Explicit JSON extension data; it never accepts functions, undefined or NaN. */
 export const jsonValueSchema=z.json();
@@ -20,7 +21,7 @@ export const actorOutputSchema=extensible({
 export const criterionOutputSchema=extensible({id,text:z.string(),required:z.boolean()});
 export const revisionContentOutputSchema=extensible({
  title:z.string(),goal:z.string(),dod:z.array(criterionOutputSchema),constraints:z.string(),assumptions:z.string(),
- risks:z.string(),inputs:z.string(),comment:z.string(),flow:flowDefinitionSchema.optional(),
+ risks:z.string(),inputs:z.string(),comment:z.string(),flow:flowDefinitionSchema.optional(),verification:verificationContractSchema.optional(),
 });
 export const revisionOutputSchema=revisionContentOutputSchema.safeExtend({
  id,specId:id,revision:revisionNumber,parentRevisionId:id.optional(),createdAt:z.string(),authorId:id,
@@ -99,9 +100,11 @@ export const workItemOutputSchema=extensible({
  proposals:z.array(proposalOutputSchema),proposalRevisions:z.array(proposalRevisionOutputSchema),
  proposalSourceIds:z.array(extensible({id,version:revisionNumber,type:id})),permissions:permissionsOutputSchema,
  flowProgress:flowRuntimeViewSchema.optional(),
+  verification:extensible({targetRevision:revisionOutputSchema,runs:z.array(verificationRunSchema),reviews:z.array(verificationReviewSchema),slices:z.array(verificationSliceRecordSchema),phases:z.array(verificationPhaseRecordSchema),readiness:verificationReadinessSchema,cycles:z.array(verificationCycleSchema).optional(),refactorAdmissions:z.array(verificationRefactorAdmissionSchema).optional(),observationConfigs:z.array(verificationObservationConfigRecordSchema).optional(),observations:z.array(verificationObservationRecordSchema).optional()}).optional(),
 });
 
 export const contextOutputSchema=extensible({
+ contract:extensible({version:z.string(),clientVersion:z.string(),capabilities:z.array(z.string())}).optional(),
  ok:z.literal(true),project:extensible({id,title:z.string(),roadmapState:z.enum(['draft','active','frozen','archived'])}),
  agent:extensible({id,name:z.string().optional()}),version,cursor:version,work:z.array(workItemOutputSchema),instructions:z.array(z.string()),
  workspace:workspaceMetadataSchema.optional(),
@@ -127,7 +130,7 @@ export const agentErrorSchema=extensible({
 const mutationTools=new Set([
  'ouro.report_action','ouro.report_question','ouro.report_fork','ouro.report_blocker','ouro.withdraw_decision',
  'ouro.submit_decision_clarification','ouro.confirm_started','ouro.confirm_resumed','ouro.confirm_stopped',
- 'ouro.confirm_decision_applied','ouro.complete_execution','ouro.clear_blocker','ouro.report_flow_step',
+ 'ouro.confirm_decision_applied','ouro.complete_execution','ouro.clear_blocker','ouro.report_flow_step','ouro.report_verification_run','ouro.report_verification_cycle',
 ]);
 
 export type AgentSuccessSchema=typeof contextOutputSchema|typeof updatesOutputSchema|typeof mutationOutputSchema|typeof proposalMutationOutputSchema|typeof workspaceFileListOutputSchema|typeof workspaceFileOutputSchema;
