@@ -113,6 +113,8 @@ jobs:
           npm --prefix apps/service run build
       - name: Check TypeScript
         run: npm run typecheck
+      - name: Check migration compatibility inventory
+        run: npm run migration:check
       - name: Verify canonical protocol schemas
         run: npm run protocol:check
       - name: Verify independent protocol installation
