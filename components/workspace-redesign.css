@@ -1,3 +1,5 @@
+@layer theme, base, ouro-legacy, utilities;
+@layer ouro-legacy {
 .ws-shell .ws-topbar a,.ws-shell .ws-topbar a:hover{text-decoration:none}
 .ws-shell{--primary:#93dfbf;--primary-text:#12231c}
 .ws-shell [hidden]{display:none!important}
@@ -17,3 +19,4 @@
 @media(max-width:760px){.ws-spec-overview{grid-template-columns:1fr}.ws-roadmap-toolbar{flex-wrap:wrap}.ws-roadmap-toolbar>.ws-search{width:100%}.ws-view-switch{margin-left:0}.ws-project-navigation{gap:12px}.ws-project-heading{flex-wrap:wrap}.ws-project-path>.ws-copy-value{max-width:100%}.ws-status-axes{gap:14px}.ws-project-footer{align-items:start;flex-direction:column}.ws-spec-table article{grid-template-columns:1fr}.ws-proposal-list>article{align-items:start;flex-direction:column}}
 .ws-last-fact{max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap!important}
 @media(max-width:760px){.ws-project-page .ws-current-agents,.ws-project-page .ws-agents-compact .ws-current-agents{grid-template-columns:minmax(0,1fr)}.ws-last-fact{max-width:100%}}
+}
