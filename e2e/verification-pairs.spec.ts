@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { chooseSelectOption } from './select-helpers';
 import type { ProjectState } from '../packages/core/src';
 const scope = (id: string) => `/api/projects/${id}`;
@@ -92,8 +93,38 @@ test('paired verification browser path: create/edit contract, real Playwright im
         await expect(panel).toContainText('Не запускалось');
         const setSlice = async (product: string,testVersion='tests-unchanged') => { const save = panel.getByRole('button', { name: 'Сохранить текущий срез', exact: true, includeHidden: true }); await reveal(save); const form = save.locator('xpath=ancestor::form'); for (const [label, value] of [['Версия продукта', product], ['Версия тестов', testVersion], ['Версия данных и конфигурации', 'fixture-v1'], ['SHA-256 окружения', 'a'.repeat(64)], ['Основание выбора среза', 'Operator pinned isolated inputs']])
             await (label==='Начало прогона'||label==='Окончание прогона'?form.getByLabel(label,{exact:true}):form.getByRole('textbox',{name:label,exact:true})).fill(value); await save.click(); await expect.poll(async () => (await getState()).verificationSlices.at(-1)?.slice.productRevision).toBe(product); };
-        const importRun = async (scenario: string, product: string,testVersion='tests-unchanged') => { const save = panel.getByRole('button', { name: 'Сохранить прогон', exact: true, includeHidden: true }); await reveal(save); const form = save.locator('xpath=ancestor::form'); for (const [label, value] of [['Версия продукта', product], ['Версия тестов', testVersion], ['Версия данных и конфигурации', 'fixture-v1'], ['SHA-256 окружения', 'a'.repeat(64)], ['Ссылка на исходный артефакт', 'artifact://isolated/' + scenario + '.json'], ['Начало прогона', '2026-11-03T10:00'], ['Окончание прогона', '2026-11-03T10:01'], ['JSON-отчёт Playwright', reports[scenario]]])
-            await (label==='Начало прогона'||label==='Окончание прогона'?form.getByLabel(label,{exact:true}):form.getByRole('textbox',{name:label,exact:true})).fill(value); const count = (await getState()).verificationRuns.length; await save.click(); await expect.poll(async () => (await getState()).verificationRuns.length).toBe(count + 1); };
+        const importRun = async (scenario: string, product: string,testVersion='tests-unchanged') => {
+            const save = panel.getByRole('button', { name: 'Сохранить прогон', exact: true, includeHidden: true });
+            await reveal(save);
+            const form = save.locator('xpath=ancestor::form');
+            const rawReport=reports[scenario], parsedReport=JSON.parse(rawReport), suites=[...parsedReport.suites];
+            let specCount=0,attemptCount=0;
+            while(suites.length){const suite=suites.pop();suites.push(...suite.suites??[]);for(const spec of suite.specs??[]){specCount++;for(const test of spec.tests??[])attemptCount+=(test.results??[]).length;}}
+            const reportDiagnostic={scenario,sha256:createHash('sha256').update(rawReport).digest('hex'),bytes:Buffer.byteLength(rawReport),specCount,attemptCount,errorCount:parsedReport.errors?.length,stats:parsedReport.stats};
+            const formDiagnostic=()=>form.evaluate(node=>{
+                const form=node as HTMLFormElement;
+                return {valid:form.checkValidity(),invalid:[...form.elements].filter((element):element is HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement=>element instanceof HTMLInputElement||element instanceof HTMLTextAreaElement||element instanceof HTMLSelectElement).filter(element=>!element.validity.valid).map(element=>({type:element.type,label:element.labels?.[0]?.textContent?.trim(),message:element.validationMessage,valueLength:element.value.length,...(element instanceof HTMLInputElement&&element.type==='datetime-local'?{value:element.value}:{})}))};
+            });
+            try{
+                for (const [label, value] of [['Версия продукта', product], ['Версия тестов', testVersion], ['Версия данных и конфигурации', 'fixture-v1'], ['SHA-256 окружения', 'a'.repeat(64)], ['Ссылка на исходный артефакт', 'artifact://isolated/' + scenario + '.json'], ['Начало прогона', '2026-11-03T10:00'], ['Окончание прогона', '2026-11-03T10:01'], ['JSON-отчёт Playwright', rawReport]])
+                    await (label==='Начало прогона'||label==='Окончание прогона'?form.getByLabel(label,{exact:true}):form.getByRole('textbox',{name:label,exact:true})).fill(value);
+                const validity=await formDiagnostic();
+                expect(validity.valid,JSON.stringify({report:reportDiagnostic,form:validity})).toBe(true);
+                const count=(await getState()).verificationRuns.length;
+                const [response]=await Promise.all([page.waitForResponse(response=>{
+                    if(new URL(response.url()).pathname!==scope(project.id)+'/commands'||response.request().method()!=='POST')return false;
+                    try{return response.request().postDataJSON()?.type==='reportVerificationRun';}catch{return false;}
+                },{timeout:15000}),save.click()]);
+                const body=await response.json(),posted=response.request().postDataJSON();
+                const apiDiagnostic={status:response.status(),error:body.error??null,replayed:body.replayed,cursor:body.cursor,runCount:body.state?.verificationRuns?.length,eventTypes:body.events?.map((event:{type:string})=>event.type),expectedVersion:posted.expectedVersion,postedRawSha256:createHash('sha256').update(posted.report.rawReport).digest('hex')};
+                console.log('Verification import diagnostic: '+JSON.stringify({report:reportDiagnostic,api:apiDiagnostic}));
+                expect(response.ok(),JSON.stringify(apiDiagnostic)).toBe(true);
+                await expect.poll(async () => (await getState()).verificationRuns.length,{message:JSON.stringify(apiDiagnostic)}).toBe(count+1);
+            }catch(error){
+                console.log('Verification import failure: '+JSON.stringify({report:reportDiagnostic,form:await formDiagnostic(),alerts:await page.getByRole('alert').allTextContents()}));
+                throw error;
+            }
+        };
         const review = async (assessment: string) => { const run = panel.locator('.verification-run').first(); await reveal(run.getByRole('button', { name: 'Записать заключение', exact: true, includeHidden: true })); await chooseSelectOption(run.getByRole('combobox', { name: 'Заключение', exact: true }), assessment); await run.getByLabel('Основание классификации').fill('Inspected actual result against unchanged expectation'); await run.getByLabel('Подтверждение работоспособности условий стенда').fill('Isolated runner and fixture health checked'); const count = (await getState()).verificationReviews.length; await run.getByRole('button', { name: 'Записать заключение', exact: true, includeHidden: true }).click(); await expect.poll(async () => (await getState()).verificationReviews.length).toBe(count + 1); };
         await setSlice('product-red');
         await importRun('infra', 'product-red');
