@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "types": ["vite/client", "node"],
+    "paths": {
+      "@/*": ["../../*"],
+      "next/link": ["./src/app/legacy-navigation-link.tsx"],
+      "next/navigation": ["./src/app/legacy-navigation.ts"]
+    }
+  },
+  "include": ["src", "tests", "vite.config.ts", "playwright.config.ts"]
+}
