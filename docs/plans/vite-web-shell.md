@@ -1,6 +1,6 @@
 # Vite web shell implementation journal
 
-Status: implementation and local checks PASS; review and exact-head CI PENDING. Branch: `codex/vite-web-shell`. Specification: [vite-web-shell](../specs/vite-web-shell.md).
+Status: implementation, independent review and local checks PASS; exact-head CI PENDING. Branch: `codex/vite-web-shell`. Specification: [vite-web-shell](../specs/vite-web-shell.md).
 
 - Prepared the isolated story from the epic before source changes.
 - Read the installed Next Link/router guides, checked current locked React and exact candidate tool versions.
@@ -12,5 +12,6 @@ Status: implementation and local checks PASS; review and exact-head CI PENDING. 
 - Real Chromium production-web navigation: first run 2 PASS/1 fixture-precondition failure (catalog read before local session); corrected setup opens the catalog normally. Then 3/3 PASS, covering direct project/member/legacy screens, persistent shell/navigation/history and API/missing-asset 404. Modified-click/fragment coverage added for the final run below.
 - Final real Chromium run: **4/4 PASS, 12.8 seconds**, including native modified new-tab click and fragment/viewport behavior. Runs use a new temporary profile and dedicated loopback listeners; the old API is only the isolated comparison backend at this stage.
 - Independent review found missing JSON/WASM/module assets could receive SPA HTML, and direct project `pushState(null)` lost router history identity. Two new browser regressions produced **2/2 real assertion failures**. Replaced extension guessing with explicit UI paths/actual asset files and injected a semantic project-location port through the router-owned web root. Final expanded real-browser suite: **6/6 PASS, 17.5 seconds**, including stable query Back/Forward keys and selected tabs, two distinct cookie-clearing Set-Cookie values and forged-Origin refusal through the proxy.
+- Independent re-review found both issues closed with no remaining significant finding. Synchronized with epic `7c0def1` (PRs #32–#35), retained both service/web CI and TypeScript project boundaries, and connected the shared Tailwind/theme entry to standalone web. Exact lockfile reinstall from local cache PASS; integrated strict web types/build and architecture guard PASS (771 files / zero violations / 16 exact legacy edges). Repeated the six real-browser cases on that combined Vite/Tailwind build: **6/6 PASS, 17.0 seconds**.
 - CI now installs the isolated web package, checks/builds it and runs its production-asset browser suite alongside the existing regression suites. Review/CI results remain pending until actually obtained.
 - Full hFSD relocation, Query/Form/error ownership, complete Tailwind conversion, service cutover, consumer packaging and embedded acceptance remain subsequent requirements.
