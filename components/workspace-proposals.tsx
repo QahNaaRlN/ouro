@@ -6,11 +6,27 @@ import dagre from '@dagrejs/dagre';
 import type {AgentProposal,AgentProposalRevision,DomainEvent,FlowDefinition,ProjectState,RevisionContent} from '@/packages/core/src';
 import type {WorkspaceCommand} from './workspace-decisions';
 import {WorkspaceAccordion,WorkspaceSelect,WorkspaceTextarea} from './workspace-ui';
+import {selectWorkspaceProposals,type WorkspaceProposalScope} from '@/lib/workspace-proposals-view';
 
 type Props={state:ProjectState;command:WorkspaceCommand;disabled:boolean;onOpenSpec:(id:string)=>void;proposalId?:string;onOpenProposal?:(id:string)=>void};
 const statuses:Record<AgentProposal['state'],string>={pending:'Ожидает рассмотрения',reviewed:'Рассмотрено человеком',dismissed:'Отклонено человеком',adopted:'Создан черновик спеки'};
 const sourceNames:Record<string,string>={ActionReported:'Действие агента',ExecutionStarted:'ACK начала',ExecutionResumed:'ACK продолжения',ExecutionPaused:'ACK остановки',ExecutionCompleted:'Результат попытки',DecisionRequested:'Запрос человеку',DecisionResolved:'Решение человека',DecisionApplied:'Подтверждение применения',BlockerCleared:'Устранение блокера',FlowStepStarted:'Начало прохода',FlowStepCompleted:'Результат прохода',FlowStepFailed:'Неуспех прохода',FlowStepSkipped:'Пропуск человеком',FlowStepRetried:'Повтор человеком',FlowEdgeTraversed:'Переход процесса'};
 const ownerNames={human:'Человек',agent:'Агент',system:'Система'};
+
+/** Links reuse the existing project-level card and its mounted review draft. */
+export function WorkspaceSpecProposals({state,scope,onOpenProposal}:{state:ProjectState;scope:WorkspaceProposalScope;onOpenProposal:(id:string)=>void}){
+  const proposals=selectWorkspaceProposals(state,scope),pending=proposals.filter(proposal=>proposal.state==='pending').length;
+  return <section className="ws-panel" aria-label="Предложения выбранной ревизии и попытки">
+    <div className="ws-section-top"><h2>Предложения спеки</h2><span className="ws-muted">Всего {proposals.length} · ожидают рассмотрения {pending}</span></div>
+    <p className="ws-muted">{scope.executionId?'Показаны предложения выбранной ревизии и попытки.':'Показаны предложения всех попыток выбранной ревизии.'} Рассмотрение открывается в полной карточке предложения.</p>
+    {!proposals.length&&<p className="ws-empty">Предложений в выбранной области пока нет.</p>}
+    <div className="ws-proposal-list">{proposals.map(proposal=>{
+      const latest=state.agentProposalRevisions.find(revision=>revision.id===proposal.latestRevisionId&&revision.proposalId===proposal.id),revision=state.revisions.find(revision=>revision.id===proposal.specRevisionId&&revision.specId===proposal.specId);
+      const attempt=state.executions.filter(execution=>execution.specId===proposal.specId&&execution.specRevisionId===proposal.specRevisionId).findIndex(execution=>execution.id===proposal.executionId);
+      return <article key={proposal.id} data-spec-proposal-id={proposal.id}><div><button type="button" onClick={()=>onOpenProposal(proposal.id)}>{latest?.content.title??'Версия предложения недоступна'}</button><p>r{revision?.revision??'?'} · попытка {attempt>=0?attempt+1:proposal.executionId} · {latest?'v'+latest.revision:'версия неизвестна'}</p></div><span className="ws-badge">{statuses[proposal.state]}</span></article>;
+    })}</div>
+  </section>;
+}
 
 export function WorkspaceProposals({state,command,disabled,onOpenSpec,proposalId,onOpenProposal}:Props){
   return <section className="ws-panel" aria-label="Предложения агентов">

@@ -3,8 +3,9 @@
 import {useState} from 'react';
 import {Bot,ClipboardCheck,Cpu,FlaskConical,ShieldCheck,UserRound} from 'lucide-react';
 import type {ProjectState} from '@/packages/core/src';
-import {selectWorkspaceHistory,workspaceHistoryEntry,workspaceHistoryRelations,type WorkspaceEventProvenance} from '@/lib/workspace-history-view';
+import {selectWorkspaceHistory,workspaceHistoryEntry,workspaceHistoryRelations,workspaceHistoryRowLabel,type WorkspaceEventProvenance} from '@/lib/workspace-history-view';
 import {WorkspaceAccordion,WorkspaceCopyValue} from './workspace-ui';
+import reviewStyles from './workspace-grouped-review.module.css';
 
 type HistoryProps={state:ProjectState;specId?:string;revisionId?:string;executionId?:string;onOpenEvent:(eventId:string)=>void;selectedEventId?:string};
 const date=(value:string)=>new Date(value).toLocaleString('ru-RU');
@@ -19,7 +20,7 @@ export function WorkspaceHistory({state,specId,revisionId,executionId,onOpenEven
   return <section className="ws-panel ws-history-panel" aria-label={specId?'История спеки':'История проекта'}>
     <div className="ws-section-top"><h2>{specId?'История спеки':'История проекта'}</h2><span className="ws-muted">{events.length} событий</span></div>
     {!events.length&&<p className="ws-muted">Для выбранной области событий пока нет.</p>}
-    <ol className="ws-history-list">{visible.map(event=>{const entry=workspaceHistoryEntry(event);return <li key={event.id} data-event-id={event.id} data-event-type={event.type}><button type="button" className="ws-history-row" aria-pressed={selectedEventId===event.id} onClick={()=>onOpenEvent(event.id)}><span className="ws-history-row-main"><strong>{entry.title}</strong><span className="ws-history-row-meta"><HistoryProvenance provenance={entry.provenance}/><span>{entry.label}</span><span>{entry.actor}</span>{entry.specId&&<span>{state.specs.find(spec=>spec.id===entry.specId)?.humanId??entry.specId}</span>}</span></span><span className="ws-history-row-time">Событие №{entry.version}<br/>{date(entry.occurredAt)}</span></button></li>;})}</ol>
+    <ol className="ws-history-list">{visible.map(event=>{const entry=workspaceHistoryEntry(event);return <li key={event.id} data-event-id={event.id} data-event-type={event.type}><button type="button" className="ws-history-row" aria-label={workspaceHistoryRowLabel(entry,date(entry.occurredAt),entry.specId?state.specs.find(spec=>spec.id===entry.specId)?.humanId??entry.specId:undefined)} aria-pressed={selectedEventId===event.id} onClick={()=>onOpenEvent(event.id)}><span className="ws-history-row-main"><strong>{entry.title}</strong><span className="ws-history-row-meta"><HistoryProvenance provenance={entry.provenance}/><span>{entry.label}</span><span>{entry.actor}</span>{entry.specId&&<span>{state.specs.find(spec=>spec.id===entry.specId)?.humanId??entry.specId}</span>}</span>{entry.reason&&<span className={reviewStyles.historyFact} data-history-fact="reason"><span className={reviewStyles.historyFactLabel}>Причина: </span>{entry.reason}</span>}{entry.outcome&&<span className={reviewStyles.historyFact} data-history-fact="outcome"><span className={reviewStyles.historyFactLabel}>Результат: </span>{entry.outcome}</span>}</span><span className="ws-history-row-time">Событие №{entry.version}<br/>{date(entry.occurredAt)}</span></button></li>;})}</ol>
     {events.length>40&&<button type="button" onClick={()=>setExpandedScope(all?null:scopeKey)}>{all?'Последние 40 событий':'Показать всю историю'}</button>}
   </section>;
 }

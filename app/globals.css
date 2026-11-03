@@ -93,7 +93,7 @@ a:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 .ouro-select:focus-visible,
-summary:focus-visible {
+.ws-accordion-trigger:focus-visible {
   outline: 2px solid var(--text);
   outline-offset: 3px;
 }
@@ -1744,12 +1744,12 @@ tbody tr.selected {
 .timeline-tags .mono {
   font-size: 12px;
 }
-.timeline details {
+.timeline .ws-accordion {
   margin-top: 10px;
   font-size: 12px;
   color: var(--text-faint);
 }
-.timeline summary {
+.timeline .ws-accordion-trigger {
   cursor: pointer;
 }
 .timeline pre {
@@ -2635,7 +2635,9 @@ tbody tr.selected {
   overflow: hidden;
 }
 .spec-node {
-  height: 195px;
+  height: 240px;
+  display: flex;
+  flex-direction: column;
 }
 .node-goal {
   min-height: 38px;

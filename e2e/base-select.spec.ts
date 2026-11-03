@@ -52,7 +52,9 @@ test('BS02 a required select and its popup work inside the native task dialog, r
     const popup=await selectPopup(agent);
     expect(await popup.evaluate(node=>!!node.closest('dialog[open]'))).toBe(true);
     await expect(popup.getByRole('option').filter({hasText:'Gamma Agent'})).toBeVisible();
-    await page.keyboard.press('g');await page.keyboard.press('Enter');
+    await page.keyboard.press('g');
+    await expect(popup.getByRole('option').filter({hasText:'Gamma Agent'})).toBeFocused();
+    await page.keyboard.press('Enter');
     await expect(agent).toHaveAttribute('data-value',registered[2]);await expect(agent).toBeFocused();
     expect(await dialog.locator('form').evaluate(form=>(form as HTMLFormElement).checkValidity())).toBe(true);
     await selectPopup(agent);await page.keyboard.press('Escape');

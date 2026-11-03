@@ -1,0 +1,41 @@
+.kindGroup {
+  margin-top: 26px;
+  min-width: 0;
+}
+
+.kindGroup > .kindHeading,
+.stateGroup > .stateHeading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.stateGroup {
+  margin-top: 18px;
+  min-width: 0;
+}
+
+.stateGroup > .stateHeading {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.historyFact {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.7;
+}
+
+.historyFactLabel {
+  color: var(--text);
+  font-weight: 500;
+}

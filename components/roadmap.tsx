@@ -44,7 +44,9 @@ type CardData = {
   selected: boolean;
   goal: string;
   presentation:ReturnType<typeof getSpecWorkPresentation>;
+  proposalCount:number;
   openRequests?: (id:string)=>void;
+  openProposals?: (id:string)=>void;
 };
 type SpecFlowNode = Node<CardData, "spec">;
 function SpecNode({ data }: NodeProps<SpecFlowNode>) {
@@ -62,6 +64,8 @@ function SpecNode({ data }: NodeProps<SpecFlowNode>) {
         <span className="node-revision">r{data.revision}</span>
       </div>
       {data.presentation.currentRequestCount>0&&(data.openRequests?<button className="node-attention nodrag nopan" aria-label={`Вопросы спеки ${data.spec.humanId}`} onClick={event=>{event.stopPropagation();data.openRequests?.(data.spec.id);}}><CircleHelp size={12}/>{data.presentation.currentRequestCount} запросов · открыто {data.presentation.pendingRequestCount}</button>:<div className="node-attention"><CircleHelp size={12}/>{data.presentation.currentRequestCount} запросов · открыто {data.presentation.pendingRequestCount}</div>)}
+      {data.proposalCount>0&&(data.openProposals?<button className="node-proposals nodrag nopan" aria-label={`Предложения спеки ${data.spec.humanId}`} onClick={event=>{event.stopPropagation();data.openProposals?.(data.spec.id);}}>Предложения · {data.proposalCount}</button>:<div className="node-proposals">Предложения · {data.proposalCount}</div>)}
+      <p className="node-updated">{data.presentation.lastUpdatedAt?<><span>Обновлено </span><time dateTime={data.presentation.lastUpdatedAt} aria-label={`Последнее событие ${data.spec.humanId}`}>{new Date(data.presentation.lastUpdatedAt).toLocaleString('ru-RU')}</time></>:<span>Событий пока нет</span>}</p>
       <Handle type="source" position={Position.Right} />
     </div>
   );
@@ -78,6 +82,7 @@ export default function Roadmap({
   visibleIds,
   filterMode='dim',
   onOpenRequests,
+  onOpenProposals,
   selectLabel='Открыть процесс',
   active=true,
 }: {
@@ -90,6 +95,7 @@ export default function Roadmap({
   visibleIds?: string[];
   filterMode?:'dim'|'hide';
   onOpenRequests?:(id:string)=>void;
+  onOpenProposals?:(id:string)=>void;
   selectLabel?:string;
   active?:boolean;
 }) {
@@ -135,6 +141,8 @@ export default function Roadmap({
       spec: s,
       presentation,
       openRequests:onOpenRequests,
+      openProposals:onOpenProposals,
+      proposalCount:state.agentProposals.filter(proposal=>proposal.projectId===state.projectId&&proposal.specId===s.id&&proposal.specRevisionId===s.activeRevisionId).length,
       revision:revision?.revision??1,
       goal:revision?.goal??'Ожидание ещё не описано',
       selected: s.id === selected,

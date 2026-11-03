@@ -38,7 +38,7 @@ test('M07 impact baseline, event sources and real JSON export explain a fixed co
   await expect(panel.getByLabel('Доля изменённых исходных ожиданий',{exact:true})).toHaveText('50,0%');
   await expect(panel).toContainText('Не оценивает качество агента');
   const source=panel.getByRole('group',{name:`Основание изменения ${specs[0].humanId}`});
-  await source.locator('summary').first().click();await expect(source).toContainText('RevisionActivated');
+  await source.locator('.ws-accordion-trigger').first().click();await expect(source).toContainText('RevisionActivated');
   await expect(source).toContainText('Цель');
   const downloading=page.waitForEvent('download');await panel.getByRole('button',{name:'Экспорт отчёта JSON',exact:true}).click();
   const download=await downloading,path=await download.path();expect(path).toBeTruthy();

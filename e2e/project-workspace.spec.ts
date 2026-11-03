@@ -25,8 +25,7 @@ async function reveal(control:Locator){
     // Accordion children stay mounted and can retain geometry while inert.
     const accordion=control.locator('xpath=ancestor::section[contains(concat(" ",normalize-space(@class)," ")," ws-accordion ")][button[@aria-expanded="false"]]').last();
     if(await accordion.count()){await accordion.locator(':scope > button[aria-expanded="false"]').click();continue;}
-    const closed=control.locator('xpath=ancestor::details[not(@open)]').last();
-    if(await closed.count()){await closed.locator(':scope > summary').click();continue;}break;
+    break;
   }
   await expect(control).toBeVisible();
 }
@@ -160,7 +159,7 @@ test('PW04/PW06 a committed task with a lost response retains the exact A intent
     await submitTask(page);await closeDialog(page);const pending=region(page,'Неподтверждённые действия');await expect(pending).toContainText('Исход действия неизвестен.');
     const before=await snapshot(page,a.id),execution=before.state.executions.at(-1)!;cleanup={project:a,registration,executionId:execution.id,specId:execution.specId};expect(before.state.specs).toHaveLength(1);expect(before.state.executions).toHaveLength(1);expect(execution.state).toBe('queued');expect(requests).toHaveLength(1);expect(requests[0].actor).toBeTruthy();expect(requests[0].project).toBe(a.id);
     await catalog(page);await openSaved(page,b);await expect(region(page,'Неподтверждённые действия')).toHaveCount(0);expect((await snapshot(page,b.id)).state.specs).toHaveLength(0);await catalog(page);await openSaved(page,a);
-    await expect(pending).toContainText('Исход действия неизвестен.');await pending.locator('summary').filter({hasText:'Исходный запрос'}).click();await expect(pending).toContainText(JSON.parse(requests[0].body!).requestId);
+    await expect(pending).toContainText('Исход действия неизвестен.');await pending.getByRole('button',{name:'Исходный запрос',exact:true}).click();await expect(pending).toContainText(JSON.parse(requests[0].body!).requestId);
     const replayed=page.waitForResponse(response=>new URL(response.url()).pathname===`${scope(a.id)}/tasks`&&response.request().method()==='POST');await pending.getByRole('button',{name:'Повторить тот же запрос',exact:true}).click();const receipt=await replayed;expect(receipt.ok()).toBe(true);expect((await receipt.json()).replayed).toBe(true);
     expect(requests).toHaveLength(2);expect(requests[1]).toEqual(requests[0]);expect(JSON.parse(requests[1].body!).expectedVersion).toBe(JSON.parse(requests[0].body!).expectedVersion);await expect(pending).toHaveCount(0);
     const after=await snapshot(page,a.id);expect(after.cursor).toBe(before.cursor);expect(after.state.specs.map(spec=>spec.id)).toEqual(before.state.specs.map(spec=>spec.id));expect(after.state.executions.map(attempt=>attempt.id)).toEqual([execution.id]);expect(foreignWrites).toEqual([]);expect(await marker(page)).toBe(sameDocument);

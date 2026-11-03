@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type {DomainEvent} from '../packages/core/src/types';
-import {selectWorkspaceHistory,workspaceHistoryEntry,workspaceHistoryRelations} from '../lib/workspace-history-view';
+import {selectWorkspaceHistory,workspaceHistoryEntry,workspaceHistoryRelations,workspaceHistoryRowLabel} from '../lib/workspace-history-view';
 
 const projectId='history-project',actor={id:'agent-1',kind:'agent' as const,name:'Агент',projectIds:[projectId]};
 const event=(id:string,version:number,overrides:Partial<DomainEvent>={}):DomainEvent=>({id,version,type:'ActionReported',schemaVersion:1,projectId,occurredAt:'2026-11-03T10:00:00.000Z',actor,correlationId:'shared-correlation',specId:'spec-a',specRevisionId:'revision-a',executionId:'execution-a',payload:{title:'Проверка',phase:'completed'},...overrides});
@@ -25,6 +25,26 @@ test('typed history preserves explicit fields and never manufactures cause/outco
   assert.equal(unknown.label,'FutureEvent');assert.equal(unknown.title,'FutureEvent');assert.equal(unknown.reason,undefined);
   const decision=workspaceHistoryEntry(event('decision',3,{type:'DecisionResolved',payload:{decision:{outcome:{kind:'answer',answer:'Да, продолжать'}}}}));
   assert.equal(decision.outcome,'Да, продолжать');assert.equal(decision.label,'Решение человека');
+});
+
+test('typed reason and decision result keep their complete source text for compact rows and event details',()=>{
+  const reason='Первая строка основания.\n'+'Подробное основание из сохранённого запроса. '.repeat(60)+'КОНЕЦ ОСНОВАНИЯ';
+  const answer='Ответ человека.\n'+'Полный результат решения остаётся доступным. '.repeat(60)+'КОНЕЦ ОТВЕТА';
+  const requested=event('long-reason',1,{type:'DecisionRequested',payload:{request:{title:'Нужен выбор',reason},unknownField:{keep:'original'}}});
+  const resolved=event('long-answer',2,{type:'DecisionResolved',payload:{decision:{outcome:{kind:'answer',answer}}}});
+  const before=structuredClone([requested,resolved]);
+  assert.equal(workspaceHistoryEntry(requested).reason,reason);
+  assert.equal(workspaceHistoryEntry(requested).outcome,undefined);
+  assert.equal(workspaceHistoryEntry(resolved).outcome,answer);
+  assert.equal(workspaceHistoryEntry(resolved).reason,undefined);
+  const reasonLabel=workspaceHistoryRowLabel(workspaceHistoryEntry(requested),'03.11.2026, 15:00:00'),answerLabel=workspaceHistoryRowLabel(workspaceHistoryEntry(resolved),'03.11.2026, 15:00:00');
+  assert(reasonLabel.includes('Причина: Первая строка основания.'));
+  assert(answerLabel.includes('Результат: Ответ человека.'));
+  for(const label of [reasonLabel,answerLabel]){
+    assert(label.length<600);assert(label.includes('Автор: Агент'));assert(label.includes('Сообщение агента'));assert(label.includes('03.11.2026, 15:00:00'));
+    assert(!label.includes('КОНЕЦ ОСНОВАНИЯ'));assert(!label.includes('КОНЕЦ ОТВЕТА'));
+  }
+  assert.deepEqual([requested,resolved],before);
 });
 
 test('history causal links use stored causationId only; chronology and shared correlation do not imply consequences',()=>{

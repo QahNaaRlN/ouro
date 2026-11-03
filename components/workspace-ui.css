@@ -1,3 +1,12 @@
+.ws-accordion{min-width:0}
+button.ws-accordion-trigger{display:flex;align-items:center;max-width:100%;min-width:0;gap:7px;padding:6px 0;border:0;background:transparent;color:var(--text-muted);font:inherit;text-align:left;cursor:pointer}
+.ws-accordion-trigger>svg:first-child{transition:transform 180ms ease;flex-shrink:0}
+.ws-accordion-trigger[aria-expanded=true]>svg:first-child{transform:rotate(90deg)}
+.ws-accordion-grid{display:grid;grid-template-rows:0fr;transition:grid-template-rows 200ms ease}
+.ws-accordion-grid[data-open=true]{grid-template-rows:1fr}
+.ws-accordion-clip{overflow:hidden;min-height:0}
+.ws-accordion-content{padding-top:10px}
+@media(prefers-reduced-motion:reduce){.ws-accordion-grid,.ws-accordion-trigger>svg:first-child{transition:none}}
 .ws-shell .ws-dialog{box-sizing:border-box;width:min(680px,calc(100vw - 40px));max-width:calc(100vw - 40px);max-height:calc(100dvh - 48px);padding:0;border:1px solid var(--border);border-radius:12px;color:var(--text);background:var(--subtle);overflow:auto;box-shadow:0 24px 80px #0007}
 .ws-shell .ws-dialog:not([open]){display:none}
 .ws-dialog::backdrop{background:#0009;backdrop-filter:blur(3px)}
@@ -10,8 +19,8 @@
 .ws-shell textarea.ws-textarea{box-sizing:border-box;resize:none;overflow:hidden;max-height:none}
 .ws-shell .ws-accordion{margin:14px 0;min-width:0}
 .ws-shell button.ws-accordion-trigger{padding:6px 0;justify-content:flex-start;border:0;background:transparent;color:var(--text-muted);text-align:left;gap:7px;font-weight:400}
-.ws-shell .ws-accordion-trigger>svg{transition:transform 180ms ease;flex-shrink:0}
-.ws-shell .ws-accordion-trigger[aria-expanded=true]>svg{transform:rotate(90deg)}
+.ws-shell .ws-accordion-trigger>svg:first-child{transition:transform 180ms ease;flex-shrink:0}
+.ws-shell .ws-accordion-trigger[aria-expanded=true]>svg:first-child{transform:rotate(90deg)}
 .ws-shell .ws-accordion-grid{display:grid;grid-template-rows:0fr;transition:grid-template-rows 200ms ease}
 .ws-shell .ws-accordion-grid[data-open=true]{grid-template-rows:1fr}
 .ws-shell .ws-accordion-clip{overflow:hidden;min-height:0}
@@ -43,5 +52,5 @@
 .ws-shell .ws-event-links{display:flex;gap:8px;flex-wrap:wrap}
 .ws-shell .ws-connection-name{font-size:12px;color:var(--text-muted);margin:0}
 .ws-shell .ws-connection-manage>h2{margin-bottom:8px}
-@media(prefers-reduced-motion:reduce){.ws-shell .ws-accordion-grid,.ws-shell .ws-accordion-trigger>svg{transition:none}}
+@media(prefers-reduced-motion:reduce){.ws-shell .ws-accordion-grid,.ws-shell .ws-accordion-trigger>svg:first-child{transition:none}}
 @media(max-width:560px){.ws-shell .ws-dialog{width:calc(100vw - 24px);max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px)}.ws-shell .ws-dialog-heading,.ws-shell .ws-dialog-content{padding:18px}.ws-shell .ws-history-row-time{white-space:normal;max-width:112px}.ws-shell button.ws-history-row{gap:12px}}

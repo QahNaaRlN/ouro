@@ -9,6 +9,7 @@ import type {AgentRegistration} from './agents-panel';
 import {workspaceContent} from './workspace-task';
 import {WorkspaceAccordion,WorkspaceSelect,WorkspaceTextarea} from './workspace-ui';
 import {WorkStatus} from './work-status';
+import reviewStyles from './workspace-grouped-review.module.css';
 
 export type WorkspaceCommand=(payload:Record<string,unknown>,slot:string,label:string)=>Promise<boolean>;
 const viewHuman=(state:ProjectState):Actor=>({id:'workspace-view-human',kind:'human',projectIds:[state.projectId]});
@@ -46,20 +47,35 @@ function StartAttemptForm({spec,revision,state,agents,command,disabled,actor}:St
 }
 
 type DecisionsProps={state:ProjectState;specId?:string;revisionId?:string;executionId?:string;requestId?:string;onOpenRequest?:(requestId:string)=>void;agents:AgentRegistration[];command:WorkspaceCommand;disabled:boolean;actor?:Actor};
+const requestKinds=[['Question','Вопросы'],['Fork','Развилки'],['Blocker','Блокеры']] as const;
+const requestStates=['pending','resolved','withdrawn','superseded'] as const;
 export function WorkspaceDecisions({state,specId,revisionId,executionId,requestId,onOpenRequest,agents,command,disabled,actor}:DecisionsProps){
   const inScope=(request:DecisionRequest)=>(!specId||request.specId===specId)&&(!revisionId||request.specRevisionId===revisionId)&&(!executionId||request.executionId===executionId);
   const selected=requestId?state.requests.find(request=>request.id===requestId&&inScope(request)):undefined;
   const requests=requestId?(selected?[selected]:[]):currentDecisionRequests(state).filter(inScope);
+  const renderRequest=(request:DecisionRequest)=>onOpenRequest&&!requestId?<article className="ws-request ws-request-compact" key={request.id} data-request-id={request.id}>
+    <div className="ws-section-top"><span className="ws-badge">{request.kind==='Question'?'Вопрос':request.kind==='Fork'?'Развилка':'Блокер'}</span><WorkStatus presentation={getCanonicalStatusPresentation(request.state)}/></div>
+    <button type="button" className="ws-event-link" onClick={()=>onOpenRequest(request.id)}>{request.title}</button>
+    <RequestScope request={request} state={state} agents={agents}/>
+    <p className="ws-muted">{request.question??request.reason??request.context}</p>
+    {request.decision&&request.decision.outcome.kind!=='reject'&&<p className="ws-muted">{request.decision.appliedAt?'Применение подтверждено агентом.':'Применение ещё не подтверждено агентом.'}</p>}
+  </article>:<DecisionCard key={request.id} request={request} state={state} agents={agents} command={command} disabled={disabled} actor={actor}/>;
   return <section className="ws-panel" aria-label="Вопросы и решения">
     <h2>Вопросы и решения</h2><p>Ответ, применение решения и разрешение продолжения — отдельные действия.</p>
     {!requests.length&&<p className="ws-muted">{requestId?'Запрос не найден в выбранной области.':'Запросов в выбранной области нет. Новые вопросы, развилки и блокеры появятся по мере работы.'}</p>}
-    {requests.map(request=>onOpenRequest&&!requestId?<article className="ws-request ws-request-compact" key={request.id} data-request-id={request.id}>
-      <div className="ws-section-top"><span className="ws-badge">{request.kind==='Question'?'Вопрос':request.kind==='Fork'?'Развилка':'Блокер'}</span><WorkStatus presentation={getCanonicalStatusPresentation(request.state)}/></div>
-      <button type="button" className="ws-event-link" onClick={()=>onOpenRequest(request.id)}>{request.title}</button>
-      <RequestScope request={request} state={state} agents={agents}/>
-      <p className="ws-muted">{request.question??request.reason??request.context}</p>
-      {request.decision&&request.decision.outcome.kind!=='reject'&&<p className="ws-muted">{request.decision.appliedAt?'Применение подтверждено агентом.':'Применение ещё не подтверждено агентом.'}</p>}
-    </article>:<DecisionCard key={request.id} request={request} state={state} agents={agents} command={command} disabled={disabled} actor={actor}/>)}
+    {requestId?requests.map(renderRequest):requestKinds.map(([kind,label])=>{
+      const kindRequests=requests.filter(request=>request.kind===kind);
+      return kindRequests.length>0&&<section key={kind} className={reviewStyles.kindGroup} aria-label={`${label} · ${kindRequests.length}`} data-request-kind={kind}>
+        <h3 className={reviewStyles.kindHeading}>{label}<span className="ws-badge">{kindRequests.length}</span></h3>
+        {requestStates.map(requestState=>{
+          const stateRequests=kindRequests.filter(request=>request.state===requestState);
+          return stateRequests.length>0&&<div key={requestState} className={reviewStyles.stateGroup} data-request-state={requestState}>
+            <h4 className={reviewStyles.stateHeading}>{getCanonicalStatusPresentation(requestState).label}<span className="ws-badge">{stateRequests.length}</span></h4>
+            {stateRequests.map(renderRequest)}
+          </div>;
+        })}
+      </section>;
+    })}
   </section>;
 }
 

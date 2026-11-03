@@ -1,5 +1,6 @@
 "use client";
 
+import {WorkspaceAccordion} from '@/components/workspace-ui';
 import {AppSelect} from '@/components/app-select';
 import { projectFetch, projectRequestUrl } from '@/lib/client-project';
 
@@ -654,7 +655,7 @@ export default function Home() {
             <h1>Проект недоступен</h1>
             <p>{error || "Проверьте запуск сервера и локальную сессию."}</p>
             <EmailLogin/>
-            <details open><summary>Вход по прежнему ключу участника</summary><ParticipantLogin/></details>
+            <WorkspaceAccordion defaultOpen title={<>Вход по прежнему ключу участника</>}><ParticipantLogin/></WorkspaceAccordion>
             <button className="btn" onClick={() => location.reload()}>
               Повторить
             </button>
@@ -2139,7 +2140,7 @@ function DecisionMaintenance({request:r,state,busy,command,onOpenRequest}:{reque
     {r.state==='withdrawn'&&<div className="decision-lineage"><strong>Запрос отозван автором</strong><p>{r.withdrawalReason}</p><p>Отзыв не является решением человека, разрешением продолжения или снятием физического блокера.</p></div>}
     {clarifications.length>0&&<section className="decision-clarification-list" aria-label="Уточнения запроса"><h3>Уточнения запроса</h3>{clarifications.map(source=>{
       const reply=state.events.find(event=>event.type==='DecisionClarificationSubmitted'&&event.payload.clarificationEventId===source.id);
-      return <article className="decision-clarification-item" key={source.id}><small>Запрос человека · #{source.version} · {source.actor.name??source.actor.id}</small><p>{String(source.payload.question)}</p>{reply?<><small>Ответ назначенного агента · #{reply.version}</small><p>{String(reply.payload.response)}</p></>:<small>Ожидается уточнение агента. Ответ человека по-прежнему требуется.</small>}<details><summary>Связи с фактами</summary><code>{source.id}</code>{reply&&<p><code>{reply.id}</code> → <code>{String(reply.payload.clarificationEventId)}</code></p>}</details></article>;
+      return <article className="decision-clarification-item" key={source.id}><small>Запрос человека · #{source.version} · {source.actor.name??source.actor.id}</small><p>{String(source.payload.question)}</p>{reply?<><small>Ответ назначенного агента · #{reply.version}</small><p>{String(reply.payload.response)}</p></>:<small>Ожидается уточнение агента. Ответ человека по-прежнему требуется.</small>}<WorkspaceAccordion title={<>Связи с фактами</>}><code>{source.id}</code>{reply&&<p><code>{reply.id}</code> → <code>{String(reply.payload.clarificationEventId)}</code></p>}</WorkspaceAccordion></article>;
     })}</section>}
     {r.applicabilityEndedEvidence&&<div className="decision-lineage"><strong>Применимость прежнего блокера завершена человеком</strong><p>Контекст свидетельства: {r.applicabilityEndedForRevisionId?`r${state.revisions.find(item=>item.id===r.applicabilityEndedForRevisionId)?.revision??'?'}`:'без активной ревизии'}. {openPhysicalBlocker?'В текущем контракте физическое препятствие требует отдельного пересмотра.':'Свидетельство относится к текущему контракту.'}</p><p>{r.applicabilityEndedReason}</p><p>{r.applicabilityEndedEvidence}</p><p>Это свидетельство неприменимости в новом контракте. Физическое устранение этим действием не подтверждено.</p></div>}
     {canReopen&&<button type="button" className="btn" disabled={busy} onClick={()=>begin('reopen')}>Запросить новый план для блокера</button>}
@@ -2374,10 +2375,9 @@ function Timeline({
                 )}
               </div>
               {expanded && (
-                <details>
-                  <summary>Событие JSON</summary>
+                <WorkspaceAccordion title={<>Событие JSON</>}>
                   <pre>{JSON.stringify(e, null, 2)}</pre>
-                </details>
+                </WorkspaceAccordion>
               )}
             </div>
           </article>

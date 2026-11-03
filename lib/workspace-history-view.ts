@@ -31,6 +31,21 @@ export function workspaceHistoryEntry(event:DomainEvent){
   return {id:event.id,type:event.type,label,title:text(payload.title)??text(request?.title)??label,actor:event.actor.name??event.actor.id,occurredAt:event.occurredAt,version:event.version,phase:phase?({started:'Начато',completed:'Выполнено',failed:'Ошибка'} as Record<string,string>)[phase]??phase:undefined,reason:text(payload.reason)??text(request?.reason),outcome:result,evidence:text(payload.evidence),specId:event.specId,revisionId:event.specRevisionId,executionId:event.executionId,causationId:event.causationId,correlationId:event.correlationId,provenance:workspaceEventProvenance(event)};
 }
 
+const rowExcerpt=(value:string,limit:number):string=>{
+  const characters=Array.from(value.replace(/\s+/gu,' ').trim());
+  return characters.length>limit?characters.slice(0,limit-1).join('')+'…':characters.join('');
+};
+
+/** Only the accessible row name is shortened; the event and its detail fields stay intact. */
+export function workspaceHistoryRowLabel(entry:ReturnType<typeof workspaceHistoryEntry>,dateLabel:string,specLabel?:string):string{
+  return [rowExcerpt(entry.title,100),`Тип: ${rowExcerpt(entry.label,64)}`,`Автор: ${rowExcerpt(entry.actor,64)}`,entry.provenance.label,`Событие №${entry.version}`,dateLabel,
+    ...(specLabel?[`Спецификация: ${rowExcerpt(specLabel,64)}`]:[]),
+    ...(entry.reason?[`Причина: ${rowExcerpt(entry.reason,120)}`]:[]),
+    ...(entry.outcome?[`Результат: ${rowExcerpt(entry.outcome,120)}`]:[]),
+    'Полное содержание — в подробностях.',
+  ].join('. ');
+}
+
 /** Chronological order or a shared correlation never manufactures a causal link. */
 export function workspaceHistoryRelations(state:Pick<ProjectState,'projectId'|'events'>,event:DomainEvent){
   if(event.projectId!==state.projectId)return {cause:undefined,effects:[] as DomainEvent[]};

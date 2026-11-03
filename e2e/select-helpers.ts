@@ -4,6 +4,9 @@ type SelectOption=string|{label:string}|{index:number};
 
 /** Exercise the visible Base UI popup rather than its hidden form control. */
 export async function selectPopup(trigger:Locator){
+  // Searchable controls also name their popup and search field. Keep a legacy
+  // getByLabel locator attached to the actual trigger after the popup opens.
+  trigger=trigger.and(trigger.page().locator('[data-base-ui-select]'));
   await expect(trigger).toBeVisible();
   await expect(trigger).toBeEnabled();
   if(await trigger.getAttribute('aria-expanded')!=='true')await trigger.click();

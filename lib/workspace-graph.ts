@@ -3,7 +3,7 @@ import type {Dependency,DomainEvent,ProjectState} from '../packages/core/src/typ
 import {getSpecWorkPresentation} from '../packages/core/src/work-presentation';
 
 export const ROADMAP_NODE_WIDTH=264;
-export const ROADMAP_NODE_HEIGHT=195;
+export const ROADMAP_NODE_HEIGHT=240;
 // At the former 0.25 minimum, even 50 independent specs could not fit a 420px pane.
 export const ROADMAP_MIN_ZOOM=0.01;
 export const ROADMAP_FIT_OPTIONS={padding:0.14,minZoom:ROADMAP_MIN_ZOOM,maxZoom:0.9};
