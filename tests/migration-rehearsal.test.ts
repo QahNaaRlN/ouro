@@ -65,7 +65,7 @@ test('AA11/AA12 file-backed 001–005 database migrates without changing events,
     assert.deepEqual(replayedReceipt.state, before);
     assert.equal((await store.listAgents(owner)).find(agent => agent.id === AGENT_ID)?.revokedAt, null);
     assert.deepEqual((await store.authenticateAgentToken(legacyAgentToken))?.projectIds, [PROJECT_ID]);
-    assert.deepEqual((await store.inspect<{ version: number }>('SELECT version FROM ouro_schema_migrations ORDER BY version')).rows.map(row => row.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    assert.deepEqual((await store.inspect<{ version: number }>('SELECT version FROM ouro_schema_migrations ORDER BY version')).rows.map(row => row.version), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
   } finally {
     if (store) await store.close();
     else await legacy.close();

@@ -176,6 +176,9 @@ test('paired verification browser path: create/edit contract, real Playwright im
         await page.getByRole('navigation', { name: 'Разделы проекта' }).getByRole('button', { name: 'Дорожная карта', exact: true }).click();
         const card = page.locator('.react-flow__node .verification-pair');
         await expect(card).toHaveCount(1);
+        await expect(card).toBeVisible();
+        // Loaded font metrics are a layout precondition, independent of a flip.
+        await page.evaluate(async()=>{await document.fonts.ready;});
         await page.emulateMedia({reducedMotion:'no-preference'});
         const rotor=card.locator('.verification-rotor');
         // Native graph fitting can change screen zoom independently of a flip.

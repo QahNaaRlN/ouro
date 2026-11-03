@@ -18,6 +18,7 @@ import {importPlaywrightReport,type PlaywrightImportProof} from './verification/
 import {observeVerificationWorkspace,observationHash,type ObservationConfig} from './verification/observation';
 import {runLocalVerification,type LocalRunnerProof} from './verification/local-runner';
 import {verificationObserveInputSchema,verificationRunnerInputSchema} from '@ouro/protocol';
+import {createWorkspaceBindingRecovery,parseRecoveryInput,type BindingRecoveryInspection,type VerifiedBindingRecovery} from './workspace-binding-recovery';
 
 export class StoreError extends Error {
   constructor(public code: string, message: string, public details?: Record<string, unknown>) {
@@ -30,11 +31,16 @@ type Query = <T = Row>(sql: string, values?: unknown[]) => Promise<{ rows: T[] }
 type Connection = { query: Query; exec(sql: string): Promise<unknown> };
 type Database = Connection & { transaction<T>(fn: (connection: Connection) => Promise<T>): Promise<T>; close(): Promise<void> };
 export type CommandResult = { state: ProjectState; events: DomainEvent[]; cursor: number; replayed: boolean };
-export type StoreOptions = { dataDir?: string; databaseUrl?: string; seedEvents?: DomainEvent[]; projectId?:string; mailer?: OuroMailer };
+export type StoreOptions = { dataDir?: string; databaseUrl?: string; seedEvents?: DomainEvent[]; projectId?:string; mailer?: OuroMailer;workspaceBindingRecovery?:ReturnType<typeof createWorkspaceBindingRecovery> };
 export type WorkspaceBinding={id:string;canonicalPath:string;identity:{dev:string;ino:string}};
 export type WorkspaceProject={id:string;name:string;rootPath:string|null;kind:'folder'|'demo';createdAt:string;createdBy:string;bindingId:string|null;rootIdentity:{dev:string;ino:string}|null};
 type WorkspaceProjectRow={id:string;name:string;root_path:string|null;kind:'folder'|'demo';created_at:Date|string;created_by:string;binding_id:string|null;root_dev:string|null;root_ino:string|null};
-type StoreOwner={registerObserver:(id:string,poll:()=>Promise<unknown>)=>void;db:Database;storage:'postgres'|'embedded-postgres';serialize:<T>(fn:()=>Promise<T>)=>Promise<T>;close:()=>Promise<void>;mailer?:OuroMailer};
+type StoreOwner={registerObserver:(id:string,poll:()=>Promise<unknown>)=>void;db:Database;storage:'postgres'|'embedded-postgres';serialize:<T>(fn:()=>Promise<T>)=>Promise<T>;close:()=>Promise<void>;mailer?:OuroMailer;bindingRecovery:ReturnType<typeof createWorkspaceBindingRecovery>};
+export type WorkspaceCommandRejection={phase:'workspace-binding-guard';outcome:'rejected';receipt:'absent';projectId:string;actorId:string;requestId:string;commandType:'startExecution'|'startProjectWork'|'authorizeRemediation';bodySha256:string};
+export type WorkspaceBindingRecoveryAudit={recoveryId:string;projectId:string;actorId:string;reason:string;acknowledgeUnknownContinuity:true;oldBinding:WorkspaceBinding;newBinding:WorkspaceBinding;runtime:VerifiedBindingRecovery['runtime'];issuedAt:string;expiresAt:string;createdAt:string;origin:'unknown'};
+export type WorkspaceBindingRecoveryResult={project:WorkspaceProject;recovery:WorkspaceBindingRecoveryAudit;replayed:boolean};
+export type WorkspaceBindingRecoveryInspection={saved:WorkspaceBinding|null;observed?:WorkspaceBinding;eligible:boolean;reason:string;ticket?:string;expiresAt?:string;audit:WorkspaceBindingRecoveryAudit[];runtime:BindingRecoveryInspection['runtime'];status:BindingRecoveryInspection['status'];origin:'unknown'};
+class WorkspaceGuardRejected extends StoreError{constructor(error:{message:string},public proof:WorkspaceCommandRejection){super('WORKSPACE_BINDING_CONFLICT',error.message);}}
 export type AgentRegistration = { id:string; projectId:string; name:string; createdAt:string; createdBy:string; lastSeenAt:string|null; revokedAt:string|null };
 export type PublicGitHubDelivery = {id:string;deliveryId:string;repositoryId:number;repositoryFullName:string;ref:string;status:'pending'|'processing'|'retryable'|'processed'|'needs_review';attempts:number;reason:string|null;lastError:string|null;receivedAt:string;updatedAt:string;nextAttemptAt:string;commitCount:number};
 export type ClaimedGitHubDelivery = {id:string;deliveryId:string;projectId:string;payload:NormalizedGitHubPush;bindingIds:string[];leaseToken:string;attempts:number};
@@ -179,7 +185,11 @@ function workspaceProject(row:WorkspaceProjectRow):WorkspaceProject{
 }
 async function readWorkspaceProject(tx:Connection,projectId:string):Promise<WorkspaceProject|null>{
   const found=await tx.query<WorkspaceProjectRow>('SELECT * FROM ouro_workspace_projects WHERE id=$1',[projectId]);
-  return found.rows[0]?workspaceProject(found.rows[0]):null;
+  if(!found.rows[0])return null;
+  const project=workspaceProject(found.rows[0]);
+  const overlay=await tx.query<{content:WorkspaceBindingRecoveryAudit}>('SELECT content FROM ouro_workspace_binding_recoveries WHERE project_id=$1 ORDER BY sequence DESC LIMIT 1',[projectId]);
+  const current=overlay.rows[0]?.content.newBinding;
+  return current?{...project,bindingId:current.id,rootPath:current.canonicalPath,rootIdentity:current.identity}:project;
 }
 function workspaceBinding(project:WorkspaceProject|null):WorkspaceBinding|null{
   return project?.kind==='folder'&&project.rootPath&&project.bindingId&&project.rootIdentity?{id:project.bindingId,canonicalPath:project.rootPath,identity:project.rootIdentity}:null;
@@ -192,7 +202,7 @@ async function assertCatalogOperator(tx:Connection,actor:Actor):Promise<void>{
 export async function createStore(options:StoreOptions={}):Promise<Store>{
   const selectedProjectId=projectIdValue(options.projectId??PROJECT_ID),db=await openDatabase(options);
   try{
-    const migrations=await Promise.all(['001_initial.sql','002_agents.sql','003_github.sql','004_participants.sql','005_drafts.sql','006_workspace_projects.sql','007_identity.sql','008_projects_memberships.sql','009_membership_regrants.sql','010_verification.sql','011_verification_runtime.sql'].map(file=>readFile(path.join(process.cwd(),'db','migrations',file),'utf8')));
+    const migrations=await Promise.all(['001_initial.sql','002_agents.sql','003_github.sql','004_participants.sql','005_drafts.sql','006_workspace_projects.sql','007_identity.sql','008_projects_memberships.sql','009_membership_regrants.sql','010_verification.sql','011_verification_runtime.sql','012_workspace_binding_recovery.sql'].map(file=>readFile(path.join(process.cwd(),'db','migrations',file),'utf8')));
     await db.transaction(async tx=>{
       // External PostgreSQL may have multiple app processes initializing together.
       if(options.databaseUrl)await tx.query('SELECT pg_advisory_xact_lock(187652019)');
@@ -222,7 +232,7 @@ export async function createStore(options:StoreOptions={}):Promise<Store>{
     };
     const observerPolls=new Map<string,()=>Promise<unknown>>();let observing=false;
     const observerTimer=setInterval(()=>{if(closing||observing)return;observing=true;void Promise.allSettled([...observerPolls.values()].map(poll=>poll())).finally(()=>{observing=false;});},1000);observerTimer.unref();
-    const owner:StoreOwner={registerObserver:(id,poll)=>{observerPolls.set(id,poll);},db,storage:options.databaseUrl?'postgres':'embedded-postgres',serialize,mailer:options.mailer,close:()=>{
+    const owner:StoreOwner={registerObserver:(id,poll)=>{observerPolls.set(id,poll);},db,storage:options.databaseUrl?'postgres':'embedded-postgres',serialize,mailer:options.mailer,bindingRecovery:options.workspaceBindingRecovery??createWorkspaceBindingRecovery(),close:()=>{
       if(!closePromise){closing=true;clearInterval(observerTimer);observerPolls.clear();closePromise=tail.then(()=>db.close());tail=closePromise.catch(()=>undefined);}
       return closePromise;
     }};
@@ -281,7 +291,13 @@ function createProjectStore(projectId:string,owner:StoreOwner){
           const workspace=await readWorkspaceProject(tx,selectedProjectId);
           if(workspace||['local-human','human-token'].includes(actor.id))throw new StoreError('INVALID_TRANSITION','Для локального назначения выберите зарегистрированную папку-проект.');
         }
-        if(binding)await assertWorkspaceFolder(binding);
+        if(binding){
+          try{await assertWorkspaceFolder(binding);}
+          catch(error){
+            if(actor.kind==='human'&&(error as {code?:string}).code==='WORKSPACE_BINDING_CONFLICT')throw new WorkspaceGuardRejected(error as Error,{phase:'workspace-binding-guard',outcome:'rejected',receipt:'absent',projectId:selectedProjectId,actorId:actor.id,requestId:command.requestId,commandType:command.type as WorkspaceCommandRejection['commandType'],bodySha256:payloadHash});
+            throw error;
+          }
+        }
       }
       await assertAssignmentActive(tx,command,selectedProjectId);
       const state=replay(await readEvents(tx,0,selectedProjectId),selectedProjectId);
@@ -318,7 +334,26 @@ function createProjectStore(projectId:string,owner:StoreOwner){
       await tx.query(`INSERT INTO ouro_command_receipts (actor_id,project_id,request_id,payload_hash,response,cursor) VALUES ($1,$2,$3,$4,$5::jsonb,$6)`,[actor.id,selectedProjectId,command.requestId,payloadHash,JSON.stringify(response),response.cursor]);
       return {...response,replayed:false};
   }
-  function commitCommand(body:unknown,actor:Actor,internal=false,selectedProjectId=projectId):Promise<CommandResult>{return serialize(()=>db.transaction(tx=>commitCommandInTransaction(tx,body,actor,internal,selectedProjectId)));}
+  function commitCommand(body:unknown,actor:Actor,internal=false,selectedProjectId=projectId):Promise<CommandResult>{return serialize(async()=>{
+    try{return await db.transaction(tx=>commitCommandInTransaction(tx,body,actor,internal,selectedProjectId));}
+    catch(error){
+      if(!(error instanceof WorkspaceGuardRejected))throw error;
+      // The failed transaction has completed its rollback. Recheck current
+      // authority and the exact receipt under lock before exposing a negative proof.
+      return db.transaction(async tx=>{
+        assertActor(actor,selectedProjectId);
+        await tx.query('SELECT version FROM ouro_projects WHERE id=$1 FOR UPDATE',[selectedProjectId]);
+        await assertRegisteredHumanActive(tx,actor,selectedProjectId);
+        await requireProjectRole(tx,actor,selectedProjectId,['Owner','Contributor']);
+        const receipt=await tx.query<{payload_hash:string;response:Omit<CommandResult,'replayed'>}>('SELECT payload_hash,response FROM ouro_command_receipts WHERE project_id=$1 AND actor_id=$2 AND request_id=$3',[selectedProjectId,actor.id,error.proof.requestId]);
+        if(receipt.rows[0]){
+          if(receipt.rows[0].payload_hash!==error.proof.bodySha256)throw new StoreError('IDEMPOTENCY_CONFLICT','Этот requestId уже использован с другим содержимым.');
+          return {...receipt.rows[0].response,replayed:true};
+        }
+        throw new StoreError(error.code,error.message,{commandRejection:error.proof});
+      });
+    }
+  });}
   const lockProject=(tx:Connection,selectedProjectId=projectId)=>tx.query('SELECT version FROM ouro_projects WHERE id=$1 FOR UPDATE',[selectedProjectId]);
   const jobById=async(tx:Connection,id:string,selectedProjectId=projectId)=>{
     const result=await tx.query<GitHubJobRow>(`${githubJobSelection} WHERE d.project_id=$1 AND d.id=$2`,[selectedProjectId,id]);
@@ -450,6 +485,15 @@ function createProjectStore(projectId:string,owner:StoreOwner){
       }));
     });
   };
+  const assertRecoveryOwner=async(tx:Connection,actor:Actor)=>{
+    if(process.env.OURO_DEPLOYMENT_MODE==='cloud')throw new StoreError('FORBIDDEN','Восстановление локальной привязки недоступно в облачном режиме.');
+    assertActor(actor,projectId);
+    if(actor.kind!=='human'||!['local-human','human-token'].includes(actor.id))throw new StoreError('FORBIDDEN','Восстановление подтверждает доверенный локальный оператор с ролью Owner.');
+    await assertRegisteredHumanActive(tx,actor,projectId);
+    await requireProjectRole(tx,actor,projectId,['Owner']);
+  };
+  const recoveryHistory=async(tx:Connection)=>(await tx.query<{content:WorkspaceBindingRecoveryAudit}>('SELECT content FROM ouro_workspace_binding_recoveries WHERE project_id=$1 ORDER BY sequence',[projectId])).rows.map(row=>row.content);
+  const hasNonterminalWork=async(tx:Connection)=>replay(await readEvents(tx,0,projectId),projectId).executions.some(execution=>['queued','running','waiting_for_human','paused'].includes(execution.state));
   return {
     ...participants,...drafts,...projects,...userAuth,
     observeVerification,runVerification,
@@ -460,7 +504,47 @@ function createProjectStore(projectId:string,owner:StoreOwner){
     listWorkspaceProjects:(actor:Actor):Promise<WorkspaceProject[]>=>serialize(()=>db.transaction(async tx=>{
       await assertCatalogOperator(tx,actor);
       const result=await tx.query<WorkspaceProjectRow>('SELECT * FROM ouro_workspace_projects ORDER BY created_at,id');
-      return result.rows.map(workspaceProject);
+      const projects:WorkspaceProject[]=[];
+      for(const row of result.rows)projects.push((await readWorkspaceProject(tx,row.id))!);
+      return projects;
+    })),
+    inspectWorkspaceBindingRecovery:(actor:Actor):Promise<WorkspaceBindingRecoveryInspection>=>serialize(()=>db.transaction(async tx=>{
+      // Inspection intentionally performs no registration or other SQL mutation.
+      await assertRecoveryOwner(tx,actor);
+      const saved=workspaceBinding(await readWorkspaceProject(tx,projectId)),audit=await recoveryHistory(tx);
+      if(!saved)return {saved:null,eligible:false,status:'unavailable',origin:'unknown',reason:'У проекта нет привязки к папке.',audit,runtime:{platform:process.platform,node:process.version,uv:process.versions.uv,architecture:process.arch}};
+      const inspected=await owner.bindingRecovery.inspect({actorId:actor.id,projectId,binding:saved});
+      const {savedBinding,observedBinding,...details}=inspected;
+      if(await hasNonterminalWork(tx))return {...details,saved:savedBinding,...(observedBinding?{observed:observedBinding}:{}),eligible:false,status:'conflict',ticket:undefined,expiresAt:undefined,reason:'Восстановление запрещено, пока есть незавершённые исполнения, включая ожидание и паузу.',audit};
+      return {...details,saved:savedBinding,...(observedBinding?{observed:observedBinding}:{}),audit};
+    })),
+    recoverWorkspaceBinding:(body:unknown,actor:Actor):Promise<WorkspaceBindingRecoveryResult>=>serialize(()=>db.transaction(async tx=>{
+      await assertRecoveryOwner(tx,actor);
+      const input=parseRecoveryInput(body),payloadHash=hash(input);
+      await tx.query('SELECT id FROM ouro_workspace_catalog_lock WHERE id=1 FOR UPDATE');
+      await lockProject(tx);
+      await assertRecoveryOwner(tx,actor);
+      // Current authority precedes immutable receipt replay; expiry and binding
+      // checks follow it so a committed exact response remains recoverable.
+      const duplicate=await tx.query<{payload_hash:string;response:Omit<WorkspaceBindingRecoveryResult,'replayed'>}>('SELECT payload_hash,response FROM ouro_workspace_binding_recovery_receipts WHERE project_id=$1 AND actor_id=$2 AND request_id=$3',[projectId,actor.id,input.requestId]);
+      if(duplicate.rows[0]){
+        if(duplicate.rows[0].payload_hash!==payloadHash)throw new StoreError('IDEMPOTENCY_CONFLICT','Этот requestId уже использован для другого восстановления.');
+        return {...duplicate.rows[0].response,replayed:true};
+      }
+      const saved=workspaceBinding(await readWorkspaceProject(tx,projectId));
+      if(!saved)throw new StoreError('WORKSPACE_BINDING_CONFLICT','У проекта нет восстанавливаемой привязки папки.');
+      if(await hasNonterminalWork(tx))throw new StoreError('WORKSPACE_BINDING_CONFLICT','Сначала завершите незавершённые исполнения; ожидание и пауза также блокируют восстановление.');
+      const verified=await owner.bindingRecovery.verify({actorId:actor.id,projectId,binding:saved,ticket:input.ticket});
+      const newBinding:WorkspaceBinding={...verified.observedBinding,id:randomUUID()};
+      const recovery:WorkspaceBindingRecoveryAudit={recoveryId:randomUUID(),projectId,actorId:actor.id,reason:input.reason,acknowledgeUnknownContinuity:true,oldBinding:saved,newBinding,runtime:verified.runtime,issuedAt:verified.issuedAt,expiresAt:verified.expiresAt,createdAt:new Date().toISOString(),origin:'unknown'};
+      await registerActor(tx,actor);
+      await tx.query('INSERT INTO ouro_workspace_binding_recoveries(id,project_id,old_binding_id,new_binding_id,content) VALUES($1,$2,$3,$4,$5::jsonb)',[recovery.recoveryId,projectId,saved.id,newBinding.id,JSON.stringify(recovery)]);
+      const project=(await readWorkspaceProject(tx,projectId))!;
+      const response={project,recovery};
+      await tx.query('INSERT INTO ouro_workspace_binding_recovery_receipts(project_id,actor_id,request_id,payload_hash,response) VALUES($1,$2,$3,$4,$5::jsonb)',[projectId,actor.id,input.requestId,payloadHash,JSON.stringify(response)]);
+      // A final anchored probe can still abort all operational facts atomically.
+      await owner.bindingRecovery.verify({actorId:actor.id,projectId,binding:saved,ticket:input.ticket});
+      return {...response,replayed:false};
     })),
     createWorkspaceProject:(input:{requestId:string;name?:string;rootPath:string},actor:Actor):Promise<{project:WorkspaceProject;created:boolean;replayed:boolean}>=>serialize(()=>db.transaction(async tx=>{
       await assertCatalogOperator(tx,actor);
@@ -477,7 +561,7 @@ function createProjectStore(projectId:string,owner:StoreOwner){
       const existing=await tx.query<WorkspaceProjectRow>('SELECT * FROM ouro_workspace_projects WHERE root_path=$1',[folder.canonicalPath]);
       let project:WorkspaceProject,created=false;
       if(existing.rows[0]){
-        project=workspaceProject(existing.rows[0]);
+        project=(await readWorkspaceProject(tx,existing.rows[0].id))!;
         await assertWorkspaceFolder(workspaceBinding(project)!);
       }else{
         const id=randomUUID(),bindingId=randomUUID(),name=input.name?.trim()||folder.displayName;
