@@ -13,6 +13,7 @@ export type MultiprojectFixture = {
   viewer: { email: string; name: string; password: string; code: string };
   first: { id: string; name: string };
   second: { id: string; name: string };
+  hosted: { project:{id:string;name:string}; contributor:{email:string;password:string}; viewer:{email:string;password:string} };
 };
 
 export default async function multiprojectGlobalSetup() {
@@ -40,12 +41,21 @@ export default async function multiprojectGlobalSetup() {
     const viewer = { email: `viewer-${runId}@example.com`, name: 'E2E Viewer', password };
     await store.createInvitation(first.id, { email: contributor.email, role: 'Contributor' }, owner);
     await store.createInvitation(first.id, { email: viewer.email, role: 'Viewer' }, owner);
+    const hostedProject=await store.createProject({name:`Hosted workspace ${runId}`},owner);
+    owner.projectIds.push(hostedProject.id);
+    const hostedContributor={email:`hosted-contributor-${runId}@example.com`,password};
+    const hostedViewer={email:`hosted-viewer-${runId}@example.com`,password};
+    for(const [member,role]of [[hostedContributor,'Contributor'],[hostedViewer,'Viewer']] as const){
+      await store.createInvitation(hostedProject.id,{email:member.email,role},owner);
+      await store.acceptInvitation(invitations.find(item=>item.email===member.email)!.code,{name:'Hosted '+role,password});
+    }
     const fixture: MultiprojectFixture = {
       owner: { email: account.email, password },
       contributor: { ...contributor, code: invitations.find(item => item.email === contributor.email)!.code },
       viewer: { ...viewer, code: invitations.find(item => item.email === viewer.email)!.code },
       first: { id: first.id, name: first.name },
       second: { id: second.id, name: second.name },
+      hosted:{project:{id:hostedProject.id,name:hostedProject.name},contributor:hostedContributor,viewer:hostedViewer},
     };
     await writeFile(multiprojectFixturePath, JSON.stringify(fixture), { mode: 0o600 });
   } finally {

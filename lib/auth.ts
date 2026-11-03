@@ -2,6 +2,7 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Actor } from '@/packages/core/src/types';
 import { authenticateAgentToken } from './store';
 import {PROJECT_ID} from '@/packages/core/src';
+import {requestOrigin} from './connection-config';
 
 const authGlobal = globalThis as unknown as { ouroSessionSecret?: string };
 const secret = authGlobal.ouroSessionSecret ??= randomBytes(32).toString('hex');
@@ -121,10 +122,9 @@ export async function authenticatedAgent(request: Request, projectId: string, le
 export function assertJsonWrite(request: Request,maxBytes=256_000) {
   if (!request.headers.get('content-type')?.startsWith('application/json')) throw new AccessError('UNSUPPORTED_MEDIA_TYPE', 'Используйте application/json.', 415);
   const origin = request.headers.get('origin');
-  // Next's internal request URL may use localhost while the browser uses 127.0.0.1.
-  // The browser-facing Host is authoritative here; local sessions validate it too.
-  const url=new URL(request.url);
-  const expectedOrigin=`${url.protocol}//${request.headers.get('host') ?? url.host}`;
+  // The configured HTTPS origin survives TLS termination; forwarded headers do
+  // not authorize another host or origin. Loopback keeps its existing policy.
+  const expectedOrigin=requestOrigin(request);
   if (origin && origin !== expectedOrigin) throw new AccessError('FORBIDDEN', 'Межсайтовая запись запрещена.');
   const length = Number(request.headers.get('content-length') ?? 0);
   if (length > maxBytes) throw new AccessError('PAYLOAD_TOO_LARGE', `Команда превышает ${maxBytes} байт.`, 413);

@@ -14,6 +14,55 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  postgres:
+    name: postgres
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17.11@sha256:3b0cda93be7c8dba2ed484d19393d93845dc3dafb88973e248ba8e6d99d784e1
+        env:
+          POSTGRES_USER: ouro_admin
+          POSTGRES_PASSWORD: qualification-admin-only
+          POSTGRES_DB: ouro_qualification
+        ports: [5432:5432]
+        options: >-
+          --memory 256m --memory-swap 256m
+          --health-cmd "pg_isready -U ouro_admin -d ouro_qualification"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - run: npm ci
+      - name: Check operational shell scripts
+        run: sh -n deploy/postgres-init.sh && sh -n scripts/backup-hosted.sh && sh -n scripts/restore-hosted-drill.sh
+      - name: Create least-privileged application role and separate disposable databases
+        run: |
+          docker cp deploy/postgres-init.sh "$PG_CONTAINER:/tmp/ouro-postgres-init.sh"
+          docker exec -e POSTGRES_USER=ouro_admin -e POSTGRES_DB=ouro_qualification -e OURO_POSTGRES_APP_PASSWORD=qualification-only "$PG_CONTAINER" sh /tmp/ouro-postgres-init.sh
+          docker exec "$PG_CONTAINER" createdb -U ouro_admin --owner=ouro ouro_qualification_empty
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+      - name: Qualify real PostgreSQL migrations, isolation, concurrency and backup/restore
+        run: npm run test:external-pg
+        env:
+          OURO_TEST_DATABASE_URL: postgresql://ouro:qualification-only@127.0.0.1:5432/ouro_qualification
+          OURO_TEST_EMPTY_DATABASE_URL: postgresql://ouro:qualification-only@127.0.0.1:5432/ouro_qualification_empty
+          OURO_TEST_ADMIN_DATABASE_URL: postgresql://ouro_admin:qualification-admin-only@127.0.0.1:5432/postgres
+          OURO_TEST_DB_CONFIRM: DEDICATED_DISPOSABLE_DATABASES
+          OURO_TEST_PG_CONTAINER: ${{ job.services.postgres.id }}
+      - name: Build non-root production image with native dependencies and current protocol
+        run: docker build --target runner -t ouro:qualification .
+      - name: Qualify production image with bounded PostgreSQL, password login and SSE
+        run: node scripts/smoke-hosted-image.mjs
+        env:
+          OURO_SMOKE_IMAGE: ouro:qualification
+          OURO_TEST_DATABASE_URL: postgresql://ouro:qualification-only@127.0.0.1:5432/ouro_qualification
+          OURO_TEST_PG_CONTAINER: ${{ job.services.postgres.id }}
+
   checks:
     name: checks
     runs-on: ubuntu-latest

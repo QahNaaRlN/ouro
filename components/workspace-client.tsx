@@ -5,8 +5,8 @@ import {createContext,useContext,useEffect,useState,useSyncExternalStore,type Re
 import type {Actor,ProjectState} from '@/packages/core/src';
 import type {AgentRegistration} from './agents-panel';
 
-export type WorkspaceProject={id:string;name:string;rootPath:string|null;kind:'folder'|'demo';createdAt:string;createdBy:string;bindingId?:string;rootIdentity?:unknown};
-export type WorkspaceConnection={httpUrl:string;stdioCommand:string;stdioArgs:string[];projectId:string};
+export type WorkspaceProject={id:string;name:string;rootPath:string|null;kind:'folder'|'demo'|'hosted';createdAt:string;createdBy:string|null;bindingId?:string|null;rootIdentity?:unknown;role?:'Owner'|'Contributor'|'Viewer'};
+export type WorkspaceConnection={httpUrl:string;stdioCommand:string;stdioArgs:string[];projectId:string;localBridgeRequired?:boolean};
 export type WorkspaceSnapshot={project:WorkspaceProject;state:ProjectState;cursor:number;agents:AgentRegistration[];connection:WorkspaceConnection};
 export type WorkspaceIntent={key:string;projectId:string|null;url:string;actorId:string;body:string;requestId:string;expectedVersion?:number;label:string;status:'sending'|'unknown'|'rejected';message:string};
 type WireError={error?:{code?:string;message?:string}};
@@ -18,7 +18,7 @@ const provenRejections=new Set(['VERSION_CONFLICT','REVISION_CONFLICT','INVALID_
 
 export async function readWorkspaceJSON<T>(url:string,signal?:AbortSignal):Promise<T>{
   const response=await fetch(url,{cache:'no-store',credentials:'same-origin',signal}),body=await response.json() as T&WireError;
-  if(!response.ok)throw new Error(body.error?.message??'Не удалось прочитать рабочее место.');
+  if(!response.ok)throw Object.assign(new Error(body.error?.message??'Не удалось прочитать рабочее место.'),{status:response.status,code:body.error?.code});
   return body;
 }
 export function freezeWorkspaceIntent(input:{projectId:string|null;url:string;actorId:string;label:string;slot:string;body:Record<string,unknown>}):WorkspaceIntent{
@@ -44,13 +44,13 @@ export function useWorkspaceIntents(projectId:string|null,actorId:string|undefin
   return [...pending.values()].filter(intent=>intent.projectId===projectId&&intent.actorId===actorId);
 }
 export function forgetRejectedWorkspaceIntent(intent:WorkspaceIntent){if(pending.get(intent.key)?.status==='rejected'){pending.delete(intent.key);notify();}}
-type WorkspaceSession={actor:Actor|null;loading:boolean;error:string;refresh:()=>Promise<void>};
+type WorkspaceSession={actor:Actor|null;localOperator:boolean;loading:boolean;error:string;refresh:()=>Promise<void>};
 const SessionContext=createContext<WorkspaceSession|null>(null);
 export function WorkspaceProvider({children}:{children:ReactNode}){
-  const [actor,setActor]=useState<Actor|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState('');
-  const refresh=async()=>{setLoading(true);setError('');try{const session=await readWorkspaceJSON<{actor:Actor;canManageParticipants:boolean}>('/api/session');if(!session.canManageParticipants)throw new Error('Управлять локальными папками может только оператор Ouro.');setActor(session.actor);}catch(e){setActor(null);setError((e as Error).message);}finally{setLoading(false);}};
+  const [actor,setActor]=useState<Actor|null>(null),[localOperator,setLocalOperator]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState('');
+  const refresh=async()=>{setLoading(true);setError('');try{const session=await readWorkspaceJSON<{actor:Actor;account?:unknown;canManageParticipants?:boolean}>('/api/session');if(!session.account&&!session.canManageParticipants)throw new Error('Откройте проект через свой аккаунт Ouro.');setActor(session.actor);setLocalOperator(session.canManageParticipants===true);}catch(e){setActor(null);setLocalOperator(false);setError((e as Error).message);}finally{setLoading(false);}};
   useEffect(()=>{void refresh();if(!unloadInstalled){window.addEventListener('beforeunload',event=>{if(pending.size){event.preventDefault();event.returnValue='';}});unloadInstalled=true;}},[]);
-  return <SessionContext.Provider value={{actor,loading,error,refresh}}>{children}</SessionContext.Provider>;
+  return <SessionContext.Provider value={{actor,localOperator,loading,error,refresh}}>{children}</SessionContext.Provider>;
 }
 export function useWorkspaceSession(){const session=useContext(SessionContext);if(!session)throw new Error('Workspace provider required');return session;}
 

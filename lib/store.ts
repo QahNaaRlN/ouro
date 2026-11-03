@@ -260,6 +260,7 @@ function createProjectStore(projectId:string,owner:StoreOwner){
         await assertRegisteredHumanActive(tx,actor,selectedProjectId);
         await requireProjectRole(tx,actor,selectedProjectId,['Owner','Contributor']);
       }
+      if(command.type==='configureVerificationObservation'&&(process.env.OURO_DEPLOYMENT_MODE==='cloud'||!['local-human','human-token'].includes(actor.id)))throw new StoreError('FORBIDDEN','Наблюдение файлов и локальный раннер настраивает только оператор локальной папки.');
       const duplicate=await tx.query<{payload_hash:string;response:Omit<CommandResult,'replayed'>}>('SELECT payload_hash,response FROM ouro_command_receipts WHERE project_id=$1 AND actor_id=$2 AND request_id=$3',[selectedProjectId,actor.id,command.requestId]);
       if(duplicate.rows[0]){
         if(duplicate.rows[0].payload_hash!==payloadHash)throw new StoreError('IDEMPOTENCY_CONFLICT','Этот requestId уже использован с другим содержимым.');
@@ -271,7 +272,13 @@ function createProjectStore(projectId:string,owner:StoreOwner){
       }
       if(['startProjectWork','startExecution','authorizeRemediation'].includes(command.type)){
         const binding=workspaceBinding(await readWorkspaceProject(tx,selectedProjectId));
-        if(command.type==='startProjectWork'&&!binding)throw new StoreError('INVALID_TRANSITION','Начать работу можно только в зарегистрированной папке-проекте.');
+        // Folder work still validates its anchored path. Hosted work relies on
+        // the same current membership, role and agent-assignment guards, without
+        // pretending the server can read the user's computer.
+        if(command.type==='startProjectWork'&&!binding){
+          const workspace=await readWorkspaceProject(tx,selectedProjectId);
+          if(workspace||['local-human','human-token'].includes(actor.id))throw new StoreError('INVALID_TRANSITION','Для локального назначения выберите зарегистрированную папку-проект.');
+        }
         if(binding)await assertWorkspaceFolder(binding);
       }
       await assertAssignmentActive(tx,command,selectedProjectId);
@@ -392,6 +399,7 @@ function createProjectStore(projectId:string,owner:StoreOwner){
     runtimeInFlight.set(key,{digest:payloadHash,promise});void promise.finally(()=>runtimeInFlight.delete(key)).catch(()=>undefined);return promise;
   };
   const observeVerification=(body:unknown,actor:Actor):Promise<CommandResult>=>{
+    if(process.env.OURO_DEPLOYMENT_MODE==='cloud')return Promise.reject(new StoreError('FORBIDDEN','Облачный проект не читает папки и не запускает тесты на сервере.'));
     const parsed=verificationObserveInputSchema.safeParse(body);if(!parsed.success)return Promise.reject(new StoreError('VALIDATION_ERROR','Некорректная конфигурация наблюдения.'));
     const input=parsed.data;
     return runtimeOperation('observeVerification',input,actor,async initial=>{
@@ -415,6 +423,7 @@ function createProjectStore(projectId:string,owner:StoreOwner){
     });
   };
   const runVerification=(body:unknown,actor:Actor):Promise<CommandResult>=>{
+    if(process.env.OURO_DEPLOYMENT_MODE==='cloud')return Promise.reject(new StoreError('FORBIDDEN','Облачный проект не читает папки и не запускает тесты на сервере.'));
     const parsed=verificationRunnerInputSchema.safeParse(body);if(!parsed.success)return Promise.reject(new StoreError('VALIDATION_ERROR','Запуск принимает только назначение, границу и ключ повторного запроса.'));
     const input=parsed.data;
     return runtimeOperation('runVerification',input,actor,async state=>{
