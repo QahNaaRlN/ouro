@@ -130,6 +130,11 @@ export function createAgentService({ store, actor, projectId=PROJECT_ID, workspa
         if(state.projectId!==projectId)fail('FORBIDDEN','Недоступный проект.');
         if(name==='ouro.get_context'){
           const contract=negotiateProtocol(input as {protocolVersion?:string;requiredCapabilities?:string[]});
+          if(process.env.OURO_DEPLOYMENT_MODE==='cloud'){
+            const localOnly=new Set(['verification.observation.v1','verification.local-runner.v1']);
+            contract.capabilities=contract.capabilities.filter(capability=>!localOnly.has(capability));
+            if((input.requiredCapabilities as string[]|undefined)?.some(capability=>localOnly.has(capability)))fail('UNSUPPORTED_CAPABILITY','Облачный проект не читает локальные папки и не запускает тесты на сервере.');
+          }
           const work=input.executionId?[assigned(state,String(input.executionId))]:state.executions.filter(e=>e.agentId===actor.id);
           const projectedWork=work.map(execution=>workItem(state,execution));
           if(input.protocolVersion&&input.protocolVersion!==contract.version&&projectedWork.some(item=>item.revision?.verification||item.proposalRevisions.some(revision=>revision.content.kind==='spec_proposal'&&revision.content.draft.verification)))fail('UNSUPPORTED_CAPABILITY','Проверочные данные назначенного контекста требуют контракт 0.3.0; обновите клиент.');
@@ -142,7 +147,7 @@ export function createAgentService({ store, actor, projectId=PROJECT_ID, workspa
             'Свой pending-запрос можно отозвать с причиной через withdraw_decision. Отзыв не является решением человека, разрешением продолжить или доказательством устранения Blocker.',
             'Сохраняйте requestId при сетевом повторе. При VERSION_CONFLICT прочитайте контекст и осмысленно сформируйте новую команду; не подменяйте версию автоматически.',
             'Успех исполнения не является human-приёмкой DoD. Предъявляйте проверяемое evidence, не выдавайте симуляцию за реальную работу.',
-            'Файлы папки доступны только для чтения в назначенном execution через list_workspace_files/read_workspace_file. Это текущее содержимое с hash, а не immutable файл ревизии; запись файлов и запуск команд не предоставляются.',
+            metadata?'Файлы папки доступны только для чтения в назначенном execution через list_workspace_files/read_workspace_file. Это текущее содержимое с hash, а не immutable файл ревизии; запись файлов и запуск команд не предоставляются.':'У этого подключения нет доступа к папке проекта. list_workspace_files/read_workspace_file недоступны; облачный Ouro не читает файлы вашего компьютера и не запускает тесты на сервере.',
           ]});
         }
         if(name==='ouro.get_updates'){

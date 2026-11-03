@@ -5,6 +5,6 @@ import {apiError} from '@/lib/http';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 export async function GET(request:Request,{params}:{params:Promise<{projectId:string}>}){try{
- const {projectId}=await params,{store}=await resolveWorkspaceRequest(request,projectId);
- return createProjectStreamHandler({store,storage:getStorageMode(),authenticateHuman:async incoming=>(await resolveWorkspaceRequest(incoming,projectId)).actor})(request);
+ const {projectId}=await params,{store,actor}=await resolveWorkspaceRequest(request,projectId);
+ return createProjectStreamHandler({store:{getProject:()=>store.getProject(projectId,actor),getEvents:after=>store.getEvents(after,projectId,actor)},storage:getStorageMode(),authenticateHuman:async incoming=>(await resolveWorkspaceRequest(incoming,projectId)).actor})(request);
 }catch(error){return apiError(error);}}

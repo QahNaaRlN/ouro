@@ -197,7 +197,9 @@ export async function createStore(options:StoreOptions={}):Promise<Store>{
       // External PostgreSQL may have multiple app processes initializing together.
       if(options.databaseUrl)await tx.query('SELECT pg_advisory_xact_lock(187652019)');
       for(const migration of migrations)await tx.exec(migration);
-      await tx.query('INSERT INTO ouro_projects(id,version) VALUES($1,0) ON CONFLICT DO NOTHING',[PROJECT_ID]);
+      // Migration 008 has already run: new rows must have its metadata now,
+      // otherwise the next startup/restore would backfill and change them.
+      await tx.query("INSERT INTO ouro_projects(id,version,name,slug,created_at) VALUES($1,0,'Project '||left($1::text,8),$1,now()) ON CONFLICT DO NOTHING",[PROJECT_ID]);
       const legacy=await tx.query<{version:string|number}>('SELECT version FROM ouro_projects WHERE id=$1 FOR UPDATE',[PROJECT_ID]);
       if(Number(legacy.rows[0]?.version)===0){
         const events=selectedProjectId===PROJECT_ID?(options.seedEvents??createSeedEvents()):createSeedEvents();
@@ -205,7 +207,7 @@ export async function createStore(options:StoreOptions={}):Promise<Store>{
       }
       await tx.query(`INSERT INTO ouro_workspace_projects(id,name,kind,created_by) VALUES($1,$2,'demo','ouro-bootstrap') ON CONFLICT(id) DO NOTHING`,[PROJECT_ID,'Учебный проект Ouro']);
       if(selectedProjectId!==PROJECT_ID){
-        await tx.query('INSERT INTO ouro_projects(id,version) VALUES($1,0) ON CONFLICT DO NOTHING',[selectedProjectId]);
+        await tx.query("INSERT INTO ouro_projects(id,version,name,slug,created_at) VALUES($1,0,'Project '||left($1::text,8),$1,now()) ON CONFLICT DO NOTHING",[selectedProjectId]);
         const selected=await tx.query<{version:string|number}>('SELECT version FROM ouro_projects WHERE id=$1 FOR UPDATE',[selectedProjectId]);
         if(Number(selected.rows[0]?.version)===0&&options.seedEvents?.length)await append(tx,options.seedEvents,replay(options.seedEvents,selectedProjectId));
       }
@@ -260,6 +262,7 @@ function createProjectStore(projectId:string,owner:StoreOwner){
         await assertRegisteredHumanActive(tx,actor,selectedProjectId);
         await requireProjectRole(tx,actor,selectedProjectId,['Owner','Contributor']);
       }
+      if(command.type==='configureVerificationObservation'&&(process.env.OURO_DEPLOYMENT_MODE==='cloud'||!['local-human','human-token'].includes(actor.id)))throw new StoreError('FORBIDDEN','Наблюдение файлов и локальный раннер настраивает только оператор локальной папки.');
       const duplicate=await tx.query<{payload_hash:string;response:Omit<CommandResult,'replayed'>}>('SELECT payload_hash,response FROM ouro_command_receipts WHERE project_id=$1 AND actor_id=$2 AND request_id=$3',[selectedProjectId,actor.id,command.requestId]);
       if(duplicate.rows[0]){
         if(duplicate.rows[0].payload_hash!==payloadHash)throw new StoreError('IDEMPOTENCY_CONFLICT','Этот requestId уже использован с другим содержимым.');
@@ -271,7 +274,13 @@ function createProjectStore(projectId:string,owner:StoreOwner){
       }
       if(['startProjectWork','startExecution','authorizeRemediation'].includes(command.type)){
         const binding=workspaceBinding(await readWorkspaceProject(tx,selectedProjectId));
-        if(command.type==='startProjectWork'&&!binding)throw new StoreError('INVALID_TRANSITION','Начать работу можно только в зарегистрированной папке-проекте.');
+        // Folder work still validates its anchored path. Hosted work relies on
+        // the same current membership, role and agent-assignment guards, without
+        // pretending the server can read the user's computer.
+        if(command.type==='startProjectWork'&&!binding){
+          const workspace=await readWorkspaceProject(tx,selectedProjectId);
+          if(workspace||['local-human','human-token'].includes(actor.id))throw new StoreError('INVALID_TRANSITION','Для локального назначения выберите зарегистрированную папку-проект.');
+        }
         if(binding)await assertWorkspaceFolder(binding);
       }
       await assertAssignmentActive(tx,command,selectedProjectId);
@@ -392,6 +401,7 @@ function createProjectStore(projectId:string,owner:StoreOwner){
     runtimeInFlight.set(key,{digest:payloadHash,promise});void promise.finally(()=>runtimeInFlight.delete(key)).catch(()=>undefined);return promise;
   };
   const observeVerification=(body:unknown,actor:Actor):Promise<CommandResult>=>{
+    if(process.env.OURO_DEPLOYMENT_MODE==='cloud')return Promise.reject(new StoreError('FORBIDDEN','Облачный проект не читает папки и не запускает тесты на сервере.'));
     const parsed=verificationObserveInputSchema.safeParse(body);if(!parsed.success)return Promise.reject(new StoreError('VALIDATION_ERROR','Некорректная конфигурация наблюдения.'));
     const input=parsed.data;
     return runtimeOperation('observeVerification',input,actor,async initial=>{
@@ -415,6 +425,7 @@ function createProjectStore(projectId:string,owner:StoreOwner){
     });
   };
   const runVerification=(body:unknown,actor:Actor):Promise<CommandResult>=>{
+    if(process.env.OURO_DEPLOYMENT_MODE==='cloud')return Promise.reject(new StoreError('FORBIDDEN','Облачный проект не читает папки и не запускает тесты на сервере.'));
     const parsed=verificationRunnerInputSchema.safeParse(body);if(!parsed.success)return Promise.reject(new StoreError('VALIDATION_ERROR','Запуск принимает только назначение, границу и ключ повторного запроса.'));
     const input=parsed.data;
     return runtimeOperation('runVerification',input,actor,async state=>{
@@ -471,7 +482,7 @@ function createProjectStore(projectId:string,owner:StoreOwner){
       }else{
         const id=randomUUID(),bindingId=randomUUID(),name=input.name?.trim()||folder.displayName;
         if(!name||name.length>200||!isWellFormedUnicode(name)||/[\x00-\x1f\x7f]/.test(name))throw new StoreError('VALIDATION_ERROR','Укажите допустимое название проекта.');
-        await tx.query('INSERT INTO ouro_projects(id,version) VALUES($1,0)',[id]);
+        await tx.query("INSERT INTO ouro_projects(id,version,name,slug,created_at) VALUES($1,0,'Project '||left($1::text,8),$1,now())",[id]);
         const initialized=applyCommand(replay([],id),{type:'initializeProject',name,requestId:`workspace-init:${id}`,expectedVersion:0},{...actor,projectIds:[id]});
         await append(tx,initialized.events,initialized.state,id);
         const row=await tx.query<WorkspaceProjectRow>(`INSERT INTO ouro_workspace_projects(id,name,root_path,kind,binding_id,root_dev,root_ino,created_by) VALUES($1,$2,$3,'folder',$4,$5,$6,$7) RETURNING *`,[id,name,folder.canonicalPath,bindingId,folder.identity.dev,folder.identity.ino,actor.id]);

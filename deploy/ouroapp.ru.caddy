@@ -1,0 +1,8 @@
+ouroapp.ru {
+	encode zstd gzip
+	@root path /
+	redir @root /projects 302
+	reverse_proxy ouro-app:3000 {
+		flush_interval -1
+	}
+}
