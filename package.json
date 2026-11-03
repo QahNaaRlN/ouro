@@ -8,6 +8,13 @@
   "scripts": {
     "predev": "npm run protocol:build",
     "dev": "node scripts/local-next.mjs dev",
+    "preweb:dev": "npm run protocol:build",
+    "web:dev": "npm --prefix apps/web run dev",
+    "preweb:build": "npm run protocol:build",
+    "web:build": "npm --prefix apps/web run build",
+    "web:preview": "npm --prefix apps/web run preview",
+    "web:typecheck": "npm --prefix apps/web run typecheck",
+    "web:test:e2e": "playwright test --config=apps/web/playwright.config.ts",
     "prebuild": "npm run protocol:build",
     "build": "next build --webpack",
     "start": "node scripts/local-next.mjs start",

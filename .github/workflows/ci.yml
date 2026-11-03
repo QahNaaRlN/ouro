@@ -101,6 +101,8 @@ jobs:
           OURO_CONVENTIONS_BRANCH: ${{ github.ref_name }}
       - name: Install dependencies
         run: npm ci
+      - name: Install isolated web shell dependencies
+        run: npm --prefix apps/web ci
       - name: Install isolated service qualification dependencies
         run: npm --prefix apps/service ci
       - name: Run unit and integration tests
@@ -125,6 +127,10 @@ jobs:
         run: npm run db:check
       - name: Build production application
         run: npm run build
+      - name: Check and build the standalone React web shell
+        run: |
+          npm run web:typecheck
+          npm run web:build
 
   browser:
     name: browser
@@ -140,17 +146,25 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Install isolated web shell dependencies
+        run: npm --prefix apps/web ci
       - name: Build production application
         run: npm run build
+      - name: Build standalone React web shell
+        run: npm run web:build
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run production browser acceptance
         run: npm run test:e2e:production
+      - name: Qualify standalone React navigation against the existing API
+        run: npm run web:test:e2e
       - name: Preserve browser diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: production-browser-diagnostics
-          path: test-results/
+          path: |
+            test-results/
+            apps/web/test-results/
           if-no-files-found: ignore
           retention-days: 7
