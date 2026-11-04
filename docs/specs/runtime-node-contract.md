@@ -9,6 +9,7 @@
 - Один маленький стандартный ESM helper до установки зависимостей: версия разбирается строго, несовместимый runtime получает понятную ошибку и стабильный code.
 - `npm run launch` проверяет runtime до npm/install/build/start. Существующие phases, literal argv, cwd, readiness, cancellation и данные сохраняются. Help доступен без зависимостей.
 - Упакованный `dist/main.mjs` остаётся тем же внешним entry path, но сначала проверяет runtime и только затем динамически загружает application bundle. Ни SQLite/PGlite/runner, ни профиль до проверки не загружаются. Wrapper/helper — явные resources build manifest.
+- Все manifest inputs используют единые repo-root relative paths; build working directory закреплён явно, а не наследуется от способа вызова npm. Это не включение task caching/Turbo.
 - Программный `startService` проверяет application runtime до открытия профиля, worker, listener и resource access. Это не обещание импортируемости всего Node-only bundle на старом Node.
 - Root/web/service engine metadata согласуются; `.nvmrc` остаётся точной qualification version. Portable protocol/MCP library consumers не получают новый минимум только из-за application packaging.
 

@@ -21,3 +21,7 @@ Node24.19.0 Windows:
 Offline `npm --package-lock-only` отказал из-за отсутствующего optional WASI tarball в cache. Вместо непреднамеренного пересчёта зависимостей явно изменены только три root `packages[''].engines.node` поля lockfiles. Автоматическое deep-equality сравнение с сохранёнными исходниками подтвердило: все остальные поля/resolutions каждого lockfile тождественны. Версии зависимостей не обновлены.
 
 Actual unsupported-executable tests на Linux могут иметь только явно объяснённый SKIP, если отдельного старого Node нет; strict version matrix выполняется везде. Поддержка engine range не присваивает qualification новым24.x автоматически. Финальный consumer ZIP/pnpm/Next cutover, native acceptance, production deploy и реальные профили не изменялись.
+
+## Координаты входов артефакта
+
+При финальном review обнаружено смешение cwd-relative esbuild inputs и явно перечисленных repo-root inputs. Новый RNC01 assertion воспроизвёл настоящий RED на собранном артефакте. Build теперь задаёт `absWorkingDir:root`, и весь manifest использует одну систему координат. После нового build все9 entry/artifact/HTTP/MCP/restart/crash/runner cases снова PASS (30.5s), включая canonical resource bytes и фактический внешний cwd. Wrapper paths/runtime behavior не менялись; Turbo/caching не включались.

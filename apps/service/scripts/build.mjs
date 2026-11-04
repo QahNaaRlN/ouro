@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 
 const service=fileURLToPath(new URL('../',import.meta.url)),root=path.resolve(service,'../..'),output=path.join(service,'dist');
 await mkdir(output,{recursive:true});
-const built=await build({entryPoints:{application:path.join(service,'src/main.ts'),index:path.join(service,'src/index.ts')},outdir:output,outExtension:{'.js':'.mjs'},bundle:true,platform:'node',target:'node24',format:'esm',packages:'external',sourcemap:true,metafile:true,tsconfig:path.join(service,'tsconfig.json'),banner:{js:"import {createRequire as __ouroCreateRequire} from 'node:module';const require=__ouroCreateRequire(import.meta.url);"}});
+const built=await build({absWorkingDir:root,entryPoints:{application:path.join(service,'src/main.ts'),index:path.join(service,'src/index.ts')},outdir:output,outExtension:{'.js':'.mjs'},bundle:true,platform:'node',target:'node24',format:'esm',packages:'external',sourcemap:true,metafile:true,tsconfig:path.join(service,'tsconfig.json'),banner:{js:"import {createRequire as __ouroCreateRequire} from 'node:module';const require=__ouroCreateRequire(import.meta.url);"}});
 /** Внешний entry остаётся прежним, но стандартный wrapper предшествует application imports. */
 await mkdir(path.join(output,'resources'),{recursive:true});
 await copyFile(path.join(service,'resources/main-cli.mjs'),path.join(output,'main.mjs'));

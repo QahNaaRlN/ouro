@@ -24,6 +24,7 @@ test('RNC01 built entry and helper preserve canonical bytes and explicit manifes
  assert.deepEqual(await readFile(path.join(artifact,'resources/runtime-node.mjs')),await readFile(new URL('../../../scripts/runtime-node.mjs',import.meta.url)));
  const manifest=JSON.parse(await readFile(path.join(artifact,'build-manifest.json'),'utf8')) as {entries:string[];resources:string[];inputs:string[]};
  assert(manifest.entries.includes('main.mjs'));assert(manifest.resources.includes('application.mjs'));assert(manifest.resources.includes('resources/runtime-node.mjs'));assert(manifest.inputs.includes('apps/service/resources/main-cli.mjs'));assert(manifest.inputs.includes('scripts/runtime-node.mjs'));
+ assert(manifest.inputs.every(file=>!file.startsWith('../')&&!path.isAbsolute(file)&&!file.includes('\\')),'Artifact inputs must use one repository-root coordinate system.');
 });
 
 test('RNC02 supported ordinary Node loads the application only after its artifact gate',async()=>{
