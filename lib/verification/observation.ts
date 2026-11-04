@@ -12,7 +12,7 @@ const appRequire=(packageRoot?:string):NodeRequire=>Reflect.apply(Reflect.get(no
 export const resolvePlaywrightCli=(packageRoot?:string):string=>appRequire(packageRoot).resolve('@playwright/test/cli');
 export function runnerCapabilities(packageRoot?:string):Record<string,string>{
  const playwright=appRequire(packageRoot)('@playwright/test/package.json') as {version:string};
- return {node:process.version,platform:process.platform,architecture:process.arch,playwright:playwright.version,adapter:'ouro-playwright-local/v1',runnerNodeEnv:'test',pathDigest:observationHash(process.env.PATH??''),browserPathDigest:observationHash(process.env.PLAYWRIGHT_BROWSERS_PATH??'default')};
+ return {node:process.version,platform:process.platform,architecture:process.arch,playwright:playwright.version,adapter:'ouro-playwright-local/v1',playwrightResolution:'ouro-owned-preload/v1',runnerNodeEnv:'test',pathDigest:observationHash(process.env.PATH??''),browserPathDigest:observationHash(process.env.PLAYWRIGHT_BROWSERS_PATH??'default')};
 }
 /** Exact, bounded reads through the same anchored workspace guards as MCP file context. */
 export async function observeVerificationWorkspace(binding:WorkspaceBinding,config:ObservationConfig,capabilitySource:Record<string,string>|(()=>Record<string,string>)=runnerCapabilities):Promise<WorkspaceObservation>{

@@ -30,7 +30,7 @@ async function fixture(page:Page,{replayedCreate=false}={}){
   await page.route('**/api/**',async route=>{
     const request=route.request(),path=new URL(request.url()).pathname;
     const json=(body:unknown,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
-    if(path==='/api/session')return json({ok:true});
+    if(path==='/api/session')return json({ok:true,actor:human,account:null,canManageParticipants:false});
     if(path==='/api/agents')return json({agents:[]});
     // Real EventSource consumes only this controlled snapshot, never the SQL fixture.
     if(path==='/api/stream')return route.fulfill({status:200,contentType:'text/event-stream',body:`event: snapshot\nid: ${state.version}\ndata: ${JSON.stringify({state,cursor:state.version,storage:'embedded-postgres'})}\n\n`});

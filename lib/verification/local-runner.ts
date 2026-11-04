@@ -1,7 +1,8 @@
 import {spawn} from 'node:child_process';
 import path from 'node:path';
 import {randomUUID,createHash} from 'node:crypto';
-import {mkdir,mkdtemp,writeFile,rm,lstat,realpath} from 'node:fs/promises';
+import {mkdir,mkdtemp,writeFile,rm,lstat,realpath,access} from 'node:fs/promises';
+import {pathToFileURL} from 'node:url';
 import type {VerificationContract,VerificationImport,VerificationRun} from '@ouro/protocol';
 import {importPlaywrightReport,type PlaywrightImportProof} from './playwright';
 import {observeVerificationWorkspace,runnerCapabilities,resolvePlaywrightCli,type ObservationConfig,type WorkspaceObservation,type ArtifactManifest} from './observation';
@@ -15,15 +16,18 @@ async function stopOwnedProcess(pid:number,child:ReturnType<typeof spawn>):Promi
  if(process.platform==='win32')await new Promise<void>(resolve=>{const killer=spawn('taskkill.exe',['/PID',String(pid),'/T','/F'],{shell:false,windowsHide:true,stdio:'ignore'});killer.on('error',()=>{child.kill();resolve();});killer.on('close',()=>resolve());});
  else{try{process.kill(-pid,'SIGKILL');}catch{child.kill('SIGKILL');}}
 }
-/** Only fixed Node + installed Playwright CLI argv. No shell, binary, environment or argv input. */
-async function runFixedPlaywright(binding:WorkspaceBinding,config:ObservationConfig,shouldStop:()=>Promise<boolean>,timeoutMs:number,signal?:AbortSignal,packageRoot?:string):Promise<ChildResult>{
+/** Запускает фиксированные Node, server-owned preload и установленный CLI без пользовательских argv. */
+async function runFixedPlaywright(binding:WorkspaceBinding,config:ObservationConfig,shouldStop:()=>Promise<boolean>,timeoutMs:number,signal?:AbortSignal,packageRoot?:string,preloadPath?:string):Promise<ChildResult>{
  if(signal?.aborted)throw Object.assign(new Error('Локальный runtime останавливается.'),{code:'RUNNER_STOPPED'});
  const cli=resolvePlaywrightCli(packageRoot);
+ const preload=pathToFileURL(path.resolve(preloadPath??path.join(process.cwd(),'lib/verification/runtime/playwright-preload.mjs')));
+ try{await access(preload);}catch{throw Object.assign(new Error('Server-owned Playwright preload недоступен.'),{code:'RUNNER_ERROR'});}
+ preload.searchParams.set('package',pathToFileURL(path.resolve(packageRoot??process.cwd(),'package.json')).href);
  // Playwright positional selectors are regular expressions, never raw argv or loose filename patterns.
  const testPaths=config.files.filter(item=>item.role==='test').map(item=>'^'+path.resolve(binding.canonicalPath,...item.path.split('/')).split(path.sep).join('/').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'$');
  if(!testPaths.length)throw Object.assign(new Error('Нужен хотя бы один явно разрешённый файл теста.'),{code:'VALIDATION_ERROR'});
  // Installed Playwright reserves arguments after -- for the tests, so terminate after the encoded filters.
- const args=[cli,'test','--config',path.join(binding.canonicalPath,config.playwrightConfigPath),'--reporter=json','--workers=1','--retries=0','--output',path.join(binding.canonicalPath,'test-results'),...testPaths,'--'];
+ const args=['--import',preload.href,cli,'test','--config',path.join(binding.canonicalPath,config.playwrightConfigPath),'--reporter=json','--workers=1','--retries=0','--output',path.join(binding.canonicalPath,'test-results'),...testPaths,'--'];
  return new Promise((resolve,reject)=>{
   const child=spawn(process.execPath,args,{cwd:binding.canonicalPath,env:{...minimalEnvironment(),NODE_ENV:'test',CI:'1',FORCE_COLOR:'0'},shell:false,windowsHide:true,detached:process.platform!=='win32',stdio:['ignore','pipe','pipe']});
   child.stdout.setEncoding('utf8');child.stderr.setEncoding('utf8');
@@ -39,7 +43,7 @@ async function runFixedPlaywright(binding:WorkspaceBinding,config:ObservationCon
   child.on('close',exitCode=>{finished=true;clearTimeout(timer);clearInterval(cancellation);signal?.removeEventListener('abort',onAbort);resolve({stdout,stderr,exitCode,...(failure?{failure}:{})});});
  });
 }
-export async function runLocalVerification(input:{binding:WorkspaceBinding;config:ObservationConfig;contract:VerificationContract;scopeCaseIds:string[];submittedBy:string;shouldStop:()=>Promise<boolean>;timeoutMs?:number;flowStepRunId?:string;signal?:AbortSignal;runtimeDirectory?:string;packageRoot?:string}):Promise<{proof:LocalRunnerProof;before:WorkspaceObservation;after:WorkspaceObservation}>{
+export async function runLocalVerification(input:{binding:WorkspaceBinding;config:ObservationConfig;contract:VerificationContract;scopeCaseIds:string[];submittedBy:string;shouldStop:()=>Promise<boolean>;timeoutMs?:number;flowStepRunId?:string;signal?:AbortSignal;runtimeDirectory?:string;packageRoot?:string;preloadPath?:string}):Promise<{proof:LocalRunnerProof;before:WorkspaceObservation;after:WorkspaceObservation}>{
  if(input.signal?.aborted)throw Object.assign(new Error('Локальный runtime останавливается.'),{code:'RUNNER_STOPPED'});
  const capabilities=()=>runnerCapabilities(input.packageRoot);
  const before=await observeVerificationWorkspace(input.binding,input.config,capabilities);
@@ -58,7 +62,7 @@ export async function runLocalVerification(input:{binding:WorkspaceBinding;confi
    if(createHash('sha256').update(bytes).digest('hex')!==entry.sha256)throw new Error('Не удалось сохранить точные байты наблюдаемого UTF-8 файла.');
    await mkdir(path.dirname(target),{recursive:true});await writeFile(target,bytes,{flag:'wx'});
   }
-  startedAt=new Date().toISOString();captured=await runFixedPlaywright({...input.binding,canonicalPath:scratch},input.config,input.shouldStop,Math.min(120000,Math.max(1000,input.timeoutMs??60000)),input.signal,input.packageRoot);finishedAt=new Date().toISOString();
+  startedAt=new Date().toISOString();captured=await runFixedPlaywright({...input.binding,canonicalPath:scratch},input.config,input.shouldStop,Math.min(120000,Math.max(1000,input.timeoutMs??60000)),input.signal,input.packageRoot,input.preloadPath);finishedAt=new Date().toISOString();
   const copied=await observeVerificationWorkspace({...input.binding,canonicalPath:scratch,identity:{dev:String(scratchIdentity.dev),ino:String(scratchIdentity.ino)}},input.config,before.capabilities);
   copiedInputsUnchanged=copied.status==='observed'&&copied.digest===before.digest;
  }finally{
