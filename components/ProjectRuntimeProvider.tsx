@@ -2,7 +2,8 @@
 
 import {createContext,useEffect,useState,type ReactNode} from 'react';
 import {QueryClientProvider} from '@tanstack/react-query';
-import {createProjectRuntime} from '@/packages/frontend/src/app/project-runtime/create-project-runtime';
+import type {createProjectRuntime} from '@/packages/frontend/src/app/project-runtime';
+import {createWebProjectRuntime,WEB_PROJECT_SOURCE_ID} from './create-web-project-runtime';
 import {hasPendingWorkspaceIntents} from '@/packages/client/src/http/workspace-intents';
 import {createCatalogHttpReads} from '@/packages/client/src/http/create-catalog-http-reads';
 import {CatalogReadEnvironmentProvider,type CatalogReadEnvironment} from '@/packages/frontend/src/shared/catalog-read-environment';
@@ -14,8 +15,8 @@ export const ProjectRuntimeContext=createContext<ReturnType<typeof createProject
 /** Компонент, который предоставляет общий web cache и registry обоим существующим интерфейсам. */
 export function ProjectRuntimeProvider({children}:{children:ReactNode}){
  const [reporter]=useState<ErrorReporterPort>(()=>({report:occurrence=>{console.error('[ouro/client]',occurrence);}}));
- const [runtime]=useState(()=>createProjectRuntime({reporter}));
- const [readEnvironment]=useState<CatalogReadEnvironment>(()=>({sourceId:'ouro:same-origin',reads:createCatalogHttpReads(),reporter}));
+ const [runtime]=useState(()=>createWebProjectRuntime(reporter));
+ const [readEnvironment]=useState<CatalogReadEnvironment>(()=>({sourceId:WEB_PROJECT_SOURCE_ID,reads:createCatalogHttpReads(),reporter}));
  useEffect(()=>{const warn=(event:BeforeUnloadEvent)=>{if(hasPendingWorkspaceIntents()){event.preventDefault();event.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[]);
  return <ProjectRuntimeContext.Provider value={runtime}><QueryClientProvider client={runtime.queryClient}><CatalogReadEnvironmentProvider value={readEnvironment}><AppErrorBoundary reporter={reporter}>{children}</AppErrorBoundary></CatalogReadEnvironmentProvider></QueryClientProvider></ProjectRuntimeContext.Provider>;
 }
