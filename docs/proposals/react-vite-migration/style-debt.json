@@ -19,20 +19,6 @@
       "owner": "legacy-human-view"
     },
     {
-      "file": "components/agent-proposals-panel.css",
-      "sha256": "85d02ed5bd8e65b6b7c2da0052d9f17eae1484985646927519a6e66415d7ec20",
-      "ordinaryRules": 102,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
-      "file": "components/collaborative-drafts.css",
-      "sha256": "a4088786273e8c55244fae8677e6e3e3ace75fc9749bfbe85511b6d4dc21d5a9",
-      "ordinaryRules": 41,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
       "file": "components/flow-runtime.css",
       "sha256": "2c5a2a2e2efed76b6bd1019aef96cee449ed990164419d8ac41582bec0165995",
       "ordinaryRules": 56,
@@ -83,33 +69,6 @@
     }
   ],
   "inline": [
-    {
-      "file": "components/agent-proposals-panel.tsx",
-      "sha256": "04ab52ff9daaef9a8adeb4b329cbf1d842f6bf340d33788cc7f7666f3c66bf1a",
-      "expressions": [
-        {
-          "kind": "graph",
-          "sha256": "73bd686eeb65879a6f979527ff79d843dad929ec95a66ca72ed918f0a7673099",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "76b5cf2d3116e07cf361213c68add9fda4c9ef5b3dcfa85b62aad20bd63872c3",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "90ca7d7bc81bd597d9b2864ee2929a13a921060b301190411305d118c044ff03",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "c08bd47c96d048a326a7c0bb2644b22987d99ff65101bf6d7f51500c4e0d3d55",
-          "count": 1
-        }
-      ],
-      "owner": "specialized-panels"
-    },
     {
       "file": "components/impact-panel.tsx",
       "sha256": "035beee2d840c3e1bb07cff60cefc4179edfc123b5c77ff4d8865eb04745cc96",
