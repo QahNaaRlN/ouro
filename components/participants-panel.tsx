@@ -5,7 +5,7 @@ import { projectFetch } from '@/lib/client-project';
 import { useEffect,useRef,useState,type FormEvent } from 'react';
 import { Check,Copy,KeyRound,LoaderCircle,LogIn,LogOut,ShieldCheck,UserPlus,Users } from 'lucide-react';
 import type { Actor } from '@/packages/core/src';
-import type { ParticipantRegistration } from '@/lib/participant-registry';
+import type { ParticipantRegistration } from '@ouro/protocol/http';
 import './participants-panel.css';
 
 export function ParticipantLogin({onSignedIn}:{onSignedIn?:()=>void}){

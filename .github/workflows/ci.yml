@@ -160,6 +160,8 @@ jobs:
         run: npm run test:e2e:production
       - name: Qualify standalone React navigation against the existing API
         run: npm run web:test:e2e
+      - name: Qualify durable HTTP receipt recovery with actual browser loss and exact retry
+        run: npx playwright test --config=playwright.receipt-proof.config.ts
       - name: Preserve browser diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

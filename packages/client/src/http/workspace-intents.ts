@@ -1,13 +1,15 @@
 import type { ProjectState } from '../../../core/src/types';
 import type { AgentRegistrationDTO as AgentRegistration, ClientCancellationSignal } from '../ports/project.types';
 import { isWellFormedUnicode } from '@ouro/protocol';
-import { isWorkspaceBindingRejection, isWorkspaceCommandReceipt, isWorkspaceRecoveryTicketRejection } from './workspace-intent-proof';
+import { isWorkspaceBindingRejection, verifyWorkspaceCommandReceipt, isWorkspaceRecoveryTicketRejection } from './workspace-intent-proof';
 
 export type WorkspaceProject={id:string;name:string;rootPath:string|null;kind:'folder'|'demo'|'hosted';createdAt:string;createdBy:string|null;bindingId?:string|null;rootIdentity?:unknown;role?:'Owner'|'Contributor'|'Viewer'};
 export type WorkspaceConnection={httpUrl:string;stdioCommand:string;stdioArgs:string[];projectId:string;localBridgeRequired?:boolean};
 export type WorkspaceSnapshot={project:WorkspaceProject;state:ProjectState;cursor:number;agents:AgentRegistration[];connection:WorkspaceConnection};
 export type WorkspaceIntent={key:string;projectId:string|null;url:string;actorId:string;body:string;requestId:string;expectedVersion?:number;label:string;status:'sending'|'unknown'|'rejected';message:string;errorCode?:string;httpStatus?:number;uncertain?:boolean;rejection?:'workspace-binding';copyUnverified?:true};
 type WireError={error?:{code?:string;message?:string}};
+/** Явный исход admission текущего owner; не является сетевой квитанцией или ошибкой команды. */
+export type WorkspaceReceiptAdmission='admitted'|'inactive';
 const pending=new Map<string,WorkspaceIntent>(),listeners=new Set<()=>void>();
 let pendingVersion=0;
 function notify(){pendingVersion++;listeners.forEach(listener=>listener());}
@@ -50,25 +52,34 @@ export function restoreUnknownWorkspaceIntent(input:{copy:string;projectId:strin
   }
   pending.set(intent.key,intent);notify();return intent;
 }
-export async function sendWorkspaceIntent<T=unknown>(intent:WorkspaceIntent,onReceipt?:(value:unknown)=>void,fetcher:typeof fetch=globalThis.fetch):Promise<{ok:true;data:T}|{ok:false}> {
+export async function sendWorkspaceIntent<T=unknown>(intent:WorkspaceIntent,onReceipt?:(value:unknown)=>WorkspaceReceiptAdmission|void,fetcher:typeof fetch=globalThis.fetch):Promise<{ok:true;data:T}|{ok:false}> {
   const existing=pending.get(intent.key);
   if(existing&&!sameFrozenIntent(existing,intent))throw new Error('Сначала восстановите исходное действие.');
-  const wasUncertain=!!(existing?.uncertain||intent.uncertain||existing?.status==='unknown'||intent.status==='unknown');
-  pending.set(intent.key,{...(existing??intent),uncertain:wasUncertain,status:'sending',message:''});notify();
+  const wasUncertain=!!(existing?.uncertain||intent.uncertain||existing?.status==='unknown'||existing?.status==='sending'||intent.status==='unknown');
+  const dispatch:WorkspaceIntent={...(existing??intent),uncertain:wasUncertain,status:'sending',message:''};
+  pending.set(intent.key,dispatch);notify();
   let responseStatus:number|undefined;
   try{
     const response=await fetcher(intent.url,{method:'POST',credentials:'same-origin',redirect:'error',headers:{'Content-Type':'application/json','X-Ouro-Expected-Participant':intent.actorId,...(intent.projectId?{'X-Ouro-Expected-Project':intent.projectId,...(intent.url==='/api/commands'?{'X-Ouro-Project-Id':intent.projectId}:{})}:{})},body:intent.body});
     responseStatus=response.status;
     const body=await response.json() as T&WireError;
     const errorCode=typeof body?.error?.code==='string'?body.error.code:undefined,errorMessage=typeof body?.error?.message==='string'?body.error.message:undefined;
-    if(response.ok&&!response.redirected&&isWorkspaceCommandReceipt(intent,body)){if(body&&typeof body==='object'&&'state' in body)onReceipt?.(body);if(sameFrozenIntent(pending.get(intent.key),intent)){pending.delete(intent.key);notify();}return {ok:true,data:body};}
+    if(response.ok&&!response.redirected&&await verifyWorkspaceCommandReceipt(intent,response,body)){
+      if(pending.get(intent.key)!==dispatch)return {ok:false};
+      const admission=body&&typeof body==='object'&&'state' in body?onReceipt?.(body):undefined;
+      if(pending.get(intent.key)!==dispatch)return {ok:false};
+      if(admission==='inactive'){
+        pending.set(intent.key,{...dispatch,uncertain:true,status:'unknown',httpStatus:response.status,message:'Исходный контекст завершён. Результат сохранённого запроса не подтверждён.'});notify();return {ok:false};
+      }
+      pending.delete(intent.key);notify();return {ok:true,data:body};
+    }
     const bindingRejected=await isWorkspaceBindingRejection(intent,response,body);
-    const current=pending.get(intent.key);if(!sameFrozenIntent(current,intent))return {ok:false};
+    const current=pending.get(intent.key);if(current!==dispatch)return {ok:false};
     const uncertain=!!(wasUncertain||current.uncertain||current.status==='unknown');
     const rejected=!uncertain&&(bindingRejected||isWorkspaceRecoveryTicketRejection(intent,response,body)||(response.status>=400&&response.status<500&&provenRejections.has(errorCode??'')));
     pending.set(intent.key,{...current,uncertain:uncertain||!rejected,status:rejected?'rejected':'unknown',errorCode,httpStatus:response.status,...(bindingRejected?{rejection:'workspace-binding' as const}:{}),message:errorMessage??'Сервер не подтвердил исход действия.'});notify();return {ok:false};
   }catch{
-    const current=pending.get(intent.key);if(sameFrozenIntent(current,intent)){pending.set(intent.key,{...current,uncertain:true,status:'unknown',httpStatus:responseStatus,message:'Ответ не получен. Действие могло сохраниться. Повторите тот же запрос.'});notify();}return {ok:false};
+    const current=pending.get(intent.key);if(current===dispatch){pending.set(intent.key,{...current,uncertain:true,status:'unknown',httpStatus:responseStatus,message:'Ответ не получен. Действие могло сохраниться. Повторите тот же запрос.'});notify();}return {ok:false};
   }
 }
 export function forgetRejectedWorkspaceIntent(intent:WorkspaceIntent){const current=pending.get(intent.key);if(sameFrozenIntent(current,intent)&&current.status==='rejected'&&!current.uncertain){pending.delete(intent.key);notify();}}
