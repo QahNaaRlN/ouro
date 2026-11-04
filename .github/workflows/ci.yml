@@ -119,6 +119,8 @@ jobs:
         run: npm run check:architecture
       - name: Check migration compatibility inventory
         run: npm run migration:check
+      - name: Check owned UI style migration debt
+        run: npm run styles:check
       - name: Verify canonical protocol schemas
         run: npm run protocol:check
       - name: Verify independent protocol installation
