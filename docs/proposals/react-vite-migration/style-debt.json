@@ -13,8 +13,8 @@
   "css": [
     {
       "file": "app/globals.css",
-      "sha256": "4c958bc7cf6b6ab9c70761d21f4ceb151e040766364770f666b362c16e4935ea",
-      "ordinaryRules": 131,
+      "sha256": "3b5a794f79da42683cd39a4c08c5a8e559154025ac419be2036829e62360cae5",
+      "ordinaryRules": 91,
       "legacyLayer": true,
       "owner": "legacy-human-view"
     },
