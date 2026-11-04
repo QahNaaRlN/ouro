@@ -17,6 +17,8 @@ const {createProjectHttpPorts}:typeof import('../../../packages/client/src/http/
 const {freezeProjectCommandIntent}:typeof import('../../../packages/client/src/ports')=requireRoot('../../../packages/client/src/ports');
 const {getWorkspaceIntents}:typeof import('../../../packages/client/src/http/workspace-intents')=requireRoot('../../../packages/client/src/http/workspace-intents');
 const resourceRoot=fileURLToPath(new URL('../../../',import.meta.url));
+/** Источник миграций закреплён за fixture, включая штатный запуск suite из apps/service. */
+const createReceiptStore=()=>createStore({dataDir:'memory://',migrationsDir:path.join(resourceRoot,'db','migrations')});
 const content={title:'TCP committed receipt',goal:'Recover the actual successful operation.',dod:[{id:'durable',text:'Same command, one committed receipt',required:true}],constraints:'',assumptions:'',risks:'',inputs:'',comment:''};
 
 /** Входит настоящим credential fixture и возвращает cookie только после проверки HTTP success. */
@@ -26,7 +28,7 @@ async function participantCookie(url:string,credential:string){
 }
 
 test('HRP01 actual immutable historical empty SQL receipt confirms an exact retry after lost HTTP response without rewriting old JSON',async()=>{
- const store=await createStore({dataDir:'memory://'}),state=JSON.parse(JSON.stringify(await store.getProject())) as ProjectState,actor=state.events[0].actor,requestId=randomUUID();
+ const store=await createReceiptStore(),state=JSON.parse(JSON.stringify(await store.getProject())) as ProjectState,actor=state.events[0].actor,requestId=randomUUID();
  const credential='ouro_human_'+randomBytes(32).toString('base64url');
  await store.inspect('INSERT INTO ouro_participant_registrations(id,project_id,name,created_by) VALUES($1,$2,$3,$1)',[actor.id,state.projectId,'Historical proof fixture']);
  await store.inspect('INSERT INTO ouro_participant_credentials(participant_id,credential_hash) VALUES($1,$2)',[actor.id,createHash('sha256').update(credential).digest('hex')]);
@@ -50,7 +52,7 @@ test('HRP01 actual immutable historical empty SQL receipt confirms an exact retr
 });
 
 test('HRP10 real HTTP new COMMIT survives a lost response and current revoke denies exact replay without disclosing proof',async()=>{
- const store=await createStore({dataDir:'memory://'}),state=await store.getProject(),operator:Actor={id:'local-human',kind:'human',projectIds:[state.projectId]};
+ const store=await createReceiptStore(),state=await store.getProject(),operator:Actor={id:'local-human',kind:'human',projectIds:[state.projectId]};
  const participant=await store.createParticipant('TCP proof author',operator),server=await startHttpServer({routes:createBackendRoutes({store,environment:{OURO_LOCAL_DEMO:'1'},resourceRoot})});
  let session:ReturnType<typeof createProjectSession>|undefined;
  try{
@@ -72,7 +74,7 @@ test('HRP10 real HTTP new COMMIT survives a lost response and current revoke den
 });
 
 test('HRP11 real HTTP deferred COMMIT failure returns old error body without a proof and succeeds once after rollback',async()=>{
- const store=await createStore({dataDir:'memory://'}),state=await store.getProject(),operator:Actor={id:'local-human',kind:'human',projectIds:[state.projectId]},participant=await store.createParticipant('Rollback proof author',operator);
+ const store=await createReceiptStore(),state=await store.getProject(),operator:Actor={id:'local-human',kind:'human',projectIds:[state.projectId]},participant=await store.createParticipant('Rollback proof author',operator);
  const server=await startHttpServer({routes:createBackendRoutes({store,environment:{OURO_LOCAL_DEMO:'1'},resourceRoot})});
  try{
   const {cookie,actor}=await participantCookie(server.url,participant.credential),command={type:'createSpec',content,requestId:randomUUID(),expectedVersion:state.version},send=()=>fetch(server.url+'/api/commands',{method:'POST',headers:{Cookie:cookie,Connection:'close','Content-Type':'application/json','X-Ouro-Expected-Participant':actor.id,'X-Ouro-Expected-Project':state.projectId},body:JSON.stringify(command)});
@@ -87,7 +89,7 @@ test('HRP11 real HTTP deferred COMMIT failure returns old error body without a p
 
 test('HRP12 real tasks endpoint hashes the effective strict command and preserves exact bytes across a three-event replay',async()=>{
  const directory=await mkdtemp(path.join(tmpdir(),'ouro-receipt-tasks-')),folder=path.join(directory,'project');await mkdir(folder);
- const store=await createStore({dataDir:'memory://'}),legacy=await store.getProject(),operator:Actor={id:'local-human',kind:'human',projectIds:[legacy.projectId]};let server:Awaited<ReturnType<typeof startHttpServer>>|undefined,session:ReturnType<typeof createProjectSession>|undefined;
+ const store=await createReceiptStore(),legacy=await store.getProject(),operator:Actor={id:'local-human',kind:'human',projectIds:[legacy.projectId]};let server:Awaited<ReturnType<typeof startHttpServer>>|undefined,session:ReturnType<typeof createProjectSession>|undefined;
  try{
   const registration=await store.createWorkspaceProject({requestId:randomUUID(),rootPath:folder,name:'Task proof fixture'},operator),scoped=await store.forProject(registration.project.id),owner={...operator,projectIds:[registration.project.id]},agent=await scoped.createAgent('Task proof agent',owner),state=await scoped.getProject();
   server=await startHttpServer({routes:createBackendRoutes({store,environment:{OURO_LOCAL_DEMO:'1'},resourceRoot})});
