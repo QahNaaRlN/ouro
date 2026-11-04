@@ -1,5 +1,5 @@
 "use client";
-import {verificationPairWorkspacePresentation} from './verification-pair-presentation';
+import {verificationPairWorkspacePresentation,VerificationPairCard,WorkStatus} from '@/packages/frontend/src/entities/work';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -22,9 +22,7 @@ import {
 } from "lucide-react";
 import type { ProjectState, Spec, SpecState } from "@/packages/core/src";
 import {getWorkPairGroups,getWorkPairPresentation,type WorkPairGroup} from '@/packages/core/src';
-import {VerificationPairCard} from './verification-pair-card';
 import {getCanonicalStatusPresentation,getSpecWorkPresentation} from '@/packages/core/src/work-presentation';
-import {WorkStatus} from './work-status';
 import {twMerge} from 'tailwind-merge';
 import {useWorkspaceAppearance} from './workspace-ui';
 import {graphPresentation,graphHandlePresentation} from '@/packages/frontend/src/shared/ui/graph';

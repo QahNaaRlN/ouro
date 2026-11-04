@@ -205,6 +205,72 @@
     "codes": ["unresolved-module"]
   },
   {
+    "name": "legacy UI callers cannot bypass an entity public entry",
+    "entries": ["components/work-card.tsx"],
+    "files": {
+      "components/work-card.tsx": "export {WorkStatus} from '../packages/frontend/src/entities/work/ui/WorkStatus';",
+      "packages/frontend/src/entities/work/ui/WorkStatus.tsx": "export const WorkStatus=()=>null;"
+    },
+    "codes": ["deep-slice-import"]
+  },
+  {
+    "name": "a nested entity index is not the public slice entry",
+    "entries": ["components/work-card.tsx"],
+    "files": {
+      "components/work-card.tsx": "export {WorkStatus} from '../packages/frontend/src/entities/work/ui';",
+      "packages/frontend/src/entities/work/ui/index.ts": "export {WorkStatus} from './WorkStatus';",
+      "packages/frontend/src/entities/work/ui/WorkStatus.tsx": "export const WorkStatus=()=>null;"
+    },
+    "codes": ["deep-slice-import"]
+  },
+  {
+    "name": "frontend packages cannot depend back on legacy UI",
+    "entries": ["packages/frontend/src/entities/work/ui/WorkStatus.tsx"],
+    "files": {
+      "packages/frontend/src/entities/work/ui/WorkStatus.tsx": "export {LegacyStatus as WorkStatus} from '../../../../../../components/legacy-status';",
+      "components/legacy-status.tsx": "export const LegacyStatus=()=>null;"
+    },
+    "codes": ["legacy-ui-boundary"]
+  },
+  {
+    "name": "legacy UI callers can use an explicit entity public entry",
+    "entries": ["components/work-card.tsx"],
+    "files": {
+      "components/work-card.tsx": "export {WorkStatus} from '../packages/frontend/src/entities/work';",
+      "packages/frontend/src/entities/work/index.ts": "export {WorkStatus} from './ui/WorkStatus';",
+      "packages/frontend/src/entities/work/ui/WorkStatus.tsx": "export const WorkStatus=()=>null;"
+    },
+    "codes": []
+  },
+  {
+    "name": "same entity UI can import a sibling implementation directly",
+    "entries": ["packages/frontend/src/entities/work/index.ts"],
+    "files": {
+      "packages/frontend/src/entities/work/index.ts": "export {Pair} from './ui/Pair';",
+      "packages/frontend/src/entities/work/ui/Pair.tsx": "import {WorkStatus} from './WorkStatus'; export const Pair=WorkStatus;",
+      "packages/frontend/src/entities/work/ui/WorkStatus.tsx": "export const WorkStatus=()=>null;"
+    },
+    "codes": []
+  },
+  {
+    "name": "an entity can use pure core read projections and types",
+    "entries": ["packages/frontend/src/entities/work/ui/WorkStatus.tsx"],
+    "files": {
+      "packages/frontend/src/entities/work/ui/WorkStatus.tsx": "import {readWork,type Status} from '../../../../../core/src/work'; export const WorkStatus=(status:Status)=>readWork(status);",
+      "packages/core/src/work.ts": "export type Status={label:string}; export const readWork=(status:Status)=>status.label;"
+    },
+    "codes": []
+  },
+  {
+    "name": "the transitional web composition can still load legacy screens",
+    "entries": ["apps/web/src/app/router.tsx"],
+    "files": {
+      "apps/web/src/app/router.tsx": "export {Page} from '../../../../app/page';",
+      "app/page.tsx": "export const Page=()=>null;"
+    },
+    "codes": []
+  },
+  {
     "name": "require resolves its own package runtime branch",
     "entries": ["packages/core/src/unsafe.ts"],
     "files": {

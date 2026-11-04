@@ -49,7 +49,7 @@ test('VWS05 API and missing static assets do not receive successful SPA fallback
     const response = await request.get(url);
     expect(response.status(), url).toBe(404);
   }
-  const response = await request.get('/projects/help');
+  const response = await request.get('/projects/help', { headers: { Accept: 'text/html' } });
   expect(response.status()).toBe(200);
   expect(await response.text()).toContain('<div id="root"></div>');
 });
@@ -94,7 +94,7 @@ test('VWS04 modified link clicks retain native new-tab behavior and help fragmen
   } finally { await popup.close(); }
 });
 
-test('VWS05 same-origin API proxy preserves cookie-clearing POST and refuses a forged Origin', async ({ page, baseURL }) => {
+test('VWS05 same-origin API preserves cookie-clearing POST and refuses a forged Origin', async ({ page, baseURL }) => {
   await page.goto('/projects');
   await expect(page.getByRole('heading', { name: 'Проекты', exact: true })).toBeVisible();
   const forged = await page.request.post('/api/participants/logout', { headers: { Origin: 'https://forged.invalid' }, data: {} });
