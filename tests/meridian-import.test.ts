@@ -7,7 +7,8 @@ import path from 'node:path';
 import os from 'node:os';
 import {applyCommand,emptyState,PROJECT_ID,AGENT_ID,type Actor,type Command,type RevisionContent} from '../packages/core/src';
 import {createStore} from '../lib/store';
-import {mapMeridianExpectation,parseMeridianScope} from '../packages/meridian/src/context';
+import {parseMeridianScope} from '../packages/meridian/src/context';
+import {mapMeridianExpectation} from '../packages/core/src/meridian-import';
 
 const human:Actor={id:'meridian-human',kind:'human',projectIds:[PROJECT_ID]},agent:Actor={id:AGENT_ID,kind:'agent',projectIds:[PROJECT_ID]};
 const code=(expected:string)=>(e:unknown)=>(e as {code?:string}).code===expected;

@@ -3,7 +3,8 @@ import { getLessonSourceSpecIds, validateLessonContent as assertLessonContent } 
 import { validateFlowDefinition as assertFlowDefinition } from './flow';
 import {currentDecisionRequests,decisionRoot,isCurrentDecisionRequest,openPhysicalBlockers} from './decision-lineage';
 import {submitProposalCommandSchema,reviewProposalCommandSchema,adoptProposalCommandSchema,deriveProposalSources} from './agent-proposals';
-import {parseMeridianScope,mapMeridianExpectation} from '../../meridian/src/context';
+import {parseMeridianScope} from '../../meridian/src/context';
+import {mapMeridianExpectation} from './meridian-import';
 import {isWellFormedUnicode} from './unicode';
 import {createFlowRuntime,createFlowRun,currentFlowRun,requireFlowRuntime,flowForExecution,flowNode,assertFlowStepActor,selectFlowEdge,assertFlowHumanFacts,assertFlowInterruptFacts,currentFlowRequest,projectFlowRuntimeEvent} from './flow-runtime';
 import {verificationRunSchema,verificationSliceSchema,verificationAssessmentSchema,verificationPhaseSchema,verificationImportSchema,verificationCommandSchema} from '@ouro/protocol';

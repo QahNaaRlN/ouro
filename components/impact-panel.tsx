@@ -81,7 +81,7 @@ export default function ImpactPanel({state}:{state:ProjectState}){
         </div>
         <div className="impact-control-field">
           <label htmlFor={`${scopeId}-end-mode`}>Конечная точка отчёта</label>
-          <AppSelect aria-label="Конечная точка отчёта" id={`${scopeId}-end-mode`} value={endMode} onValueChange={selectedValue=>{const value=selectedValue as 'current'|'historical';setEndMode(value);if(value==='historical')setEndDraft(String(state.version));}}>
+          <AppSelect className="w-full min-w-0 text-ouro-text" aria-label="Конечная точка отчёта" id={`${scopeId}-end-mode`} value={endMode} onValueChange={selectedValue=>{const value=selectedValue as 'current'|'historical';setEndMode(value);if(value==='historical')setEndDraft(String(state.version));}}>
             <option value="current">Текущий момент · #{state.version}</option>
             <option value="historical">Момент в истории</option>
           </AppSelect>
@@ -92,7 +92,7 @@ export default function ImpactPanel({state}:{state:ProjectState}){
         </div>
         <div className="impact-control-field">
           <label htmlFor={`${scopeId}-scope`}>Область отчёта</label>
-          <AppSelect aria-label="Область отчёта" id={`${scopeId}-scope`} aria-describedby={`${scopeId}-scope-help`} value={scopeMode} onValueChange={selectedValue=>setScopeMode(selectedValue as 'all'|'selected')}>
+          <AppSelect className="w-full min-w-0 text-ouro-text" aria-label="Область отчёта" id={`${scopeId}-scope`} aria-describedby={`${scopeId}-scope-help`} value={scopeMode} onValueChange={selectedValue=>setScopeMode(selectedValue as 'all'|'selected')}>
             <option value="all">Все спеки проекта</option>
             <option value="selected">Выбранные спеки</option>
           </AppSelect>

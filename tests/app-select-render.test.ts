@@ -16,11 +16,12 @@ test('disabled empty and all-disabled selects expose an inline explanation witho
       const markup=renderToStaticMarkup(createElement(AppSelect,{'aria-label':'Исполнитель','aria-describedby':'existing-help',disabled:true,required:true,searchable,value:'',children:noOptions?[]:createElement('option',{value:'agent',disabled:true},'Недоступный агент')}));
       const trigger=markup.match(/<button\b[^>]*>/)?.[0];assert.ok(trigger);assert.match(trigger,/disabled=""/);
       const description=trigger.match(/aria-describedby="existing-help ([^"]+)"/)?.[1];assert.ok(description);
-      assert.ok(markup.includes(`<span id="${description}" class="ouro-select-disabled-reason">${explanation}</span>`));
+      const explained=[...markup.matchAll(/<span id="([^"]+)" class="([^"]+)">([^<]*)<\/span>/g)].find(([,id])=>id===description);
+      assert.ok(explained);assert.ok(explained[2].split(/\s+/).includes('ouro-select-disabled-reason'));assert.equal(explained[3],explanation);
       assert.doesNotMatch(markup,/role="listbox"/); // The explanation is readable while the disabled popup cannot open.
     }
     const custom=renderToStaticMarkup(createElement(AppSelect,{'aria-label':'Исполнитель',disabled:true,emptyReason:'Подключение ещё не зарегистрировано.',children:[]}));
-    assert.match(custom,/ouro-select-disabled-reason">Подключение ещё не зарегистрировано\.<\/span>/);
+    assert.match(custom,/class="ouro-select-disabled-reason(?: [^"]*)?">Подключение ещё не зарегистрировано\.<\/span>/);
     const optionalAll=renderToStaticMarkup(createElement(AppSelect,{'aria-label':'Фильтр',disabled:true,value:'',children:createElement('option',{value:''},'Все')}));
     assert.doesNotMatch(optionalAll,/ouro-select-disabled-reason/);
   }finally{

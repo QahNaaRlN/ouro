@@ -1,3 +1,5 @@
+@layer theme, base, ouro-legacy, utilities;
+@layer ouro-legacy {
 .kindGroup {
   margin-top: 26px;
   min-width: 0;
@@ -38,4 +40,5 @@
 .historyFactLabel {
   color: var(--text);
   font-weight: 500;
+}
 }

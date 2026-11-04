@@ -1,83 +1,11 @@
-@import "@xyflow/react/dist/style.css";
+@layer theme, base, ouro-legacy, utilities;
+@import "@xyflow/react/dist/style.css" layer(ouro-legacy);
+@layer ouro-legacy {
 
-:root {
-  color-scheme: dark;
-  --bg: #101113;
-  --subtle: #181a1e;
-  --muted: #24272d;
-  --selected: #626975;
-  --border: #343841;
-  --control: #7c828e;
-  --text: #fafafa;
-  --text-muted: #b4b8c2;
-  --text-faint: #858c98;
-  --primary: #fafafa;
-  --primary-text: #101113;
-  --positive: #86d7a3;
-  --positive-surface: #142a1e;
-  --attention: #e8c76c;
-  --attention-surface: #302719;
-  --negative: #fca5a5;
-  --negative-surface: #321c21;
-  --graph-edge: #555c69;
-  --graph-dot: #343841;
-  --minimap-mask: #101113c9;
-  --shadow: 0 20px 80px #0008;
-  --radius: 6px;
-}
-:root[data-theme="light"] {
-  color-scheme: light;
-  --bg: #fff;
-  --subtle: #f7f8fa;
-  --muted: #eceef1;
-  --selected: #e0e4ea;
-  --border: #d9dde3;
-  --control: #737b87;
-  --text: #17191e;
-  --text-muted: #59616e;
-  --text-faint: #737b87;
-  --primary: #17191e;
-  --primary-text: #fff;
-  --positive: #246f43;
-  --positive-surface: #e8f4eb;
-  --attention: #86600a;
-  --attention-surface: #fff5d9;
-  --negative: #a83038;
-  --negative-surface: #fcebed;
-  --graph-edge: #a6aeb9;
-  --graph-dot: #e1e5eb;
-  --minimap-mask: #ffffffc9;
-  --shadow: 0 20px 80px #14203426;
-}
-* {
-  box-sizing: border-box;
-}
-html,
-body {
-  margin: 0;
-  min-height: 100%;
-  background: var(--bg);
-  color: var(--text);
-  font-family:
-    Inter,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
-}
-button,
-input,
-textarea,
-.ouro-select {
+button,input,textarea {
   font: inherit;
 }
-button,
-a,
-input,
-textarea,
-.ouro-select {
+button,a,input,textarea {
   -webkit-tap-highlight-color: transparent;
 }
 button {
@@ -88,12 +16,7 @@ button:disabled {
   opacity: 0.42;
   cursor: not-allowed;
 }
-button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
-.ouro-select:focus-visible,
-.ws-accordion-trigger:focus-visible {
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,.ws-accordion-trigger:focus-visible {
   outline: 2px solid var(--text);
   outline-offset: 3px;
 }
@@ -105,9 +28,7 @@ a {
   color: inherit;
   text-decoration: none;
 }
-input,
-textarea,
-.ouro-select {
+input,textarea {
   color: var(--text);
   border: 1px solid var(--control);
   background: var(--bg);
@@ -524,13 +445,6 @@ pre {
   color: var(--text-muted);
   display: block;
 }
-.simulator-panel .ouro-select {
-  margin-top: 7px;
-  display: block;
-  width: 100%;
-  font-size: 12px;
-  padding: 8px;
-}
 .simulator-footnote {
   display: block;
   font-size: 12px;
@@ -754,13 +668,6 @@ pre {
   padding: 5px 0;
   font-size: 12px;
   outline-offset: 5px;
-}
-.filter-select {
-  font-size: 12px;
-  height: 29px;
-  border-color: var(--border);
-  padding: 4px 5px;
-  max-width: 143px;
 }
 .roadmap-surface {
   border: 1px solid var(--border);
@@ -1203,13 +1110,6 @@ tbody tr.selected {
 }
 .spec-picker {
   margin-bottom: 25px;
-}
-.spec-picker .ouro-select {
-  font-size: 12px;
-  width: 100%;
-  border-color: var(--border);
-  padding: 10px;
-  background: var(--subtle);
 }
 .spec-title-row {
   display: flex;
@@ -1774,14 +1674,6 @@ tbody tr.selected {
   color: var(--text-faint);
   flex: 1;
 }
-.history-filter .ouro-select {
-  display: block;
-  width: 100%;
-  font-size: 12px;
-  padding: 8px;
-  margin-top: 6px;
-  border-color: var(--border);
-}
 .history-filter .text-btn {
   font-size: 12px;
   margin-bottom: 1px;
@@ -1912,9 +1804,7 @@ tbody tr.selected {
   font-size: 12px;
   font-weight: 500;
 }
-.form-label input,
-.form-label textarea,
-.form-label .ouro-select {
+.form-label input,.form-label textarea {
   width: 100%;
   font-size: 12px;
   font-weight: 400;
@@ -2010,9 +1900,6 @@ tbody tr.selected {
   .search-field input {
     width: 100px;
   }
-  .filter-select {
-    max-width: 118px;
-  }
   .overview-metrics {
     gap: 17px;
   }
@@ -2090,9 +1977,6 @@ tbody tr.selected {
   }
   .search-field input {
     width: 100%;
-  }
-  .filter-select {
-    width: 114px;
   }
   .canvas-bottom > span:last-child {
     display: none;
@@ -2307,11 +2191,6 @@ tbody tr.selected {
   .search-field input {
     width: 100%;
   }
-  .filter-select {
-    font-size: 12px;
-    max-width: 120px;
-    width: 120px;
-  }
   .roadmap-surface {
     height: 470px;
     min-height: 400px;
@@ -2401,9 +2280,6 @@ tbody tr.selected {
   }
   .detail-tabs button > svg {
     display: none;
-  }
-  .spec-picker .ouro-select {
-    font-size: 12px;
   }
   .quiet-label {
     font-size: 12px;
@@ -2564,11 +2440,6 @@ tbody tr.selected {
   color: var(--text-faint);
   margin-top: 6px;
 }
-.run-toolbar .ouro-select {
-  font-size: 12px;
-  padding: 8px;
-  max-width: 100%;
-}
 .reality-switch {
   margin: 20px 0 17px;
   display: flex;
@@ -2604,19 +2475,7 @@ tbody tr.selected {
 }
 
 /* Meridian: body 14px, captions 12px; zoom remains an independent graph control. */
-.nav-item,
-.page-heading p,
-.goal-text,
-.criterion p,
-.small-section p,
-.request-detail p,
-.table-spec strong,
-.selected-title,
-.attention-card strong,
-.form-label,
-.form-label input,
-.form-label textarea,
-.form-label .ouro-select {
+.nav-item,.page-heading p,.goal-text,.criterion p,.small-section p,.request-detail p,.table-spec strong,.selected-title,.attention-card strong,.form-label,.form-label input,.form-label textarea {
   font-size: 14px;
 }
 .btn,
@@ -2669,10 +2528,7 @@ tbody tr.selected {
   font-size: 12px;
   white-space: normal;
 }
-.simulator-panel .ouro-select,
-.simulator-panel label,
-.simulator-panel p,
-.simulator-footnote {
+.simulator-panel label,.simulator-panel p,.simulator-footnote {
   font-size: 12px;
 }
 .statusbar {
@@ -2711,10 +2567,6 @@ tbody tr.selected {
   height: 34px;
 }
 .search-field input {
-  font-size: 12px;
-}
-.filter-select {
-  height: 34px;
   font-size: 12px;
 }
 .context-panel-heading {
@@ -2900,10 +2752,8 @@ tbody tr.selected {
 .agent-instructions p { max-width: 1000px; color: var(--text-muted); font-size: 14px; line-height: 1.9; }
 .agent-instructions a { color: var(--text-muted); font-size: 12px; text-decoration: underline; text-underline-offset: 4px; }
 .agent-picker { display: flex; flex-direction: column; gap: 8px; color: var(--text-muted); font-size: 12px; min-width: 0; }
-.agent-picker .ouro-select { width: 100%; min-height: 36px; max-width: 300px; color: var(--text); background: var(--bg); border-radius: var(--radius); padding: 8px; font-size: 12px; }
 .agent-assignment-actions { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
 .agent-assignment-vertical { flex-direction: column; align-items: stretch; }
-.agent-assignment-vertical .agent-picker .ouro-select { max-width: 100%; }
 .run-toolbar { flex-wrap: wrap; }
 @media (max-width: 900px) {
   .agent-steps { grid-template-columns: 1fr; gap: 18px; }
@@ -2996,3 +2846,4 @@ tbody tr.selected {
 
 /* Additional project views remain reachable on short screens. */
 .sidebar { overflow-y: auto; }
+}
