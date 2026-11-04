@@ -28,3 +28,7 @@
 7. Уникальный sibling temp использует basename `.ouro-` + 20 hex (80 случайных бит): всего 26 ASCII, не длиннее минимального прежнего canonical suffix. Ни profile basename, ни длинный parent не теряют прежний SQLite path/filename budget. `wx` collision — fail-closed, чужой файл не удаляется.
 
 Только synthetic temp fixtures и собственные Node children. Node **24.19.0** остаётся обязательным tested runtime. Доказательство относится к process kill, не power loss или произвольной порче filesystem. Linux filesystem/SQLite qualification, installer/P5 enforcement, URI parity, browser/native acceptance и общая приёмка миграции не повышаются этой историей.
+## Поправка по Linux CI: владелец процесса
+
+CI41832292162: SPP13 показал, что отказ второго владельца в том же процессе не гарантирует сохранение POSIX exclusion. `open/close` для проверки header того же inode снимает process-associated fcntl locks SQLite. До любого canonical header/SQLite open требуется атомарная process-local reservation пути и dev/ino; hardlink alias не должен обходить её. Reservation освобождается только после подтверждённого закрытия собственного SQLite owner. SQLite остаётся межпроцессным источником exclusion; RAM reservation предохраняет его от второго handle текущего процесса, не заменяя OS lock.
+

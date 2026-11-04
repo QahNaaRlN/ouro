@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {mkdtemp,rm,rmdir,unlink,access,readFile,lstat,readdir,writeFile,mkdir,symlink} from 'node:fs/promises';
+import {mkdtemp,rm,rmdir,unlink,access,readFile,lstat,readdir,writeFile,mkdir,symlink,link} from 'node:fs/promises';
 import path from 'node:path';
 import {tmpdir} from 'node:os';
 import {DatabaseSync} from 'node:sqlite';
@@ -141,4 +141,24 @@ test('SPP13 a rejected same-process probe cannot release exclusion against anoth
  const directory=await mkdtemp(path.join(tmpdir(),'ouro-profile-publication-')),profile=path.join(directory,'postgres'),owner=await acquireProfileOwner(profile);let competitor:ReturnType<typeof ownerChild>|undefined;
  try{await assert.rejects(acquireProfileOwner(profile),/already owned/);competitor=ownerChild(profile);const outcome=await competitor.waitOutcome();assert.equal(outcome.stage,'rejected');assert.match(outcome.message??'',/already owned/);}
  finally{await competitor?.kill();await owner.release();await cleanup(directory);}
+});
+
+test('SPP14 a same-process hardlink alias cannot open or release an existing mutex owner',async()=>{
+ const directory=await mkdtemp(path.join(tmpdir(),'ouro-profile-publication-')),profile=path.join(directory,'postgres'),alias=path.join(directory,'alias'),owner=await acquireProfileOwner(profile);let competitor:ReturnType<typeof ownerChild>|undefined;
+ try{
+  await mkdir(alias);await link(profile+'.ouro-profile-mutex.sqlite',alias+'.ouro-profile-mutex.sqlite');
+  await assert.rejects(acquireProfileOwner(alias),/already owned/);
+  await assert.rejects(acquireProfileOwner(profile),/already owned/);
+  competitor=ownerChild(profile);assert.equal((await competitor.waitOutcome()).stage,'rejected');
+ }finally{await competitor?.kill();await owner.release();await cleanup(directory);}
+});
+
+test('SPP15 concurrent same-process initializers leave exactly one owner until explicit release',async()=>{
+ const directory=await mkdtemp(path.join(tmpdir(),'ouro-profile-publication-')),profile=path.join(directory,'postgres');
+ const outcomes=await Promise.allSettled([acquireProfileOwner(profile),acquireProfileOwner(profile)]),owners=outcomes.filter((value):value is PromiseFulfilledResult<Awaited<ReturnType<typeof acquireProfileOwner>>>=>value.status==='fulfilled');let competitor:ReturnType<typeof ownerChild>|undefined;
+ try{
+  assert.equal(owners.length,1);const rejected=outcomes.find(value=>value.status==='rejected');assert(rejected?.status==='rejected');assert.match(String(rejected.reason),/already owned/);
+  competitor=ownerChild(profile);assert.equal((await competitor.waitOutcome()).stage,'rejected');
+  await owners[0].value.release();await owners[0].value.release();const reopened=await acquireProfileOwner(profile);await reopened.release();
+ }finally{await competitor?.kill();await Promise.all(owners.map(value=>value.value.release()));await cleanup(directory);}
 });

@@ -5,6 +5,9 @@ import {randomBytes} from 'node:crypto';
 import path from 'node:path';
 
 const applicationId=0x4f55524f,marker='ouro.embedded-profile-mutex/v1';
+/** Второй fd того же inode снимает POSIX process locks при close; резервируем до любого open. */
+const localPaths=new Set<string>(),localInodes=new Set<string>();
+const alreadyOwned=()=>new Error('Embedded profile is already owned by another process.');
 
 /** Проверяет файл до открытия SQLite; чужие файлы и symlink не изменяются. */
 async function inspectFile(file:string){
@@ -65,11 +68,18 @@ export async function acquireProfileOwner(dataDir:string){
  await mkdir(dataDir,{recursive:true});
  if((await lstat(dataDir)).isSymbolicLink())throw new Error('Profile directory symbolic link is refused.');
  const canonical=await realpath(dataDir),mutex=canonical+'.ouro-profile-mutex.sqlite';
- for(const suffix of ['-journal','-wal','-shm'])await inspectFile(mutex+suffix);
- let sql:DatabaseSync|undefined;
+ const localPath=process.platform==='win32'?mutex.toLowerCase():mutex;
+ if(localPaths.has(localPath))throw alreadyOwned();
+ localPaths.add(localPath);
+ let sql:DatabaseSync|undefined,localInode:string|undefined;
+ const releaseLocal=()=>{localPaths.delete(localPath);if(localInode)localInodes.delete(localInode);};
  try{
+  for(const suffix of ['-journal','-wal','-shm'])await inspectFile(mutex+suffix);
   if(!await inspectFile(mutex))await publishMarker(mutex);
   const identity=await inspectFile(mutex);if(!identity)throw new Error('Profile mutex identity is unavailable.');
+  const inodeKey=identity.dev+':'+identity.ino;
+  if(localInodes.has(inodeKey))throw alreadyOwned();
+  localInodes.add(inodeKey);localInode=inodeKey;
   await validateHeader(mutex,identity);
   for(const suffix of ['-journal','-wal','-shm'])await inspectFile(mutex+suffix);
   sql=new DatabaseSync(mutex,{timeout:0,allowExtension:false});
@@ -79,11 +89,13 @@ export async function acquireProfileOwner(dataDir:string){
   if(!sameIdentity(current,identity))throw new Error('Profile mutex identity changed; ownership refused.');
   let released=false;
   const owner=sql;
-  return {async release(){if(released)return;owner.exec('ROLLBACK');owner.close();released=true;}};
+  return {async release(){if(released)return;owner.exec('ROLLBACK');owner.close();released=true;releaseLocal();}};
  }catch(error){
   if(sql?.isOpen)sql.close();
+  releaseLocal();
+  if(error instanceof Error&&error.message==='Embedded profile is already owned by another process.')throw error;
   const sqlite=error as {errcode?:number;code?:string};
-  if(sqlite.errcode===5||sqlite.errcode===6)throw new Error('Embedded profile is already owned by another process.');
+  if(sqlite.errcode===5||sqlite.errcode===6)throw alreadyOwned();
   throw new Error('Profile mutex is not an Ouro marker or cannot be acquired.',{cause:error});
  }
 }
