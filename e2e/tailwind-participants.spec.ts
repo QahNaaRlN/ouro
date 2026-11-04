@@ -26,7 +26,7 @@ test('TWA account login modes and membership presentation retain shared particip
  }
  await page.unroute('**/api/session');
  await page.route('**/api/session',route=>route.fulfill({json:{actor:{kind:'human',id:'presentation-owner',name:'Владелец',projectIds:['presentation-project']},account:{id:'presentation-owner'},canManageParticipants:false}}));
- await page.route('**/api/projects',route=>route.fulfill({json:{projects:[{id:'presentation-project',name:'Макет доступа',role:'Owner'}]}}));
+ await page.route('**/api/projects',route=>route.fulfill({json:{projects:[{id:'presentation-project',name:'Макет доступа',slug:'presentation-project',createdAt:'2026-11-04T00:00:00.000Z',createdBy:'presentation-owner',role:'Owner'}]}}));
  await page.route('**/api/projects/presentation-project/members',route=>route.fulfill({json:{members:[{id:'presentation-membership',userId:'presentation-owner',name:'Владелец',email:'owner@example.invalid',role:'Owner'}]}}));
  await page.goto('/projects/presentation-project/members');const members=page.locator('.participants-panel');await expect(members.getByText('owner@example.invalid',{exact:true})).toBeVisible();
  await captureAccount(page,members,'members',output,metrics);await writeFile(join(output,'account-presentation.json'),JSON.stringify(metrics,null,2));

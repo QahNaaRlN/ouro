@@ -183,11 +183,13 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run production browser acceptance
-        run: npm run test:e2e:production
+        run: npm run test:e2e:production -- --project=functional
       - name: Qualify standalone React navigation against the existing API
         run: npm run web:test:e2e
       - name: Qualify built React UI served by the ordinary service on one origin
         run: npx playwright test --config=apps/web/playwright.service.config.ts
+      - name: Qualify bounded catalog read hooks and context replacement
+        run: npx playwright test --config=apps/web/playwright.catalog.config.ts
       - name: Qualify durable HTTP receipt recovery with actual browser loss and exact retry
         run: npx playwright test --config=playwright.receipt-proof.config.ts
       - name: Preserve browser diagnostics on failure
@@ -198,5 +200,40 @@ jobs:
           path: |
             test-results/
             apps/web/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  presentation:
+    name: presentation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install isolated renderer dependencies
+        run: npm --prefix apps/web ci
+      - name: Build production application
+        run: npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Qualify production presentation and controls
+        run: npm run test:e2e:production -- --project=presentation
+      - name: Qualify runtime presentation with its isolated renderer and real API
+        run: npx playwright test --config=playwright.runtime-tailwind.config.ts
+        env:
+          OURO_RUNTIME_VISUAL_DIR: test-results/runtime-presentation
+      - name: Preserve presentation diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: presentation-browser-diagnostics
+          path: test-results/
           if-no-files-found: ignore
           retention-days: 7
