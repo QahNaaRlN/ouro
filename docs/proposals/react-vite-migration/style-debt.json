@@ -19,27 +19,6 @@
       "owner": "legacy-human-view"
     },
     {
-      "file": "components/agent-proposals-panel.css",
-      "sha256": "85d02ed5bd8e65b6b7c2da0052d9f17eae1484985646927519a6e66415d7ec20",
-      "ordinaryRules": 102,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
-      "file": "components/collaborative-drafts.css",
-      "sha256": "a4088786273e8c55244fae8677e6e3e3ace75fc9749bfbe85511b6d4dc21d5a9",
-      "ordinaryRules": 41,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
-      "file": "components/github-panel.css",
-      "sha256": "104a154a88d42a388eba0ea835231ca71fd1ce17de317c9de280226f1e9cdf37",
-      "ordinaryRules": 73,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
       "file": "components/impact-panel.css",
       "sha256": "d1afc39ddbc083a094bd9e65c8b9979f156ad87183e34ebc98e0a980309a0a5b",
       "ordinaryRules": 98,
@@ -61,27 +40,6 @@
       "owner": "specialized-panels"
     },
     {
-      "file": "components/meridian-panel.css",
-      "sha256": "c650d92fb1bf3ff760186f8d07353d67421957ef3f23aa829697f95272268b6b",
-      "ordinaryRules": 73,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
-      "file": "components/onboarding.css",
-      "sha256": "bb4948008e151394edb64f85938ef335af890bf4dd64db4f43313a396e00cedd",
-      "ordinaryRules": 32,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
-      "file": "components/participants-panel.css",
-      "sha256": "96880de567a91f0c5a854bd6a99e2c2022f209b2b0876a9757101c079da0cac8",
-      "ordinaryRules": 31,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
       "file": "components/verification.css",
       "sha256": "a839468fbedbfaa3d0f21781ce4a194614bebe3afeb289e38c3fc9a48b9132b1",
       "ordinaryRules": 46,
@@ -98,33 +56,6 @@
   ],
   "inline": [
     {
-      "file": "components/agent-proposals-panel.tsx",
-      "sha256": "04ab52ff9daaef9a8adeb4b329cbf1d842f6bf340d33788cc7f7666f3c66bf1a",
-      "expressions": [
-        {
-          "kind": "graph",
-          "sha256": "73bd686eeb65879a6f979527ff79d843dad929ec95a66ca72ed918f0a7673099",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "76b5cf2d3116e07cf361213c68add9fda4c9ef5b3dcfa85b62aad20bd63872c3",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "90ca7d7bc81bd597d9b2864ee2929a13a921060b301190411305d118c044ff03",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "c08bd47c96d048a326a7c0bb2644b22987d99ff65101bf6d7f51500c4e0d3d55",
-          "count": 1
-        }
-      ],
-      "owner": "specialized-panels"
-    },
-    {
       "file": "components/impact-panel.tsx",
       "sha256": "035beee2d840c3e1bb07cff60cefc4179edfc123b5c77ff4d8865eb04745cc96",
       "expressions": [
@@ -137,44 +68,22 @@
       "owner": "specialized-panels"
     },
     {
-      "file": "components/meridian-panel.tsx",
-      "sha256": "774b518d08da9f561d4ed8d189e52c713fd9310294a0ae0f8ef5abc1561d37b6",
-      "expressions": [
-        {
-          "kind": "jsx",
-          "sha256": "f4a019560b18210f781cd09fd5b0a2b22b802e68bf0760caeb6a0b1222a80a52",
-          "count": 1
-        }
-      ],
-      "owner": "specialized-panels"
-    },
-    {
       "file": "components/onboarding.tsx",
-      "sha256": "b2b8e461475884e1b7cea1bfa14ba7e5ac0a9614433b857110a34a6d5ee0b831",
+      "sha256": "c7c1ee0839e68b2b0265a442df5a97990072191f9a56db7a59ff6eb3044968d4",
       "expressions": [
         {
-          "kind": "dom",
-          "sha256": "002faef44ef247045390fa5cf7d321b4afd393afbd3d6b0a492dea66a0acf5f3",
-          "count": 1
-        },
-        {
-          "kind": "dom",
-          "sha256": "2322f31b51c3e973729f02d8d7f3d07769098e49787a943175176b4d37522005",
+          "kind": "jsx",
+          "sha256": "24152c7e9306e858203596dfc095244d8e6cd05ef33f60ad333109f293ed0907",
           "count": 1
         },
         {
           "kind": "jsx",
-          "sha256": "5fd886dbaab9a4a424cadbdbf81aa125389d3fbf1d07106b28e4d1d2c4251752",
+          "sha256": "28d78d79a75a2987a217bc064fbd9485498c660dcc57983be16ab52adf610aa2",
           "count": 1
         },
         {
           "kind": "jsx",
-          "sha256": "85f9a7cfcb025e34862fa9c1f3c209c28adbac4be11b756eafc7283abdf01c38",
-          "count": 1
-        },
-        {
-          "kind": "jsx",
-          "sha256": "9dd7a6180aaa92fa23ff5063170c3a9df7943155bf96ee8ae809b281c6669ec9",
+          "sha256": "c74421dbdec91552be946cc7fd24d22338810a7dc6a9654ad517e867c47fe7c8",
           "count": 1
         }
       ],

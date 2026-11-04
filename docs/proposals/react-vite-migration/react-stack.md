@@ -10,13 +10,13 @@
 
 | Область | Принятая основа или отдельно отмеченный кандидат | Граница принятия и технической готовности |
 | --- | --- | --- |
-| Клиент | React, TypeScript, Vite | Принято; версии и конфигурация проходят проверку совместимости; реализация NOT_STARTED |
-| Архитектура UI | hFSD с проверяемыми границами | Приняты D01/D02/D11; архитектура и правила ещё не реализованы |
-| Маршрутизация | TanStack Router для web | Принят D16; embedded-навигация остаётся под контрактом Meridian |
-| Серверное состояние | TanStack Query React, общий project snapshot и один владелец project session/SSE | Принят D03; новые query/controller ещё не реализованы |
+| Клиент | React, TypeScript, Vite | Самостоятельный shell/production build квалифицированы; общий перенос UI/поставки и удаление Next ещё не завершены |
+| Архитектура UI | hFSD с проверяемыми границами | Import/public API guards действуют, portable client boundaries выделены; физический перенос большинства legacy UI slices ещё не завершён |
+| Маршрутизация | TanStack Router для web | Web routes/history/direct navigation квалифицированы; embedded-навигация остаётся под контрактом Meridian |
+| Серверное состояние | TanStack Query React, общий project snapshot и один владелец project session/SSE | Project session/Query wiring, scope admission и frozen intent recovery квалифицированы; независимые catalog reads имеют отдельную историю |
 | Формы и валидация | TanStack Form React + существующий Zod | Принят D10; версии адаптера, Standard Schema и Zod проверяются вместе |
 | Клиентский HTTP | Существующий транспорт Ouro; Axios — отдельный инструментальный кандидат исходного стека | Принятие D01–D16 не назначает Axios новой обязательной зависимостью; IPC не обязан использовать Axios |
-| Backend | Node.js + TypeScript; Hono — основной кандидат HTTP adapter | D16 принимает Node/TS и проверку Hono как основного кандидата; Hono ещё не квалифицирован, Fastify — fallback |
+| Backend | Node.js + TypeScript; Hono HTTP adapter | Hono transport и47/59 backend bindings квалифицированы, отдельный built runtime/resources/shutdown реализован; это ещё не consumer/production cutover |
 | UI-состояние | React state/reducer, локальные hooks, контекст зависимостей | Отдельная библиотека состояния пока не назначена |
 | Стили | Tailwind CSS 4 | По дополнительному поручению владельца все обычные собственные UI-стили переписываются на utilities в атомарных срезах с проверкой внешнего вида |
 | UI-примитивы | Существующий Base UI Ouro | Сохраняем поведение, доступность и внешний вид |

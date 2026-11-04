@@ -3,7 +3,7 @@ import test from 'node:test';
 import {createHash, randomUUID} from 'node:crypto';
 import {createStore, canonicalJSON} from '../lib/store';
 import {commandReceiptHeader, commandReceiptResponse, persistedCommandCursor} from '../lib/http-command-receipt';
-import {canonicalProjectJSON, commandReceiptProjection} from '../lib/project-snapshot';
+import {canonicalProjectJSON, commandReceiptProjection} from '../packages/client/src/lifecycle/project-snapshot';
 import {canonicalCommandJSON} from '../lib/command-canonical-json';
 import {verifyWorkspaceCommandReceipt} from '../packages/client/src/http/workspace-intent-proof';
 import {sendWorkspaceIntent, getWorkspaceIntents, type WorkspaceIntent} from '../packages/client/src/http/workspace-intents';

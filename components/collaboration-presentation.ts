@@ -1,0 +1,50 @@
+import {twMerge} from 'tailwind-merge';
+import {panelElements as elements} from './panel-elements';
+
+/** Оформление конкретных слотов общего редактора; состояние документа здесь не хранится. */
+export const collaborationPresentation={
+  panel:'collab-panel mx-auto grid max-w-[1320px] gap-[22px]',
+  title:twMerge(elements.pageTitle,'flex items-center gap-[10px]'),
+  pageAction:'btn '+twMerge(elements.action,elements.pageAction),
+  section:'collab-section rounded-[10px] border border-solid border-ouro-border bg-ouro-subtle p-[24px] at-most-800:p-[18px]',
+  heading:'m-0 mb-[16px] text-[17px] leading-[1.4] font-semibold tracking-[-.4px]',
+  create:'collab-create flex items-end gap-[14px] at-most-800:grid',
+  createLabel:'min-w-0 flex-1',
+  caption:'mb-[8px] block text-[12px] text-ouro-text-muted',
+  field:'box-border min-w-0 w-full rounded-[6px] border border-solid border-ouro-border bg-ouro-bg px-[12px] py-[10px] font-[family-name:inherit] text-[length:inherit] leading-[inherit] font-[number:inherit] text-ouro-text focus:outline-2 focus:outline-solid focus:outline-ouro-control focus:outline-offset-[2px] focus-visible:outline-ouro-control focus-visible:outline-offset-[2px] [-webkit-tap-highlight-color:transparent]',
+  textarea:'box-border min-w-0 w-full resize-y rounded-[6px] border border-solid border-ouro-border bg-ouro-bg px-[12px] py-[10px] font-[family-name:inherit] text-[length:inherit] leading-[1.6] font-[number:inherit] text-ouro-text [&[readonly]]:text-ouro-text-muted focus:outline-2 focus:outline-solid focus:outline-ouro-control focus:outline-offset-[2px] focus-visible:outline-ouro-control focus-visible:outline-offset-[2px] [-webkit-tap-highlight-color:transparent]',
+  select:'box-border w-full rounded-[6px] border-ouro-border bg-ouro-bg px-[12px] py-[10px] text-ouro-text focus:outline-2 focus:outline-solid focus:outline-ouro-control focus:outline-offset-[2px] focus-visible:outline-ouro-control focus-visible:outline-offset-[2px]',
+  list:'collab-list grid grid-cols-[repeat(auto-fill,minmax(245px,1fr))] gap-[12px]',
+  card:'collab-draft-card '+twMerge(elements.button,'grid gap-[9px] rounded-[7px] border border-solid border-ouro-border bg-ouro-bg p-[16px] text-left text-ouro-text'),
+  cardSelected:'selected border-ouro-control',
+  cardMeta:'text-[11px] text-ouro-text-muted [overflow-wrap:anywhere]',
+  warning:'collab-warning m-0 rounded-[6px] border border-solid border-[color:color-mix(in_srgb,var(--attention)_30%,transparent)] bg-[color-mix(in_srgb,var(--attention)_10%,transparent)] px-[14px] py-[12px] leading-[1.65] text-ouro-text',
+  notice:'collab-notice m-0 rounded-[6px] border border-solid border-[color:color-mix(in_srgb,var(--positive)_28%,transparent)] bg-[color-mix(in_srgb,var(--positive)_8%,transparent)] px-[14px] py-[12px] leading-[1.65]',
+  editorHeading:'collab-editor-heading flex items-start justify-between gap-[16px] at-most-800:grid',
+  editorId:'font-mono text-[11px] text-ouro-text-muted',
+  paragraph:'m-0 text-[12px] leading-[1.8] text-ouro-text-muted',
+  sync:'collab-sync flex items-center gap-[8px] text-[12px] text-ouro-text-muted whitespace-nowrap',
+  fields:'collab-fields my-[24px] grid grid-cols-[1fr_1fr] gap-[20px] at-most-800:grid-cols-[1fr]',
+  wide:'collab-wide col-[1/-1]',
+  dod:'collab-dod border-0 border-t border-solid border-ouro-border pt-[20px]',
+  h3:'m-0 text-[14px] leading-[1.5] font-semibold',
+  criterion:'collab-criterion my-[16px] flex items-center gap-[16px] at-most-800:flex-wrap',
+  criterionLabel:'flex-1 at-most-800:basis-full',
+  required:'collab-required flex items-center gap-[7px] text-[12px] whitespace-nowrap',
+  checkbox:elements.checkbox+' accent-[var(--control)]',
+  publication:'collab-publication mt-[24px] border-0 border-t border-solid border-ouro-border pt-[22px]',
+  actions:'collab-actions mt-[18px] flex flex-wrap gap-[10px]',
+  button:'btn '+elements.action,
+  smallButton:'btn btn-small '+twMerge(elements.action,elements.small),
+  primaryButton:'btn btn-primary '+twMerge(elements.action,elements.primary),
+  publicationButton:'btn '+twMerge(elements.action,'at-most-800:w-full at-most-800:justify-center'),
+  primaryPublicationButton:'btn btn-primary '+twMerge(elements.action,elements.primary,'at-most-800:w-full at-most-800:justify-center'),
+  textButton:'text-btn '+elements.textAction,
+  iconButton:'icon-btn '+elements.iconAction,
+  flow:'collab-flow mt-[24px] border-0 border-t border-solid border-ouro-border pt-[18px]',
+} as const;
+
+export const collaborationSyncPresentation={
+  connecting:'connecting',pending:'pending',saved:'saved text-[var(--positive)]',
+  offline:'offline text-[var(--attention)]',conflict:'conflict text-[var(--attention)]',denied:'denied text-[var(--attention)]',
+} as const;

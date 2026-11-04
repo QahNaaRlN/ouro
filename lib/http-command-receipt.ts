@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
 import {isWellFormedUnicode} from '@ouro/protocol';
 import {canonicalCommandJSON} from './command-canonical-json';
-import {canonicalProjectJSON,commandReceiptProjection} from './project-snapshot';
+import {canonicalProjectJSON,commandReceiptProjection} from '../packages/client/src/lifecycle/project-snapshot';
 import type {CommandExecutionWithReceipt} from './store';
 
 export const commandReceiptHeaderName='X-Ouro-Command-Receipt';

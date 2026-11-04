@@ -37,3 +37,11 @@ Reviewed head: Next production/strictTS и Vite strictTS/build (18s) PASS; archi
 Исправлены только шесть slots общей recipe: explicit `[&:fullscreen]:…`. Border использует `[&:fullscreen]:[border:0]`, чтобы сохранить весь прежний shorthand, включая style/color Reality. Два прежних important dimensions остаются ограничены fullscreen экземпляром. Все шесть tokens подтверждены действительным установленным compiler; новых CSS/inline exceptions нет.
 
 Corrected Next production/strictTS PASS; TWG02 PASS1/1 (10.6s case/12.7s total), **все8 PNG побайтно идентичны original, все8 computed metric sets идентичны**. Palette/min-height0/border0/radius0/exact screen rect и Escape+saved viewport проверены для обоих графов. Артефакты `.operations/fullscreen-corrected-8[-results]`, comparison JSON сохранены. Vite strictTS/build PASS13.64s; architecture843/0/16,107 unchanged handlers, styles16CSS1021rules/8inline24expressions/0violations PASS. Остальные неизменные GR/scoped browser cases повторно не запускались; исторические13+1 functional и22/24 normal PNG результаты остаются со своими исходными границами. Исправление фиксируется отдельным локальным commit до root PR.
+
+## Объединённая квалификация эпика
+
+После интеграции DTO/HTTP receipt, участников и интеграций сохранены границы источников доказательств выше. Инвентарь объединённого G1/P3/P42: **12 CSS-файлов / 812 правил / 7 inline-файлов / 21 выражение**, без новых исключений. Из ledger удалены только перенесённые записи; оставшиеся hashes/выражения сверены с реальными исходниками.
+
+На этой композиции новая production-сборка Next и **один сценарий TWG02, проверяющий восемь fullscreen-состояний**, прошли: 14.3s сам сценарий, 22s общий запуск. Проверены действительные цвета, border/radius, размеры fullscreen и Escape с сохранением viewport. Это повтор поведения на объединённой сборке; исходные восемь сравнений PNG относятся к указанному выше original/fixed срезу.
+
+Последующий merge проверенных client helper boundaries, Node prerequisite и механизма технических исключений не меняет graph presentation. Финальные root/web strict types PASS; architecture860/0/11 и styles12CSS/7inline/0violations PASS, `git diff --check` PASS. CI полного PR обязателен до merge. Оставшиеся process/runtime/panels и общие стили, hFSD и итоговый cutover не объявляются завершёнными этим срезом.

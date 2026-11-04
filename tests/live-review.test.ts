@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSeedEvents, PROJECT_ID, replay, type SpecRevision } from '../packages/core/src';
-import { createProjectSnapshotAdopter } from '../lib/project-snapshot';
-import { startProjectSubscription, type ProjectEventSource, type ProjectSubscriptionStatus } from '../lib/project-subscription';
+import { createProjectSnapshotAdopter } from '../packages/client/src/lifecycle/project-snapshot';
+import { startProjectSubscription, type ProjectEventSource, type ProjectSubscriptionStatus } from '../packages/client/src/http/project-subscription';
 
 test('review: a newer snapshot cannot rewrite an already accepted immutable event while keeping its ID',()=>{
   const original=createSeedEvents();
