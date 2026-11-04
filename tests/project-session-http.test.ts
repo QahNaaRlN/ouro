@@ -7,8 +7,8 @@ import {freezeProjectCommandIntent,type ProjectClientScope,type ProjectCommandRe
 import {createProjectHttpPorts} from '../packages/client/src/http/project-http';
 import {getWorkspaceIntents} from '../packages/client/src/http/workspace-intents';
 import {createProjectQueryClient,bindProjectSessionQuery,projectSnapshotQueryKey} from '../packages/frontend/src/api/project-session/project-session.query';
-import type {ProjectEventSource} from '../lib/project-subscription';
-import {createProjectSnapshotAdopter} from '../lib/project-snapshot';
+import type {ProjectEventSource} from '../packages/client/src/http/project-subscription';
+import {createProjectSnapshotAdopter} from '../packages/client/src/lifecycle/project-snapshot';
 
 const scope:ProjectClientScope={projectId:PROJECT_ID,actorId:'local-human',accessEpoch:7};
 const seed=createSeedEvents();

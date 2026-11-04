@@ -10,12 +10,14 @@ import {throwAfterStartupCleanup} from './cleanup-startup.js';
 import {access} from 'node:fs/promises';
 import type {RuntimeConfiguration} from './configuration.js';
 import type {ServiceReporter} from '../http/service-types.js';
+import {validateNodeVersion} from '../../../../scripts/runtime-node.mjs';
 
 /** Согласует прежний CommonJS application source и ESM composition root. */
 function interop<T>(source:T):T{return(source as T&{default?:T}).default??source;}
 
 /** Владеет startup, storage, workers и порядком shutdown одного backend runtime. */
 export async function startService(configuration:RuntimeConfiguration,options:{report?:ServiceReporter}={}){
+ validateNodeVersion(process.versions.node);
  const stores=interop(storeSource),mailers=interop(mailerSource),workers=interop(workerSource),clients=interop(clientSource);
  let store:Awaited<ReturnType<typeof stores.createStore>>|undefined,http:Awaited<ReturnType<typeof startHttpServer>>|undefined,worker:ReturnType<typeof createOwnedGitHubWorker>|undefined,ready=false;
  try{

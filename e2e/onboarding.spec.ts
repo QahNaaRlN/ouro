@@ -136,3 +136,31 @@ test('ON10 browser zoom keeps both the highlighted control and tooltip within th
     await expect(tour(page)).toHaveCount(0);
   }finally{await session.send('Emulation.setPageScaleFactor',{pageScaleFactor:1});await session.detach();}
 });
+
+test('ON11 tour blocks background wheel scrolling and restores prior inline values and existing lock ownership',async({page})=>{
+  await page.setViewportSize({width:390,height:640});await page.goto('/projects');await expect(launch(page)).toBeVisible();
+  const before=await page.evaluate(()=>{
+    const original=document.body.getAttribute('style');
+    document.body.style.setProperty('overflow','scroll');document.body.style.setProperty('color','rgb(22, 23, 24)');document.body.classList.add('host-scroll-fixture');
+    return {original,fixture:document.body.getAttribute('style'),scrollY:window.scrollY};
+  });
+  await launch(page).click();await expect(tour(page).locator('[data-onboarding-highlight]')).toBeVisible();
+  expect(await page.evaluate(()=>getComputedStyle(document.body).overflow)).toBe('hidden');
+  expect(await page.evaluate(()=>document.body.getAttribute('style'))).toBe(before.fixture);
+  const locked=await page.evaluate(()=>window.scrollY);
+  await page.mouse.move(5,630);await page.mouse.wheel(0,350);
+  await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
+  expect(await page.evaluate(()=>window.scrollY)).toBe(locked);
+  await page.keyboard.press('Escape');await expect(tour(page)).toHaveCount(0);await expect(launch(page)).toBeFocused();
+  expect(await page.evaluate(()=>document.body.getAttribute('style'))).toBe(before.fixture);
+  expect(await page.evaluate(()=>getComputedStyle(document.body).overflow)).toBe('scroll');
+  expect(await page.evaluate(()=>document.body.classList.contains('host-scroll-fixture'))).toBe(true);
+  await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBe(before.scrollY);
+  await page.mouse.move(5,630);await page.mouse.wheel(0,350);await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBeGreaterThan(before.scrollY);
+  await page.evaluate(()=>{window.scrollTo(0,0);document.body.classList.add('overflow-hidden!');});
+  await launch(page).click();await expect(tour(page)).toBeVisible();await page.keyboard.press('Escape');await expect(tour(page)).toHaveCount(0);
+  expect(await page.evaluate(()=>document.body.classList.contains('overflow-hidden!'))).toBe(true);
+  expect(await page.evaluate(()=>getComputedStyle(document.body).overflow)).toBe('hidden');
+  expect(await page.evaluate(()=>document.body.getAttribute('style'))).toBe(before.fixture);
+  await page.evaluate(original=>{document.body.classList.remove('overflow-hidden!','host-scroll-fixture');if(original===null)document.body.removeAttribute('style');else document.body.setAttribute('style',original);},before.original);
+});
