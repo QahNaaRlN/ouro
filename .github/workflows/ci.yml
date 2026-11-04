@@ -111,6 +111,10 @@ jobs:
         run: |
           npm --prefix apps/service run typecheck
           npm --prefix apps/service run build
+      - name: Check and build the standalone React web shell
+        run: |
+          npm run web:typecheck
+          npm run web:build
       - name: Qualify all service routes, lifecycle and built artifact over TCP
         run: npm --prefix apps/service test
       - name: Check TypeScript
@@ -129,10 +133,6 @@ jobs:
         run: npm run db:check
       - name: Build production application
         run: npm run build
-      - name: Check and build the standalone React web shell
-        run: |
-          npm run web:typecheck
-          npm run web:build
 
   browser:
     name: browser
@@ -150,16 +150,22 @@ jobs:
         run: npm ci
       - name: Install isolated web shell dependencies
         run: npm --prefix apps/web ci
+      - name: Install isolated service dependencies
+        run: npm --prefix apps/service ci
       - name: Build production application
         run: npm run build
       - name: Build standalone React web shell
         run: npm run web:build
+      - name: Build service for actual same-origin UI qualification
+        run: npm --prefix apps/service run build
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run production browser acceptance
         run: npm run test:e2e:production
       - name: Qualify standalone React navigation against the existing API
         run: npm run web:test:e2e
+      - name: Qualify built React UI served by the ordinary service on one origin
+        run: npx playwright test --config=apps/web/playwright.service.config.ts
       - name: Qualify durable HTTP receipt recovery with actual browser loss and exact retry
         run: npx playwright test --config=playwright.receipt-proof.config.ts
       - name: Preserve browser diagnostics on failure
