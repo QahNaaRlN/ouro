@@ -1,0 +1,9 @@
+# hFSD: read model области агентских предложений
+
+Дата: 2026-11-05. Статус: LOCAL_QUALIFIED / CI_PENDING. Отдельная ветка `codex/agent-proposal-model`, parent4b234e5 + reviewed preview76c8f63. Срез выделяет существующий чистый selector из `lib/workspace-proposals-view.ts` в `packages/frontend/src/entities/agent-proposal/model/select-workspace-proposals.ts` с root public API. [Фактическая проверка](../plans/agent-proposal-model.md).
+
+Инвентарь: ровно два production UI consumers (`workspace-proposals`, `workspace-project-view`) и existing `workspace-proposals-view.test.ts`; server consumers не обнаружены. Helper зависит только от Core types. Scope означает отображение уже подтверждённого snapshot; фильтр не выдаёт права и не читает транспорт/Query/host. Имена типов/функции, фильтры explicit foreign IDs, порядок, поля и отсутствие мутации snapshot сохраняются.
+
+Публичный index экспортирует selector и scope type именованно. Внешние consumers используют только root entity index; internal model не импортирует legacy app/components/lib, React, router или соседние entities. Старый файл удаляется; compatibility barrel в lib не создаётся. Текущий import guard уже запрещает external entity deep imports, новые исключения ему не нужны.
+
+Изменяются только physical boundary и import paths; JSX, стили, callbacks, payloads, scopes/permissions, HTTP/MCP/DB и dependencies не меняются. До source migration запускаются существующие scope tests; после переноса повторяются они и сравнение полного AST helper/consumer bodies с исключением только imports/comments/EOL. Новые tests, повторяющие физическое размещение файлов, не нужны. Root/web strict types, resolved architecture/public API, style/migration guards и full CI обязательны. Переезд одного read model не объявляет весь frontend hFSD завершённым.

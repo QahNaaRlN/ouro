@@ -1,8 +1,8 @@
-import type {AgentProposal,ProjectState} from '../packages/core/src/types';
+import type {AgentProposal,ProjectState} from '@/packages/core/src';
 
 export type WorkspaceProposalScope={projectId?:string;specId?:string;revisionId?:string;executionId?:string};
 
-/** Read-only scope: missing/foreign explicit IDs never fall back to another proposal. */
+/** Выбирает предложения подтверждённого snapshot; отсутствующие или чужие явные ID не подменяются. */
 export function selectWorkspaceProposals(state:Pick<ProjectState,'projectId'|'agentProposals'>,scope:WorkspaceProposalScope={}):AgentProposal[]{
   if(scope.projectId!==undefined&&scope.projectId!==state.projectId)return [];
   return state.agentProposals.filter(proposal=>proposal.projectId===state.projectId
