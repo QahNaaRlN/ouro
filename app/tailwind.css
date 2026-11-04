@@ -13,6 +13,7 @@
 @custom-variant at-most-900 { @media (max-width:900px) { @slot; } }
 @custom-variant at-most-760 { @media (max-width:760px) { @slot; } }
 @custom-variant at-most-680 { @media (max-width:680px) { @slot; } }
+@custom-variant at-most-600 { @media (max-width:600px) { @slot; } }
 @custom-variant at-most-560 { @media (max-width:560px) { @slot; } }
 @custom-variant at-most-520 { @media (max-width:520px) { @slot; } }
 

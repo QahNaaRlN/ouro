@@ -68,13 +68,6 @@
       "owner": "specialized-panels"
     },
     {
-      "file": "components/methodology.css",
-      "sha256": "8dc1a7805cb19190532ec8ac5049ee3db991841c84a8e387377c49b7b499fc02",
-      "ordinaryRules": 58,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
       "file": "components/onboarding.css",
       "sha256": "bb4948008e151394edb64f85938ef335af890bf4dd64db4f43313a396e00cedd",
       "ordinaryRules": 32,
