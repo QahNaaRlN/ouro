@@ -1,5 +1,5 @@
 import {WebStandardStreamableHTTPServerTransport} from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
-import {authenticatedAgent,AccessError} from '../../../lib/auth';
+import {authenticatedAgent,AccessError,defaultAuthService,type AuthService} from '../../../lib/auth';
 import {assertMcpRequest} from '../../../lib/connection-config';
 import {apiError} from '../../../lib/http';
 import {AGENT_ID,type Actor} from '../../core/src';
@@ -11,16 +11,17 @@ type ProjectMcpStore=AgentStore&WorkspaceMetadataStore&{authenticateAgentToken(t
 export type ProjectMcpContext={store:ProjectMcpStore};
 
 /** Same finite, stateless HTTP handler for the Next route and SDK integration checks. */
-export function createProjectMcpHandler(getContext:(id:string)=>Promise<ProjectMcpContext>){
+export function createProjectMcpHandler(getContext:(id:string)=>Promise<ProjectMcpContext>,options:{auth?:AuthService;environment?:Record<string,string|undefined>}={}){
+ const {authenticatedAgent}=options.auth??defaultAuthService;
  return async(request:Request,projectId:string)=>{
   let server:ReturnType<typeof createOuroMcpServer>|undefined;
   try{
-   assertMcpRequest(request);
+   assertMcpRequest(request,options.environment);
    const expected=request.headers.get('X-Ouro-Expected-Project');
    if(expected!==null&&expected!==projectId)throw new AccessError('PROJECT_CHANGED','Проект запроса изменился. Повторите исходную операцию в прежнем проекте.',409);
    const {store}=await getContext(projectId);
    const actor=await authenticatedAgent(request,projectId,AGENT_ID,token=>store.authenticateAgentToken(token));
-   server=createOuroMcpServer({store,actor,projectId,workspace:createAgentWorkspace(store)});
+   server=createOuroMcpServer({store,actor,projectId,workspace:createAgentWorkspace(store),deploymentMode:options.environment?.OURO_DEPLOYMENT_MODE});
    const transport=new WebStandardStreamableHTTPServerTransport({sessionIdGenerator:undefined,enableJsonResponse:true,maxRequestBodySize:256_000});
    await server.connect(transport);
    const response=await transport.handleRequest(request),body=await response.arrayBuffer();
