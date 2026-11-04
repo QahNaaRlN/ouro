@@ -2,10 +2,8 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { PROJECT_ID, type Actor } from '../packages/core/src';
 import { hashUserPassword, normalizeUserEmail, validUserEmail, validUserName, validUserPassword, type UserAccount } from './user-auth';
 
-export type ProjectRole = 'Owner' | 'Contributor' | 'Viewer';
-export type ProjectMetadata = { id: string; name: string; slug: string; createdAt: string; createdBy: string | null; role: ProjectRole };
-export type ProjectMembership = { id: string; projectId: string; userId: string; email: string; name: string; role: ProjectRole; createdAt: string; createdBy: string; revokedAt: string | null };
-export type ProjectInvitation = { id: string; projectId: string; email: string; role: ProjectRole; createdAt: string; createdBy: string; expiresAt: string; acceptedAt: string | null; revokedAt: string | null };
+import type { ProjectRole, ProjectMetadata, ProjectMembership, ProjectInvitation } from '@ouro/protocol/http';
+export type { ProjectRole, ProjectMetadata, ProjectMembership, ProjectInvitation } from '@ouro/protocol/http';
 export type OuroMailer = {
   sendInvitation(input: { email: string; projectName: string; role: ProjectRole; code: string; expiresAt: string }): Promise<void>;
   sendPasswordReset(input: { email: string; name: string; code: string; expiresAt: string }): Promise<void>;

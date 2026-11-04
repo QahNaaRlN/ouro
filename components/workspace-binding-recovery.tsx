@@ -5,7 +5,7 @@ import {workspacePresentation as ui} from './workspace-presentation';
 import {useState} from 'react';
 import {WorkspaceAccordion,WorkspaceCopyValue,WorkspaceTextarea} from './workspace-ui';
 import {freezeWorkspaceIntent,sendWorkspaceIntent,useWorkspaceIntents,useWorkspaceSession,reviewUnknownWorkspaceIntent,restoreUnknownWorkspaceIntent,type WorkspaceIntent} from './workspace-client';
-import type {WorkspaceBindingRecoveryInspection} from '@/lib/store';
+import type {WorkspaceBindingRecoveryInspection} from '@ouro/protocol/http';
 
 export type BindingInspection=WorkspaceBindingRecoveryInspection;
 export function BindingInspectionDetails({inspection}:{inspection:BindingInspection}){

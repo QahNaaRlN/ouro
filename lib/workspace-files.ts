@@ -4,8 +4,8 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {isWellFormedUnicode} from '../packages/core/src/unicode';
 
-export type WorkspaceIdentity={dev:string;ino:string};
-export type WorkspaceBinding={id:string;canonicalPath:string;identity:WorkspaceIdentity};
+import type { WorkspaceIdentity, WorkspaceBinding } from '@ouro/protocol/http';
+export type { WorkspaceIdentity, WorkspaceBinding } from '@ouro/protocol/http';
 export type WorkspaceFolder={canonicalPath:string;displayName:string;identity:WorkspaceIdentity};
 export class WorkspaceFileError extends Error{
  constructor(public code:string,message:string,public status=422){super(message);this.name='WorkspaceFileError';}
