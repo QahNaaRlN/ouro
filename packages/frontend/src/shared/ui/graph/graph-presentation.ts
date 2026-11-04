@@ -16,7 +16,7 @@ export const graphPresentation={
 /** Позиция 0 сохраняет выигравшие library Panel.left/bottom, а не перекрытые старые offsets. */
 const controls='bottom-0 left-0 flex overflow-hidden rounded-[5px] border border-solid border-ouro-border shadow-none [&>button]:h-[27px] [&>button:last-child]:border-0 [&>button:last-child]:border-none [&>button:last-child]:border-current [&>button:hover]:bg-ouro-muted [&>button_svg]:max-h-[12px] [&>button_svg]:max-w-[12px]';
 const surface={
- legacy:'[&>button]:w-[27px] [&>button]:border-b-0 [&>button]:border-r [&>button]:border-r-solid [&>button]:border-r-ouro-border [&>button]:bg-ouro-subtle [&>button]:text-ouro-text-muted',
+ legacy:'[&>button]:w-[27px] [&>button]:border-b-0 [&>button]:border-r [&>button]:[border-right-style:solid] [&>button]:border-r-ouro-border [&>button]:bg-ouro-subtle [&>button]:text-ouro-text-muted',
  workspace:'[&>button]:bg-ouro-bg [&>button]:text-ouro-text',
 } as const satisfies Record<GraphSurface,string>;
 const tone={
@@ -31,3 +31,11 @@ export function graphControlsClassName(appearance:GraphSurface,kind:GraphControl
 }
 
 export const fullscreenControlsClassName='[&>button:disabled]:cursor-not-allowed [&>button:disabled]:opacity-40 [&>button_svg.lucide]:max-h-[15px] [&>button_svg.lucide]:max-w-[15px] [&>button_svg.lucide]:fill-none [&>button_svg.lucide]:stroke-current';
+
+/** Selected принадлежит внешнему library node и сохраняет прежний приоритет над цветом отдельного handle. */
+export const graphHandlePresentation={
+ roadmap:String.raw`size-[5px] border-ouro-border bg-[var(--selected)] in-[.react-flow\_\_node.selected]:bg-ouro-text-muted`,
+ process:String.raw`size-[8px] border-2 border-solid border-ouro-bg bg-ouro-control in-[.react-flow\_\_node.selected]:bg-ouro-text-muted`,
+ state:String.raw`size-[7px] border-2 border-solid border-ouro-bg bg-ouro-control in-[.react-flow\_\_node.selected]:bg-ouro-text-muted`,
+ defaultNodes:String.raw`[&_.react-flow\_\_handle]:size-[5px] [&_.react-flow\_\_handle]:border-ouro-border [&_.react-flow\_\_handle]:bg-[var(--selected)] [&_.react-flow\_\_node.selected_.react-flow\_\_handle]:bg-ouro-text-muted`,
+} as const;

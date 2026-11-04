@@ -6,7 +6,7 @@ import {runtimeEventNames} from './flow-runtime-ui';
 import {buildRealityGraph} from '@/lib/workspace-graph';
 import {InitialGraphViewportFit,useGraphMeasurements,WorkspaceGraphControls} from './workspace-graph-controls';
 import {twMerge} from 'tailwind-merge';
-import {graphPresentation} from '@/packages/frontend/src/shared/ui/graph';
+import {graphPresentation,graphHandlePresentation} from '@/packages/frontend/src/shared/ui/graph';
 import {realityPresentation as ui} from './reality-presentation';
 
 const titles: Record<string,string> = {
@@ -45,6 +45,6 @@ export function RealityGraph({events,onSelectEvent,selectedEventId,scopeLabel,ac
     const target=event.target;if(!(target instanceof HTMLElement)||!target.classList.contains('react-flow__node'))return;
     const id=target.getAttribute('data-id');if(!id)return;event.preventDefault();event.stopPropagation();onSelectEvent(id);
   }}>
-    {events.length ? <ReactFlow<RealityNode,Edge> className={graphPresentation.attribution} nodes={nodes} edges={edges} onInit={setFlowInstance} onNodesChange={measurements.onChanges} onNodeClick={(_,node)=>onSelectEvent?.(node.data.eventId)} nodesFocusable={!!onSelectEvent} fitViewOptions={realityFitOptions} minZoom={0.01} maxZoom={1.5} nodesDraggable={false} nodesConnectable={false} deleteKeyCode={null} ariaLabelConfig={{'controls.zoomIn.ariaLabel':'Приблизить события','controls.zoomOut.ariaLabel':'Отдалить события','controls.fitView.ariaLabel':'Вписать события','node.a11yDescription.default':onSelectEvent?'Нажмите Enter или пробел, чтобы открыть исходное событие.':'Сохранённое событие проекта.'}}><Background gap={24} color="var(--graph-dot)"/><InitialGraphViewportFit active={active} containerRef={containerRef} instance={flowInstance} fitOptions={realityFitOptions} fitKey={fitKey}/><WorkspaceGraphControls containerRef={containerRef} fitOptions={realityFitOptions}/><MiniMap className={graphPresentation.minimap} nodeColor="var(--selected)" maskColor="var(--minimap-mask)" pannable zoomable/></ReactFlow> : <p className={twMerge('workspace-reality-empty',ui.empty)}>Событий пока нет.</p>}
+    {events.length ? <ReactFlow<RealityNode,Edge> className={`${graphPresentation.attribution} ${graphHandlePresentation.defaultNodes}`} nodes={nodes} edges={edges} onInit={setFlowInstance} onNodesChange={measurements.onChanges} onNodeClick={(_,node)=>onSelectEvent?.(node.data.eventId)} nodesFocusable={!!onSelectEvent} fitViewOptions={realityFitOptions} minZoom={0.01} maxZoom={1.5} nodesDraggable={false} nodesConnectable={false} deleteKeyCode={null} ariaLabelConfig={{'controls.zoomIn.ariaLabel':'Приблизить события','controls.zoomOut.ariaLabel':'Отдалить события','controls.fitView.ariaLabel':'Вписать события','node.a11yDescription.default':onSelectEvent?'Нажмите Enter или пробел, чтобы открыть исходное событие.':'Сохранённое событие проекта.'}}><Background gap={24} color="var(--graph-dot)"/><InitialGraphViewportFit active={active} containerRef={containerRef} instance={flowInstance} fitOptions={realityFitOptions} fitKey={fitKey}/><WorkspaceGraphControls containerRef={containerRef} fitOptions={realityFitOptions}/><MiniMap className={graphPresentation.minimap} nodeColor="var(--selected)" maskColor="var(--minimap-mask)" pannable zoomable/></ReactFlow> : <p className={twMerge('workspace-reality-empty',ui.empty)}>Событий пока нет.</p>}
   </section>;
 }
