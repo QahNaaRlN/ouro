@@ -82,13 +82,6 @@
       "owner": "specialized-panels"
     },
     {
-      "file": "components/participants-panel.css",
-      "sha256": "96880de567a91f0c5a854bd6a99e2c2022f209b2b0876a9757101c079da0cac8",
-      "ordinaryRules": 31,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
       "file": "components/spec-flow.css",
       "sha256": "25003dcb3a8588d238c3b030daa8de6df2b738f407752d4891541a18beda4991",
       "ordinaryRules": 98,
@@ -238,7 +231,7 @@
     },
     {
       "file": "components/project-account.tsx",
-      "sha256": "3dfa7a69f5e8444ae467600451c101c4610527e17eab5b36ed059e706af82444",
+      "sha256": "c32a8157746e627eb20412051ae89c7963ce0319bd435760447f300782564a91",
       "expressions": [
         {
           "kind": "jsx",
