@@ -50,3 +50,13 @@ Root peer review `8441938` предложил конкретный обход: `
 Теперь каждый custom-property initializer отдельно проходит существующий bounded static-origin classifier. Измеряемое соседнее поле не разрешает constant property; неизвестная/неоднозначная форма остаётся запрещённой. Отдельного исключения для standalone literal coordinate нет. Arithmetic constants внутри измеряемого expression и узкий DOM literal `auto` reset сохранены.
 
 Повтор закреплённым Node `--import tsx --test tests/ui-style-boundaries.test.ts`: **90/90 GREEN**, 0 skipped. Все четыре новых negatives отклоняются; три reviewed tour-call shapes, nested Math measured arithmetic и textarea auto/measured positives проходят. Production policy, UI и CSS не менялись.
+
+## Синхронизация с эпиком
+
+Followup сохранён отдельным commit `77c2102cb966818258ad522f9f65a6a41c71e513`. Merge `f936a5d856ec40bb1ee3eee2a0bfe56bb5424fa1` включает разрешённое основание `origin/codex/react-vite-epic` — `d30f4a3ffaccde209d8424c145fdc70e8a2fea31`, без конфликтов. Входящие UI/Tailwind изменения принадлежат эпик-основанию, не STI mechanism.
+
+На объединённом дереве повторены **90/90 GREEN**, root `npm run typecheck` с существующим protocol prebuild, checker syntax, conventions и diff checks: PASS. Только сгенерированные pretypecheck protocol EOL differences подтверждены `git diff --ignore-space-at-eol --exit-code` как semantic-zero и убраны; исходные protocol contracts не менялись.
+
+Оригинальный checker из нового immutable parent `d30f4a3` и STI checker выдали побайтно одинаковый `--print`: **10600 bytes**, SHA-256 `6f8c7516a43adc9d765da91e29d9ab8392773d1bd9d08ddd1408b6173873b928`. Полные ordinary/final `inspectStyles` results совпали deep-equal. Production ledger по-прежнему не содержит `technicalInline`. `styles:check` PASS: **16 ordinary CSS / 10 inline-style files**, 0 violations. `styles:final` ожидаемо отказал: exit1, **19 violations**, те же16/10 ordinary files. Эти новые счётчики отражают только входящий parent.
+
+Application/frontend build, browser/geometry и full CI повторно не запускались: STI не меняет UI, production exceptions не утверждены. No push/PR; handoff root для финального peer review/публикации.
