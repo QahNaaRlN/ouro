@@ -80,7 +80,7 @@ import { StateTransitions } from "@/components/state-transitions";
 import HistoricalPanel from "@/components/historical-panel";
 import {useProjectSession} from '@/components/project-session-provider';
 import {createIdentityReadController} from '@/packages/client/src/lifecycle/create-identity-read-controller';
-import {readIdentitySession} from '@/packages/client/src/http/read-identity-session';
+import {useIdentitySessionRead} from '@/packages/frontend/src/api/catalog-reads';
 import {WorkspacePendingList,readWorkspaceJSON} from '@/components/workspace-client';
 import {freezeProjectCommandIntent} from '@/packages/client/src/ports';
 import {planProjectCommandDispatch} from '@/packages/client/src/http/project-command-dispatch';
@@ -180,6 +180,9 @@ export default function Home() {
   const [agents, setAgents] = useState<AgentRegistration[]>([]);
   const [identity,setIdentity]=useState<Actor|null>(null),[sharedPending,setSharedPending]=useState(false);
   const [identityReads]=useState(createIdentityReadController),[accessEpoch,setAccessEpoch]=useState(0);
+  const {read:readIdentity,scope:identityScope,readAccountProjects}=useIdentitySessionRead();
+  const [hasAccount,setHasAccount]=useState(false),[identityUnavailable,setIdentityUnavailable]=useState(false);
+  const readScope=identityScope({accessEpoch,actorId:identity?.id??null,projectId:selectedProjectId()});
   const owner=useProjectSession(identity?{projectId:selectedProjectId(),actorId:identity.id,accessEpoch}:undefined,'legacy');
   const state=owner.snapshot?.state??null,storage=owner.snapshot?.storage??'',cursor=owner.snapshot?.cursor??0;
   const [flowTrackingSelections,setFlowTrackingSelections]=useState<Record<string,boolean>>({});
@@ -255,25 +258,30 @@ export default function Home() {
   useEffect(()=>{if(!state||hasInitialSelection.current)return;setSelected(state.specs[0]?.id??null);hasInitialSelection.current=true;},[state]);
   const refreshIdentity=useCallback(async()=>{
     const ticket=identityReads.begin();if(!ticket)return;
-    setAccessEpoch(ticket.accessEpoch);setIdentity(null);setProjectRole(null);setAgents([]);setLoading(true);setError('');
+    setAccessEpoch(ticket.accessEpoch);setIdentity(null);setHasAccount(false);setIdentityUnavailable(false);setProjectRole(null);setAgents([]);setLoading(true);setError('');
     const outcome=await ticket.run(async signal=>{
-      const session=await readIdentitySession(signal),actor=session.actor;
-      let role:ProjectRole|null=actor&&['local-human','human-token'].includes(actor.id)?'Owner':actor?'Contributor':null,fallbackProjectId:string|null=null;
+      const result=await readIdentity({accessEpoch:ticket.accessEpoch,projectId:selectedProjectId()},signal);
+      if(result.status==='unsupported')return result;
+      const session=result.value,actor=session.actor;
+      let role:ProjectRole|null=actor&&session.canManageParticipants?'Owner':actor?'Contributor':null,fallbackProjectId:string|null=null;
       if(session.hasAccount&&actor){
-        const projects=await readWorkspaceJSON<{projects:Array<{id:string;role?:ProjectRole}>}>('/api/projects',signal),selectedId=selectedProjectId(),current=projects.projects.find(project=>project.id===selectedId);
-        if(!current&&projects.projects[0])fallbackProjectId=projects.projects[0].id;
+        const projects=await readAccountProjects(identityScope({accessEpoch:ticket.accessEpoch,actorId:actor.id,projectId:selectedProjectId()}),signal);
+        if(projects.status==='unsupported')return projects;
+        const selectedId=selectedProjectId(),current=projects.value.find(project=>project.id===selectedId);
+        if(!current&&projects.value[0])fallbackProjectId=projects.value[0].id;
         role=current?.role??null;
       }
       const agents=await readWorkspaceJSON<{agents:AgentRegistration[]}>('/api/agents?projectId='+encodeURIComponent(selectedProjectId()),signal).then(value=>value.agents).catch(()=>[]);
-      return {actor,role,agents,fallbackProjectId};
+      return {status:'available' as const,actor,role,agents,fallbackProjectId,hasAccount:session.hasAccount};
     });
     if(outcome.status==='superseded')return;
     if(outcome.status==='accepted'){
-      if(outcome.value.fallbackProjectId){selectProject(outcome.value.fallbackProjectId);return;}
-      setIdentity(outcome.value.actor);setProjectRole(outcome.value.role);setAgents(outcome.value.agents);
+      if(outcome.value.status==='unsupported'){setIdentityUnavailable(true);setError('Чтение сессии или каталога недоступно в этом окружении.');}
+      else{if(outcome.value.fallbackProjectId){selectProject(outcome.value.fallbackProjectId);return;}
+      setIdentity(outcome.value.actor);setHasAccount(outcome.value.hasAccount);setProjectRole(outcome.value.role);setAgents(outcome.value.agents);}
     }else setError(outcome.error instanceof Error?outcome.error.message:'Не удалось проверить сессию.');
     setLoading(false);
-  },[identityReads]);
+  },[identityReads,readIdentity,identityScope,readAccountProjects]);
   useEffect(()=>{identityReads.mount();void refreshIdentity();return()=>identityReads.unmount();},[identityReads,refreshIdentity]);
   useEffect(() => {
     const saved = localStorage.getItem("ouro-theme");
@@ -504,7 +512,7 @@ export default function Home() {
           </span>
           <span className={humanShell.alpha}>{packageInfo.version.split('-')[1]?.split('.')[0].toUpperCase()??'RELEASE'}</span>
         </Link>
-        <ProjectSwitcher identity={identity}/>
+        <ProjectSwitcher identity={identity} hasAccount={hasAccount} readScope={readScope}/>
         <div className={humanShell.navigationLabel}>ПРОЕКТ</div>
         <nav className={humanShell.navigation} aria-label="Основная навигация">
           <a className={humanShell.navigationItem} href="/projects"><Box size={18}/><span>Проекты</span></a>
@@ -617,8 +625,8 @@ export default function Home() {
             <TriangleAlert size={30} />
             <h1 className={humanShell.loadingHeading}>Проект недоступен</h1>
             <p className={humanShell.loadingCopy}>{error || "Проверьте запуск сервера и локальную сессию."}</p>
-            <EmailLogin/>
-            <WorkspaceAccordion defaultOpen title={<>Вход по прежнему ключу участника</>}><ParticipantLogin/></WorkspaceAccordion>
+            {!identityUnavailable&&<EmailLogin/>}
+            {!identityUnavailable&&<WorkspaceAccordion defaultOpen title={<>Вход по прежнему ключу участника</>}><ParticipantLogin/></WorkspaceAccordion>}
             <button className="btn" onClick={() => void refreshIdentity()}>
               Повторить
             </button>
@@ -1407,7 +1415,7 @@ export default function Home() {
               </>}
               {view==='lessons'&&<LessonsPanel state={state} onSnapshot={adoptMutation} readOnly={!canWrite} onOpenSpec={id=>{pick(id);setView('specs');setDetailTab('expectation');}}/>}
               {view==='impact'&&<ImpactPanel state={state}/>}
-              {view==='participants'&&(identity&&!['local-human','human-token'].includes(identity.id)?<ProjectMembersPanel projectId={state.projectId} identity={identity}/>:<ParticipantsPanel/>)}
+              {view==='participants'&&(identity&&!['local-human','human-token'].includes(identity.id)?<ProjectMembersPanel projectId={state.projectId} identity={identity} readScope={{...readScope,projectId:state.projectId}}/>:<ParticipantsPanel/>)}
               {view==='drafts'&&<CollaborativeDraftsPanel state={state} actorId={identity?.id??'local-human'} onSnapshot={adoptMutation} onPendingChange={setSharedPending} readOnly={!canWrite} onOpenSpec={id=>{pick(id);setView('specs');}}/>}
               {view==='proposals'&&<AgentProposalsPanel state={state} actorId={identity?.id??'unauthenticated'} onSnapshot={adoptMutation} intents={proposalIntents} initialSelection={proposalFocus} readOnly={!canWrite} onOpenSpec={id=>{pick(id);setView('specs');setDetailTab('expectation');}}/>}
               </>}
