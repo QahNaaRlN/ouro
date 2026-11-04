@@ -1,12 +1,18 @@
 # CGL — запуск независимой поставки через поколения установки
 
-Дата: 2026-11-05. Ветка `codex/consumer-generation-launch`, base `f79bdc0d079ae516f4d28fafc442a18a7db28c96`. Статус: **IMPLEMENTED_PARTIAL / PORT_FOCUSED_CHECKPOINT_PASS / FIRST_LINUX_GENERATION_FAILED / FINAL_QUALIFICATION_PENDING**. Root разрешил implementation после source-build producer. [Журнал](../plans/consumer-generation-launch.md). Основание: принятые D13/P5, [SWD2](consumer-source-delivery.md), REC и scoped evidence. Windows strict HTML TCP limitation не повышается до PASS. [Early-listener DI](consumer-prebound-startup.md) получила узкий design review и focused RED→GREEN; source freeze сохранён, повторный полный consumer proof ещё требуется.
+Дата: 2026-11-05. Ветка `codex/consumer-generation-launch`, base `f79bdc0d079ae516f4d28fafc442a18a7db28c96`. Статус: **IMPLEMENTED_PARTIAL / LINUX_COMBINED_PASS / WINDOWS_FUNCTIONAL13_PASS / WINDOWS_LOCAL_HTML_FAIL / WINDOWS_CI_PENDING**. Root разрешил implementation после source-build producer. [Журнал](../plans/consumer-generation-launch.md). Основание: принятые D13/P5, [SWD2](consumer-source-delivery.md), REC и scoped evidence. Первый Linux FAIL сохранён; позднейший PASS не объясняет его причину задним числом. Windows strict HTML TCP limitation не повышается до PASS. [Early-listener DI](consumer-prebound-startup.md) получила узкий design review и focused RED→GREEN; source freeze и свежий полный combined consumer proof на `f99ca177` сохранены с раздельными functional/HTML результатами.
 
 ## Цель и полномочия
 
 Создать отдельно материализуемый consumer envelope без dependencies: прежние `npm run launch`, `npm run build`, `npm start` и стабильный MCP entry вызывают standard-library owner. Единственный consumer dependency graph находится в поставленном `source/package.json` + `source/package-lock.json`; каждый install выполняется в новом независимом generation, никогда поверх готового или работающего дерева. `launch` действительно делает `npm ci --include=dev` и свежие typechecks/Vite/service build перед запуском. Source blueprint не становится install tree, а outer package не имеет dependency lock.
 
 Это отдельная поставка и qualification API. Старые repository launch/packer/source ZIP/Docker не переключаются, Next не удаляется, hosted deployment/native не принимаются. Producer по-прежнему берёт один committed Git tree и same-commit protocol. Реальные env/profiles/keys не читаются и не пакуются. Общая система управления произвольными процессами, package sandbox и автоматический GC не создаются.
+
+## Дополнительная Windows CI qualification
+
+После actual local combined functional13 PASS и strict HTML672/1161 FAIL root запросил отдельный named `consumer-generation-windows` job. Он выполняет **тот же ordinary qualifier**, `--browser --install-browser`, Node из `.nvmrc`24.19.0, на windows-latest без source dependency install. Preflight отказывает при source node_modules. Каждый producer/consumer install по-прежнему свой; никакой local dependency junction не используется в job. Existing6 Linux/other jobs сохраняются, новый job является седьмым.
+
+Ожидаемые bytes берутся из actual built index.html, сравнение не фильтруется и не пропускается на Windows. Timeouts/retries/HTML headers/runtime/host settings не меняются. Это отдельное исполнение для установления платформенного evidence, а не доказанная причина local host transformation и не обход локального FAIL. Публикуется только bounded qualification-report.json, без env/token/profile/runner stdout. До actual job result статус **PENDING**, до root review/publish новый job не считается запущенным. Directory/runtime qualification не объявляет старый source ZIP, installed CLI remainder или production cutover завершёнными.
 
 ## Конкретное дерево и task graph
 
