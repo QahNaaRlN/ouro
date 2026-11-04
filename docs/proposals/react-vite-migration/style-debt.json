@@ -13,17 +13,10 @@
   "css": [
     {
       "file": "app/globals.css",
-      "sha256": "4c958bc7cf6b6ab9c70761d21f4ceb151e040766364770f666b362c16e4935ea",
-      "ordinaryRules": 131,
+      "sha256": "3b5a794f79da42683cd39a4c08c5a8e559154025ac419be2036829e62360cae5",
+      "ordinaryRules": 91,
       "legacyLayer": true,
       "owner": "legacy-human-view"
-    },
-    {
-      "file": "components/impact-panel.css",
-      "sha256": "d1afc39ddbc083a094bd9e65c8b9979f156ad87183e34ebc98e0a980309a0a5b",
-      "ordinaryRules": 98,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
     },
     {
       "file": "components/legacy-shared-defaults.css",
@@ -31,13 +24,6 @@
       "ordinaryRules": 21,
       "legacyLayer": true,
       "owner": "dependent-ui-families/final-css-gate"
-    },
-    {
-      "file": "components/lessons-panel.css",
-      "sha256": "062efd417e288d9b57e9a191280d09761dc123abd6473f3ec3472337f159113e",
-      "ordinaryRules": 82,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
     },
     {
       "file": "components/verification.css",
@@ -57,11 +43,11 @@
   "inline": [
     {
       "file": "components/impact-panel.tsx",
-      "sha256": "035beee2d840c3e1bb07cff60cefc4179edfc123b5c77ff4d8865eb04745cc96",
+      "sha256": "e831a519c8b36e300f07dd771806e24cce6c86d04590641dce0ab8503017ba5d",
       "expressions": [
         {
           "kind": "jsx",
-          "sha256": "85433caf649e8bad3cd9cb451972426d4c742ef4675644737587bfd79f8b0cc1",
+          "sha256": "b6968f32df2618d39450408c4684cd1d0619fd698ad4b6b127b95ada193ac9d1",
           "count": 1
         }
       ],
@@ -118,7 +104,7 @@
     },
     {
       "file": "components/workspace-ui.tsx",
-      "sha256": "7a921ccbe0c765642fe0de048d0ab8e3e7781ff63c13a4bf5ef000b2ba886a83",
+      "sha256": "f3f4e90b81da96dd5c3dfa5274f0b6c1b76751fb6261aba4196ac2c1326e8bbe",
       "expressions": [
         {
           "kind": "dom",
