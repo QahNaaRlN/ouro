@@ -45,3 +45,9 @@ Scope:56 selectors runtime CSS, SpecFlow context/facts, существующие
 - До обновления ledger guard показывал ровно один ожидаемый stale ordinary CSS entry: удалённый flow-runtime.css. После принятого root bounded review удалена только эта запись, без регенерации других hashes/policies. Фактический остаток13CSS/797rules и6inline-files/17expressions. **styles:check PASS0violations**. **styles:final ожидаемо FAIL16** из-за остального обычного долга/legacy layers; это не полный Tailwind PASS. Generated protocol CRLF/stat drift восстановлен только после доказанного semantic diff0; unrelated исходники не менялись.
 
 Это bounded browser qualification указанного G3 среза. Весь Tailwind/React migration, native Meridian/WebView/SSO, реальные profiles и production не квалифицируются этим fixture. Root bounded review принят; scoped commit без push/PR разрешён. Parent sync и публикацией PR/CI управляет владелец эпика.
+
+## Интеграция перед публикацией
+
+Root объединил финальную A/G2/G1/P3/P42 композицию и client/runtime contracts. Source конфликтов не было; ledger сверен трёхсторонне по каждой записи относительно merge base. Остаток **7 CSS-файлов /445 правил /4 inline-файла /10 выражений**, styles0violations. Root/web strict types PASS; architecture867/0/11 и diff check PASS. Новая техническая policy пока не содержит production inline exceptions.
+
+Унаследован финальный A capture guard, проверяющий неизменность measured DOM до/после screenshot; его source delta только test/docs. Исходные200 сравнений G3 и20 functional сохраняют свои границы; новый полный CI комбинированного head обязателен. Родительская история A объединяется раньше G3. Обновлённые статусы общего плана различают уже реализованные contracts/session/service и ещё открытые hFSD, Tailwind final, consumer/pnpm, coherent host и Next cutover.
