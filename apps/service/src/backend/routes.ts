@@ -5,6 +5,7 @@ import path from 'node:path';
 import type { Command, Actor } from '../../../../packages/core/src/types';
 import * as authSource from "../../../../lib/auth";
 import * as httpSource from "../../../../lib/http";
+import * as receiptSource from '../../../../lib/http-command-receipt';
 import * as coreSource from "../../../../packages/core/src";
 import * as connectionSource from "../../../../lib/connection-config";
 import * as schemaSource from "zod";
@@ -26,6 +27,7 @@ import * as cryptoSource from "node:crypto";
 import * as workspaceFilesSource from "../../../../lib/workspace-files";
 const authModule = interop(authSource);
 const httpModule = interop(httpSource);
+const receiptModule=interop(receiptSource);
 const coreModule = interop(coreSource);
 const connectionModule = interop(connectionSource);
 const schemaModule = schemaSource;
@@ -60,7 +62,8 @@ function createBackendFacets(options: BackendOptions) {
     return {
         auth: { ...authModule, ...auth },
         http: httpModule,
-        store: { getWorkspaceStore: async () => store, getStorageMode: () => options.storage ?? 'embedded-postgres', getProject: (projectId?: string, actor?: Actor) => store.getProject(projectId, actor), getEvents: (after = 0, projectId?: string, actor?: Actor) => store.getEvents(after, projectId, actor), executeCommand: (body: unknown, actor: Actor, projectId?: string) => store.executeCommand(body, actor, projectId), createAgent: (name: string, actor: Actor, projectId?: string) => store.createAgent(name, actor, projectId), listAgents: (actor: Actor, projectId?: string) => store.listAgents(actor, projectId), revokeAgent: (id: string, actor: Actor, projectId?: string) => store.revokeAgent(id, actor, projectId) },
+        receipt:receiptModule,
+        store: { getWorkspaceStore: async () => store, getStorageMode: () => options.storage ?? 'embedded-postgres', getProject: (projectId?: string, actor?: Actor) => store.getProject(projectId, actor), getEvents: (after = 0, projectId?: string, actor?: Actor) => store.getEvents(after, projectId, actor), executeCommand: (body: unknown, actor: Actor, projectId?: string) => store.executeCommand(body, actor, projectId), executeCommandWithReceipt:(body:unknown,actor:Actor,projectId?:string)=>store.executeCommandWithReceipt(body,actor,projectId), createAgent: (name: string, actor: Actor, projectId?: string) => store.createAgent(name, actor, projectId), listAgents: (actor: Actor, projectId?: string) => store.listAgents(actor, projectId), revokeAgent: (id: string, actor: Actor, projectId?: string) => store.revokeAgent(id, actor, projectId) },
         core: coreModule,
         connection: { ...connectionModule, requestOrigin: auth.requestOrigin, connectionConfig: connection, assertMcpRequest: (request: Request) => connectionModule.assertMcpRequest(request, environment) },
         schema: schemaModule,
@@ -175,7 +178,8 @@ function bindAuthSession(facets: BackendFacets, context: ServiceRequestContext) 
 function bindCommands(facets: BackendFacets, context: ServiceRequestContext) {
     const { authenticatedParticipant, assertHuman, readCommandBody } = facets.auth;
     const { apiError } = facets.http;
-    const { executeCommand } = facets.store;
+    const { executeCommandWithReceipt } = facets.store;
+    const {commandReceiptResponse}=facets.receipt;
     const { PROJECT_ID, AGENT_ID } = facets.core;
     const { requestedProjectId } = facets.connection;
     async function POST(request: Request) {
@@ -183,8 +187,8 @@ function bindCommands(facets: BackendFacets, context: ServiceRequestContext) {
             const projectId = requestedProjectId(request);
             const actor = await authenticatedParticipant(request, projectId, AGENT_ID);
             assertHuman(actor);
-            const result = await executeCommand(await readCommandBody(request), actor, projectId);
-            return Response.json(result, { headers: { 'Cache-Control': 'no-store' } });
+            const result = await executeCommandWithReceipt(await readCommandBody(request), actor, projectId);
+            return commandReceiptResponse(result);
         }
         catch (e) {
             return apiError(e);
@@ -504,6 +508,7 @@ function bindProjectsProjectIdCommands(facets: BackendFacets, context: ServiceRe
     const { readCommandBody } = facets.auth;
     const { resolveWorkspaceRequest } = facets.workspace;
     const { apiError } = facets.http;
+    const {commandReceiptResponse}=facets.receipt;
     async function POST(request: Request, { params }: {
         params: Promise<{
             projectId: string;
@@ -511,8 +516,8 @@ function bindProjectsProjectIdCommands(facets: BackendFacets, context: ServiceRe
     }) {
         try {
             const { store, actor } = await resolveWorkspaceRequest(request, (await params).projectId);
-            const result = await store.executeCommand(await readCommandBody(request), actor);
-            return Response.json(result, { headers: { 'Cache-Control': 'no-store' } });
+            const result = await store.executeCommandWithReceipt(await readCommandBody(request), actor);
+            return commandReceiptResponse(result);
         }
         catch (error) {
             return apiError(error);
@@ -652,6 +657,7 @@ function bindProjectsProjectIdTasks(facets: BackendFacets, context: ServiceReque
     const { AccessError, readCommandBody } = facets.auth;
     const { resolveWorkspaceRequest } = facets.workspace;
     const { apiError } = facets.http;
+    const {commandReceiptResponse}=facets.receipt;
     const input = z.strictObject({ requestId: z.string().min(8).max(200), expectedVersion: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER), agentId: z.string().min(1).max(200), content: proposalRevisionContentSchema });
     async function POST(request: Request, { params }: {
         params: Promise<{
@@ -662,8 +668,8 @@ function bindProjectsProjectIdTasks(facets: BackendFacets, context: ServiceReque
             const { store, actor } = await resolveWorkspaceRequest(request, (await params).projectId), parsed = input.safeParse(await readCommandBody(request));
             if (!parsed.success)
                 throw new AccessError('VALIDATION_ERROR', 'Нужны requestId, expectedVersion, выбранный agentId и полное содержание задачи с критериями без посторонних полей.', 422);
-            const result = await store.executeCommand({ type: 'startProjectWork', ...parsed.data }, actor);
-            return Response.json(result, { headers: { 'Cache-Control': 'no-store' } });
+            const result = await store.executeCommandWithReceipt({ type: 'startProjectWork', ...parsed.data }, actor);
+            return commandReceiptResponse(result);
         }
         catch (error) {
             return apiError(error);

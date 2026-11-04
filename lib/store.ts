@@ -14,6 +14,7 @@ import { createSmtpMailerFromEnv } from './mailer';
 import { createCollaborativeDraftService } from './collaborative-drafts';
 import { isWellFormedUnicode } from '../packages/core/src/unicode';
 import {parseMeridianScope} from '../packages/meridian/src/context';
+import {canonicalCommandJSON,CommandJSONValueError} from './command-canonical-json';
 import {resolveWorkspaceFolder,assertWorkspaceFolder} from './workspace-files';
 import {importPlaywrightReport,type PlaywrightImportProof} from './verification/playwright';
 import {observeVerificationWorkspace,observationHash,runnerCapabilities,type ObservationConfig} from './verification/observation';
@@ -32,6 +33,10 @@ type Query = <T = Row>(sql: string, values?: unknown[]) => Promise<{ rows: T[] }
 type Connection = { query: Query; exec(sql: string): Promise<unknown> };
 type Database = Connection & { transaction<T>(fn: (connection: Connection) => Promise<T>): Promise<T>; close(): Promise<void> };
 export type CommandResult = { state: ProjectState; events: DomainEvent[]; cursor: number; replayed: boolean };
+/** Фактически выбранная/возвращённая SQL-запись; доступна только серверному HTTP adapter после COMMIT. */
+export type CommandReceiptRow=Readonly<{project_id:string;actor_id:string;request_id:string;payload_hash:string;response:Omit<CommandResult,'replayed'>;cursor:number|string}>;
+/** Результат закрытого commit path с отдельной копией persisted response для проверки HTTP view. */
+export type CommandExecutionWithReceipt=Readonly<{result:CommandResult;row:CommandReceiptRow}>;
 /** Конфигурация storage owner и его ресурсов; service передаёт пути и режим явно. */
 export type StoreOptions = { dataDir?: string; databaseUrl?: string; seedEvents?: DomainEvent[]; projectId?:string; mailer?: OuroMailer;workspaceBindingRecovery?:ReturnType<typeof createWorkspaceBindingRecovery>;migrationsDir?:string;verificationRuntimeDir?:string;playwrightPackageRoot?:string;deploymentMode?:string;startObservers?:boolean };
 export type WorkspaceBinding={id:string;canonicalPath:string;identity:{dev:string;ino:string}};
@@ -52,14 +57,7 @@ const publicGitHubJob=(row:GitHubJobRow):PublicGitHubDelivery=>({id:row.id,deliv
 
 /** Stable JSON encoding: object order cannot evade an idempotency key. */
 export function canonicalJSON(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonicalJSON).join(',')}]`;
-  if (value && typeof value === 'object') {
-    return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonicalJSON((value as Row)[key])}`).join(',')}}`;
-  }
-  if (value === undefined || typeof value === 'function' || typeof value === 'symbol') {
-    throw new StoreError('VALIDATION_ERROR', 'Команда должна содержать только JSON-значения.');
-  }
-  return JSON.stringify(value);
+  try{return canonicalCommandJSON(value);}catch(error){if(error instanceof CommandJSONValueError)throw new StoreError('VALIDATION_ERROR',error.message);throw error;}
 }
 const hash = (value: unknown) => createHash('sha256').update(canonicalJSON(value)).digest('hex');
 const tokenHash = (token:string) => createHash('sha256').update(token).digest('hex');
@@ -273,7 +271,7 @@ function createProjectStore(projectId:string,owner:StoreOwner){
   const scopedActor=(actor:Actor)=>assertActor(actor,projectId);
   const scopedHuman=(tx:Connection,actor:Actor)=>assertHumanActor(tx,actor,projectId);
   const projectEvents=(tx:Connection,after=0)=>readEvents(tx,after,projectId);
-  async function commitCommandInTransaction(tx:Connection,body:unknown,actor:Actor,internal=false,selectedProjectId=projectId,verificationOverride?:LocalRunnerProof):Promise<CommandResult>{
+  async function persistCommandInTransaction(tx:Connection,body:unknown,actor:Actor,internal=false,selectedProjectId=projectId,verificationOverride?:LocalRunnerProof):Promise<CommandExecutionWithReceipt>{
     assertActor(actor,selectedProjectId);
     if(!body||typeof body!=='object'||Array.isArray(body))throw new StoreError('VALIDATION_ERROR','Ожидается JSON-команда.');
     if('projectId' in body&&(body as {projectId?:unknown}).projectId!==selectedProjectId)throw new StoreError('FORBIDDEN','Команда не может изменить projectId, выбранный сервером.');
@@ -288,10 +286,10 @@ function createProjectStore(projectId:string,owner:StoreOwner){
         await requireProjectRole(tx,actor,selectedProjectId,['Owner','Contributor']);
       }
       if(command.type==='configureVerificationObservation'&&(owner.deploymentMode()==='cloud'||!['local-human','human-token'].includes(actor.id)))throw new StoreError('FORBIDDEN','Наблюдение файлов и локальный раннер настраивает только оператор локальной папки.');
-      const duplicate=await tx.query<{payload_hash:string;response:Omit<CommandResult,'replayed'>}>('SELECT payload_hash,response FROM ouro_command_receipts WHERE project_id=$1 AND actor_id=$2 AND request_id=$3',[selectedProjectId,actor.id,command.requestId]);
+      const duplicate=await tx.query<CommandReceiptRow>('SELECT project_id,actor_id,request_id,payload_hash,response,cursor FROM ouro_command_receipts WHERE project_id=$1 AND actor_id=$2 AND request_id=$3',[selectedProjectId,actor.id,command.requestId]);
       if(duplicate.rows[0]){
         if(duplicate.rows[0].payload_hash!==payloadHash)throw new StoreError('IDEMPOTENCY_CONFLICT','Этот requestId уже использован с другим содержимым.');
-        return {...duplicate.rows[0].response,replayed:true};
+        return {result:{...duplicate.rows[0].response,replayed:true},row:duplicate.rows[0]};
       }
       if(!internal){
         const reserved=await tx.query('SELECT request_id FROM ouro_verification_runner_requests WHERE project_id=$1 AND actor_id=$2 AND request_id=$3',[selectedProjectId,actor.id,command.requestId]);
@@ -346,11 +344,14 @@ function createProjectStore(projectId:string,owner:StoreOwner){
       }
       await append(tx,applied.events,applied.state,selectedProjectId);
       const response={state:applied.state,events:applied.events,cursor:applied.state.version};
-      await tx.query(`INSERT INTO ouro_command_receipts (actor_id,project_id,request_id,payload_hash,response,cursor) VALUES ($1,$2,$3,$4,$5::jsonb,$6)`,[actor.id,selectedProjectId,command.requestId,payloadHash,JSON.stringify(response),response.cursor]);
-      return {...response,replayed:false};
+      const persisted=await tx.query<CommandReceiptRow>(`INSERT INTO ouro_command_receipts (actor_id,project_id,request_id,payload_hash,response,cursor) VALUES ($1,$2,$3,$4,$5::jsonb,$6) RETURNING project_id,actor_id,request_id,payload_hash,response,cursor`,[actor.id,selectedProjectId,command.requestId,payloadHash,JSON.stringify(response),response.cursor]);
+      if(!persisted.rows[0])throw new StoreError('RECEIPT_NOT_PERSISTED','Хранилище не подтвердило запись квитанции.');
+      return {result:{...response,replayed:false},row:persisted.rows[0]};
   }
-  function commitCommand(body:unknown,actor:Actor,internal=false,selectedProjectId=projectId):Promise<CommandResult>{return serialize(async()=>{
-    try{return await db.transaction(tx=>commitCommandInTransaction(tx,body,actor,internal,selectedProjectId));}
+  /** Сохраняет прежний внутренний JSON result для collaboration/verification/MCP callers. */
+  async function commitCommandInTransaction(tx:Connection,body:unknown,actor:Actor,internal=false,selectedProjectId=projectId,verificationOverride?:LocalRunnerProof):Promise<CommandResult>{return (await persistCommandInTransaction(tx,body,actor,internal,selectedProjectId,verificationOverride)).result;}
+  function commitCommandWithRow(body:unknown,actor:Actor,internal=false,selectedProjectId=projectId):Promise<CommandExecutionWithReceipt>{return serialize(async()=>{
+    try{return await db.transaction(tx=>persistCommandInTransaction(tx,body,actor,internal,selectedProjectId));}
     catch(error){
       if(!(error instanceof WorkspaceGuardRejected))throw error;
       // The failed transaction has completed its rollback. Recheck current
@@ -360,15 +361,16 @@ function createProjectStore(projectId:string,owner:StoreOwner){
         await tx.query('SELECT version FROM ouro_projects WHERE id=$1 FOR UPDATE',[selectedProjectId]);
         await assertRegisteredHumanActive(tx,actor,selectedProjectId);
         await requireProjectRole(tx,actor,selectedProjectId,['Owner','Contributor']);
-        const receipt=await tx.query<{payload_hash:string;response:Omit<CommandResult,'replayed'>}>('SELECT payload_hash,response FROM ouro_command_receipts WHERE project_id=$1 AND actor_id=$2 AND request_id=$3',[selectedProjectId,actor.id,error.proof.requestId]);
+        const receipt=await tx.query<CommandReceiptRow>('SELECT project_id,actor_id,request_id,payload_hash,response,cursor FROM ouro_command_receipts WHERE project_id=$1 AND actor_id=$2 AND request_id=$3',[selectedProjectId,actor.id,error.proof.requestId]);
         if(receipt.rows[0]){
           if(receipt.rows[0].payload_hash!==error.proof.bodySha256)throw new StoreError('IDEMPOTENCY_CONFLICT','Этот requestId уже использован с другим содержимым.');
-          return {...receipt.rows[0].response,replayed:true};
+          return {result:{...receipt.rows[0].response,replayed:true},row:receipt.rows[0]};
         }
         throw new StoreError(error.code,error.message,{commandRejection:error.proof});
       });
     }
   });}
+  function commitCommand(body:unknown,actor:Actor,internal=false,selectedProjectId=projectId):Promise<CommandResult>{return commitCommandWithRow(body,actor,internal,selectedProjectId).then(execution=>execution.result);}
   const lockProject=(tx:Connection,selectedProjectId=projectId)=>tx.query('SELECT version FROM ouro_projects WHERE id=$1 FOR UPDATE',[selectedProjectId]);
   const jobById=async(tx:Connection,id:string,selectedProjectId=projectId)=>{
     const result=await tx.query<GitHubJobRow>(`${githubJobSelection} WHERE d.project_id=$1 AND d.id=$2`,[selectedProjectId,id]);
@@ -745,6 +747,8 @@ function createProjectStore(projectId:string,owner:StoreOwner){
       });
     }),
     executeCommand: (body:unknown,actor:Actor,selectedProjectId=projectId)=>commitCommand(body,actor,false,selectedProjectId),
+    /** Возвращает actual receipt только после COMMIT; копия row не разделяет mutable response с HTTP result. */
+    executeCommandWithReceipt:async(body:unknown,actor:Actor,selectedProjectId=projectId):Promise<CommandExecutionWithReceipt>=>{const execution=await commitCommandWithRow(body,actor,false,selectedProjectId);return {result:execution.result,row:{...execution.row,response:structuredClone(execution.row.response)}};},
     /** Used by database checks/tests; application routes never expose raw SQL. */
     inspect: <T = Row>(sql: string, params?: unknown[]) => serialize(() => db.query<T>(sql, params)),
     close:owner.close,
@@ -772,6 +776,8 @@ export const getStorageMode = () => process.env.DATABASE_URL ? 'postgres' as con
 export async function getProject(projectId=PROJECT_ID,actor?:Actor) { return (await currentStore()).getProject(projectId,actor); }
 export async function getEvents(after = 0,projectId=PROJECT_ID,actor?:Actor) { return (await currentStore()).getEvents(after,projectId,actor); }
 export async function executeCommand(command: unknown, actor: Actor,projectId=PROJECT_ID) { return (await currentStore()).executeCommand(command, actor,projectId); }
+/** Legacy HTTP adapter использует тот же current owner и не раскрывает metadata в MCP/JSON. */
+export async function executeCommandWithReceipt(command:unknown,actor:Actor,projectId=PROJECT_ID){return (await currentStore()).executeCommandWithReceipt(command,actor,projectId);}
 export async function importMeridianScope(input:unknown,actor:Actor,projectId=PROJECT_ID){return (await currentStore()).importMeridianScope(input,actor,projectId);}
 export async function createAgent(name:string,actor:Actor,projectId=PROJECT_ID) {return (await currentStore()).createAgent(name,actor,projectId);}
 export async function listAgents(actor:Actor,projectId=PROJECT_ID) {return (await currentStore()).listAgents(actor,projectId);}

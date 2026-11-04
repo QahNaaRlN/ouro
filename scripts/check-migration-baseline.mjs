@@ -4,6 +4,7 @@ import path from 'node:path';
 import ts from 'typescript';
 
 const httpMethods = new Set(['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']);
+const receiptAdaptationFiles = new Set(['app/api/commands/route.ts', 'app/api/projects/[projectId]/commands/route.ts', 'app/api/projects/[projectId]/tasks/route.ts']);
 
 /** Утилита, которая читает объявления методов без загрузки обработчиков и хранилища. */
 function exportedMethods(file, source) {
@@ -62,7 +63,7 @@ async function scanRoutes(root) {
 }
 
 /** Утилита, которая выявляет устаревшие записи исходного HTTP-контракта. */
-function compareBaseline(expected, actual) {
+function compareBaseline(expected, actual, adaptations) {
   if (!expected || expected.contract !== 'ouro-http-baseline/v1' || !Array.isArray(expected.routes)) return ['Invalid baseline contract or routes'];
   const issues = [], byFile = new Map(), paths = new Set();
   for (const route of expected.routes) {
@@ -73,11 +74,20 @@ function compareBaseline(expected, actual) {
     byFile.set(route.file, route); paths.add(route.path);
     if (JSON.stringify(route.implicit) !== JSON.stringify(implicitMethods(route.methods))) issues.push(`Changed implicit method policy: ${route.file}`);
   }
+  const authorized = new Map();
+  if (adaptations !== undefined) {
+    if (!adaptations || Object.keys(adaptations).sort().join(',') !== 'contract,entries,phase' || adaptations.contract !== 'ouro-http-source-adaptations/v1' || adaptations.phase !== 'http-receipt-proof/v1' || !Array.isArray(adaptations.entries) || adaptations.entries.length > receiptAdaptationFiles.size) issues.push('Invalid source adaptations contract');
+    else for (const entry of adaptations.entries) {
+      const saved = byFile.get(entry?.file);
+      if (!entry || Object.keys(entry).sort().join(',') !== 'acceptedSha256,file,originalSha256,owner,rationale,spec' || !receiptAdaptationFiles.has(entry.file) || !saved || authorized.has(entry.file) || entry.owner !== 'HRP' || entry.spec !== 'docs/specs/http-receipt-proof.md' || typeof entry.rationale !== 'string' || !entry.rationale.trim() || entry.rationale.length > 1000 || entry.originalSha256 !== saved.sha256 || !/^[a-f0-9]{64}$/.test(entry.acceptedSha256) || entry.acceptedSha256 === entry.originalSha256) issues.push(`Invalid source adaptation: ${entry?.file ?? 'missing file'}`);
+      else authorized.set(entry.file, entry.acceptedSha256);
+    }
+  }
   for (const route of actual) {
     const saved = byFile.get(route.file);
     if (!saved) { issues.push(`Added route: ${route.file}`); continue; }
     byFile.delete(route.file);
-    if (saved.path !== route.path || JSON.stringify([...saved.methods].sort()) !== JSON.stringify(route.methods) || saved.sha256 !== route.sha256) issues.push(`Changed route contract: ${route.file}`);
+    if (saved.path !== route.path || JSON.stringify([...saved.methods].sort()) !== JSON.stringify(route.methods) || saved.sha256 !== route.sha256 && authorized.get(route.file) !== route.sha256) issues.push(`Changed route contract: ${route.file}`);
   }
   for (const file of byFile.keys()) issues.push(`Removed route: ${file}`);
   return issues;
@@ -101,7 +111,10 @@ async function main() {
   const routes = await scanRoutes(root);
   if (print) { process.stdout.write(JSON.stringify(routes, null, 2) + '\n'); return; }
   const expected = JSON.parse(await readFile(baseline ?? path.join(root, 'docs/proposals/react-vite-migration/http-baseline.json'), 'utf8'));
-  const issues = compareBaseline(expected, routes);
+  let adaptations;
+  try { adaptations = JSON.parse(await readFile(path.join(root, 'docs/proposals/react-vite-migration/http-source-adaptations.json'), 'utf8')); }
+  catch (error) { if (error?.code !== 'ENOENT') throw error; }
+  const issues = compareBaseline(expected, routes, adaptations);
   if (issues.length) throw new Error(issues.join('\n'));
   process.stdout.write(`Migration baseline passed: ${routes.length} routes, ${routes.reduce((count, route) => count + route.methods.length, 0)} explicit method exports.\n`);
 }
