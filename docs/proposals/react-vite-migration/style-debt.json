@@ -33,13 +33,6 @@
       "owner": "specialized-panels"
     },
     {
-      "file": "components/flow-runtime.css",
-      "sha256": "2c5a2a2e2efed76b6bd1019aef96cee449ed990164419d8ac41582bec0165995",
-      "ordinaryRules": 56,
-      "legacyLayer": true,
-      "owner": "graphs"
-    },
-    {
       "file": "components/github-panel.css",
       "sha256": "104a154a88d42a388eba0ea835231ca71fd1ce17de317c9de280226f1e9cdf37",
       "ordinaryRules": 73,
