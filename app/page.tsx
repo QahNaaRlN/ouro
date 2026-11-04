@@ -70,7 +70,7 @@ import LessonsPanel from '@/components/lessons-panel';
 import ImpactPanel from '@/components/impact-panel';
 import ParticipantsPanel,{ParticipantLogin} from '@/components/participants-panel';
 import { AccountLogout, EmailLogin, ProjectMembersPanel, ProjectSwitcher, selectProject, selectedProjectId } from '@/components/project-account';
-import type { ProjectRole } from '@/lib/projects';
+import type { ProjectRole } from '@ouro/protocol/http';
 import CollaborativeDraftsPanel from '@/components/collaborative-drafts';
 import AgentProposalsPanel,{type ProposalReviewIntentRegistry} from '@/components/agent-proposals-panel';
 import SpecFlow from "@/components/spec-flow";
