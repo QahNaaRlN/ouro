@@ -2,6 +2,8 @@
 
 import {createContext,useEffect,useState,type ReactNode} from 'react';
 import {QueryClientProvider} from '@tanstack/react-query';
+import {I18nextProvider} from 'react-i18next';
+import {createOuroI18n} from '@/packages/frontend/src/app/i18n';
 import {createProjectRuntime} from '@/packages/frontend/src/app/project-runtime/create-project-runtime';
 import {hasPendingWorkspaceIntents} from '@/packages/client/src/http/workspace-intents';
 import {createCatalogHttpReads} from '@/packages/client/src/http/create-catalog-http-reads';
@@ -13,9 +15,10 @@ import {AppErrorBoundary} from '@/packages/frontend/src/shared/ui/error-boundary
 export const ProjectRuntimeContext=createContext<ReturnType<typeof createProjectRuntime>|null>(null);
 /** Компонент, который предоставляет общий web cache и registry обоим существующим интерфейсам. */
 export function ProjectRuntimeProvider({children}:{children:ReactNode}){
+ const [i18n]=useState(createOuroI18n);
  const [reporter]=useState<ErrorReporterPort>(()=>({report:occurrence=>{console.error('[ouro/client]',occurrence);}}));
  const [runtime]=useState(()=>createProjectRuntime({reporter}));
  const [readEnvironment]=useState<CatalogReadEnvironment>(()=>({sourceId:'ouro:same-origin',reads:createCatalogHttpReads(),reporter}));
  useEffect(()=>{const warn=(event:BeforeUnloadEvent)=>{if(hasPendingWorkspaceIntents()){event.preventDefault();event.returnValue='';}};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[]);
- return <ProjectRuntimeContext.Provider value={runtime}><QueryClientProvider client={runtime.queryClient}><CatalogReadEnvironmentProvider value={readEnvironment}><AppErrorBoundary reporter={reporter}>{children}</AppErrorBoundary></CatalogReadEnvironmentProvider></QueryClientProvider></ProjectRuntimeContext.Provider>;
+ return <I18nextProvider i18n={i18n}><ProjectRuntimeContext.Provider value={runtime}><QueryClientProvider client={runtime.queryClient}><CatalogReadEnvironmentProvider value={readEnvironment}><AppErrorBoundary reporter={reporter}>{children}</AppErrorBoundary></CatalogReadEnvironmentProvider></QueryClientProvider></ProjectRuntimeContext.Provider></I18nextProvider>;
 }
