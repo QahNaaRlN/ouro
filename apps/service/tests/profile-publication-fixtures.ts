@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
-import {readFile} from 'node:fs/promises';
+import {readFile,writeFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
@@ -22,6 +22,7 @@ export function ownerChild(profile:string,mode='ordinary'){
   waitOutcome:()=>wait(async()=>events.find(event=>event.stage==='acquired'||event.stage==='rejected'),'ownership outcome'),
   waitBarrier:()=>wait(async()=>{try{return JSON.parse(await readFile(barrierFile,'utf8')) as OwnerEvent;}catch(error){if(error instanceof SyntaxError||(error as NodeJS.ErrnoException).code==='ENOENT')return undefined;throw error;}},'disk barrier'),
   publish(){child.send('publish');},
+  async continueValidation(){await writeFile(barrierFile+'.continue','continue',{flag:'wx'});},
   async close(){if(!done){child.send('release');let timer:ReturnType<typeof setTimeout>|undefined;try{assert.equal(await Promise.race([exited,new Promise<never>((_resolve,reject)=>{timer=setTimeout(()=>reject(new Error('Owner release deadline')),3000);})]),0);}finally{if(timer)clearTimeout(timer);if(!done){child.kill();await exited;}}}},
   async kill(){if(!done){child.kill();await exited;}}
  };
