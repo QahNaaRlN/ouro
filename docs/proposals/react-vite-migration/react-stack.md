@@ -1,6 +1,6 @@
 # React-адаптация инструментального стека Ouro
 
-Дата принятия: **2026-11-04**. Статус архитектурных решений: **принято владельцем, D01–D16**. Реализация миграции: **IN_PROGRESS**, начат P0.
+Дата принятия: **2026-11-04**. Статус архитектурных решений: **принято владельцем, D01–D16**. Реализация миграции: **IN_PROGRESS**, квалифицированы отдельные срезы P1–P5; итоговый cutover ещё не выполнен. [Текущий интеграционный снимок](../../plans/react-vite-integration.md).
 
 Переход на React + TypeScript + Vite, выделение backend и подготовка интеграции в Meridian заданы владельцем. Владелец принял рекомендации D01–D16 последнего согласованного объяснения. Каноническая запись содержания, даты и границ принятия — [decisions.md](decisions.md); этот документ раскрывает применение принятой основы. Принятие архитектуры не означает установки зависимостей, выполнения миграции или технического допуска кандидата Hono. Версии, конкретная конфигурация и отдельно помеченные кандидаты остаются предметом подготовки реализации.
 
@@ -13,12 +13,12 @@
 | Клиент | React, TypeScript, Vite | Самостоятельный shell/production build квалифицированы; общий перенос UI/поставки и удаление Next ещё не завершены |
 | Архитектура UI | hFSD с проверяемыми границами | Import/public API guards действуют, portable client boundaries выделены; физический перенос большинства legacy UI slices ещё не завершён |
 | Маршрутизация | TanStack Router для web | Web routes/history/direct navigation квалифицированы; embedded-навигация остаётся под контрактом Meridian |
-| Серверное состояние | TanStack Query React, общий project snapshot и один владелец project session/SSE | Project session/Query wiring, scope admission и frozen intent recovery квалифицированы; независимые catalog reads имеют отдельную историю |
+| Серверное состояние | TanStack Query React, общий project snapshot и один владелец project session/SSE | Project session/Query wiring, scope admission, frozen intent recovery и scoped catalog reads квалифицированы и интегрированы |
 | Формы и валидация | TanStack Form React + существующий Zod | Принят D10; версии адаптера, Standard Schema и Zod проверяются вместе |
 | Клиентский HTTP | Существующий транспорт Ouro; Axios — отдельный инструментальный кандидат исходного стека | Принятие D01–D16 не назначает Axios новой обязательной зависимостью; IPC не обязан использовать Axios |
 | Backend | Node.js + TypeScript; Hono HTTP adapter | Hono transport и47/59 backend bindings квалифицированы, отдельный built runtime/resources/shutdown реализован; это ещё не consumer/production cutover |
 | UI-состояние | React state/reducer, локальные hooks, контекст зависимостей | Отдельная библиотека состояния пока не назначена |
-| Стили | Tailwind CSS 4 | По дополнительному поручению владельца все обычные собственные UI-стили переписываются на utilities в атомарных срезах с проверкой внешнего вида |
+| Стили | Tailwind CSS 4 | Семейства интерфейса и последние4static graph expressions перенесены с browser evidence; остаток112ordinary shared/native rules и6geometry expressions ещё не прошёл final gate |
 | UI-примитивы | Существующий Base UI Ouro | Сохраняем поведение, доступность и внешний вид |
 | Даты | Temporal для новой логики + Intl | Принят D09; native/polyfill проходит технический допуск; timestamps сохраняются |
 | Локализация | `react-i18next` + `i18next`, типизированные ключи и namespaces | Выбор принят D08; языки/тексты/fallback сохраняются, версии и подключение ещё не проверены |
@@ -60,7 +60,7 @@ Effect нужен для синхронизации с внешним источ
 
 Hooks вызываются в стабильном порядке; инфраструктурный клиент не создаётся заново при каждом рендере. Повторное подключение в development должно корректно очищать ресурсы. DOM-зависимости выражаются через refs, явный anchor или API библиотеки позиционирования, а не через предположение о CSS-классе родителя.
 
-Для самостоятельной веб-оболочки по D16 принят TanStack Router: типизированные route/search параметры, вложенные layouts и интеграция с клиентским кэшем. Выбор принят; зависимость и настройка ещё не установлены. Loaders могут подготавливать данные через общий QueryClient; самостоятельный второй кэш серверных сущностей в router не создаётся. Для встроенного entry навигацию предоставляет либо согласует Meridian; второй browser router поверх хоста не появляется автоматически. [Возможности TanStack Router](https://tanstack.com/router/latest/docs/overview).
+Для самостоятельной веб-оболочки по D16 принят и квалифицирован TanStack Router: routes, вложенная композиция, прямые переходы и browser history работают в React/Vite shell. Loaders могут подготавливать данные через общий QueryClient; самостоятельный второй кэш серверных сущностей в router не создаётся. Для встроенного entry навигацию предоставляет либо согласует Meridian; второй browser router поверх хоста не появляется автоматически. Embedded entry ещё не реализован. [Возможности TanStack Router](https://tanstack.com/router/latest/docs/overview).
 
 ## 4. TanStack Query: серверное состояние
 
@@ -110,7 +110,7 @@ Axios является HTTP-инструментом исходного стек
 
 Семантические ошибки транспорта нормализуются в общий контракт. Проверка DTO, отмена, context binding и получение квитанции не исчезают из-за смены транспорта. Обёртка «выполнить произвольный URL/метод/файл» не является предметным портом интеграции. Точный native bridge остаётся отдельной областью [целевой архитектуры](target-architecture.md).
 
-По D16 backend сохраняется на Node.js + TypeScript. Hono принят как **основной кандидат для проверки** тонкого HTTP adapter с Request/Response; это ещё не допуск его реализации к полному трафику Ouro. Проверяются SSE и отмена, raw webhook body, cookies, лимиты тела и принадлежность background jobs; замена Next after() требует явного владельца и обработки ошибок. Fastify остаётся fallback при неподходящем Hono adapter или более подходящем серверном lifecycle. Framework-типы не выходят за транспортный слой; выбор Hono не переносит прикладное ядро на него.
+По D16 backend сохраняется на Node.js + TypeScript. Hono прошёл техническую квалификацию как тонкий HTTP adapter с Request/Response для всех47routes/59methods: проверены SSE/отмена, raw webhook body, cookies, body limits, URI parity, явное background ownership и shutdown. Built service и independent source tree квалифицированы отдельно от прежнего Next runtime. Это не production deployment или финальный old-profile cutover. Исторически рассмотренный Fastify остаётся резервом при изменении требований; framework-типы не выходят за transport, прикладное ядро не перенесено на Hono.
 
 ## 7. UI-состояние и персистентность
 
@@ -122,7 +122,7 @@ Axios является HTTP-инструментом исходного стек
 
 ## 8. Стили, компоненты и модальные сценарии
 
-По дополнительному поручению владельца обычные собственные UI-стили полностью переводятся на Tailwind CSS 4: global component rules, CSS modules и статические inline presentation styles. Переносятся существующие цвета, темы, размеры, типографика, responsive/focus/reduced-motion состояния. Текущие [глобальные стили](../../../app/globals.css) и [стили рабочего пространства](../../../components/workspace-styles.css) являются основанием паритета. Допустимый остаток узкий и объяснённый: theme/base/font declarations, необходимые keyframes, внешний library CSS и вычисляемая runtime-геометрия через CSS custom properties. Массовый перенос старых селекторов в `@apply` не закрывает требование. Временные legacy layers фиксируются как незавершённый остаток. [Интеграция Tailwind с Vite](https://tailwindcss.com/docs/installation/using-vite).
+По дополнительному поручению владельца обычные собственные UI-стили полностью переводятся на Tailwind CSS 4: global component rules, CSS modules и статические inline presentation styles. Переносятся существующие цвета, темы, размеры, типографика, responsive/focus/reduced-motion состояния. Исходный workspace CSS сохранён в Git и [журнале переноса](../../plans/tailwind-workspace.md); текущие [recipes](../../../components/workspace-presentation.ts) и [проверяемый остаток](style-debt.md) показывают фактическую конверсию. Оставшиеся [глобальные правила](../../../app/globals.css) ещё ordinary debt. Допустимые technical исключения узкие и объяснённые: theme/base/font declarations, необходимые keyframes, внешний library CSS и отдельно проверенная runtime-геометрия через CSS custom properties. Наличие custom property само по себе не разрешает исключение; оставшиеся6expressions ещё требуют точного review/policy. Массовый перенос старых селекторов в `@apply` не закрывает требование. Временные legacy layers фиксируются как незавершённый остаток. [Интеграция Tailwind с Vite](https://tailwindcss.com/docs/installation/using-vite).
 
 Base UI остаётся текущим набором примитивов Ouro; Vue-обёртки и отдельная UI-библиотека CBS не переносятся. Существующие React Flow, Lucide и редакторские зависимости сохраняются по своим сценариям. При сборке пакетов проверяется обнаружение Tailwind-классов в подключённых исходниках; глобальные reset/styles и тема встроенного модуля не должны менять оболочку Meridian.
 
@@ -152,7 +152,7 @@ Lingui сохранён в истории исследования как рас
 
 ## 11. Ошибки, диагностика и деградация данных
 
-Ниже раскрыт принятый по D04–D07 целевой контракт; его реализация NOT_STARTED. Он сохраняет смысл исходного стека и **не копирует** обнаруженные различия между rules и реализацией CBS.
+Ниже раскрыт принятый по D04–D07 целевой контракт. Backend structured reporting и scoped client capture уже реализованы; общая frontend Query/error-boundary policy готовится отдельной историей. Полный охват приложения и внешний monitoring не объявляются готовыми. Контракт сохраняет смысл исходного стека и **не копирует** обнаруженные различия между rules и реализацией CBS.
 
 ### Общая ошибка и единственный владелец реакции
 
