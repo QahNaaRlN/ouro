@@ -1,6 +1,6 @@
 # Журнал · подключения агентов
 
-Дата: 2026-11-04. Статус: **BASELINE_PREPARATION**. [Граница](../specs/tailwind-agents.md).
+Дата: 2026-11-04. Статус: **LOCAL_QUALIFIED / CI_PENDING**. [Граница](../specs/tailwind-agents.md).
 
 Создана отдельная ветка от общей UI-композиции `48804f8`. Только `AgentsPanel` использует переносимое `.agent-*` семейство; другие prefixes и общие native controls не входят. UI source пока не менялся. Устанавливаются зависимости существующих root/web lockfiles, закреплённый Node24.19.0 используется только через process-local PATH.
 
@@ -17,4 +17,4 @@
 - Next production/strict types и Vite strict types/build PASS; **95 новых Tailwind candidates** приняты реальным установленным compiler. Существующий Vite chunk warning500kB сохранён (entry582.78kB), порог не повышен.
 - Read-only peer review IL owner: blockers не найдено; transient issued/config и readonly/revoked behavior подтверждены source review. После него обновлены только globals hash/count; остальные CSS и inline records точно совпали. **styles7CSS/405rules/4inline/10expressions/0violations**. Общие91 rules и21 shared defaults остаются ordinary debt, final Tailwind не заявлен.
 
-Ветка остаётся отдельной story до parent sync и полного CI. System Node, реальные profiles и production не менялись; pnpm/Next cutover/hFSD этой историей не завершаются.
+После peer review объединён G3 `adfe46b861bf9024385a80306f6edff6a98868c6`, уже принятый эпиком через PR57. Повторные root/web strict types, architecture875/0/11, styles7CSS/4inline/0 и diff checks PASS; исходный presentation scope не расширен. Полный CI требуется до merge отдельной story. System Node, реальные profiles и production не менялись; pnpm/Next cutover/hFSD этой историей не завершаются.
