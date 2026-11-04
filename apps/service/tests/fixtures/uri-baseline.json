@@ -1,0 +1,147 @@
+{
+  "source": {
+    "framework": "Next.js 16.4.3",
+    "node": "v24.19.0",
+    "commit": "900290a76f214ab878ad36bd834316f51b2f7c24",
+    "transport": "raw Node HTTP origin-form requests, isolated production Next profile",
+    "comparison": "status and redirect Location/Refresh/body; volatile Date and hop framing excluded"
+  },
+  "cases": [
+    {
+      "target": "/api/health/",
+      "method": "GET",
+      "status": 308,
+      "location": "/api/health",
+      "refresh": "0;url=/api/health",
+      "contentType": null,
+      "body": "/api/health"
+    },
+    {
+      "target": "/api/health/?raw=%2F&slashes=a//b&back=a\\b",
+      "method": "GET",
+      "status": 308,
+      "location": "/api/health?raw=%2F&slashes=a%2F%2Fb&back=a%5Cb",
+      "refresh": "0;url=/api/health?raw=%2F&slashes=a%2F%2Fb&back=a%5Cb",
+      "contentType": null,
+      "body": "/api/health?raw=%2F&slashes=a%2F%2Fb&back=a%5Cb"
+    },
+    {
+      "target": "/api//health?raw=%2f&x=a//b",
+      "method": "GET",
+      "status": 308,
+      "location": "/api/health?raw=%2f&x=a//b",
+      "refresh": "0;url=/api/health?raw=%2f&x=a//b",
+      "contentType": null,
+      "body": "/api/health?raw=%2f&x=a//b"
+    },
+    {
+      "target": "/api\\health?x=a\\b",
+      "method": "GET",
+      "status": 308,
+      "location": "/api/health?x=a\\b",
+      "refresh": "0;url=/api/health?x=a\\b",
+      "contentType": null,
+      "body": "/api/health?x=a\\b"
+    },
+    {
+      "target": "//api/health",
+      "method": "GET",
+      "status": 308,
+      "location": "/api/health",
+      "refresh": "0;url=/api/health",
+      "contentType": null,
+      "body": "/api/health"
+    },
+    {
+      "target": "/api/health///?x=%252F",
+      "method": "GET",
+      "status": 308,
+      "location": "/api/health/?x=%252F",
+      "refresh": "0;url=/api/health/?x=%252F",
+      "contentType": null,
+      "body": "/api/health/?x=%252F"
+    },
+    {
+      "target": "/?x=a//b",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "target": "/projects/help/",
+      "method": "GET",
+      "status": 308,
+      "location": "/projects/help",
+      "refresh": "0;url=/projects/help",
+      "contentType": null,
+      "body": "/projects/help"
+    },
+    {
+      "target": "/assets/missing.js/",
+      "method": "GET",
+      "status": 308,
+      "location": "/assets/missing.js",
+      "refresh": "0;url=/assets/missing.js",
+      "contentType": null,
+      "body": "/assets/missing.js"
+    },
+    {
+      "target": "/does-not-exist/",
+      "method": "GET",
+      "status": 308,
+      "location": "/does-not-exist",
+      "refresh": "0;url=/does-not-exist",
+      "contentType": null,
+      "body": "/does-not-exist"
+    },
+    {
+      "target": "/api/%68ealth/",
+      "method": "GET",
+      "status": 308,
+      "location": "/api/%68ealth",
+      "refresh": "0;url=/api/%68ealth",
+      "contentType": null,
+      "body": "/api/%68ealth"
+    },
+    {
+      "target": "/api/health%2F",
+      "method": "GET",
+      "status": 404
+    },
+    {
+      "target": "/api/health/?a=x+y&b=x%20y&c=~&d=%7e&dup=1&z=mid&dup=2&blank&empty=&k%2F=%2f&n=%252f",
+      "method": "GET",
+      "status": 308,
+      "location": "/api/health?a=x%20y&b=x%20y&c=~&d=~&dup=1&dup=2&z=mid&blank=&empty=&k%2F=%2F&n=%252f",
+      "refresh": "0;url=/api/health?a=x%20y&b=x%20y&c=~&d=~&dup=1&dup=2&z=mid&blank=&empty=&k%2F=%2F&n=%252f",
+      "contentType": null,
+      "body": "/api/health?a=x%20y&b=x%20y&c=~&d=~&dup=1&dup=2&z=mid&blank=&empty=&k%2F=%2F&n=%252f"
+    },
+    {
+      "target": "/api/health/?2=two&1=one&a=first&2=last",
+      "method": "GET",
+      "status": 308,
+      "location": "/api/health?1=one&2=two&2=last&a=first",
+      "refresh": "0;url=/api/health?1=one&2=two&2=last&a=first",
+      "contentType": null,
+      "body": "/api/health?1=one&2=two&2=last&a=first"
+    },
+    {
+      "target": "/api/health/?x=keep",
+      "method": "HEAD",
+      "status": 308,
+      "location": "/api/health?x=keep",
+      "refresh": "0;url=/api/health?x=keep",
+      "contentType": null,
+      "body": ""
+    },
+    {
+      "target": "/api/health/?x=keep",
+      "method": "POST",
+      "status": 308,
+      "location": "/api/health?x=keep",
+      "refresh": "0;url=/api/health?x=keep",
+      "contentType": null,
+      "body": "/api/health?x=keep"
+    }
+  ]
+}
