@@ -1,8 +1,12 @@
 # Проверяемый остаток перехода на Tailwind 4
 
-Исходный снимок — эпик `7c0def1`: 20 CSS-файлов / 1919 правил, 11 frontend-файлов / 41 expression. После workspace, Human View, участников, интеграций, G1/G2/G3, предложений/совместного редактора и [verification/status](../../plans/tailwind-verification.md) фактический остаток — **5 CSS-файлов с 390 обычными правилами**, **4 frontend-файла с 10 style expressions**. Это учёт незавершённой работы, а не полный Tailwind PASS.
+Исходный снимок — эпик `7c0def1`: 20 CSS-файлов / 1919 правил, 11 frontend-файлов / 41 expression. После принятых родителей и текущей истории фактический остаток — **2 CSS-файлов с 112 обычными правилами**, **4 frontend-файла с 10 style expressions**. Это учёт незавершённой работы, а не полный Tailwind PASS.
 
-Verification/status срез полностью удалил verification.css46 и work-status.css9 rules после actual116 comparison,3existing browser paths и4SSR checks. Pair использует readonly caller slots без parent/context imports; проверочные команды и canonical status mapper не меняются. Из machine ledger удалены только эти две CSS-записи, остальные hashes/inline policies сохранены. Исторический mobile overflow и последующий diagnostic PATH drift собственного профиля отделены от утверждённого bounded UI evidence в журнале.
+Verification и WorkStatus удаляют 55 ordinary rules двух stylesheet; Pair получает конечные readonly presentation slots без parent imports. Команды, обе грани и inert сохраняются.
+
+История/recovery удаляет methodology.css и его 58 ordinary rules; существующая статья Methodology не переписывается.
+
+Impact/Lessons удаляет 180 ordinary rules двух stylesheet; вычисляемый процент meter остаётся точным custom-property expression в inline debt. Два textarea expressions и их зависимости сохранены.
 
 G1 удалил `workspace-graphs.css`24 rules и30 graph rules в globals, перенёс11 обычных Roadmap/Reality expressions. G2 удалил `spec-flow.css`98 и `state-transitions.css`68 rules полностью, перенёс7 expressions и последние2 graph handle globals. Consumers Roadmap/process/state/Reality/proposal preview используют явные Handle props либо узкие public library slots. G3 удалил `flow-runtime.css`56 rules полностью: runtime-панель владеет собственными utilities, а SpecFlow — своими context/facts companions; parent presentation imports и business changes не добавлены. После review из ledger удалена только эта CSS-запись. Hashes двух proposal companions G2 сохранены, их retained AST expressions не менялись. Нет пустых CSS-файлов, keyframe-заглушек или новых technical CSS/inline exceptions.
 
@@ -22,6 +26,6 @@ Workspace-срез удалил четыре старых CSS-файла, пер
 
 Текущие технические CSS-исключения ограничены `app/tailwind.css` и `app/theme.css`: directives/tokens/source discovery и минимальные document base значения. Parser проверяет содержимое этих файлов, а не доверяет названию. Keyframes/fonts могут иметь отдельную точную техническую запись с причиной; обычные selectors там запрещены. Внешний CSS React Flow остаётся внешней зависимостью, его собственные исходники не включаются в этот инвентарь.
 
-Inline-инвентарь намеренно консервативен. Он пока включает и старую вычисляемую геометрию, и theme mapper. Перед финальной квалификацией допустимый остаток CSS custom properties получит отдельные точные записи на уровне expression с обоснованием и проверками. Blanket-исключение всего компонента или всех graph styles не допускается. Этот последующий технический реестр ещё не реализован; текущий final mode не объявляет такие случаи автоматически разрешёнными.
+Inline-инвентарь намеренно консервативен: вычисляемая геометрия остаётся ordinary debt до review конкретных expressions и их зависимостей. Механизм точных technicalInline policies реализован и проверен [отдельной историей](../../specs/style-technical-exceptions.md), но production исключения пока не добавлены. Он допускает только ограниченную вычисляемую геометрию через CSS custom properties и отказывает при статическом оформлении, неизвестных зависимостях или изменённых hashes. Blanket-исключение компонента, всех CSS-переменных или graph styles не допускается. Наличие механизма не означает полный Tailwind PASS.
 
 Проверка исходников не доказывает визуальный паритет: размеры, тема, responsive cascade, focus, dialogs и графы по-прежнему требуют browser evidence каждого семейства. Критерии конечного результата задаёт [план миграции](migration-plan.md).

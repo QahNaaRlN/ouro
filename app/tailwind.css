@@ -15,8 +15,11 @@
 @custom-variant at-most-900 { @media (max-width: 900px) { @slot; } }
 @custom-variant at-most-800 { @media (max-width: 800px) { @slot; } }
 @custom-variant at-most-760 { @media (max-width: 760px) { @slot; } }
+@custom-variant at-most-750 { @media (max-width: 750px) { @slot; } }
 @custom-variant at-most-700 { @media (max-width: 700px) { @slot; } }
 @custom-variant at-most-680 { @media (max-width: 680px) { @slot; } }
+@custom-variant at-most-640 { @media (max-width: 640px) { @slot; } }
+@custom-variant at-most-600 { @media (max-width: 600px) { @slot; } }
 @custom-variant at-most-560 { @media (max-width: 560px) { @slot; } }
 @custom-variant at-most-520 { @media (max-width: 520px) { @slot; } }
 @custom-variant at-most-420 { @media (max-width: 420px) { @slot; } }

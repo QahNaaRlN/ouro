@@ -77,3 +77,11 @@ Vite сохранил предупреждения об annotations в внеш�
 Остаются `app/globals.css` (163 rules), `legacy-shared-defaults.css` (21), flow-runtime, impact, lessons, methodology, spec-flow, state-transitions, verification, work-status и workspace-graphs. Shared defaults/native rules не стали base exception. Три onboarding geometry expressions, другие graph/runtime styles и vendor CSS этой историей не квалифицируются.
 
 Source hFSD move, transport/backend/Meridian changes, полный Tailwind final gate и CI GREEN здесь не заявляются. Подготовлен локальный scoped commit для root review; push/PR делает root.
+
+## Общая композиция с графами и процессом
+
+Root объединил G1/G2 и текущие client/runtime contracts. В preview сохранены A paint classes и четыре перенесённых static expressions; добавлены точные public library slots attribution, default handles и Controls. Callback/domain code не менялся. Responsive union сохраняет14 включительных порогов по убыванию. Конфликты ledger разобраны по записям с merge base; точный остаток **8 CSS-файлов /501 правило /4 inline-файла /10 выражений**, styles0violations.
+
+Новые Next production/strict TS и Vite builds PASS; architecture866/0/11 и diff check PASS. Первый combined visual run PCV01/02 PASS2/2:67 PNG совпали с final A, все68 pre-screenshot metric sets совпали. Один light desktop publish-unknown PNG оказался на48px ниже при тех же pre-screenshot metrics; исходный результат сохранён в `.operations/process-parent-visual`. Source sync успешного GET очищает transient error каждые600ms; это согласуется с timing-различием, но точная причина первого захвата отдельно не доказана. Production error ownership не менялся ради снимка.
+
+Capture дополнен проверкой равенства полного measured DOM до/после screenshot. Повтор на тех же fixture facts и новой artifact directory: **PCV01/02 PASS2/2 (2.8m); все68 PNG pixel-identical и все68 metric sets точно равны final A**. Первое отличие не удалено и не объявлено прежним PASS. Ни один snapshot/source fact fixture не изменён, hidden masks/пороги не добавлены. Двенадцать functional сценариев выше сохраняют исходную область; полный CI новой композиции обязателен до merge. Родительская история G2 объединяется раньше A.
