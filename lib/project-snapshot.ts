@@ -18,6 +18,9 @@ const canonicalJSON=(value:unknown):string=>{
   throw new TypeError('Snapshot must contain JSON values');
 };
 
+/** Каноническое сетевое JSON-представление, одинаковое для SQL receipt view и browser body. */
+export {canonicalJSON as canonicalProjectJSON};
+
 /** Validate the envelope before it can advance either React state or the applied cursor. */
 export function inspectProjectSnapshot(value:unknown,projectId:string):SnapshotInspection {
   if(!record(value)||!record(value.state)||!integer(value.cursor))return {valid:false,reason:'invalid-snapshot'};
@@ -40,6 +43,30 @@ export function inspectProjectSnapshot(value:unknown,projectId:string):SnapshotI
   return {valid:true,snapshot:value as unknown as ProjectSnapshot};
 }
 
+/** Применяет прежнюю совместимость пустых derived collections без изменения receipt или revision JSON. */
+function normalizeValidatedSnapshot(candidate:ProjectSnapshot):SnapshotInspection{
+ try{
+  const projected=replay(candidate.state.events,candidate.state.projectId),stateForComparison={...candidate.state};let legacyProjection=false;
+  for(const field of ['verificationRuns','verificationReviews','verificationSlices','verificationPhases','verificationCycles','verificationRefactorAdmissions','verificationObservationConfigs','verificationObservations'] as const){
+   if(!(field in stateForComparison)&&projected[field].length===0){(stateForComparison as unknown as Record<string,unknown>)[field]=[];legacyProjection=true;}
+  }
+  if(canonicalJSON(projected)!==canonicalJSON(stateForComparison))return {valid:false,reason:'projection-mismatch'};
+  return {valid:true,snapshot:legacyProjection?{...candidate,state:projected}:candidate};
+ }catch{return {valid:false,reason:'invalid-project-projection'};}
+}
+
+/** Проверяет и нормализует независимый snapshot тем же pure правилом, которое использует admission owner. */
+export function normalizeProjectSnapshot(value:unknown,projectId:string):SnapshotInspection{
+ const checked=inspectProjectSnapshot(value,projectId);return checked.valid?normalizeValidatedSnapshot(checked.snapshot):checked;
+}
+
+/** Формирует ровно business view command receipt v1; transport replayed не является частью stored результата. */
+export function commandReceiptProjection(value:unknown,projectId:string):{state:ProjectState;events:unknown[];cursor:number}|null{
+ if(!record(value)||!Array.isArray(value.events))return null;
+ const normalized=normalizeProjectSnapshot(value,projectId);if(!normalized.valid)return null;
+ return {state:normalized.snapshot.state,events:value.events,cursor:normalized.snapshot.cursor};
+}
+
 /** All network paths share this mutable reference; callers never close over a stale render. */
 export function createProjectSnapshotAdopter(projectId:string) {
   let current:ProjectSnapshot|null=null;
@@ -56,20 +83,9 @@ export function createProjectSnapshotAdopter(projectId:string) {
       const length=Math.min(current.cursor,candidate.cursor);
       for(let index=0;index<length;index++)if(acceptedHistory[index]!==candidateHistory[index])return {status:'invalid',reason:'history-mismatch',snapshot:current};
     }
-    // Use the authoritative core projection, rather than a second client state
-    // machine, to reject statuses/expectations unsupported by the delivered facts.
-    try{
-      const projected=replay(candidate.state.events,projectId);
-      // Old immutable command receipts predate these derived collections. Accept
-      // absence only when replay proves an empty collection; never pad revision
-      // JSON, alter the original receipt, or ignore a missing nonempty fact set.
-      const stateForComparison={...candidate.state};let legacyProjection=false;
-      for(const field of ['verificationRuns','verificationReviews','verificationSlices','verificationPhases','verificationCycles','verificationRefactorAdmissions','verificationObservationConfigs','verificationObservations'] as const){
-        if(!(field in stateForComparison)&&projected[field].length===0){(stateForComparison as unknown as Record<string,unknown>)[field]=[];legacyProjection=true;}
-      }
-      if(canonicalJSON(projected)!==canonicalJSON(stateForComparison))return {status:'invalid',reason:'projection-mismatch',snapshot:current};
-      if(legacyProjection)candidate={...candidate,state:projected};
-    }catch{return {status:'invalid',reason:'invalid-project-projection',snapshot:current};}
+    const normalized=normalizeValidatedSnapshot(candidate);
+    if(!normalized.valid)return {status:'invalid',reason:normalized.reason,snapshot:current};
+    candidate=normalized.snapshot;
     if(current){
       if(candidate.cursor<current.cursor)return {status:'stale',snapshot:current};
       if(candidate.cursor===current.cursor){
