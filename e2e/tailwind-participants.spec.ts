@@ -25,7 +25,7 @@ test('TWA account login modes and membership presentation retain shared particip
   await login.getByRole('button',{name:label,exact:true}).click();await captureAccount(page,login,`account-${mode}`,output,metrics);
  }
  await page.unroute('**/api/session');
- await page.route('**/api/session',route=>route.fulfill({json:{actor:{kind:'human',id:'presentation-owner',name:'Владелец'},account:{id:'presentation-owner'},canManageParticipants:false}}));
+ await page.route('**/api/session',route=>route.fulfill({json:{actor:{kind:'human',id:'presentation-owner',name:'Владелец',projectIds:['presentation-project']},account:{id:'presentation-owner'},canManageParticipants:false}}));
  await page.route('**/api/projects',route=>route.fulfill({json:{projects:[{id:'presentation-project',name:'Макет доступа',role:'Owner'}]}}));
  await page.route('**/api/projects/presentation-project/members',route=>route.fulfill({json:{members:[{id:'presentation-membership',userId:'presentation-owner',name:'Владелец',email:'owner@example.invalid',role:'Owner'}]}}));
  await page.goto('/projects/presentation-project/members');const members=page.locator('.participants-panel');await expect(members.getByText('owner@example.invalid',{exact:true})).toBeVisible();
