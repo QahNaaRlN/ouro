@@ -77,3 +77,9 @@ Scope результата: HTTP-only causal proof трёх command endpoints, �
 - HTTP inventory **47/59 PASS**, architecture **0 violations / 16 finite legacy edges**, conventions — PASS.
 
 Это затронутые локальные проверки синхронизации, **не полный CI**. PostgreSQL и Linux остаются CI_PENDING. Отдельное исправление SPP/Linux mutex находится в другом worktree и в этот merge не входит. Рабочие профили, host environment, push/PR и live cutover не выполнялись.
+## Полный CI и рабочий каталог suite
+
+Первый CI41836638284: PostgreSQL и browser PASS, service suite остановился в4 новых HTTP fixtures с `ENOENT apps/service/db/migrations`. Локальная команда запускала эти файлы из корня; штатный `npm --prefix apps/service test` меняет cwd. Это недостаток fixture setup, не domain RED и не проблема production resource resolver. В четырёх store fixtures теперь явно передаётся `migrationsDir` от уже существующего `resourceRoot`/import.meta.url. Production source не изменён.
+
+После синхронизации `ca05037` (qualified profile owner + Human View) тот же набор запущен из фактического `apps/service` cwd: **4/4 PASS (8.3s)**, с настоящим TCP/SQL/COMMIT/revoke. Повторный полный CI_PENDING. Историческая fixture ошибка не скрыта переименованием тестов, обходом service script или исключением набора.
+
