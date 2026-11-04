@@ -12,7 +12,7 @@ const serverDependencies = /^(?:pg|nodemailer|@electric-sql\/pglite|@node-rs\/ar
 const pureLegacyFiles = new Set([
   'lib/client-project.ts', 'lib/command-canonical-json.ts',
   'lib/agent-client-config.ts', 'lib/workspace-graph.ts', 'lib/workspace-selection.ts',
-  'lib/workspace-history-view.ts', 'lib/workspace-proposals-view.ts', 'lib/ouro-logo-geometry.ts', 'lib/select-availability.ts',
+  'lib/ouro-logo-geometry.ts', 'lib/select-availability.ts',
 ]);
 const layerRanks = new Map(['shared', 'api', 'entities', 'features', 'widgets', 'pages', 'app'].map((name, index) => [name, index]));
 const slash = value => value.replaceAll('\\', '/');
