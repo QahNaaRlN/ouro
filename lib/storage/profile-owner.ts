@@ -82,9 +82,10 @@ export async function acquireProfileOwner(dataDir:string){
   localInodes.add(inodeKey);localInode=inodeKey;
   await validateHeader(mutex,identity);
   for(const suffix of ['-journal','-wal','-shm'])await inspectFile(mutex+suffix);
-  sql=new DatabaseSync(mutex,{timeout:0,allowExtension:false});
-  validateDatabase(sql);
+  sql=new DatabaseSync(mutex,{timeout:1000,allowExtension:false});
+  /** Сначала захватываем владение: параллельные SQL readers не должны сорвать обе попытки upgrade. */
   sql.exec('BEGIN EXCLUSIVE');
+  validateDatabase(sql);
   const current=await inspectFile(mutex);
   if(!sameIdentity(current,identity))throw new Error('Profile mutex identity changed; ownership refused.');
   let released=false;
