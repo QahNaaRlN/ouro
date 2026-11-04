@@ -4,7 +4,8 @@ import { isWellFormedUnicode } from '../packages/core/src/unicode';
 
 export type ParticipantConnection={query:<T=Record<string,unknown>>(sql:string,values?:unknown[])=>Promise<{rows:T[]}>;exec(sql:string):Promise<unknown>};
 export type ParticipantDatabase=ParticipantConnection&{transaction<T>(fn:(tx:ParticipantConnection)=>Promise<T>):Promise<T>};
-export type ParticipantRegistration={id:string;projectId:string;name:string;createdAt:string;createdBy:string;revokedAt:string|null;revokedBy:string|null};
+import type { ParticipantRegistration } from '@ouro/protocol/http';
+export type { ParticipantRegistration } from '@ouro/protocol/http';
 export type ParticipantRegistryOptions={projectId?:string;db:ParticipantDatabase;serialize:<T>(fn:()=>Promise<T>)=>Promise<T>;lockProject:(tx:ParticipantConnection)=>Promise<unknown>;assertHuman?:(tx:ParticipantConnection,actor:Actor)=>Promise<void>};
 export class ParticipantError extends Error{constructor(public code:string,message:string){super(message);this.name='ParticipantError';}}
 const fail=(code:string,message:string):never=>{throw new ParticipantError(code,message);};

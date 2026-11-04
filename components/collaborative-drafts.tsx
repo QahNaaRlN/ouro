@@ -7,7 +7,7 @@ import { projectFetch } from '@/lib/client-project';
 import { useCallback,useEffect,useLayoutEffect,useRef,useState,type FormEvent } from 'react';
 import { Check,Download,FilePlus2,FileText,LoaderCircle,Plus,RefreshCw,Users,X } from 'lucide-react';
 import type { ProjectState,RevisionContent } from '@/packages/core/src';
-import type { CollaborativeDraft,CollaborativeDraftSummary } from '@/lib/collaborative-drafts';
+import type { CollaborativeDraft,CollaborativeDraftSummary } from '@/packages/collaboration/src/types';
 import { Y,DRAFT_TEXT_FIELDS,bytesToBase64,base64ToBytes,loadDraftDocument,readDraftContent,replaceDraftText,type DraftTextField } from '@/packages/collaboration/src/document';
 import SpecFlow from './spec-flow';
 import { ParticipantLogin } from './participants-panel';
