@@ -15,12 +15,17 @@ export async function verificationPresentationFixture(page:Page,baseURL:string):
  const folder=resolve('.operations/verification-source');await mkdir(folder,{recursive:true});
  await writeFile(join(folder,'product.cjs'),'module.exports={add:(a,b)=>a+b};\n');
  await writeFile(join(folder,'data.json'),'[{"left":2,"right":3,"sum":5}]\n');
- await writeFile(join(folder,'playwright.config.cjs'),"module.exports={testDir:'.',testMatch:'behavior.spec.cjs',workers:1,retries:0,reporter:'json'};\n");
+ await writeFile(join(folder,'playwright.config.cjs'),"module.exports={testDir:'.',testMatch:'behavior.spec.cjs',workers:1,retries:0,reporter:'json',captureGitInfo:{commit:false,diff:false}};\n");
  await writeFile(join(folder,'behavior.spec.cjs'),`const {test,expect}=require(${JSON.stringify(resolve('node_modules/@playwright/test'))});const {add}=require('./product.cjs');test('owned addition observation',()=>expect(add(2,3)).toBe(5));\n`);
  const report=spawnSync(process.execPath,[resolve('node_modules/@playwright/test/cli.js'),'test','--config',join(folder,'playwright.config.cjs'),'--reporter=json'],{cwd:folder,encoding:'utf8',timeout:30000});expect(report.status,report.stderr).toBe(0);const rawReport=report.stdout,queue=[...JSON.parse(rawReport).suites],entries:Array<{id:string}>=[];while(queue.length){const suite=queue.pop();queue.push(...suite.suites??[]);entries.push(...suite.specs??[]);}expect(entries).toHaveLength(1);
  const created=await page.request.post('/api/projects',{data:{requestId:crypto.randomUUID(),name:'Tailwind verification presentation',rootPath:folder}});expect(created.ok(),await created.text()).toBe(true);const project=(await created.json()).project,scope=`/api/projects/${project.id}`;
  const state=async():Promise<ProjectState>=>{const response=await page.request.get(scope);expect(response.ok(),await response.text()).toBe(true);return(await response.json()).state;};
- const command=async(body:Record<string,unknown>)=>{const response=await page.request.post(`${scope}/commands`,{data:{...body,requestId:crypto.randomUUID(),expectedVersion:(await state()).version}});expect(response.ok(),await response.text()).toBe(true);return(await response.json()).state as ProjectState;};
+ const command=async(body:Record<string,unknown>)=>{
+  const payload={...body,requestId:crypto.randomUUID(),expectedVersion:(await state()).version},utf8Bytes=Buffer.byteLength(JSON.stringify(payload),'utf8');
+  const response=await page.request.post(`${scope}/commands`,{data:payload});
+  expect(response.ok(),JSON.stringify({command:typeof body.type==='string'?body.type.slice(0,80):'unknown',utf8Bytes,httpStatus:response.status()})).toBe(true);
+  return(await response.json()).state as ProjectState;
+ };
  const content=(title:string)=>({title,goal:'Сохранить проверяемое ожидание и независимое происхождение результата.',dod:[{id:'automated',text:'Сложение наблюдается настоящим тестом.',required:true},{id:'manual',text:'Человек отдельно проверил результат.',required:true}],constraints:'Только собственный presentation fixture.',assumptions:'',risks:'Успех прогона не означает приёмку DoD.',inputs:'data.json',comment:''});
  let snapshot=await command({type:'createSpec',content:content('Work with fixed verification contract')});const work=snapshot.specs.at(-1)!,workRevision=snapshot.revisions.at(-1)!;await command({type:'activateRevision',specId:work.id,revisionId:workRevision.id});
  const common={given:'Изолированные известные входы.',action:'Сложить2 и3.',expected:'Наблюдается результат5.',data:'data.json',prerequisites:'Локальный Node и рассмотренная конфигурация Playwright.',level:'e2e' as const,purpose:'acceptance' as const,required:true};
