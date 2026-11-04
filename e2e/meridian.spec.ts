@@ -1,6 +1,7 @@
 import {test,expect,type Page} from '@playwright/test';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
+import {getMeridianThemeVariables} from '../packages/meridian/src/theme';
 
 // Synthetic DTO adapted from pinned host tests; never a native-runtime capture.
 const raw=readFileSync('tests/fixtures/meridian/scope.json','utf8');
@@ -15,11 +16,20 @@ async function loadFile(page:Page,document=raw){
   await importRegion(page).getByLabel('JSON контекста Meridian',{exact:true}).setInputFiles({name:'scope.json',mimeType:'application/json',buffer:Buffer.from(document,'utf8')});
 }
 
+/** Сверяет фактические CSS-переменные браузера с независимым каноническим theme adapter. */
+async function expectCanonicalPalette(page:Page,theme:'light'|'dark'){
+  const expected=getMeridianThemeVariables(theme);
+  await expect(importRegion(page)).toHaveAttribute('data-theme',theme);
+  expect(Object.keys(expected)).toHaveLength(16);
+  expect(await importRegion(page).evaluate((element,keys)=>Object.fromEntries(keys.map(key=>[key,getComputedStyle(element).getPropertyValue(key).trim()])),Object.keys(expected))).toEqual(expected);
+}
+
 test('M05 invalid imported source creates no history and stays explicit in mobile light theme',async({page})=>{
   await page.setViewportSize({width:760,height:950});
   await openImport(page);
+  await expectCanonicalPalette(page,'dark');
   await page.getByRole('button',{name:'Включить светлую тему',exact:true}).click();
-  await expect(importRegion(page)).toHaveAttribute('data-theme','light');
+  await expectCanonicalPalette(page,'light');
   expect(await importRegion(page).evaluate(element=>getComputedStyle(element).getPropertyValue('--text').trim())).toBe('#18181b');
   const before=(await(await page.request.get('/api/project')).json()).state;
   const invalid=JSON.parse(raw);invalid.actions_authorized=true;
