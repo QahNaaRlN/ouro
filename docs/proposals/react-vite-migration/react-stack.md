@@ -152,7 +152,7 @@ Lingui сохранён в истории исследования как рас
 
 ## 11. Ошибки, диагностика и деградация данных
 
-Ниже раскрыт принятый по D04–D07 целевой контракт; его реализация NOT_STARTED. Он сохраняет смысл исходного стека и **не копирует** обнаруженные различия между rules и реализацией CBS.
+Ниже раскрыт принятый по D04–D07 целевой контракт. Его часть D04/D06 реализована и ограниченно проверена в [client-error-policy](../../plans/client-error-policy.md): общий ClientError/AppError alias, безопасный occurrence reporter, Query ownership и renderer/async capture. Field/Form/DataState, bootstrap/global console capture, внешний sink и полная production observability этим срезом не завершены. Контракт сохраняет смысл исходного стека и **не копирует** обнаруженные различия между rules и реализацией CBS.
 
 ### Общая ошибка и единственный владелец реакции
 

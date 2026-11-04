@@ -1,9 +1,10 @@
 import {QueryClient} from '@tanstack/react-query';
 import type {ProjectSession} from '../../../../client/src/lifecycle/project-session';
 import {projectSessionKey} from '../../../../client/src/lifecycle/project-session';
+import {createQueryErrorPolicy,type QueryErrorPolicyOptions} from '../error-policy';
 
 /** Утилита, которая создаёт изолированный cache с явными безопасными повторами. */
-export const createProjectQueryClient=()=>new QueryClient({defaultOptions:{queries:{retry:false,refetchOnWindowFocus:false,refetchOnReconnect:false},mutations:{retry:false,networkMode:'always',gcTime:0}}});
+export const createProjectQueryClient=(errors:QueryErrorPolicyOptions={})=>new QueryClient({...createQueryErrorPolicy(errors),defaultOptions:{queries:{retry:false,refetchOnWindowFocus:false,refetchOnReconnect:false},mutations:{retry:false,networkMode:'always',gcTime:0}}});
 /** Утилита, которая адресует принятую проекцию полного access scope. */
 export const projectSnapshotQueryKey=(session:ProjectSession)=>['project-snapshot',projectSessionKey(session.sourceId,session.scope)] as const;
 /** Утилита, которая изолирует незавершённые чтения конкретного lifecycle owner. */

@@ -7,9 +7,9 @@ import {createProjectQueryClient,bindProjectSessionQuery,projectReadQueryKey} fr
 export type ProjectRuntimeOptions={ports?:typeof createProjectHttpPorts;reporter?:ErrorReporterPort;listenConnectivity?:(reconnect:()=>void)=>()=>void};
 /** Утилита, которая собирает browser runtime без открытия транспорта при импорте. */
 export function createProjectRuntime(options:ProjectRuntimeOptions={}){
- const queryClient=createProjectQueryClient(),registry=createProjectSessionRegistry(),bindings=new Map<ProjectSession,{count:number;close:()=>void}>();
+ const queryClient=createProjectQueryClient({reporter:options.reporter}),registry=createProjectSessionRegistry(),bindings=new Map<ProjectSession,{count:number;close:()=>void}>();
  return {queryClient,acquire:(scope:ProjectClientScope,mode:'workspace'|'legacy')=>{
-  const lease=registry.acquire({sourceId:'ouro:same-origin',scope,ports:(adopter,commandPresentation)=>(options.ports??createProjectHttpPorts)({scope,mode,adopter,commandPresentation}),reporter:options.reporter??{report:occurrence=>{console.error('[ouro/client]',occurrence);}}});
+  const lease=registry.acquire({sourceId:'ouro:same-origin',scope,ports:(adopter,commandPresentation)=>(options.ports??createProjectHttpPorts)({scope,mode,adopter,commandPresentation}),reporter:options.reporter});
   let binding=bindings.get(lease.session);
   if(!binding){const closeProjection=bindProjectSessionQuery(queryClient,lease.session),reconnect=()=>lease.session.reconnect(),readKey=projectReadQueryKey(lease.session),listen=options.listenConnectivity??((callback:()=>void)=>{window.addEventListener('online',callback);window.addEventListener('offline',callback);return()=>{window.removeEventListener('online',callback);window.removeEventListener('offline',callback);};}),closeConnectivity=listen(reconnect);binding={count:0,close:()=>{closeConnectivity();closeProjection();void queryClient.cancelQueries({queryKey:readKey}).catch(()=>{});queryClient.removeQueries({queryKey:readKey});}};bindings.set(lease.session,binding);}
   binding.count++;let released=false;

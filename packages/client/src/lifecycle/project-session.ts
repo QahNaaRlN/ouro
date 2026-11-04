@@ -1,7 +1,7 @@
 import {createProjectSnapshotAdopter,type ProjectSnapshotAdopter,type SnapshotAdoption} from './project-snapshot';
 import type {FrozenProjectCommandIntent,ProjectClientScope,ProjectCommandPort,ProjectReadPort,ProjectSubscriptionPort,ProjectSnapshotDTO,WorkspaceSnapshotDTO,ProjectConnectionStatus,ProjectSubscription} from '../ports';
 import {ClientError,type ErrorReporterPort} from '../ports/client-error.types';
-import {normalizeClientError,reportClientError} from './normalize-client-error';
+import {normalizeClientError,captureClientError} from './client-error-reporting';
 import {createClientCancellation} from './create-client-cancellation';
 import type {ProjectCommandPresentation,ProjectCommandPresentationLookup} from './project-command-presentation.types';
 
@@ -26,8 +26,7 @@ export function createProjectSession(options:ProjectSessionOptions){
  let view:ProjectSessionView={snapshot:null,metadata:null,status:'connecting',error:null,active:true,busy:false};
  const update=(patch:Partial<ProjectSessionView>)=>{if(!active)return;view={...view,...patch};listeners.forEach(listener=>listener());};
  const capture=(value:unknown,operation:'read-project'|'project-command'|'project-stream')=>{
-  const error=normalizeClientError(value);
-  reportClientError(options.reporter,{occurrenceId:occurrencePrefix+':'+String(++occurrence),code:error.code,kind:error.kind,operation,sourceId:options.sourceId,accessEpoch:scope.accessEpoch,...(scope.hostEpoch===undefined?{}:{hostEpoch:scope.hostEpoch})});
+  const error=captureClientError(value,{reporter:options.reporter,normalize:normalizeClientError,occurrence:normalized=>({occurrenceId:occurrencePrefix+':'+String(++occurrence),code:normalized.code,kind:normalized.kind,operation,sourceId:options.sourceId,accessEpoch:scope.accessEpoch,...(scope.hostEpoch===undefined?{}:{hostEpoch:scope.hostEpoch})})});
   if(active&&error.kind!=='cancelled')update({error});return error;
  };
  const revoke=(error:ClientError)=>{revoked=true;cancellation.abort();subscription?.close();subscription=undefined;update({snapshot:null,metadata:null,error,status:'reload-required',active:false});};
