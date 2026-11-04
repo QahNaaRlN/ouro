@@ -44,7 +44,7 @@ export function createProjectHttpPorts(options:ProjectHttpOptions):{read:Project
   if(existing&&(existing.body!==intent.body||!allowedUrls.includes(existing.url)||presentation&&existing.key!==key))return {status:'rejected',code:'CLIENT_INTENT_CHANGED',message:'Сначала восстановите исходное действие.'};
   if(!existing&&pending.some(value=>value.key===key))return {status:'rejected',code:'INTENT_SLOT_BUSY',message:'Сначала восстановите исходное действие в этом разделе.'};
   const wire:WorkspaceIntent=existing??{key,projectId:intent.scope.projectId,actorId:intent.scope.actorId,url,body:intent.body,requestId:intent.requestId,expectedVersion:intent.expectedVersion,label:presentation?.label??(intent.operation==='start-project-work'?'Назначить работу':'Команда проекта'),status:'sending',message:''};
-  const result=await sendWorkspaceIntent<ProjectCommandReceiptDTO>(wire,value=>{const checked=adopter.adopt(value);if(checked.status==='invalid')throw new ClientError('RESPONSE_CONTRACT','Квитанция не подтверждает принятую историю.','contract');},fetcher);
+  const result=await sendWorkspaceIntent<ProjectCommandReceiptDTO>(wire,value=>{const checked=adopter.adopt(value);if(checked.status==='invalid'){if(checked.reason==='disposed-scope')return 'inactive';throw new ClientError('RESPONSE_CONTRACT','Квитанция не подтверждает принятую историю.','contract');}return 'admitted';},fetcher);
   if(result.ok)return {status:'confirmed',receipt:result.data};
   const saved=getWorkspaceIntents(scope.projectId,scope.actorId).find(value=>value.key===wire.key);
   if(saved?.httpStatus===401||saved?.httpStatus===403)throw new ClientError(saved.errorCode??'ACCESS_REVOKED','Участник или доступ к проекту изменился. Исходный запрос сохранён.','access',saved.httpStatus);

@@ -1,0 +1,40 @@
+/** Оформление контекстной панели и конечный набор визуальных видов запросов человеку. */
+export const humanContext={
+ heading:'context-panel-heading flex h-[63px] items-center gap-[8px] border-b border-ouro-border px-[20px] pt-[21px] pb-[15px] text-[14px] font-[550] min-[1600px]:px-[24px]',
+ refresh:'ml-auto size-[25px]',
+ count:'attention-counter min-w-[18px] rounded-[4px] bg-[var(--attention-surface)] text-center text-[12px] leading-[18px] text-[var(--attention)]',
+ list:'attention-list px-[16px] pt-[4px] pb-[5px] min-[1600px]:px-[20px] at-most-1250:px-[13px]',
+ card:'attention-card block w-full border-b border-ouro-border px-[3px] py-[17px] text-left hover:-mx-[7px] hover:w-[calc(100%+14px)] hover:rounded-[5px] hover:bg-ouro-muted hover:px-[10px]',
+ selectedCard:'selected -mx-[7px] w-[calc(100%+14px)] rounded-[5px] bg-ouro-muted px-[10px]',
+ cardTitle:'mt-[8px] block text-[14px] leading-[1.6] font-medium',
+ cardMeta:'mt-[9px] flex flex-wrap justify-between gap-[5px] text-[12px] text-[var(--text-faint)]',
+ cardMetaLabel:'text-[12px]',
+ kind:'request-kind flex items-center gap-[7px] text-[12px] font-medium',
+ openRequestIcon:'ml-auto text-[var(--text-faint)]',
+ clear:'attention-clear px-[5px] py-[25px] text-center text-ouro-text-muted',
+ clearIcon:'mb-[7px] text-ouro-positive',
+ clearTitle:'block text-[12px] font-medium',
+ clearCopy:'mt-[5px] text-[12px] text-[var(--text-faint)]',
+ selected:'context-selected border-b border-ouro-border px-[20px] pt-[25px] pb-[22px] min-[1600px]:px-[24px] at-most-1250:px-[17px]',
+ selectedHeading:'text-[12px] font-medium text-ouro-text-muted',
+ selectedId:'mono mb-[5px] block text-[12px] text-[var(--text-faint)]',
+ selectedTitle:'selected-title mb-[11px] block text-[14px] leading-[1.6] font-[550]',
+ facts:'context-facts my-[20px] grid gap-[11px]',
+ fact:'flex justify-between gap-[12px] text-[12px]',
+ factLabel:'text-[var(--text-faint)]',
+ factValue:'max-w-[60%] text-right font-normal',
+ action:'gap-[7px] px-[7px] py-[8px] text-[12px] whitespace-normal',
+ simulator:'simulator-panel px-[20px] py-[22px] min-[1600px]:px-[24px] at-most-1250:px-[17px]',
+ simulatorHeading:'flex items-center gap-[7px] text-[12px]',
+ simulatorCopy:'mb-[14px] text-[12px] leading-[1.7] text-[var(--text-faint)]',
+ simulatorLabel:'block text-[12px] text-ouro-text-muted',
+ simulatorNote:'simulator-footnote mt-[12px] block text-[12px] leading-[1.7] text-[var(--text-faint)]',
+ badge:'small-tag rounded-[3px] border border-ouro-border px-[4px] text-[12px] leading-[15px] font-normal tracking-[0.5px] text-[var(--text-faint)]',
+} as const;
+
+/** Цвета соответствуют трём существующим видам запросов протокола. */
+export const humanRequestKinds={
+ Question:'kind-question text-ouro-text-muted',
+ Fork:'kind-fork text-[var(--attention)]',
+ Blocker:'kind-blocker text-[var(--negative)]',
+} as const;

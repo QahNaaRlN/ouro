@@ -13,8 +13,8 @@
   "css": [
     {
       "file": "app/globals.css",
-      "sha256": "0429f4644973706f79d5e73f9e19b8130760d09c4fbca710bd3fa21b03733b18",
-      "ordinaryRules": 611,
+      "sha256": "3245e139899c6c36b4c94d11466d916d26c5b93896feafd5deca737d75c1471b",
+      "ordinaryRules": 163,
       "legacyLayer": true,
       "owner": "legacy-human-view"
     },
@@ -64,13 +64,6 @@
       "file": "components/methodology.css",
       "sha256": "8dc1a7805cb19190532ec8ac5049ee3db991841c84a8e387377c49b7b499fc02",
       "ordinaryRules": 58,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
-      "file": "components/participants-panel.css",
-      "sha256": "96880de567a91f0c5a854bd6a99e2c2022f209b2b0876a9757101c079da0cac8",
-      "ordinaryRules": 31,
       "legacyLayer": true,
       "owner": "specialized-panels"
     },

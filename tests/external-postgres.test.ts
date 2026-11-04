@@ -4,7 +4,9 @@ import {Pool} from 'pg';
 import {execFile,spawn} from 'node:child_process';
 import {promisify} from 'node:util';
 import {randomBytes} from 'node:crypto';
-import {createStore} from '../lib/store';
+import {createStore,type CommandExecutionWithReceipt} from '../lib/store';
+import {commandReceiptResponse} from '../lib/http-command-receipt';
+import {verifyWorkspaceCommandReceipt} from '../packages/client/src/http/workspace-intent-proof';
 import {PROJECT_ID,type Actor,type Command} from '../packages/core/src';
 import {fixture,report} from './verification-fixture';
 import {prepareUpgrade,tableFingerprints,assertUpgradePreserved} from './migration-upgrade-fixture';
@@ -15,6 +17,15 @@ const human:Actor={id:'local-human',kind:'human',projectIds:[PROJECT_ID]};
 const content={title:'PostgreSQL qualification',goal:'Prove real durable store behaviour.',dod:[{id:'durable',text:'Preserved after reopen',required:true}],constraints:'',assumptions:'',risks:'',inputs:'',comment:''};
 const body=(expectedVersion:number,requestId:string):Command=>({type:'createSpec',requestId,expectedVersion,content});
 const code=(expected:string)=>(e:unknown)=>(e as {code?:string}).code===expected;
+
+/** Проверяет настоящий PostgreSQL bigint и HTTP metadata, а не только совместимость прежнего JSON body. */
+async function assertPostgresProof(execution:CommandExecutionWithReceipt,command:Command,actor:Actor){
+ assert.equal(typeof execution.row.cursor,'string','The actual pg bigint representation must qualify instead of silently losing all proof headers.');
+ const response=commandReceiptResponse(execution);assert(response.headers.get('X-Ouro-Command-Receipt'));
+ const wire=await response.clone().json();assert.deepEqual(wire,execution.result);
+ assert.equal(await verifyWorkspaceCommandReceipt({key:command.requestId,projectId:execution.row.project_id,actorId:actor.id,url:'/api/commands',body:JSON.stringify(command),requestId:command.requestId,expectedVersion:command.expectedVersion,label:'PostgreSQL receipt',status:'sending',message:''},response,wire),true);
+ return response.headers.get('X-Ouro-Command-Receipt');
+}
 
 for(const version of [9,11] as const)test(`real PostgreSQL ${version}→12 preserves all old rows, metadata, replay and exact receipts`,{skip},async()=>{
  const suffix=randomBytes(6).toString('hex'),name=`ouro_upgrade_${version}_${suffix}`,url=new URL(databaseUrl!);url.pathname='/'+name;
@@ -27,6 +38,10 @@ for(const version of [9,11] as const)test(`real PostgreSQL ${version}→12 prese
   const after=await assertUpgradePreserved(query,before);
   assert.deepEqual(await store.getProject(),historical.state);
   assert.deepEqual(await store.executeCommand(historical.command,historical.actor),{...historical.response,replayed:true});
+  const selected=await store.executeCommandWithReceipt(historical.command,historical.actor);
+  assert.equal(selected.result.events.length,0);assert.equal(selected.result.replayed,true);
+  await assertPostgresProof(selected,historical.command,historical.actor);
+  const persisted=(await store.inspect('SELECT project_id,actor_id,request_id,payload_hash,response,cursor FROM ouro_command_receipts WHERE project_id=$1 AND actor_id=$2 AND request_id=$3',[historical.state.projectId,historical.actor.id,historical.command.requestId])).rows[0];assert.deepEqual(selected.row,persisted);
   assert.deepEqual(await tableFingerprints(query),after,'Exact replay must not change any historical row.');
   await store.close();store=await createStore({databaseUrl:url.href,seedEvents:[]});
   assert.deepEqual(await store.getProject(),historical.state);assert.deepEqual(await tableFingerprints(query),after);
@@ -48,7 +63,9 @@ test('real PostgreSQL applies 001–012, enforces immutable history and command 
  let store=await createStore({databaseUrl,seedEvents:[]});
  try{
   assert.deepEqual((await store.inspect<{version:number}>('SELECT version FROM ouro_schema_migrations ORDER BY version')).rows.map(r=>r.version),Array.from({length:12},(_,i)=>i+1));
-  const start=await store.getProject(),command=body(start.version,'hosted-pg-receipt'),first=await store.executeCommand(command,human);
+  const start=await store.getProject(),command=body(start.version,'hosted-pg-receipt'),execution=await store.executeCommandWithReceipt(command,human),first=execution.result;
+  assert.equal(first.replayed,false);const proof=await assertPostgresProof(execution,command,human);
+  const replay=await store.executeCommandWithReceipt(command,human);assert.equal(replay.result.replayed,true);assert.equal(await assertPostgresProof(replay,command,human),proof);
   await assert.rejects(store.executeCommand({...command,content:{...content,title:'Different'}},human),code('IDEMPOTENCY_CONFLICT'));
   await assert.rejects(store.executeCommand(body(start.version,'hosted-pg-stale'),human),code('VERSION_CONFLICT'));
   for(const sql of ['UPDATE ouro_domain_events SET event_type=event_type','DELETE FROM ouro_domain_events','TRUNCATE ouro_spec_revisions CASCADE','TRUNCATE ouro_verification_runs','TRUNCATE ouro_workspace_binding_recoveries','TRUNCATE ouro_workspace_binding_recovery_receipts'])await assert.rejects(store.inspect(sql),/append-only/);
