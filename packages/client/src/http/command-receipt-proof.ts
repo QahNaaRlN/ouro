@@ -1,7 +1,7 @@
 import {z} from 'zod';
 import {isWellFormedUnicode} from '@ouro/protocol';
 import {canonicalCommandJSON} from '../../../../lib/command-canonical-json';
-import {canonicalProjectJSON,commandReceiptProjection} from '../../../../lib/project-snapshot';
+import {canonicalProjectJSON,commandReceiptProjection} from '../lifecycle/project-snapshot';
 import type {WorkspaceIntent} from './workspace-intents';
 
 const headerName='X-Ouro-Command-Receipt';
