@@ -1,4 +1,4 @@
-import type {DomainEvent,ProjectState} from '../packages/core/src/types';
+import type {DomainEvent,ProjectState} from '@/packages/core/src';
 
 export type WorkspaceHistoryScope={projectId?:string;specId?:string;revisionId?:string;executionId?:string};
 export type WorkspaceEventProvenance={kind:'human_acceptance'|'verified_github'|'agent_report'|'human_action'|'system_record'|'simulation';label:string;tone:'positive'|'neutral'|'attention'};
