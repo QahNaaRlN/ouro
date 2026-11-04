@@ -190,6 +190,8 @@ jobs:
         run: npx playwright test --config=apps/web/playwright.service.config.ts
       - name: Qualify bounded catalog read hooks and context replacement
         run: npx playwright test --config=apps/web/playwright.catalog.config.ts
+      - name: Qualify client error capture and renderer boundary
+        run: npx playwright test --config=apps/web/playwright.error-policy.config.ts
       - name: Qualify durable HTTP receipt recovery with actual browser loss and exact retry
         run: npx playwright test --config=playwright.receipt-proof.config.ts
       - name: Preserve browser diagnostics on failure

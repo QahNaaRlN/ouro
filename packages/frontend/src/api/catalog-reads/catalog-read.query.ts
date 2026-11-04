@@ -1,6 +1,6 @@
 import {queryOptions,QueryObserver,type QueryClient} from '@tanstack/react-query';
 import {ClientError,type CatalogReadCapability,type CatalogReadScope,type CatalogReadResult,type ClientCancellationSignal} from '../../../../client/src/ports';
-import {normalizeClientError,reportClientError} from '../../../../client/src/lifecycle/normalize-client-error';
+import {normalizeClientError,captureClientError} from '../../../../client/src/lifecycle/client-error-reporting';
 import type {CatalogReadEnvironment} from '../../shared/catalog-read-environment';
 
 let occurrence=0;
@@ -29,11 +29,10 @@ function options<T>(environment:CatalogReadEnvironment,scope:CatalogReadScope,op
    if(result.status==='unsupported'&&result.capability!==operation)throw new ClientError('CATALOG_CONTRACT','Операция чтения не подтверждена.','contract');
    return result;
   }catch(value){
-   const error=normalizeCatalogReadError(value);
-   if(error.kind!=='cancelled')reportClientError(environment.reporter,{occurrenceId:'catalog-read:'+String(++occurrence),code:error.code,kind:error.kind,operation,sourceId:/^[A-Za-z0-9][A-Za-z0-9:._-]{0,99}$/.test(scope.sourceId)?scope.sourceId:'untrusted-source',accessEpoch:scope.accessEpoch,...(scope.hostEpoch===undefined?{}:{hostEpoch:scope.hostEpoch})});
+   const error=captureClientError(value,{reporter:environment.reporter,normalize:normalizeCatalogReadError,reportCancelled:false,occurrence:normalized=>({occurrenceId:'catalog-read:'+String(++occurrence),code:normalized.code,kind:normalized.kind,operation,sourceId:/^[A-Za-z0-9][A-Za-z0-9:._-]{0,99}$/.test(scope.sourceId)?scope.sourceId:'untrusted-source',accessEpoch:scope.accessEpoch,...(scope.hostEpoch===undefined?{}:{hostEpoch:scope.hostEpoch})})});
    throw error;
   }
- },retry:false,staleTime:0,gcTime:0,networkMode:'always',refetchOnWindowFocus:false,refetchOnReconnect:false,refetchOnMount:'always',refetchInterval:false});
+ },meta:{errorUi:'inline',errorReportOwner:'operation',suppressToast:true},retry:false,staleTime:0,gcTime:0,networkMode:'always',refetchOnWindowFocus:false,refetchOnReconnect:false,refetchOnMount:'always',refetchInterval:false});
 }
 /** Настраивает проверку identity; публикацией actor по-прежнему владеет identity ticket. */
 export const identitySessionQueryOptions=(environment:CatalogReadEnvironment,scope:CatalogReadScope)=>options(environment,scope,'read-identity-session',signal=>environment.reads.readIdentitySession(scope,{signal}));
