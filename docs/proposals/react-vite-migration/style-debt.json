@@ -97,33 +97,6 @@
       "owner": "specialized-panels"
     },
     {
-      "file": "components/workspace-proposals.tsx",
-      "sha256": "5b4cf8974ba9714b8a3b2d08d0025e3d1510b3ca0112b31b9b341c2da003d0ff",
-      "expressions": [
-        {
-          "kind": "graph",
-          "sha256": "2ac2f712e9b93520d51a3f739b2a6b38fe6ab8f6b24820e0665585ef54c33863",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "76b5cf2d3116e07cf361213c68add9fda4c9ef5b3dcfa85b62aad20bd63872c3",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "90ca7d7bc81bd597d9b2864ee2929a13a921060b301190411305d118c044ff03",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "c08bd47c96d048a326a7c0bb2644b22987d99ff65101bf6d7f51500c4e0d3d55",
-          "count": 1
-        }
-      ],
-      "owner": "specialized-panels"
-    },
-    {
       "file": "components/workspace-ui.tsx",
       "sha256": "7a921ccbe0c765642fe0de048d0ab8e3e7781ff63c13a4bf5ef000b2ba886a83",
       "expressions": [
