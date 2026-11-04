@@ -1,5 +1,5 @@
 'use client';
-import {verificationPairWorkspacePresentation} from './verification-pair-presentation';
+import {verificationPairWorkspacePresentation,VerificationPairCard,WorkStatus} from '@/packages/frontend/src/entities/work';
 import {twMerge} from 'tailwind-merge';
 import {workspacePresentation as ui} from './workspace-presentation';
 
@@ -18,7 +18,6 @@ import type {WorkspaceSnapshot} from './workspace-client';
 import Roadmap,{specLabels} from './roadmap';
 import SpecFlow from './spec-flow';
 import {RealityGraph} from './reality';
-import {WorkStatus} from './work-status';
 import {WorkspaceAccordion,WorkspaceCopyValue,WorkspaceDialog,WorkspaceSelect,WorkspaceTextarea} from './workspace-ui';
 import {WorkspaceHistory,WorkspaceEventDetail} from './workspace-history';
 import {WorkspaceAgentActivity} from './workspace-dashboard';
@@ -32,7 +31,6 @@ import {selectWorkspaceProposals} from '@/lib/workspace-proposals-view';
 import {WorkspaceAcceptance,WorkspaceDecisions,WorkspaceExecutionControls,WorkspaceRevisionForm,WorkspaceStartAttempt,type WorkspaceCommand} from './workspace-decisions';
 import {selectWorkspaceHistory,workspaceHistoryEntry} from '@/lib/workspace-history-view';
 import {getWorkPairGroups} from '@/packages/core/src';
-import {VerificationPairCard} from './verification-pair-card';
 import {WorkspaceVerification} from './verification-panel';
 
 /** Оформление элементов этого модуля; общие элементы используют workspacePresentation. */

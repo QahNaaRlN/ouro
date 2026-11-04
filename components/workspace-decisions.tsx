@@ -10,7 +10,7 @@ import {getAcceptanceAvailability,getCanonicalStatusPresentation,getExecutionPre
 import type {AgentRegistration} from './agents-panel';
 import {workspaceContent} from './workspace-task';
 import {WorkspaceAccordion,WorkspaceSelect,WorkspaceTextarea} from './workspace-ui';
-import {WorkStatus} from './work-status';
+import {WorkStatus} from '@/packages/frontend/src/entities/work';
 
 /** Оформление элементов этого модуля; общие элементы используют workspacePresentation. */
 const presentationSlots={

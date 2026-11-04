@@ -9,7 +9,7 @@ requireForTest.extensions['.css'] = () => { };
 import { getWorkPairGroups, getWorkPairPresentation, replay } from '../packages/core/src';
 import { fixture, report } from './verification-fixture';
 test('pair and details use identical result/applicability; rendering historical state never reads live runs or mutates domain', async () => {
-    const { VerificationPairCard } = await import('../components/verification-pair-card');
+    const { VerificationPairCard } = await import('../packages/frontend/src/entities/work');
     const { WorkspaceVerification } = await import('../components/verification-panel');
     const f = fixture(), historical = replay(f.state.events);
     f.current();

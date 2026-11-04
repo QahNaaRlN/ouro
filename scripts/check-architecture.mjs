@@ -262,15 +262,17 @@ export function inspectArchitecture(options) {
       if (!inside(root, target)) continue;
       const destination = relative(target);
       if (serverFile(destination)) { emit(source, edge.node, edge, 'server-boundary', 'Browser and pure modules cannot depend on server implementation, including its types.'); continue; }
+      if (relative(filename).startsWith('packages/frontend/src/') && /^(?:app|components)\//.test(destination)) emit(source, edge.node, edge, 'legacy-ui-boundary', 'Frontend packages cannot depend back on legacy app or components.');
       const destinationZone = zone(destination);
       if (boundary !== 'browser' && destinationZone === 'browser') { emit(source, edge.node, edge, 'pure-browser-boundary', 'Pure packages cannot import browser/UI adapters or acquire their broader dependency permissions.'); continue; }
       if (boundary === 'context' && /^packages\/core\//.test(destination)) { emit(source, edge.node, edge, 'context-core-boundary', 'Portable Meridian context must not depend back on core.'); continue; }
       if (!permittedPureDependency(boundary, destinationZone, edge.typeOnly)) { emit(source, edge.node, edge, 'package-direction', 'Pure package imports must follow the declared contract/domain dependency direction.'); continue; }
       const to = frontendSlice(destination);
+      const publicEntry = to?.layer === 'entities' ? /^(?:packages\/frontend|apps\/web)\/src\/entities\/[^/]+\/index\.(?:[cm]?[jt]sx?)$/.test(destination) : /\/index\.(?:[cm]?[jt]sx?)$/.test(destination);
+      if (to?.slice && (from || to.layer === 'entities') && (from?.layer !== to.layer || from?.slice !== to.slice) && !publicEntry) emit(source, edge.node, edge, 'deep-slice-import', 'Other slices and legacy entity consumers import only the explicit public API.');
       if (from && to) {
         if (layerRanks.get(from.layer) < layerRanks.get(to.layer)) emit(source, edge.node, edge, 'hfsd-direction', 'Frontend imports point only toward lower layers.');
         else if (from.layer === to.layer && from.slice && to.slice && from.slice !== to.slice && !(from.layer === 'entities' && edge.typeOnly)) emit(source, edge.node, edge, 'cross-slice-dependency', 'Sibling slices require declared public type dependencies.');
-        if (to.slice && (from.layer !== to.layer || from.slice !== to.slice) && !/\/index\.(?:[cm]?[jt]sx?)$/.test(destination)) emit(source, edge.node, edge, 'deep-slice-import', 'Other slices import only the explicit public API.');
       }
       inspect(target, boundary);
     }
