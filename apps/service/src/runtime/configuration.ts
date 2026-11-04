@@ -2,10 +2,10 @@ import path from 'node:path';
 import {tmpdir} from 'node:os';
 
 /** Валидированные пути и authority runtime, независимые от рабочего каталога процесса. */
-export type RuntimeConfiguration={environment:Record<string,string|undefined>;host:string;port:number;dataDir?:string;databaseUrl?:string;resourceRoot:string;migrationsDir:string;mcpPath:string;verificationRuntimeDir:string;packageRoot:string;staticRoot?:string;shutdownTimeoutMs:number};
+export type RuntimeConfiguration={environment:Record<string,string|undefined>;host:string;port:number;dataDir?:string;databaseUrl?:string;resourceRoot:string;migrationsDir:string;mcpPath:string;verificationRuntimeDir:string;packageRoot:string;playwrightPreloadPath:string;staticRoot?:string;shutdownTimeoutMs:number};
 
 /** Проверяет конфигурацию до открытия БД; запуск без явного storage profile запрещён. */
-export function runtimeConfiguration(environment:Record<string,string|undefined>,options:{resourceRoot:string;migrationsDir?:string;packageRoot?:string;mcpPath?:string}):RuntimeConfiguration{
+export function runtimeConfiguration(environment:Record<string,string|undefined>,options:{resourceRoot:string;migrationsDir?:string;packageRoot?:string;mcpPath?:string;playwrightPreloadPath?:string}):RuntimeConfiguration{
  const env={...environment},resourceRoot=path.resolve(options.resourceRoot);
  const host=env.OURO_SERVICE_HOST??'127.0.0.1',port=Number(env.PORT??'3000');
  const loopback=['127.0.0.1','localhost','::1'].includes(host),hosted=env.OURO_DEPLOYMENT_MODE==='cloud';
@@ -24,5 +24,5 @@ export function runtimeConfiguration(environment:Record<string,string|undefined>
  const dataDir=env.OURO_DATA_DIR==='memory://'?'memory://':env.OURO_DATA_DIR?absolute(env.OURO_DATA_DIR):undefined;
  const shutdownTimeoutMs=Number(env.OURO_SHUTDOWN_TIMEOUT_MS??'10000');
  if(!Number.isSafeInteger(shutdownTimeoutMs)||shutdownTimeoutMs<1||shutdownTimeoutMs>150000)throw new Error('Invalid shutdown deadline.');
- return {environment:env,host,port,dataDir,databaseUrl:env.DATABASE_URL,resourceRoot,migrationsDir:options.migrationsDir?absolute(options.migrationsDir):path.join(resourceRoot,'db/migrations'),mcpPath:options.mcpPath?absolute(options.mcpPath):path.join(resourceRoot,'packages/mcp/bin/ouro-mcp.mjs'),verificationRuntimeDir:env.OURO_VERIFICATION_RUNTIME_DIR?absolute(env.OURO_VERIFICATION_RUNTIME_DIR):dataDir&&dataDir!=='memory://'?dataDir+'.verification-runtime':path.join(tmpdir(),'ouro-service-verification-runtime'),packageRoot:options.packageRoot?absolute(options.packageRoot):resourceRoot,staticRoot:env.OURO_STATIC_ROOT?absolute(env.OURO_STATIC_ROOT):undefined,shutdownTimeoutMs};
+ return {environment:env,host,port,dataDir,databaseUrl:env.DATABASE_URL,resourceRoot,migrationsDir:options.migrationsDir?absolute(options.migrationsDir):path.join(resourceRoot,'db/migrations'),mcpPath:options.mcpPath?absolute(options.mcpPath):path.join(resourceRoot,'packages/mcp/bin/ouro-mcp.mjs'),verificationRuntimeDir:env.OURO_VERIFICATION_RUNTIME_DIR?absolute(env.OURO_VERIFICATION_RUNTIME_DIR):dataDir&&dataDir!=='memory://'?dataDir+'.verification-runtime':path.join(tmpdir(),'ouro-service-verification-runtime'),packageRoot:options.packageRoot?absolute(options.packageRoot):resourceRoot,playwrightPreloadPath:options.playwrightPreloadPath?absolute(options.playwrightPreloadPath):path.join(resourceRoot,'lib/verification/runtime/playwright-preload.mjs'),staticRoot:env.OURO_STATIC_ROOT?absolute(env.OURO_STATIC_ROOT):undefined,shutdownTimeoutMs};
 }

@@ -5,7 +5,7 @@ import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {createRequire} from 'node:module';
 import {join} from 'node:path';
-import {replay} from '../packages/core/src';
+import {applyCommand,replay} from '../packages/core/src';
 import type {WorkspaceIntent} from '../components/workspace-client';
 const load=createRequire(join(process.cwd(),'tests/workspace-intents.test.ts'));
 // Intent transport does not depend on the accordion's CSS or select runtime.
@@ -62,7 +62,7 @@ test('negative retries never resolve a previously unknown outcome, even when a l
 test('only a positive command receipt releases an unknown intent; changing its identity or body never sends a replacement',async()=>{
  const originalFetch=globalThis.fetch,{intent}=fixture(),calls:RequestInit[]=[];let attempt=0;
  try{
-  globalThis.fetch=async(_url,init)=>{calls.push(init!);if(attempt++===0)throw new Error('timeout');if(attempt===2)return Response.json({});return Response.json({state:replay([],intent.projectId!),cursor:0,events:[],replayed:true});};
+  globalThis.fetch=async(_url,init)=>{calls.push(init!);if(attempt++===0)throw new Error('timeout');if(attempt===2)return Response.json({});return receiptFor(intent);};
   await sendWorkspaceIntent(intent);assert.equal(readIntent(intent)?.status,'unknown');
   for(const changed of [{body:'{}'},{actorId:'other'},{projectId:'other'},{url:'/other'},{requestId:'other'}])await assert.rejects(sendWorkspaceIntent({...intent,...changed}),/исходное действие/);
   assert.equal(calls.length,1);await sendWorkspaceIntent(readIntent(intent)!);assert.equal(readIntent(intent)?.status,'unknown');await sendWorkspaceIntent(readIntent(intent)!);assert.equal(readIntent(intent),undefined);assert.equal(calls.length,3);
@@ -125,7 +125,19 @@ test('copy restore preserves an already pending raw body and key, rejecting even
  }finally{globalThis.fetch=originalFetch;}
 });
 function deferredResponse(){let resolve!:(response:Response)=>void,reject!:(reason:Error)=>void;const promise=new Promise<Response>((done,fail)=>{resolve=done;reject=fail;});return {promise,resolve,reject};}
-const receiptFor=(intent:WorkspaceIntent)=>Response.json({state:replay([],intent.projectId!),cursor:0,events:[],replayed:true});
+function receiptFor(intent:WorkspaceIntent){
+ const body:unknown=JSON.parse(intent.body);assert(body&&typeof body==='object'&&'specId' in body&&'specRevisionId' in body&&'agentId' in body);
+ const {specId,specRevisionId,agentId}=body;assert.equal(typeof specId,'string');assert.equal(typeof specRevisionId,'string');assert.equal(typeof agentId,'string');
+ if(typeof specId!=='string'||typeof specRevisionId!=='string'||typeof agentId!=='string'||!intent.projectId)throw new Error('Invalid command fixture');
+ const actor={id:intent.actorId,kind:'human' as const,projectIds:[intent.projectId]},content={title:'Receipt fixture',goal:'Recover the original assignment',dod:[{id:'receipt',text:'Same command receipt',required:true}],constraints:'Original scope',assumptions:'Local fixture',risks:'Lost response',inputs:'Frozen command',comment:'Regression fixture'};
+ let state=replay([],intent.projectId),ids=0;
+ const id=()=>++ids===1?specId:ids===2?specRevisionId:'receipt-fixture-'+ids;
+ for(let index=0;index<6;index++)state=applyCommand(state,{type:'createSpec',content,requestId:randomUUID(),expectedVersion:state.version},actor,{id}).state;
+ state=applyCommand(state,{type:'activateRevision',specId,revisionId:specRevisionId,requestId:randomUUID(),expectedVersion:state.version},actor,{id}).state;
+ assert.equal(state.version,intent.expectedVersion);
+ const applied=applyCommand(state,{type:'startExecution',specId,specRevisionId,agentId,requestId:intent.requestId,expectedVersion:state.version},actor,{id});
+ return Response.json({...applied,cursor:applied.state.version,replayed:true});
+}
 test('late duplicate failure cannot resurrect an exact request after another response positively resolved it',async(t)=>{
  for(const kind of ['binding-rejection','transport-failure'])await t.test(kind,async()=>{
   const originalFetch=globalThis.fetch,{intent,proof}=fixture(),responses=[deferredResponse(),deferredResponse()];let count=0;
