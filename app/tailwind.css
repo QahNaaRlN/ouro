@@ -3,6 +3,7 @@
 @import "tailwindcss/utilities.css" layer(utilities) source(none);
 @source "./";
 @source "../components";
+@source "../packages/frontend/src";
 
 /** Точные включающие пороги объявлены по убыванию. */
 @custom-variant at-most-1250 { @media (max-width: 1250px) { @slot; } }

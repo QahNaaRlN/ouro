@@ -1,6 +1,6 @@
 import {z} from 'zod';
-import {inspectProjectSnapshot,type ProjectSnapshotAdopter} from '../../../../lib/project-snapshot';
-import {startProjectSubscription,type ProjectEventSource} from '../../../../lib/project-subscription';
+import {inspectProjectSnapshot,type ProjectSnapshotAdopter} from '../lifecycle/project-snapshot';
+import {startProjectSubscription,type ProjectEventSource} from './project-subscription';
 import type {ClientCancellationSignal,ProjectClientScope,ProjectReadPort,ProjectCommandPort,ProjectSubscriptionPort,ProjectCommandReceiptDTO} from '../ports';
 import {ClientError} from '../ports/client-error.types';
 import {getWorkspaceIntents,sendWorkspaceIntent,type WorkspaceIntent} from './workspace-intents';

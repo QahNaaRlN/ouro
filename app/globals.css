@@ -217,156 +217,6 @@ pre {
   background: var(--muted);
   color: var(--text);
 }
-.graph-container {
-  width: 100%;
-  height: 100%;
-  position: relative;
-  min-height: 400px;
-}
-.spec-node {
-  width: 264px;
-  padding: 15px 16px 12px;
-  background: var(--subtle);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  box-shadow: 0 3px 7px #0000000a;
-  position: relative;
-}
-.spec-node:hover {
-  border-color: var(--control);
-}
-.spec-node.is-selected {
-  border-color: var(--text-muted);
-  box-shadow: 0 0 0 1px var(--text-muted);
-}
-.node-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: var(--text-faint);
-  margin-bottom: 9px;
-}
-.node-top .mono {
-  font-size: 12px;
-  letter-spacing: 0.1px;
-}
-.node-title {
-  font-size: 13px;
-  font-weight: 550;
-  line-height: 1.5;
-  max-width: 230px;
-}
-.node-goal {
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--text-faint);
-  margin-top: 6px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  min-height: 32px;
-}
-.node-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 13px;
-  gap: 7px;
-}
-.node-revision {
-  font-family: "JetBrains Mono", monospace;
-  font-size: 12px;
-  color: var(--text-faint);
-}
-.node-attention {
-  position: absolute;
-  bottom: -25px;
-  left: 15px;
-  color: var(--attention);
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.node-attention:before {
-  content: "";
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--attention);
-}
-.react-flow__handle {
-  width: 5px;
-  height: 5px;
-  background: var(--selected);
-  border-color: var(--border);
-}
-.react-flow__node.selected .react-flow__handle {
-  background: var(--text-muted);
-}
-.react-flow__controls {
-  box-shadow: none;
-  display: flex;
-  bottom: 22px;
-  left: 14px;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  overflow: hidden;
-}
-.react-flow__controls-button {
-  background: var(--subtle);
-  border-bottom: 0;
-  border-right: 1px solid var(--border);
-  color: var(--text-muted);
-  width: 27px;
-  height: 27px;
-}
-.react-flow__controls-button:last-child {
-  border: 0;
-}
-.react-flow__controls-button:hover {
-  background: var(--muted);
-}
-.react-flow__controls-button svg {
-  fill: var(--text-muted);
-  max-width: 12px;
-  max-height: 12px;
-}
-.react-flow__attribution {
-  background: var(--bg);
-  color: var(--text-faint);
-  font-size: 12px;
-}
-.react-flow__minimap {
-  background: var(--subtle);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  bottom: 25px;
-  right: 12px;
-  width: 110px;
-  height: 65px;
-  margin: 0;
-}
-.react-flow__minimap svg {
-  width: 110px;
-  height: 65px;
-}
-.graph-caption {
-  position: absolute;
-  top: 14px;
-  left: 15px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--text-faint);
-  pointer-events: none;
-  background: var(--bg);
-  padding: 4px 7px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-}
 .status {
   display: inline-flex;
   align-items: center;
@@ -552,14 +402,6 @@ tbody tr.selected {
   .segmented {
     order: 1;
   }
-  .react-flow__minimap {
-    display: none;
-  }
-  .graph-caption {
-    font-size: 12px;
-    top: 10px;
-    left: 10px;
-  }
   .quiet-label {
     font-size: 12px;
   }
@@ -601,32 +443,7 @@ tbody tr.selected {
 .btn {
   font-size: 13px;
 }
-.node-title {
-  font-size: 14px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.spec-node {
-  height: 240px;
-  display: flex;
-  flex-direction: column;
-}
-.node-goal {
-  min-height: 38px;
-}
-.node-bottom {
-  margin-top: 10px;
-}
 .status {
-  font-size: 12px;
-}
-.node-attention {
-  font-size: 12px;
-  bottom: -27px;
-}
-.react-flow__attribution {
   font-size: 12px;
 }
 @media (max-width: 680px) {
@@ -647,9 +464,6 @@ tbody tr.selected {
   }
   .page-heading .btn {
     margin-top: 0;
-  }
-  .graph-caption {
-    font-size: 12px;
   }
 }
 

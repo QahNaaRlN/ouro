@@ -2,13 +2,15 @@ import {spawn} from 'node:child_process';
 import {access} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {validateNodeVersion} from './runtime-node.mjs';
+export {validateNodeVersion} from './runtime-node.mjs';
 
 const help=`Ouro local launch
 
   npm run launch
   npm run launch -- --port 3001
 
-Use Node.js 24 LTS (minimum 20.9). This launcher uses only Node's standard
+Use stable Node.js 24 LTS (minimum 24.19.0, major 24). This launcher uses only Node's standard
 library and works before dependencies are installed. On every launch it runs
 npm ci --include=dev, a fresh production build, then the local server. Build
 tools are included even with NODE_ENV=production. Existing .ouro data
@@ -17,11 +19,6 @@ Localhost is this computer, not a published website.
 `;
 const signalCode=signal=>signal==='SIGINT'?130:signal==='SIGTERM'?143:signal==='SIGKILL'?137:1;
 const delay=milliseconds=>new Promise(resolve=>setTimeout(resolve,milliseconds));
-
-export function validateNodeVersion(version){
- const match=/^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(version);
- if(!match||Number(match[1])<20||(Number(match[1])===20&&Number(match[2])<9))throw new Error('Use Node.js 24 LTS; Ouro requires Node.js 20.9 or newer.');
-}
 
 function parseArguments(argv){
  if(argv.length===1&&argv[0]==='--help')return {help:true,port:3000};

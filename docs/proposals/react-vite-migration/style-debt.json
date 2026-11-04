@@ -13,8 +13,8 @@
   "css": [
     {
       "file": "app/globals.css",
-      "sha256": "3245e139899c6c36b4c94d11466d916d26c5b93896feafd5deca737d75c1471b",
-      "ordinaryRules": 163,
+      "sha256": "4c958bc7cf6b6ab9c70761d21f4ceb151e040766364770f666b362c16e4935ea",
+      "ordinaryRules": 131,
       "legacyLayer": true,
       "owner": "legacy-human-view"
     },
@@ -54,20 +54,6 @@
       "owner": "specialized-panels"
     },
     {
-      "file": "components/spec-flow.css",
-      "sha256": "25003dcb3a8588d238c3b030daa8de6df2b738f407752d4891541a18beda4991",
-      "ordinaryRules": 98,
-      "legacyLayer": true,
-      "owner": "graphs"
-    },
-    {
-      "file": "components/state-transitions.css",
-      "sha256": "c7d1e04fceea12d20a4f84c0c60e9693c0e0935846e49744ba53ef21c1b342bb",
-      "ordinaryRules": 68,
-      "legacyLayer": true,
-      "owner": "graphs"
-    },
-    {
       "file": "components/verification.css",
       "sha256": "a839468fbedbfaa3d0f21781ce4a194614bebe3afeb289e38c3fc9a48b9132b1",
       "ordinaryRules": 46,
@@ -80,13 +66,6 @@
       "ordinaryRules": 9,
       "legacyLayer": true,
       "owner": "specialized-panels"
-    },
-    {
-      "file": "components/workspace-graphs.css",
-      "sha256": "d21056837624f1ab44243a91fa851e80e3fb160effb0354cd5c416a4af80ec7d",
-      "ordinaryRules": 24,
-      "legacyLayer": true,
-      "owner": "graphs"
     }
   ],
   "inline": [
@@ -125,121 +104,8 @@
       "owner": "specialized-panels"
     },
     {
-      "file": "components/reality.tsx",
-      "sha256": "008d814a57575e0c76305d1374e8336870be40e53d3f30779dbe83d7c2c43e95",
-      "expressions": [
-        {
-          "kind": "graph",
-          "sha256": "1f2eae335f1c479e6860c44b206b23699424b3faeece9a9d0b6df8b7d19f2c53",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "22ae40b2bd6dc78c46942434e435b9132fabb5657100b212279bb789a4335825",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "76b5cf2d3116e07cf361213c68add9fda4c9ef5b3dcfa85b62aad20bd63872c3",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "c08bd47c96d048a326a7c0bb2644b22987d99ff65101bf6d7f51500c4e0d3d55",
-          "count": 1
-        },
-        {
-          "kind": "jsx",
-          "sha256": "0e5635075399a1c38b8bcf55ea1c206d5875353147f54375192e78066528061d",
-          "count": 1
-        },
-        {
-          "kind": "jsx",
-          "sha256": "7b556ed92262ba24527326db5c381ea34facdcdbb3ecc588d2162359a0738a24",
-          "count": 2
-        },
-        {
-          "kind": "jsx",
-          "sha256": "f8540426145c09cbb95990f38acbb88817b0cd1d1e77f39ebdaf45e31b2797f9",
-          "count": 1
-        }
-      ],
-      "owner": "graphs"
-    },
-    {
-      "file": "components/roadmap.tsx",
-      "sha256": "2da5937653441a2432a668eda340ee0ac1176802bf437f5bdf6f4373c4cf263c",
-      "expressions": [
-        {
-          "kind": "graph",
-          "sha256": "226c7dfc6c6885e09d711d56ec05c4729fd0ed6f3a9574a2a3d9831ee44d5581",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "3b07c07484b4b4cb599a9660da7ec86123f41eade100f5f6ea6349e4cbd542ef",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "ef27eda83541995bdaf579b93e311d95c649c95b93f900b18a07fd689e23bbed",
-          "count": 1
-        }
-      ],
-      "owner": "graphs"
-    },
-    {
-      "file": "components/spec-flow.tsx",
-      "sha256": "1b22961e74261636291c08a778ec2761dc4c0d488d4c69e396fab611f3fc302f",
-      "expressions": [
-        {
-          "kind": "graph",
-          "sha256": "00162354795bfbe429ebb935a3b974171fe052bb4e01b0f5fed11776fcd33093",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "b1cf643f1bb693c40ad4b2cdd62bf24aa73d61cd65d8b4d2d8c837268a8e2a6b",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "c08bd47c96d048a326a7c0bb2644b22987d99ff65101bf6d7f51500c4e0d3d55",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "c14549f88913629278501e3641e004e533aae62ad3366f930cdfadff419774f1",
-          "count": 1
-        }
-      ],
-      "owner": "graphs"
-    },
-    {
-      "file": "components/state-transitions.tsx",
-      "sha256": "f09bb06382f0090b6d40e6d116cd58a604c93840960db5d27da34c914a73096e",
-      "expressions": [
-        {
-          "kind": "graph",
-          "sha256": "3741425ba78e17664c65f19ba12f3bbb524af6109983f8e050694c7fad32fdba",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "46bd56fe73fa9ffe2eca2866da528d1671e105a526ad760437abc0da3eed168a",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "8dc183f080db9b4c269acbec71820980d8a2ce57f89093e1129ad9594ebc4ea4",
-          "count": 1
-        }
-      ],
-      "owner": "graphs"
-    },
-    {
       "file": "components/workspace-proposals.tsx",
-      "sha256": "fedc9afe8709720f0290337f2250d26acc9d0e2a52f9e634fed8231626a8cc0d",
+      "sha256": "5b4cf8974ba9714b8a3b2d08d0025e3d1510b3ca0112b31b9b341c2da003d0ff",
       "expressions": [
         {
           "kind": "graph",

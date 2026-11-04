@@ -1,5 +1,7 @@
 # HRP · Durable HTTP command receipt proof
 
+После [CSB](client-snapshot-boundaries.md) прежний `lib/project-snapshot.ts`, указанный ниже как исходный факт HRP, находится в [pure snapshot public API](../../packages/client/src/lifecycle/project-snapshot/index.ts). Compatibility normalizer остаётся единственным; историческое основание и алгоритм proof сохранены.
+
 Дата: 2026-11-04. Ветка `codex/http-receipt-proof`, база `3d568a8` (`codex/project-session`). Реализация истории разрешена; normalized digest и header policy одобрены root review **до кода**. Production cutover, push и изменение рабочих данных не входят в задачу.
 
 ## Проблема и evidence

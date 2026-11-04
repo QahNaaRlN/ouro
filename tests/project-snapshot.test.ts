@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSeedEvents, PROJECT_ID, replay } from '../packages/core/src';
-import { createProjectSnapshotAdopter, type ProjectSnapshot } from '../lib/project-snapshot';
-import { startProjectSubscription, type ProjectEventSource, type ProjectSubscriptionStatus } from '../lib/project-subscription';
+import { createProjectSnapshotAdopter, type ProjectSnapshot } from '../packages/client/src/lifecycle/project-snapshot';
+import { startProjectSubscription, type ProjectEventSource, type ProjectSubscriptionStatus } from '../packages/client/src/http/project-subscription';
 
 const seed=createSeedEvents();
 const snapshot=(version:number):ProjectSnapshot=>({state:replay(seed.slice(0,version)),cursor:version,storage:'embedded-postgres'});

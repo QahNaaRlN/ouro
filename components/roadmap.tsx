@@ -24,9 +24,12 @@ import {getWorkPairGroups,getWorkPairPresentation,type WorkPairGroup} from '@/pa
 import {VerificationPairCard} from './verification-pair-card';
 import {getCanonicalStatusPresentation,getSpecWorkPresentation} from '@/packages/core/src/work-presentation';
 import {WorkStatus} from './work-status';
+import {twMerge} from 'tailwind-merge';
+import {useWorkspaceAppearance} from './workspace-ui';
+import {graphPresentation,graphHandlePresentation} from '@/packages/frontend/src/shared/ui/graph';
+import {roadmapPresentation as ui} from './roadmap-presentation';
 import {InitialGraphViewportFit,useGraphMeasurements,WorkspaceGraphControls} from './workspace-graph-controls';
 import {isExecutingDependency,layoutRoadmap,ROADMAP_FIT_OPTIONS,ROADMAP_MIN_ZOOM,ROADMAP_NODE_HEIGHT,ROADMAP_NODE_WIDTH} from '@/lib/workspace-graph';
-import './workspace-graphs.css';
 
 export const specLabels: Record<SpecState, string> = {
   idea: "Идея",
@@ -55,24 +58,25 @@ type CardData = {
 };
 type SpecFlowNode = Node<CardData, "spec">;
 function SpecNode({ data }: NodeProps<SpecFlowNode>) {
-  if(data.group.verifications.length)return <div className={`spec-node verification-graph-node ${data.selected?'is-selected':''}`}><Handle type="target" position={Position.Left}/><VerificationPairCard state={data.state} group={data.group} onOpen={data.openLayer} onOpenRequests={data.openRequests} onOpenProposals={data.openProposals}/><Handle type="source" position={Position.Right}/></div>;
+  const workspace=useWorkspaceAppearance();
+  if(data.group.verifications.length)return <div className={twMerge(`spec-node verification-graph-node ${data.selected?'is-selected':''}`,ui.pair)}><Handle className={graphHandlePresentation.roadmap} type="target" position={Position.Left}/><VerificationPairCard classNames={{attention:twMerge(ui.attention,workspace&&ui.pairWorkspaceAttention),proposals:ui.proposals,updated:ui.updated,time:ui.time}} state={data.state} group={data.group} onOpen={data.openLayer} onOpenRequests={data.openRequests} onOpenProposals={data.openProposals}/><Handle className={graphHandlePresentation.roadmap} type="source" position={Position.Right}/></div>;
   return (
-    <div className={`spec-node ${data.selected ? "is-selected" : ""}`}>
-      <Handle type="target" position={Position.Left} />
-      <div className="node-top">
-        <span className="mono">{data.spec.humanId}</span>
+    <div className={twMerge(`spec-node ${data.selected ? "is-selected" : ""}`,ui.card,data.selected&&ui.selected)}>
+      <Handle className={graphHandlePresentation.roadmap} type="target" position={Position.Left} />
+      <div className={twMerge('node-top',ui.top)}>
+        <span className={twMerge('mono',ui.id)}>{data.spec.humanId}</span>
         <ArrowUpRight size={14} />
       </div>
-      <div className="node-title" title={data.spec.title}>{data.spec.title}</div>
-      <p className="node-goal">{data.goal}</p>
-      <div className="node-bottom">
-        <WorkStatus presentation={data.presentation}/>
-        <span className="node-revision">r{data.revision}</span>
+      <div className={twMerge('node-title',ui.title)} title={data.spec.title}>{data.spec.title}</div>
+      <p className={twMerge('node-goal',ui.goal,workspace?ui.workspaceGoal:ui.legacyGoal)}>{data.goal}</p>
+      <div className={twMerge('node-bottom',ui.bottom)}>
+        <WorkStatus className={ui.status} presentation={data.presentation}/>
+        <span className={twMerge('node-revision',ui.revision)}>r{data.revision}</span>
       </div>
-      {data.presentation.currentRequestCount>0&&(data.openRequests?<button className="node-attention nodrag nopan" aria-label={`Вопросы спеки ${data.spec.humanId}`} onClick={event=>{event.stopPropagation();data.openRequests?.(data.spec.id);}}><CircleHelp size={12}/>{data.presentation.currentRequestCount} запросов · открыто {data.presentation.pendingRequestCount}</button>:<div className="node-attention"><CircleHelp size={12}/>{data.presentation.currentRequestCount} запросов · открыто {data.presentation.pendingRequestCount}</div>)}
-      {data.proposalCount>0&&(data.openProposals?<button className="node-proposals nodrag nopan" aria-label={`Предложения спеки ${data.spec.humanId}`} onClick={event=>{event.stopPropagation();data.openProposals?.(data.spec.id);}}>Предложения · {data.proposalCount}</button>:<div className="node-proposals">Предложения · {data.proposalCount}</div>)}
-      <p className="node-updated">{data.presentation.lastUpdatedAt?<><span>Обновлено </span><time dateTime={data.presentation.lastUpdatedAt} aria-label={`Последнее событие ${data.spec.humanId}`}>{new Date(data.presentation.lastUpdatedAt).toLocaleString('ru-RU')}</time></>:<span>Событий пока нет</span>}</p>
-      <Handle type="source" position={Position.Right} />
+      {data.presentation.currentRequestCount>0&&(data.openRequests?<button className={twMerge('node-attention nodrag nopan',ui.attention,ui.requestButton,workspace&&ui.workspaceRequestButton)} aria-label={`Вопросы спеки ${data.spec.humanId}`} onClick={event=>{event.stopPropagation();data.openRequests?.(data.spec.id);}}><CircleHelp size={12}/>{data.presentation.currentRequestCount} запросов · открыто {data.presentation.pendingRequestCount}</button>:<div className={twMerge('node-attention',ui.attention)}><CircleHelp size={12}/>{data.presentation.currentRequestCount} запросов · открыто {data.presentation.pendingRequestCount}</div>)}
+      {data.proposalCount>0&&(data.openProposals?<button className={twMerge('node-proposals nodrag nopan',ui.proposals,ui.proposalButton)} aria-label={`Предложения спеки ${data.spec.humanId}`} onClick={event=>{event.stopPropagation();data.openProposals?.(data.spec.id);}}>Предложения · {data.proposalCount}</button>:<div className={twMerge('node-proposals',ui.proposals)}>Предложения · {data.proposalCount}</div>)}
+      <p className={twMerge('node-updated',ui.updated)}>{data.presentation.lastUpdatedAt?<><span>Обновлено </span><time className={ui.time} dateTime={data.presentation.lastUpdatedAt} aria-label={`Последнее событие ${data.spec.humanId}`}>{new Date(data.presentation.lastUpdatedAt).toLocaleString('ru-RU')}</time></>:<span>Событий пока нет</span>}</p>
+      <Handle className={graphHandlePresentation.roadmap} type="source" position={Position.Right} />
     </div>
   );
 }
@@ -107,6 +111,7 @@ export default function Roadmap({
   selectLabel?:string;
   active?:boolean;
 }) {
+  const workspace=useWorkspaceAppearance();
   const containerRef=useRef<HTMLDivElement>(null);
   const [flowInstance,setFlowInstance]=useState<ReactFlowInstance<SpecFlowNode,Edge>|null>(null);
   const measurements=useGraphMeasurements<SpecFlowNode>();
@@ -172,7 +177,7 @@ export default function Roadmap({
       goal:revision?.goal??'Ожидание ещё не описано',
       selected: [s,...group.verifications].some(item=>item.id===selected),
     },
-    style: { opacity: groupVisible ? 1 : 0.2 },
+    className: groupVisible ? ui.visible : ui.dimmed,
     ariaLabel: `${selectLabel} ${s.humanId}: ${s.title}. ${presentation.label}`,
   });});
   const hiddenIds=new Set(nodes.filter(node=>node.hidden).map(node=>node.id));
@@ -185,13 +190,8 @@ export default function Roadmap({
     animated:isExecutingDependency(state,d,presentations.get(d.to)),
     type: "smoothstep",
     markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
-    style: {
-      stroke: "var(--graph-edge)",
-      strokeWidth: 1.5,
-      strokeDasharray: d.type === "depends_on" ? undefined : "5 5",
-    },
+    className: twMerge(ui.dependency,d.type!=='depends_on'&&ui.relation),
     label: d.type === "depends_on" ? undefined : d.type,
-    labelStyle: { fill: "var(--text-muted)", fontSize: 10 },
   }));
   const change = useCallback((changes: NodeChange[]) => {
     measurements.onChanges(changes as NodeChange<SpecFlowNode>[]);
@@ -209,7 +209,7 @@ export default function Roadmap({
     });
   }, [measurements.onChanges]);
   return (
-    <div ref={containerRef} className="graph-container workspace-graph workspace-roadmap" onKeyDownCapture={event => {
+    <div ref={containerRef} className={twMerge('graph-container workspace-graph workspace-roadmap',ui.frame,workspace?ui.workspaceFrame:ui.legacyFrame,graphPresentation.fullscreen)} onKeyDownCapture={event => {
       if ((event.key !== 'Enter' && event.key !== ' ') || event.repeat) return;
       const target = event.target;
       if (!(target instanceof HTMLElement) || !target.classList.contains('react-flow__node')) return;
@@ -220,6 +220,7 @@ export default function Roadmap({
       openNode(id);
     }}>
       <ReactFlow<SpecFlowNode, Edge>
+        className={graphPresentation.attribution}
         key={layoutKey}
         nodes={nodes}
         edges={edges}
@@ -245,14 +246,15 @@ export default function Roadmap({
         <InitialGraphViewportFit active={active} containerRef={containerRef} instance={flowInstance} fitOptions={ROADMAP_FIT_OPTIONS}/>
         <WorkspaceGraphControls containerRef={containerRef} fitOptions={ROADMAP_FIT_OPTIONS}/>
         <MiniMap
+          className={graphPresentation.minimap}
           nodeColor="var(--selected)"
           maskColor="var(--minimap-mask)"
           pannable
           zoomable
         />
       </ReactFlow>
-      {filterMode==='hide'&&!nodes.some(node=>!node.hidden)&&<div className="workspace-roadmap-empty" role="status">Ничего не найдено. Измените поиск или фильтры.</div>}
-      <div className="graph-caption">
+      {filterMode==='hide'&&!nodes.some(node=>!node.hidden)&&<div className={twMerge('workspace-roadmap-empty',ui.empty)} role="status">Ничего не найдено. Измените поиск или фильтры.</div>}
+      <div className={twMerge('graph-caption',ui.caption)}>
         <GitBranch size={13} />
         <span>A → B: для B нужна принятая A</span>
       </div>
