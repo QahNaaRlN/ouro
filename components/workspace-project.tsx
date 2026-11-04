@@ -1,4 +1,6 @@
 'use client';
+import {twMerge} from 'tailwind-merge';
+import {workspacePresentation as ui} from './workspace-presentation';
 
 import Link from 'next/link';
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
@@ -10,8 +12,8 @@ import {WorkspacePending,freezeWorkspaceIntent,readWorkspaceJSON,sendWorkspaceIn
 
 export default function WorkspaceProjectPage({projectId}:{projectId:string}){
  const {actor,loading,error}=useWorkspaceSession();
- if(loading)return <p className="ws-loading">Проверяем сессию…</p>;
- if(!actor)return <div className="ws-error" role="alert">{error||'Войдите в свой аккаунт Ouro.'}<Link href="/projects">Войти</Link></div>;
+ if(loading)return <p className={twMerge(ui.paragraph,"ws-loading",ui.paragraph)}>Проверяем сессию…</p>;
+ if(!actor)return <div className={twMerge("ws-error",ui.error)} role="alert">{error||'Войдите в свой аккаунт Ouro.'}<Link className={ui.link} href="/projects">Войти</Link></div>;
  return <ProjectScope key={projectId+':'+actor.id} projectId={projectId} actorId={actor.id}/>;
 }
 function ProjectScope({projectId,actorId}:{projectId:string;actorId:string}){
@@ -32,6 +34,6 @@ function ProjectScope({projectId,actorId}:{projectId:string;actorId:string}){
  const command=async(payload:Record<string,unknown>,slot:string,label:string)=>!!await transact(payload,slot,label);
  const assign=async(agentId:string,content:RevisionContent)=>{const result=await transact({agentId,content},'task','Назначить работу: '+content.title,base+'/tasks');return result?.events.find(event=>event.type==='ExecutionCreated')?.payload.execution as Execution??null;};
  const reload=async()=>{try{return await refresh();}catch(e){if(live.current)setError((e as Error).message);return null;}};
- if(!metadata||!snapshot)return <><Link href="/projects">← Проекты</Link>{error?<div role="alert" className="ws-error">{error}<button onClick={()=>void reload()}>Повторить чтение</button></div>:<p>Читаем проект…</p>}</>;
+ if(!metadata||!snapshot)return <><Link className={ui.link} href="/projects">← Проекты</Link>{error?<div role="alert" className={twMerge("ws-error",ui.error)}>{error}<button className={twMerge(ui.button,"leading-[1.6]")} onClick={()=>void reload()}>Повторить чтение</button></div>:<p className={twMerge(ui.paragraph,ui.paragraph)}>Читаем проект…</p>}</>;
  return <WorkspaceProjectView metadata={metadata} state={snapshot.state} cursor={snapshot.cursor} subscriptionStatus={status} error={error} disabled={disabled} command={command} onAssign={assign} onRefresh={reload} pending={<WorkspacePending projectId={projectId} onRecovered={refresh}/>}/>;
 }
