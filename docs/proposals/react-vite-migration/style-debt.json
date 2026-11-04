@@ -20,15 +20,15 @@
     },
     {
       "file": "components/agent-proposals-panel.css",
-      "sha256": "0744567efdf12d72d5e94ae76764cd30c4ca6668e607acf2f40452eb7814ad88",
-      "ordinaryRules": 103,
+      "sha256": "85d02ed5bd8e65b6b7c2da0052d9f17eae1484985646927519a6e66415d7ec20",
+      "ordinaryRules": 102,
       "legacyLayer": true,
       "owner": "specialized-panels"
     },
     {
       "file": "components/collaborative-drafts.css",
-      "sha256": "0b86396498466fe3a319dbb2b4cc268fe522ee13576f3c3268479938e3d4cdc0",
-      "ordinaryRules": 42,
+      "sha256": "a4088786273e8c55244fae8677e6e3e3ace75fc9749bfbe85511b6d4dc21d5a9",
+      "ordinaryRules": 41,
       "legacyLayer": true,
       "owner": "specialized-panels"
     },
@@ -48,29 +48,36 @@
     },
     {
       "file": "components/impact-panel.css",
-      "sha256": "5eba5f96c52d800258973259ab5649aeb7966828bd27403fa9b128e91ffe4c40",
-      "ordinaryRules": 101,
+      "sha256": "d1afc39ddbc083a094bd9e65c8b9979f156ad87183e34ebc98e0a980309a0a5b",
+      "ordinaryRules": 98,
       "legacyLayer": true,
       "owner": "specialized-panels"
     },
     {
+      "file": "components/legacy-shared-defaults.css",
+      "sha256": "c83538e3f738ff9fb5226060bc7141c0ccfeab11b2ebbdc4185403bc913cb5dc",
+      "ordinaryRules": 21,
+      "legacyLayer": true,
+      "owner": "dependent-ui-families/final-css-gate"
+    },
+    {
       "file": "components/lessons-panel.css",
-      "sha256": "c41a2550242f6387271daa2d40dd5a5b1a2597c4d1856aee390ae25fed8eec51",
-      "ordinaryRules": 83,
+      "sha256": "062efd417e288d9b57e9a191280d09761dc123abd6473f3ec3472337f159113e",
+      "ordinaryRules": 82,
       "legacyLayer": true,
       "owner": "specialized-panels"
     },
     {
       "file": "components/meridian-panel.css",
-      "sha256": "1c6ce1c42160b23db52994a8ac5f603112511c6017642595758784e17bd3efd9",
-      "ordinaryRules": 74,
+      "sha256": "c650d92fb1bf3ff760186f8d07353d67421957ef3f23aa829697f95272268b6b",
+      "ordinaryRules": 73,
       "legacyLayer": true,
       "owner": "specialized-panels"
     },
     {
       "file": "components/methodology.css",
-      "sha256": "c930b75f5e5300ea35bc0ce00f1b0a561d6b8bcc24bc1e477ed58dcb51646622",
-      "ordinaryRules": 59,
+      "sha256": "8dc1a7805cb19190532ec8ac5049ee3db991841c84a8e387377c49b7b499fc02",
+      "ordinaryRules": 58,
       "legacyLayer": true,
       "owner": "specialized-panels"
     },
@@ -97,8 +104,8 @@
     },
     {
       "file": "components/state-transitions.css",
-      "sha256": "b48170d188d0dbc5bb64885cdb70429e39bddaa3d11a7b8d4339b968769b4195",
-      "ordinaryRules": 69,
+      "sha256": "c7d1e04fceea12d20a4f84c0c60e9693c0e0935846e49744ba53ef21c1b342bb",
+      "ordinaryRules": 68,
       "legacyLayer": true,
       "owner": "graphs"
     },
@@ -122,40 +129,12 @@
       "ordinaryRules": 24,
       "legacyLayer": true,
       "owner": "graphs"
-    },
-    {
-      "file": "components/workspace-grouped-review.module.css",
-      "sha256": "0ebf14428c454000ef1b5cee0fb94dc3cd4d5630e95efe5cd552e4cbb7eeeed2",
-      "ordinaryRules": 6,
-      "legacyLayer": true,
-      "owner": "workspace"
-    },
-    {
-      "file": "components/workspace-redesign.css",
-      "sha256": "c870dd88a95851d51d46e387dcc6ee82a6725d660e1a1cd50e3b165fcb2f3d70",
-      "ordinaryRules": 82,
-      "legacyLayer": true,
-      "owner": "workspace"
-    },
-    {
-      "file": "components/workspace-styles.css",
-      "sha256": "8d876dbd0593388441919f60d5a3655d563949ac94e2a7f4886ff06c41e085fe",
-      "ordinaryRules": 271,
-      "legacyLayer": true,
-      "owner": "workspace"
-    },
-    {
-      "file": "components/workspace-ui.css",
-      "sha256": "faa043f935aed3ce0df284dd142f17fd0d0e588b64dcdd20a857f5385f1e8823",
-      "ordinaryRules": 49,
-      "legacyLayer": true,
-      "owner": "workspace"
     }
   ],
   "inline": [
     {
       "file": "components/agent-proposals-panel.tsx",
-      "sha256": "b30d2050ba597191f00201ec5eaedf63560244f7282e6a2987bfe2d144a2b198",
+      "sha256": "2e8f06971960b2c5da56bd052cf560f3506f46c16eabebabcee0c6e3c190ce1e",
       "expressions": [
         {
           "kind": "graph",
@@ -182,7 +161,7 @@
     },
     {
       "file": "components/impact-panel.tsx",
-      "sha256": "074d3d805dc541fc78e5e8c5461ab324059ca517ea73fa3febae1415a8bdbe10",
+      "sha256": "035beee2d840c3e1bb07cff60cefc4179edfc123b5c77ff4d8865eb04745cc96",
       "expressions": [
         {
           "kind": "jsx",
@@ -194,7 +173,7 @@
     },
     {
       "file": "components/meridian-panel.tsx",
-      "sha256": "d1ea84c47acaaaabba423539644ad8a29ff32f5126a6e0ec57bacc958578b1e6",
+      "sha256": "774b518d08da9f561d4ed8d189e52c713fd9310294a0ae0f8ef5abc1561d37b6",
       "expressions": [
         {
           "kind": "jsx",
@@ -235,38 +214,6 @@
         }
       ],
       "owner": "specialized-panels"
-    },
-    {
-      "file": "components/project-account.tsx",
-      "sha256": "3dfa7a69f5e8444ae467600451c101c4610527e17eab5b36ed059e706af82444",
-      "expressions": [
-        {
-          "kind": "jsx",
-          "sha256": "02371cfe05b513385b599d07d6a4c0aafbe6c2a65caada38d9bc1d483ab0d58c",
-          "count": 1
-        },
-        {
-          "kind": "jsx",
-          "sha256": "5945ba5d634b3d2630755b7596266af5ab183b45c846b74e588876117501869c",
-          "count": 1
-        },
-        {
-          "kind": "jsx",
-          "sha256": "7d308763fcca84d99c60f27f7eded2a70415dae89b508e262d2ab379599ca5f1",
-          "count": 1
-        },
-        {
-          "kind": "jsx",
-          "sha256": "aeea779fd5dce9492653412e7a6df5a724968a4e494ccb354fb31c2d40a62f97",
-          "count": 1
-        },
-        {
-          "kind": "jsx",
-          "sha256": "eade7878c605484c7f47186e0f67c0ad9141ad66c16ac4f912a1139a31e12c5e",
-          "count": 1
-        }
-      ],
-      "owner": "workspace"
     },
     {
       "file": "components/reality.tsx",
@@ -334,7 +281,7 @@
     },
     {
       "file": "components/spec-flow.tsx",
-      "sha256": "af7243b2c9aba399c9f84c1b803b9b94c11f1cd3868c2668989a21e9d4c4b731",
+      "sha256": "1b22961e74261636291c08a778ec2761dc4c0d488d4c69e396fab611f3fc302f",
       "expressions": [
         {
           "kind": "graph",
@@ -361,7 +308,7 @@
     },
     {
       "file": "components/state-transitions.tsx",
-      "sha256": "fa58ac728e4e6ca23c8a716ea736a3de6368a1dfeb47ed5e48fd3835cb59cefa",
+      "sha256": "f09bb06382f0090b6d40e6d116cd58a604c93840960db5d27da34c914a73096e",
       "expressions": [
         {
           "kind": "graph",
@@ -383,7 +330,7 @@
     },
     {
       "file": "components/workspace-proposals.tsx",
-      "sha256": "a0fa6f64db57d970e000b8e56f61a6d8ed2e172fb552514e459e89a638a47924",
+      "sha256": "fedc9afe8709720f0290337f2250d26acc9d0e2a52f9e634fed8231626a8cc0d",
       "expressions": [
         {
           "kind": "graph",
@@ -404,27 +351,22 @@
           "kind": "graph",
           "sha256": "c08bd47c96d048a326a7c0bb2644b22987d99ff65101bf6d7f51500c4e0d3d55",
           "count": 1
-        },
-        {
-          "kind": "jsx",
-          "sha256": "dea30048b72de0e4b43e01c49f66ded8272089c23db009cb532cd99af1e8903b",
-          "count": 1
         }
       ],
       "owner": "specialized-panels"
     },
     {
       "file": "components/workspace-ui.tsx",
-      "sha256": "f35a328456d1ef7b5d40df5fa3c8f3ebec33b81ef266055fc96fc496c4acda56",
+      "sha256": "7a921ccbe0c765642fe0de048d0ab8e3e7781ff63c13a4bf5ef000b2ba886a83",
       "expressions": [
         {
           "kind": "dom",
-          "sha256": "3f0643055458f19e55a6b54e15101a56c3d470a553d851ffb261222695111b6f",
+          "sha256": "269a4898bd79e655ce0409656952ae863505bbd756b55c0491f0b9bcc64dbc2b",
           "count": 1
         },
         {
           "kind": "dom",
-          "sha256": "a227f42f28786bec32a29159cf69c0f95c331de92d4a5c0ae5a6637bcaf6c00b",
+          "sha256": "5c2996664847f0709bd57d4dcb89679b1ebe29b0b7a5bfda944f59f65c132987",
           "count": 1
         }
       ],
