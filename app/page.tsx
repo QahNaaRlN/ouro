@@ -697,7 +697,7 @@ export default function Home() {
                       </div>
                       <AppSelect
                         aria-label="Фильтр по статусу"
-                        className="filter-select"
+                        className="filter-select h-[34px] max-w-[143px] border-ouro-border px-[5px] py-[4px] text-[12px] [@media(max-width:1250px)]:max-w-[118px] [@media(max-width:900px)]:w-[114px] [@media(max-width:680px)]:max-w-[120px] [@media(max-width:680px)]:w-[120px]"
                         value={status}
                         onValueChange={(value) => setStatus(value)}
                       >
@@ -708,10 +708,10 @@ export default function Home() {
                           </option>
                         ))}
                       </AppSelect>
-                      <AppSelect aria-label="Фильтр по агенту" className="filter-select" value={agentFilter} onValueChange={(value) =>setAgentFilter(value)}>
+                      <AppSelect aria-label="Фильтр по агенту" className="filter-select h-[34px] max-w-[143px] border-ouro-border px-[5px] py-[4px] text-[12px] [@media(max-width:1250px)]:max-w-[118px] [@media(max-width:900px)]:w-[114px] [@media(max-width:680px)]:max-w-[120px] [@media(max-width:680px)]:w-[120px]" value={agentFilter} onValueChange={(value) =>setAgentFilter(value)}>
                         <option value="">Все агенты</option>{[...new Set([...filterOptions.agentIds,...(agentFilter?[agentFilter]:[])])].map(id=><option key={id} value={id}>{id===AGENT_ID?'Симулятор агента':`${agents.find(a=>a.id===id)?.name??id.slice(0,8)}${agents.find(a=>a.id===id)?.revokedAt?' · ключ отозван':''}`}</option>)}
                       </AppSelect>
-                      <AppSelect aria-label="Фильтр по открытому запросу" className="filter-select" value={requestFilter} onValueChange={(value) =>setRequestFilter(value)}>
+                      <AppSelect aria-label="Фильтр по открытому запросу" className="filter-select h-[34px] max-w-[143px] border-ouro-border px-[5px] py-[4px] text-[12px] [@media(max-width:1250px)]:max-w-[118px] [@media(max-width:900px)]:w-[114px] [@media(max-width:680px)]:max-w-[120px] [@media(max-width:680px)]:w-[120px]" value={requestFilter} onValueChange={(value) =>setRequestFilter(value)}>
                         <option value="">Все открытые запросы</option>{Object.entries(kinds).map(([kind,label])=><option key={kind} value={kind}>{label}</option>)}
                       </AppSelect>
                       <button
@@ -793,7 +793,7 @@ export default function Home() {
                     </button>
                   </div>
                   <div className="spec-picker">
-                    <AppSelect
+                    <AppSelect className="w-full border-ouro-border bg-ouro-subtle p-[10px] text-[12px]"
                       aria-label="Выбрать спецификацию"
                       value={selected ?? ""}
                       onValueChange={(value) => pick(value)}
@@ -875,7 +875,7 @@ export default function Home() {
                         const shown=state.revisions.find(r=>r.id===flowRevisionId&&r.specId===spec.id)??state.revisions.find(r=>r.id===spec.revisionIds.at(-1))??revision;
                         return <>
                           <div className="run-toolbar">
-                            <label className="form-label">Ревизия схемы<AppSelect aria-label="Ревизия схемы" value={shown.id} onValueChange={(value) =>setFlowRevisionId(value)}>{state.revisions.filter(r=>r.specId===spec.id).toReversed().map(r=><option key={r.id} value={r.id}>r{r.revision} · {r.id===spec.activeRevisionId?'активная':r.id===spec.revisionIds.at(-1)?'предложена':'историческая'}</option>)}</AppSelect></label>
+                            <label className="form-label">Ревизия схемы<AppSelect className="w-full font-normal max-w-full p-[8px] text-[12px]" aria-label="Ревизия схемы" value={shown.id} onValueChange={(value) =>setFlowRevisionId(value)}>{state.revisions.filter(r=>r.specId===spec.id).toReversed().map(r=><option key={r.id} value={r.id}>r{r.revision} · {r.id===spec.activeRevisionId?'активная':r.id===spec.revisionIds.at(-1)?'предложена':'историческая'}</option>)}</AppSelect></label>
                             {shown.id!==spec.activeRevisionId&&shown.id===spec.revisionIds.at(-1)&&<button className="btn" disabled={!canWrite||busy} onClick={()=>command({type:'activateRevision',specId:spec.id,revisionId:shown.id},'Ревизия схемы активирована. История прежних попыток сохранена.')}><Check size={14}/>Активировать ревизию {shown.revision}</button>}
                           </div>
                           <SpecFlow key={shown.id} revision={shown} state={state} busy={busy} readOnly={!canWrite} onSave={saveFlow} actorId={identity?.id??'unauthenticated'} intents={flowRuntimeIntents.current} onCommand={runFlowCommand} onSimulateFlow={identity&&['local-human','human-token'].includes(identity.id)?simulateFlowCommand:undefined}/>
@@ -1128,7 +1128,7 @@ export default function Home() {
                                 </button>
                                 </div>
                               )}
-                            <AppSelect
+                            <AppSelect className="max-w-full p-[8px] text-[12px]"
                               aria-label="Симулятор в контексте спецификации"
                               value=""
                               disabled={busy || !simulatorAvailable}
@@ -1348,7 +1348,7 @@ export default function Home() {
                   <div className="history-filter">
                     <label>
                       Контекст
-                      <AppSelect
+                      <AppSelect className="mt-[6px] block w-full border-ouro-border p-[8px] text-[12px]"
                         aria-label="Контекст"
                         value={selected ?? ""}
                         onValueChange={(value) => setSelected(value || null)}
@@ -1523,7 +1523,7 @@ export default function Home() {
                 <p>{execution?.agentId && execution.agentId!==AGENT_ID ? 'Эта попытка назначена MCP-агенту. Его факты и подтверждения поступают через подключение.' : 'Учебные сценарии работают только для попыток, назначенных симулятору.'}</p>
                 <label>
                   Сообщение агента
-                  <AppSelect
+                  <AppSelect className="mt-[7px] block w-full p-[8px] text-[12px]"
                     aria-label="Сценарий симулятора"
                     value=""
                     disabled={busy || !selected || !simulatorAvailable}
@@ -1735,7 +1735,7 @@ function SpecTable({
 
 function AgentPicker({agents,value,onChange,disabled=false}:{agents:AgentRegistration[];value:string;onChange:(id:string)=>void;disabled?:boolean}){
   const valid=value===AGENT_ID||agents.some(a=>a.id===value&&!a.revokedAt);
-  return <label className="agent-picker">Исполнитель попытки<AppSelect aria-label="Исполнитель попытки" value={valid?value:''} onValueChange={(value) =>onChange(value)} disabled={disabled}><option value="" disabled>Выберите исполнителя</option><option value={AGENT_ID}>Симулятор · учебный режим</option>{agents.filter(a=>!a.revokedAt).map(a=><option value={a.id} key={a.id}>{a.name} · MCP</option>)}</AppSelect></label>;
+  return <label className="agent-picker">Исполнитель попытки<AppSelect className="min-h-[36px] w-full max-w-[300px] rounded-[var(--radius)] bg-ouro-bg p-[8px] text-[12px] text-ouro-text [.agent-assignment-vertical_&]:max-w-full" aria-label="Исполнитель попытки" value={valid?value:''} onValueChange={(value) =>onChange(value)} disabled={disabled}><option value="" disabled>Выберите исполнителя</option><option value={AGENT_ID}>Симулятор · учебный режим</option>{agents.filter(a=>!a.revokedAt).map(a=><option value={a.id} key={a.id}>{a.name} · MCP</option>)}</AppSelect></label>;
 }
 
 function DecisionForm({
@@ -2607,7 +2607,7 @@ function DependencyForm({
       </p>
       <label className="form-label">
         A · Предшествующая спека
-        <AppSelect aria-label="A · Предшествующая спека" value={from} onValueChange={(value) => setFrom(value)} required>
+        <AppSelect className="w-full text-[14px] font-normal" aria-label="A · Предшествующая спека" value={from} onValueChange={(value) => setFrom(value)} required>
           {specs.map((s) => (
             <option key={s.id} value={s.id}>
               {s.humanId} — {s.title}
@@ -2617,7 +2617,7 @@ function DependencyForm({
       </label>
       <label className="form-label">
         B · Зависимая спека
-        <AppSelect aria-label="B · Зависимая спека" value={to} onValueChange={(value) => setTo(value)} required>
+        <AppSelect className="w-full text-[14px] font-normal" aria-label="B · Зависимая спека" value={to} onValueChange={(value) => setTo(value)} required>
           {specs.map((s) => (
             <option key={s.id} value={s.id}>
               {s.humanId} — {s.title}

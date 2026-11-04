@@ -8,6 +8,13 @@
   "scripts": {
     "predev": "npm run protocol:build",
     "dev": "node scripts/local-next.mjs dev",
+    "preweb:dev": "npm run protocol:build",
+    "web:dev": "npm --prefix apps/web run dev",
+    "preweb:build": "npm run protocol:build",
+    "web:build": "npm --prefix apps/web run build",
+    "web:preview": "npm --prefix apps/web run preview",
+    "web:typecheck": "npm --prefix apps/web run typecheck",
+    "web:test:e2e": "playwright test --config=apps/web/playwright.config.ts",
     "prebuild": "npm run protocol:build",
     "build": "next build --webpack",
     "start": "node scripts/local-next.mjs start",
@@ -30,6 +37,9 @@
     "release:pack": "node scripts/pack-release.mjs",
     "check:conventions": "node scripts/check-conventions.mjs",
     "check:architecture": "node scripts/check-architecture.mjs",
+    "migration:check": "node scripts/check-migration-baseline.mjs",
+    "styles:check": "node scripts/check-ui-styles.mjs",
+    "styles:final": "node scripts/check-ui-styles.mjs --final",
     "test:e2e:production": "playwright test --config=playwright.production.config.ts",
     "start:hosted": "node scripts/hosted-next.mjs",
     "test:external-pg": "npm run protocol:build && node scripts/qualify-postgres.mjs",
@@ -53,11 +63,13 @@
     "pg": "^8.16.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "tailwind-merge": "3.7.0",
     "yjs": "^13.6.33",
     "zod": "^4.1.12"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
+    "@tailwindcss/postcss": "4.3.3",
     "@types/dagre": "^0.7.53",
     "@types/node": "^24.10.0",
     "@types/nodemailer": "^8.0.2",
@@ -65,6 +77,8 @@
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "ajv": "^8.20.0",
+    "postcss": "8.5.32",
+    "tailwindcss": "4.3.3",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   }
