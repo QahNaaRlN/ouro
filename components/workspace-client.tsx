@@ -3,10 +3,11 @@ import {twMerge} from 'tailwind-merge';
 import {workspacePresentation as ui} from './workspace-presentation';
 
 import {WorkspaceAccordion} from './workspace-ui';
-import {createContext,useContext,useEffect,useState,useSyncExternalStore,type ReactNode} from 'react';
+import {createContext,useContext,useEffect,useState,useSyncExternalStore,useCallback,type ReactNode} from 'react';
 import type {Actor} from '@/packages/core/src';
 import {createIdentityReadController} from '@/packages/client/src/lifecycle/create-identity-read-controller';
-import {readIdentitySession} from '@/packages/client/src/http/read-identity-session';
+import {useIdentitySessionRead} from '@/packages/frontend/src/api/catalog-reads';
+import type {CatalogReadScope} from '@/packages/client/src/ports';
 import {readWorkspaceJSON,sendWorkspaceIntent,getWorkspaceIntents,getWorkspaceIntentsVersion,hasPendingWorkspaceIntents,subscribeWorkspaceIntents,forgetRejectedWorkspaceIntent} from '@/packages/client/src/http/workspace-intents';
 export {freezeWorkspaceIntent,readWorkspaceJSON,sendWorkspaceIntent,forgetRejectedWorkspaceIntent,reviewUnknownWorkspaceIntent,restoreUnknownWorkspaceIntent} from '@/packages/client/src/http/workspace-intents';
 export type {WorkspaceProject,WorkspaceConnection,WorkspaceSnapshot,WorkspaceIntent} from '@/packages/client/src/http/workspace-intents';
@@ -22,14 +23,15 @@ export function useWorkspaceIntents(projectId:string|null,actorId:string|undefin
   useSyncExternalStore(subscribeWorkspaceIntents,getWorkspaceIntentsVersion,()=>0);
   return getWorkspaceIntents(projectId,actorId);
 }
-type WorkspaceSession={actor:Actor|null;localOperator:boolean;accessEpoch:number;loading:boolean;error:string;refresh:()=>Promise<void>};
+type WorkspaceSession={actor:Actor|null;localOperator:boolean;hasAccount:boolean;accessEpoch:number;readScope:CatalogReadScope;unavailable:boolean;loading:boolean;error:string;refresh:()=>Promise<void>};
 const SessionContext=createContext<WorkspaceSession|null>(null);
 export function WorkspaceProvider({children}:{children:ReactNode}){
   const [actor,setActor]=useState<Actor|null>(null),[localOperator,setLocalOperator]=useState(false),[accessEpoch,setAccessEpoch]=useState(0),[loading,setLoading]=useState(true),[error,setError]=useState('');
   const [identityReads]=useState(createIdentityReadController);
-  const refresh=async()=>{const ticket=identityReads.begin();if(!ticket)return;setAccessEpoch(ticket.accessEpoch);setActor(null);setLocalOperator(false);setLoading(true);setError('');const outcome=await ticket.run(async signal=>{const session=await readIdentitySession(signal);if(!session.hasAccount&&!session.canManageParticipants)throw new Error('Откройте проект через свой аккаунт Ouro.');return session;});if(outcome.status==='superseded')return;if(outcome.status==='accepted'){setActor(outcome.value.actor);setLocalOperator(outcome.value.canManageParticipants);}else setError(outcome.error instanceof Error?outcome.error.message:'Не удалось проверить сессию.');setLoading(false);};
-  useEffect(()=>{identityReads.mount();void refresh();if(!unloadInstalled){window.addEventListener('beforeunload',event=>{if(hasPendingWorkspaceIntents()){event.preventDefault();event.returnValue='';}});unloadInstalled=true;}return()=>identityReads.unmount();},[identityReads]);
-  return <SessionContext.Provider value={{actor,localOperator,accessEpoch,loading,error,refresh}}>{children}</SessionContext.Provider>;
+  const [hasAccount,setHasAccount]=useState(false),[unavailable,setUnavailable]=useState(false),{read,scope}=useIdentitySessionRead();
+  const refresh=useCallback(async()=>{const ticket=identityReads.begin();if(!ticket)return;setAccessEpoch(ticket.accessEpoch);setActor(null);setLocalOperator(false);setHasAccount(false);setUnavailable(false);setLoading(true);setError('');const outcome=await ticket.run(async signal=>{const result=await read({accessEpoch:ticket.accessEpoch,projectId:null},signal);if(result.status==='unsupported')return result;if(!result.value.hasAccount&&!result.value.canManageParticipants)throw new Error('Откройте проект через свой аккаунт Ouro.');return result;});if(outcome.status==='superseded')return;if(outcome.status==='accepted'){if(outcome.value.status==='unsupported'){setUnavailable(true);setError('Чтение сессии недоступно в этом окружении.');}else{setActor(outcome.value.value.actor);setLocalOperator(outcome.value.value.canManageParticipants);setHasAccount(outcome.value.value.hasAccount);}}else setError(outcome.error instanceof Error?outcome.error.message:'Не удалось проверить сессию.');setLoading(false);},[identityReads,read]);
+  useEffect(()=>{identityReads.mount();void refresh();if(!unloadInstalled){window.addEventListener('beforeunload',event=>{if(hasPendingWorkspaceIntents()){event.preventDefault();event.returnValue='';}});unloadInstalled=true;}return()=>identityReads.unmount();},[identityReads,refresh]);
+  return <SessionContext.Provider value={{actor,localOperator,hasAccount,accessEpoch,readScope:scope({accessEpoch,actorId:actor?.id??null,projectId:null}),unavailable,loading,error,refresh}}>{children}</SessionContext.Provider>;
 }
 export function useWorkspaceSession(){const session=useContext(SessionContext);if(!session)throw new Error('Workspace provider required');return session;}
 

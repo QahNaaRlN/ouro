@@ -5,12 +5,17 @@ import { currentDecisionRequests } from '@/packages/core/src/decision-lineage';
 import { getSpecWorkPresentation } from '@/packages/core/src/work-presentation';
 import { WorkStatus } from './work-status';
 import './verification.css';
-export function VerificationPairCard({ state, group, onOpen, onOpenRequests, onOpenProposals }: {
+
+/** Потребитель задаёт только оформление context slots; карточка не знает поверхность родительского экрана. */
+export type VerificationPairClassNames=Readonly<Partial<Record<'attention'|'proposals'|'updated'|'time',string>>>;
+
+export function VerificationPairCard({ state, group, onOpen, onOpenRequests, onOpenProposals, classNames }: {
     state: ProjectState;
     group: WorkPairGroup;
     onOpen: (specId: string, revisionId: string) => void;
     onOpenRequests?: (specId: string, revisionId: string) => void;
     onOpenProposals?: (specId: string, revisionId: string) => void;
+    classNames?:VerificationPairClassNames;
 }) {
     const pair = getWorkPairPresentation(state, group), [override, setOverride] = useState<string | null>(null);
     const foreground = [group.work, ...group.verifications].find(item => item.id === override) ?? pair.foreground;
@@ -35,9 +40,9 @@ export function VerificationPairCard({ state, group, onOpen, onOpenRequests, onO
             <WorkStatus presentation={presentation}/>
             {verification && <><p className="verification-summary">{verification.resultLabel} · {verification.applicabilityLabel}</p><small>Записанная фаза: {verification.phaseLabel}</small></>}
             <div className="verification-card-context">
-              <div>{requests.length > 0 && (onOpenRequests ? <button type="button" className="node-attention" tabIndex={active ? 0 : -1} aria-label={`Вопросы спеки ${face.spec.humanId}`} onClick={event => { event.stopPropagation(); onOpenRequests(face.spec.id, face.revisionId); }}>{requests.length} запросов · открыто {requests.filter(request => request.state === 'pending').length}</button> : <span>{requests.length} запросов · открыто {requests.filter(request => request.state === 'pending').length}</span>)}</div>
-              <div>{proposalCount > 0 && (onOpenProposals ? <button type="button" className="node-proposals" tabIndex={active ? 0 : -1} aria-label={`Предложения спеки ${face.spec.humanId}`} onClick={event => { event.stopPropagation(); onOpenProposals(face.spec.id, face.revisionId); }}>Предложения · {proposalCount}</button> : <span>Предложения · {proposalCount}</span>)}</div>
-              <p className="node-updated">{presentation.lastUpdatedAt ? <><span>Обновлено </span><time dateTime={presentation.lastUpdatedAt} aria-label={`Последнее событие ${face.spec.humanId}`}>{new Date(presentation.lastUpdatedAt).toLocaleString('ru-RU')}</time></> : <span>Событий пока нет</span>}</p>
+              <div>{requests.length > 0 && (onOpenRequests ? <button type="button" className={classNames?.attention?`node-attention ${classNames.attention}`:'node-attention'} tabIndex={active ? 0 : -1} aria-label={`Вопросы спеки ${face.spec.humanId}`} onClick={event => { event.stopPropagation(); onOpenRequests(face.spec.id, face.revisionId); }}>{requests.length} запросов · открыто {requests.filter(request => request.state === 'pending').length}</button> : <span>{requests.length} запросов · открыто {requests.filter(request => request.state === 'pending').length}</span>)}</div>
+              <div>{proposalCount > 0 && (onOpenProposals ? <button type="button" className={classNames?.proposals?`node-proposals ${classNames.proposals}`:'node-proposals'} tabIndex={active ? 0 : -1} aria-label={`Предложения спеки ${face.spec.humanId}`} onClick={event => { event.stopPropagation(); onOpenProposals(face.spec.id, face.revisionId); }}>Предложения · {proposalCount}</button> : <span>Предложения · {proposalCount}</span>)}</div>
+              <p className={classNames?.updated?`node-updated ${classNames.updated}`:'node-updated'}>{presentation.lastUpdatedAt ? <><span>Обновлено </span><time className={classNames?.time} dateTime={presentation.lastUpdatedAt} aria-label={`Последнее событие ${face.spec.humanId}`}>{new Date(presentation.lastUpdatedAt).toLocaleString('ru-RU')}</time></> : <span>Событий пока нет</span>}</p>
             </div>
           </div>;
       })}
