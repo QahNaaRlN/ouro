@@ -1,11 +1,12 @@
 import {test,expect} from '@playwright/test';
-import {mkdir,readFile,writeFile} from 'node:fs/promises';
+import {mkdir,writeFile} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import type {ProjectState} from '../packages/core/src';
+import {processFixture} from './process-presentation-fixture';
 
 /** Настоящий workspace route дополняет scoped renderer проверкой фактического CSS порядка layout. */
-test('TWR02 actual workspace runtime inspector preserves the layout cascade',async({page})=>{
- const fixture=JSON.parse(await readFile(join(process.env.OURO_E2E_DATA_DIR!,'process-visual-fixture.json'),'utf8')),output=resolve(process.env.OURO_RUNTIME_WORKSPACE_VISUAL_DIR??'.operations/runtime-workspace-original');await mkdir(output,{recursive:true});
+test('TWR02 actual workspace runtime inspector preserves the layout cascade',async({page,baseURL})=>{
+ const fixture=await processFixture(page,baseURL),output=resolve(process.env.OURO_RUNTIME_WORKSPACE_VISUAL_DIR??'.operations/runtime-workspace-original');await mkdir(output,{recursive:true});
  const metrics:Record<string,unknown>={};
  for(const theme of ['dark','light'])for(const width of [1440,390]){
   await page.setViewportSize({width,height:width===1440?1000:844});await page.goto('/');await expect(page.getByRole('heading',{name:/^Дорожная карта/})).toBeVisible();const state=(await(await page.request.get('/api/project')).json()).state as ProjectState;

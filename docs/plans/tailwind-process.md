@@ -32,3 +32,9 @@ Feature commit `e15fb79` синхронизирован с чистым G1 `8ada
 На synced head: Next production/strictTS PASS; **свежий отдельный profile —20/20 functional PASS1.4m** (включая receipt recovery после UNKNOWN, retries/loops, explicit decisions и GR01–GR06); Vite strictTS/build PASS7.75s; architecture855files/0violations/11exactlegacyedges; styles14CSS853rules/6inline17expressions/0violations;334compiler candidates PASS. Parent portable-contract work уменьшил прежний legacy inventory; UI-срез не расширял разрешения guard.
 
 Журнал синхронизации фиксируется отдельно; G2 source передаётся владельцу эпика для PR/CI без child push. Собственные profiles/artifacts остаются в `.operations`, исходный main/реальные пользовательские данные не менялись. G3 runtime56 и оставшиеся общие/специализированные стили остаются открытыми.
+
+## Общая композиция с интеграциями и участниками
+
+Root объединил G1/P3/P42 и текущие client/runtime contracts. Source конфликтов не было; два конфликта ledger разрешены трёхсторонним сравнением каждой записи с merge base. Независимые изменения сохранены, одновременное несовпадающее изменение одной записи приводит к отказу вспомогательной проверки. Фактический остаток: **10 CSS-файлов / 644 правила / 5 inline-файлов / 14 выражений**, style gate0violations. Root/web strict types PASS; architecture863files/0violations/11existingedges и diff check PASS.
+
+Исторические 124 visual состояния и последующий 20/20 functional run сохраняют свои исходные границы; эта синхронизация не переснимает их и не выдаёт за результат новой сборки. Full combined CI текущего PR обязателен до merge. G1 и P3 являются родительскими историями и объединяются в эпик раньше G2. Runtime и другие CSS families остаются отдельной работой.
