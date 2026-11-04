@@ -1,5 +1,7 @@
 "use client";
 
+import {IntegrationSourceSwitch} from '@/components/IntegrationSourceSwitch';
+
 import {WorkspaceAccordion} from '@/components/workspace-ui';
 import {AppSelect} from '@/components/app-select';
 import { projectFetch } from '@/lib/client-project';
@@ -11,6 +13,7 @@ import {humanSpec} from './human-view/spec-presentation';
 import {humanContext,humanRequestKinds} from './human-view/context-presentation';
 import {humanHistory,humanMethodology} from './human-view/history-presentation';
 import {humanModal} from './human-view/modal-presentation';
+import {humanMaintenance} from './human-view/maintenance-presentation';
 import {humanDecision} from './human-view/decision-presentation';
 
 import packageInfo from '../package.json';
@@ -80,7 +83,7 @@ import { StateTransitions } from "@/components/state-transitions";
 import HistoricalPanel from "@/components/historical-panel";
 import {useProjectSession} from '@/components/project-session-provider';
 import {createIdentityReadController} from '@/packages/client/src/lifecycle/create-identity-read-controller';
-import {readIdentitySession} from '@/packages/client/src/http/read-identity-session';
+import {useIdentitySessionRead} from '@/packages/frontend/src/api/catalog-reads';
 import {WorkspacePendingList,readWorkspaceJSON} from '@/components/workspace-client';
 import {freezeProjectCommandIntent} from '@/packages/client/src/ports';
 import {planProjectCommandDispatch} from '@/packages/client/src/http/project-command-dispatch';
@@ -180,6 +183,9 @@ export default function Home() {
   const [agents, setAgents] = useState<AgentRegistration[]>([]);
   const [identity,setIdentity]=useState<Actor|null>(null),[sharedPending,setSharedPending]=useState(false);
   const [identityReads]=useState(createIdentityReadController),[accessEpoch,setAccessEpoch]=useState(0);
+  const {read:readIdentity,scope:identityScope,readAccountProjects}=useIdentitySessionRead();
+  const [hasAccount,setHasAccount]=useState(false),[identityUnavailable,setIdentityUnavailable]=useState(false);
+  const readScope=identityScope({accessEpoch,actorId:identity?.id??null,projectId:selectedProjectId()});
   const owner=useProjectSession(identity?{projectId:selectedProjectId(),actorId:identity.id,accessEpoch}:undefined,'legacy');
   const state=owner.snapshot?.state??null,storage=owner.snapshot?.storage??'',cursor=owner.snapshot?.cursor??0;
   const [flowTrackingSelections,setFlowTrackingSelections]=useState<Record<string,boolean>>({});
@@ -255,25 +261,30 @@ export default function Home() {
   useEffect(()=>{if(!state||hasInitialSelection.current)return;setSelected(state.specs[0]?.id??null);hasInitialSelection.current=true;},[state]);
   const refreshIdentity=useCallback(async()=>{
     const ticket=identityReads.begin();if(!ticket)return;
-    setAccessEpoch(ticket.accessEpoch);setIdentity(null);setProjectRole(null);setAgents([]);setLoading(true);setError('');
+    setAccessEpoch(ticket.accessEpoch);setIdentity(null);setHasAccount(false);setIdentityUnavailable(false);setProjectRole(null);setAgents([]);setLoading(true);setError('');
     const outcome=await ticket.run(async signal=>{
-      const session=await readIdentitySession(signal),actor=session.actor;
-      let role:ProjectRole|null=actor&&['local-human','human-token'].includes(actor.id)?'Owner':actor?'Contributor':null,fallbackProjectId:string|null=null;
+      const result=await readIdentity({accessEpoch:ticket.accessEpoch,projectId:selectedProjectId()},signal);
+      if(result.status==='unsupported')return result;
+      const session=result.value,actor=session.actor;
+      let role:ProjectRole|null=actor&&session.canManageParticipants?'Owner':actor?'Contributor':null,fallbackProjectId:string|null=null;
       if(session.hasAccount&&actor){
-        const projects=await readWorkspaceJSON<{projects:Array<{id:string;role?:ProjectRole}>}>('/api/projects',signal),selectedId=selectedProjectId(),current=projects.projects.find(project=>project.id===selectedId);
-        if(!current&&projects.projects[0])fallbackProjectId=projects.projects[0].id;
+        const projects=await readAccountProjects(identityScope({accessEpoch:ticket.accessEpoch,actorId:actor.id,projectId:selectedProjectId()}),signal);
+        if(projects.status==='unsupported')return projects;
+        const selectedId=selectedProjectId(),current=projects.value.find(project=>project.id===selectedId);
+        if(!current&&projects.value[0])fallbackProjectId=projects.value[0].id;
         role=current?.role??null;
       }
       const agents=await readWorkspaceJSON<{agents:AgentRegistration[]}>('/api/agents?projectId='+encodeURIComponent(selectedProjectId()),signal).then(value=>value.agents).catch(()=>[]);
-      return {actor,role,agents,fallbackProjectId};
+      return {status:'available' as const,actor,role,agents,fallbackProjectId,hasAccount:session.hasAccount};
     });
     if(outcome.status==='superseded')return;
     if(outcome.status==='accepted'){
-      if(outcome.value.fallbackProjectId){selectProject(outcome.value.fallbackProjectId);return;}
-      setIdentity(outcome.value.actor);setProjectRole(outcome.value.role);setAgents(outcome.value.agents);
+      if(outcome.value.status==='unsupported'){setIdentityUnavailable(true);setError('Чтение сессии или каталога недоступно в этом окружении.');}
+      else{if(outcome.value.fallbackProjectId){selectProject(outcome.value.fallbackProjectId);return;}
+      setIdentity(outcome.value.actor);setHasAccount(outcome.value.hasAccount);setProjectRole(outcome.value.role);setAgents(outcome.value.agents);}
     }else setError(outcome.error instanceof Error?outcome.error.message:'Не удалось проверить сессию.');
     setLoading(false);
-  },[identityReads]);
+  },[identityReads,readIdentity,identityScope,readAccountProjects]);
   useEffect(()=>{identityReads.mount();void refreshIdentity();return()=>identityReads.unmount();},[identityReads,refreshIdentity]);
   useEffect(() => {
     const saved = localStorage.getItem("ouro-theme");
@@ -504,7 +515,7 @@ export default function Home() {
           </span>
           <span className={humanShell.alpha}>{packageInfo.version.split('-')[1]?.split('.')[0].toUpperCase()??'RELEASE'}</span>
         </Link>
-        <ProjectSwitcher identity={identity}/>
+        <ProjectSwitcher identity={identity} hasAccount={hasAccount} readScope={readScope}/>
         <div className={humanShell.navigationLabel}>ПРОЕКТ</div>
         <nav className={humanShell.navigation} aria-label="Основная навигация">
           <a className={humanShell.navigationItem} href="/projects"><Box size={18}/><span>Проекты</span></a>
@@ -617,8 +628,8 @@ export default function Home() {
             <TriangleAlert size={30} />
             <h1 className={humanShell.loadingHeading}>Проект недоступен</h1>
             <p className={humanShell.loadingCopy}>{error || "Проверьте запуск сервера и локальную сессию."}</p>
-            <EmailLogin/>
-            <WorkspaceAccordion defaultOpen title={<>Вход по прежнему ключу участника</>}><ParticipantLogin/></WorkspaceAccordion>
+            {!identityUnavailable&&<EmailLogin/>}
+            {!identityUnavailable&&<WorkspaceAccordion defaultOpen title={<>Вход по прежнему ключу участника</>}><ParticipantLogin/></WorkspaceAccordion>}
             <button className="btn" onClick={() => void refreshIdentity()}>
               Повторить
             </button>
@@ -1355,10 +1366,10 @@ export default function Home() {
                       Экспорт JSON
                     </button>
                   </div>
-                  <form className="history-cursor-form" onSubmit={event=>{event.preventDefault();const value=Number(historicalInput);if(historicalInput.trim()===''||!Number.isSafeInteger(value)||value<0||value>state.version){setError(`Cursor должен быть целым числом от 0 до ${state.version}.`);return;}historicalCursorRef.current=value;setHistoricalCursor(value);setModal(null);setError('');}}>
-                    <label>Исторический cursor<input type="number" min={0} max={state.version} step={1} required value={historicalInput} onChange={event=>setHistoricalInput(event.target.value)}/></label>
+                  <form className={twMerge("history-cursor-form",humanMaintenance.cursorForm)} onSubmit={event=>{event.preventDefault();const value=Number(historicalInput);if(historicalInput.trim()===''||!Number.isSafeInteger(value)||value<0||value>state.version){setError(`Cursor должен быть целым числом от 0 до ${state.version}.`);return;}historicalCursorRef.current=value;setHistoricalCursor(value);setModal(null);setError('');}}>
+                    <label className={humanMaintenance.cursorLabel}>Исторический cursor<input className={humanMaintenance.cursorInput} type="number" min={0} max={state.version} step={1} required value={historicalInput} onChange={event=>setHistoricalInput(event.target.value)}/></label>
                     <button type="submit" className="btn" disabled={busy}>Открыть состояние на cursor</button>
-                    <p>Состояние из сохранённого префикса истории. В просмотре прошлой точки запись недоступна.</p>
+                    <p className={humanMaintenance.cursorCopy}>Состояние из сохранённого префикса истории. В просмотре прошлой точки запись недоступна.</p>
                   </form>
                   <div className={humanHistory.filter}>
                     <label className={humanHistory.filterLabel}>
@@ -1401,13 +1412,13 @@ export default function Home() {
               {view === "methodology" && <Methodology />}
               {view === "agents" && <AgentsPanel onAgentsChange={setAgents} readOnly={projectRole!=='Owner'}/>}
               {view==='integrations'&&<>
-                <div className="integration-source-switch" role="group" aria-label="Источник интеграции"><button type="button" aria-pressed={integrationSource==='github'} onClick={()=>setIntegrationSource('github')}>GitHub</button><button type="button" aria-pressed={integrationSource==='meridian'} onClick={()=>setIntegrationSource('meridian')}>Meridian</button></div>
+                <IntegrationSourceSwitch value={integrationSource} onValueChange={setIntegrationSource}/>
                 <div hidden={integrationSource!=='github'}><GitHubPanel state={state} onSnapshot={adoptMutation} readOnly={!canWrite}/></div>
                 <div hidden={integrationSource!=='meridian'}><MeridianPanel key={`${state.projectId}:${meridianParticipantKey}`} participantKey={meridianParticipantKey} pendingIntent={meridianPendingIntent} theme={theme} state={state} onSnapshot={adoptMutation} readOnly={!canWrite} onOpenSpec={id=>{pick(id);setDetailTab('expectation');setView('specs');}}/></div>
               </>}
               {view==='lessons'&&<LessonsPanel state={state} onSnapshot={adoptMutation} readOnly={!canWrite} onOpenSpec={id=>{pick(id);setView('specs');setDetailTab('expectation');}}/>}
               {view==='impact'&&<ImpactPanel state={state}/>}
-              {view==='participants'&&(identity&&!['local-human','human-token'].includes(identity.id)?<ProjectMembersPanel projectId={state.projectId} identity={identity}/>:<ParticipantsPanel/>)}
+              {view==='participants'&&(identity&&!['local-human','human-token'].includes(identity.id)?<ProjectMembersPanel projectId={state.projectId} identity={identity} readScope={{...readScope,projectId:state.projectId}}/>:<ParticipantsPanel/>)}
               {view==='drafts'&&<CollaborativeDraftsPanel state={state} actorId={identity?.id??'local-human'} onSnapshot={adoptMutation} onPendingChange={setSharedPending} readOnly={!canWrite} onOpenSpec={id=>{pick(id);setView('specs');}}/>}
               {view==='proposals'&&<AgentProposalsPanel state={state} actorId={identity?.id??'unauthenticated'} onSnapshot={adoptMutation} intents={proposalIntents} initialSelection={proposalFocus} readOnly={!canWrite} onOpenSpec={id=>{pick(id);setView('specs');setDetailTab('expectation');}}/>}
               </>}
@@ -2096,20 +2107,20 @@ function DecisionMaintenance({request:r,state,busy,command,onOpenRequest}:{reque
       setMode(null);setDraft('');if(created)onOpenRequest(created);
     }
   };
-  return <section className="decision-maintenance" aria-label="История и уточнения решения">
-    {original&&<div className="decision-lineage"><strong>{r.supersedesDecisionId?'Исправляет прежнее решение':'Новый запрос плана для прежнего блокера'}</strong><span>{r.correctionReason}</span><p>Прежний ответ: {original.decision?.outcome.kind==='answer'?original.decision.outcome.answer:original.decision?.outcome.kind==='reject'?original.decision.outcome.reason:original.options.find(o=>o.id===(original.decision?.outcome as {chosenOptionId?:string})?.chosenOptionId)?.title??'Решение не было принято'}</p><button type="button" className="text-btn" onClick={()=>onOpenRequest(original)}>Открыть исходный запрос</button></div>}
-    {replacement&&<div className="decision-lineage"><strong>Для этого решения создан связанный запрос</strong><p>Прежнее решение сохранено. Его применение больше не разрешено.</p><button type="button" className="text-btn" onClick={()=>onOpenRequest(replacement)}>Открыть связанный запрос</button></div>}
-    {r.state==='withdrawn'&&<div className="decision-lineage"><strong>Запрос отозван автором</strong><p>{r.withdrawalReason}</p><p>Отзыв не является решением человека, разрешением продолжения или снятием физического блокера.</p></div>}
-    {clarifications.length>0&&<section className="decision-clarification-list" aria-label="Уточнения запроса"><h3>Уточнения запроса</h3>{clarifications.map(source=>{
+  return <section className={twMerge("decision-maintenance",humanMaintenance.decisions)} aria-label="История и уточнения решения">
+    {original&&<div className={twMerge("decision-lineage",humanMaintenance.lineage)}><strong className={humanMaintenance.lineageTitle}>{r.supersedesDecisionId?'Исправляет прежнее решение':'Новый запрос плана для прежнего блокера'}</strong><span>{r.correctionReason}</span><p>Прежний ответ: {original.decision?.outcome.kind==='answer'?original.decision.outcome.answer:original.decision?.outcome.kind==='reject'?original.decision.outcome.reason:original.options.find(o=>o.id===(original.decision?.outcome as {chosenOptionId?:string})?.chosenOptionId)?.title??'Решение не было принято'}</p><button type="button" className="text-btn" onClick={()=>onOpenRequest(original)}>Открыть исходный запрос</button></div>}
+    {replacement&&<div className={twMerge("decision-lineage",humanMaintenance.lineage)}><strong className={humanMaintenance.lineageTitle}>Для этого решения создан связанный запрос</strong><p>Прежнее решение сохранено. Его применение больше не разрешено.</p><button type="button" className="text-btn" onClick={()=>onOpenRequest(replacement)}>Открыть связанный запрос</button></div>}
+    {r.state==='withdrawn'&&<div className={twMerge("decision-lineage",humanMaintenance.lineage)}><strong className={humanMaintenance.lineageTitle}>Запрос отозван автором</strong><p>{r.withdrawalReason}</p><p>Отзыв не является решением человека, разрешением продолжения или снятием физического блокера.</p></div>}
+    {clarifications.length>0&&<section className={twMerge("decision-clarification-list",humanMaintenance.clarificationList)} aria-label="Уточнения запроса"><h3 className={humanMaintenance.heading}>Уточнения запроса</h3>{clarifications.map(source=>{
       const reply=state.events.find(event=>event.type==='DecisionClarificationSubmitted'&&event.payload.clarificationEventId===source.id);
-      return <article className="decision-clarification-item" key={source.id}><small>Запрос человека · #{source.version} · {source.actor.name??source.actor.id}</small><p>{String(source.payload.question)}</p>{reply?<><small>Ответ назначенного агента · #{reply.version}</small><p>{String(reply.payload.response)}</p></>:<small>Ожидается уточнение агента. Ответ человека по-прежнему требуется.</small>}<WorkspaceAccordion title={<>Связи с фактами</>}><code>{source.id}</code>{reply&&<p><code>{reply.id}</code> → <code>{String(reply.payload.clarificationEventId)}</code></p>}</WorkspaceAccordion></article>;
+      return <article className={twMerge("decision-clarification-item",humanMaintenance.clarification)} key={source.id}><small className={humanMaintenance.clarificationAuthor}>Запрос человека · #{source.version} · {source.actor.name??source.actor.id}</small><p className={humanMaintenance.clarificationCopy}>{String(source.payload.question)}</p>{reply?<><small className={humanMaintenance.clarificationAuthor}>Ответ назначенного агента · #{reply.version}</small><p className={humanMaintenance.clarificationCopy}>{String(reply.payload.response)}</p></>:<small className={humanMaintenance.clarificationAuthor}>Ожидается уточнение агента. Ответ человека по-прежнему требуется.</small>}<WorkspaceAccordion title={<>Связи с фактами</>}><code>{source.id}</code>{reply&&<p className={humanMaintenance.clarificationCopy}><code>{reply.id}</code> → <code>{String(reply.payload.clarificationEventId)}</code></p>}</WorkspaceAccordion></article>;
     })}</section>}
-    {r.applicabilityEndedEvidence&&<div className="decision-lineage"><strong>Применимость прежнего блокера завершена человеком</strong><p>Контекст свидетельства: {r.applicabilityEndedForRevisionId?`r${state.revisions.find(item=>item.id===r.applicabilityEndedForRevisionId)?.revision??'?'}`:'без активной ревизии'}. {openPhysicalBlocker?'В текущем контракте физическое препятствие требует отдельного пересмотра.':'Свидетельство относится к текущему контракту.'}</p><p>{r.applicabilityEndedReason}</p><p>{r.applicabilityEndedEvidence}</p><p>Это свидетельство неприменимости в новом контракте. Физическое устранение этим действием не подтверждено.</p></div>}
+    {r.applicabilityEndedEvidence&&<div className={twMerge("decision-lineage",humanMaintenance.lineage)}><strong className={humanMaintenance.lineageTitle}>Применимость прежнего блокера завершена человеком</strong><p>Контекст свидетельства: {r.applicabilityEndedForRevisionId?`r${state.revisions.find(item=>item.id===r.applicabilityEndedForRevisionId)?.revision??'?'}`:'без активной ревизии'}. {openPhysicalBlocker?'В текущем контракте физическое препятствие требует отдельного пересмотра.':'Свидетельство относится к текущему контракту.'}</p><p>{r.applicabilityEndedReason}</p><p>{r.applicabilityEndedEvidence}</p><p>Это свидетельство неприменимости в новом контракте. Физическое устранение этим действием не подтверждено.</p></div>}
     {canReopen&&<button type="button" className="btn" disabled={busy} onClick={()=>begin('reopen')}>Запросить новый план для блокера</button>}
     {canRetire&&<button type="button" className="btn" disabled={busy} onClick={()=>begin('retire')}>Завершить применимость прежнего блокера</button>}
     {r.state==='pending'&&<button type="button" className="btn" disabled={busy} onClick={()=>begin('clarify')}>Запросить уточнение</button>}
     {r.state==='resolved'&&!replacement&&(canCorrect?<button type="button" className="btn" disabled={busy} onClick={()=>begin('correct')}>Исправить отдельным запросом</button>:<p className="helper-note">Для изменения уже применённого решения или завершённой работы предложите новую ревизию или спеку. Прежнее решение и приёмка сохраняются.</p>)}
-    {mode&&<form onSubmit={submit}><label className={humanElements.formLabel}>{mode==='clarify'?'Что нужно уточнить':mode==='retire'?'Почему прежний блокер неприменим':mode==='reopen'?'Основание нового плана':'Основание исправления'}<textarea className={humanElements.field} required maxLength={20000} rows={4} value={draft} onChange={event=>setDraft(event.target.value)} readOnly={busy}/></label>{mode==='retire'&&<label className={humanElements.formLabel}>Свидетельство неприменимости<textarea className={humanElements.field} required maxLength={20000} rows={4} value={evidence} onChange={event=>setEvidence(event.target.value)} readOnly={busy}/></label>}<p className="helper-note">{mode==='clarify'?'Уточнение не закрывает запрос и не разрешает действия вне указанного уточнения.':mode==='retire'?'Завершение применимости не утверждает физическое устранение препятствия и не переносит разрешения между ревизиями.':'Новый запрос потребует отдельного решения. Исходный ответ не изменится, исполнение автоматически не продолжится.'}</p>{state.version!==baseVersion&&<p className="helper-note">Проект изменился. <button type="button" className="text-btn" onClick={()=>setBaseVersion(state.version)}>Обновить базу уточнения после проверки</button></p>}<div><button type="submit" className="btn btn-primary" disabled={busy||!draft.trim()||state.version!==baseVersion||(mode==='correct'&&!canCorrect)||(mode==='reopen'&&!canReopen)||(mode==='retire'&&(!evidence.trim()||!canRetire))}>{mode==='clarify'?'Записать запрос уточнения':mode==='retire'?'Записать неприменимость блокера':mode==='reopen'?'Создать новый запрос плана':'Создать связанный запрос'}</button><button type="button" className="text-btn" disabled={busy} onClick={()=>setMode(null)}>Отменить ввод</button></div></form>}
+    {mode&&<form className={humanMaintenance.form} onSubmit={submit}><label className={twMerge(humanElements.formLabel,humanMaintenance.label)}>{mode==='clarify'?'Что нужно уточнить':mode==='retire'?'Почему прежний блокер неприменим':mode==='reopen'?'Основание нового плана':'Основание исправления'}<textarea className={humanElements.field} required maxLength={20000} rows={4} value={draft} onChange={event=>setDraft(event.target.value)} readOnly={busy}/></label>{mode==='retire'&&<label className={twMerge(humanElements.formLabel,humanMaintenance.label)}>Свидетельство неприменимости<textarea className={humanElements.field} required maxLength={20000} rows={4} value={evidence} onChange={event=>setEvidence(event.target.value)} readOnly={busy}/></label>}<p className="helper-note">{mode==='clarify'?'Уточнение не закрывает запрос и не разрешает действия вне указанного уточнения.':mode==='retire'?'Завершение применимости не утверждает физическое устранение препятствия и не переносит разрешения между ревизиями.':'Новый запрос потребует отдельного решения. Исходный ответ не изменится, исполнение автоматически не продолжится.'}</p>{state.version!==baseVersion&&<p className="helper-note">Проект изменился. <button type="button" className="text-btn" onClick={()=>setBaseVersion(state.version)}>Обновить базу уточнения после проверки</button></p>}<div><button type="submit" className="btn btn-primary" disabled={busy||!draft.trim()||state.version!==baseVersion||(mode==='correct'&&!canCorrect)||(mode==='reopen'&&!canReopen)||(mode==='retire'&&(!evidence.trim()||!canRetire))}>{mode==='clarify'?'Записать запрос уточнения':mode==='retire'?'Записать неприменимость блокера':mode==='reopen'?'Создать новый запрос плана':'Создать связанный запрос'}</button><button type="button" className="text-btn" disabled={busy} onClick={()=>setMode(null)}>Отменить ввод</button></div></form>}
   </section>;
 }
 
@@ -2122,9 +2133,9 @@ function OperatorRecovery({execution:e,revoked,busy,version,command}:{execution:
     const payload=mode==='cancel'?{type:'forceCancelRevokedExecution',executionId:e.id,reason,evidence}:{type:'attestExternalStop',executionId:e.id,evidence};
     if(await command(payload,mode==='cancel'?'Авторизация попытки отменена. Фактическая остановка остаётся неподтверждённой.':'Свидетельство оператора о внешней остановке записано. Новая попытка разрешается отдельно.',baseVersion)){setMode(null);setReason('');setEvidence('');}
   };
-  return <section className="operator-recovery" aria-label="Операторское завершение попытки">
-    {e.stopConfirmation==='unknown'?<><p className="recovery-unconfirmed">Фактическая остановка не подтверждена</p><p>Авторизация отменена после отзыва ключа. Новая работа в этой спеке запрещена до отдельного свидетельства оператора о внешней остановке.</p>{e.operatorCancellation&&<p>Основание отмены: {e.operatorCancellation.reason}<br/>{e.operatorCancellation.evidence}</p>}{mode!=='attest'&&<button type="button" className="btn btn-small" disabled={busy} onClick={()=>{setMode('attest');setEvidence('');setBaseVersion(version);}}>Подтвердить внешнюю остановку</button>}</>:e.stopAttestation?<><p>Внешняя остановка засвидетельствована оператором</p><p>{e.stopAttestation.evidence}</p><p className="helper-note">Свидетельство: {e.stopAttestation.actorId} · {shortDate(e.stopAttestation.at)}. Это свидетельство человека, отдельное от ACK агента.</p></>:revoked&&!terminal?<><p>Ключ назначенного агента отозван. Агент не может отправить ACK остановки.</p>{mode!=='cancel'&&<button type="button" className="btn btn-small" disabled={busy} onClick={()=>{setMode('cancel');setReason('');setEvidence('');setBaseVersion(version);}}>Завершить авторизацию отозванного агента</button>}</>:<p className="helper-note">Ключ назначенного агента отозван.</p>}
-    {mode&&<form onSubmit={submit}>{mode==='cancel'&&<label className={twMerge(humanElements.formLabel,'text-[12px]')}>Причина завершения авторизации<textarea className={twMerge(humanElements.field,'text-[12px]')} required maxLength={20000} rows={3} value={reason} onChange={event=>setReason(event.target.value)} readOnly={busy}/></label>}<label className={twMerge(humanElements.formLabel,'text-[12px]')}>{mode==='cancel'?'Основание оператора':'Подтверждение внешней остановки'}<textarea className={twMerge(humanElements.field,'text-[12px]')} required maxLength={20000} rows={3} value={evidence} onChange={event=>setEvidence(event.target.value)} readOnly={busy}/></label><p>{mode==='cancel'?'Действие отменяет разрешение попытки. Оно не останавливает внешний процесс и не подтверждает ACK.':'Записывайте свидетельство после самостоятельной проверки внешней остановки. Ouro не проверяет состояние стороннего процесса.'}</p>{version!==baseVersion&&<p>Проект изменился после начала ввода. <button type="button" className="text-btn" onClick={()=>setBaseVersion(version)}>Обновить базу восстановления после проверки</button></p>}<button type="submit" className={`btn btn-small ${mode==='cancel'?'btn-danger':'btn-primary'}`} disabled={busy||version!==baseVersion||!evidence.trim()||(mode==='cancel'&&!reason.trim())}>{mode==='cancel'?'Отменить авторизацию без ACK':'Записать свидетельство оператора'}</button><button type="button" className="text-btn" disabled={busy} onClick={()=>setMode(null)}>Отменить ввод</button></form>}
+  return <section className={twMerge("operator-recovery",humanMaintenance.recovery)} aria-label="Операторское завершение попытки">
+    {e.stopConfirmation==='unknown'?<><p className={twMerge("recovery-unconfirmed",humanMaintenance.recoveryCopy,humanMaintenance.unconfirmed)}>Фактическая остановка не подтверждена</p><p className={humanMaintenance.recoveryCopy}>Авторизация отменена после отзыва ключа. Новая работа в этой спеке запрещена до отдельного свидетельства оператора о внешней остановке.</p>{e.operatorCancellation&&<p className={humanMaintenance.recoveryCopy}>Основание отмены: {e.operatorCancellation.reason}<br/>{e.operatorCancellation.evidence}</p>}{mode!=='attest'&&<button type="button" className={`btn btn-small ${humanMaintenance.recoveryAction}`} disabled={busy} onClick={()=>{setMode('attest');setEvidence('');setBaseVersion(version);}}>Подтвердить внешнюю остановку</button>}</>:e.stopAttestation?<><p className={humanMaintenance.recoveryCopy}>Внешняя остановка засвидетельствована оператором</p><p className={humanMaintenance.recoveryCopy}>{e.stopAttestation.evidence}</p><p className={twMerge("helper-note",humanMaintenance.recoveryCopy)}>Свидетельство: {e.stopAttestation.actorId} · {shortDate(e.stopAttestation.at)}. Это свидетельство человека, отдельное от ACK агента.</p></>:revoked&&!terminal?<><p className={humanMaintenance.recoveryCopy}>Ключ назначенного агента отозван. Агент не может отправить ACK остановки.</p>{mode!=='cancel'&&<button type="button" className={`btn btn-small ${humanMaintenance.recoveryAction}`} disabled={busy} onClick={()=>{setMode('cancel');setReason('');setEvidence('');setBaseVersion(version);}}>Завершить авторизацию отозванного агента</button>}</>:<p className="helper-note">Ключ назначенного агента отозван.</p>}
+    {mode&&<form className={humanMaintenance.recoveryForm} onSubmit={submit}>{mode==='cancel'&&<label className={twMerge(humanElements.formLabel,'text-[12px]')}>Причина завершения авторизации<textarea className={twMerge(humanElements.field,humanMaintenance.recoveryField)} required maxLength={20000} rows={3} value={reason} onChange={event=>setReason(event.target.value)} readOnly={busy}/></label>}<label className={twMerge(humanElements.formLabel,'text-[12px]')}>{mode==='cancel'?'Основание оператора':'Подтверждение внешней остановки'}<textarea className={twMerge(humanElements.field,humanMaintenance.recoveryField)} required maxLength={20000} rows={3} value={evidence} onChange={event=>setEvidence(event.target.value)} readOnly={busy}/></label><p className={humanMaintenance.recoveryCopy}>{mode==='cancel'?'Действие отменяет разрешение попытки. Оно не останавливает внешний процесс и не подтверждает ACK.':'Записывайте свидетельство после самостоятельной проверки внешней остановки. Ouro не проверяет состояние стороннего процесса.'}</p>{version!==baseVersion&&<p className={humanMaintenance.recoveryCopy}>Проект изменился после начала ввода. <button type="button" className="text-btn" onClick={()=>setBaseVersion(version)}>Обновить базу восстановления после проверки</button></p>}<button type="submit" className={`btn btn-small ${humanMaintenance.recoveryAction} ${mode==='cancel'?'btn-danger':'btn-primary'}`} disabled={busy||version!==baseVersion||!evidence.trim()||(mode==='cancel'&&!reason.trim())}>{mode==='cancel'?'Отменить авторизацию без ACK':'Записать свидетельство оператора'}</button><button type="button" className="text-btn" disabled={busy} onClick={()=>setMode(null)}>Отменить ввод</button></form>}
   </section>;
 }
 

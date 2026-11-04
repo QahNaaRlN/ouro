@@ -7,8 +7,15 @@ import { Check,Copy,KeyRound,LoaderCircle,LogIn,LogOut,ShieldCheck,UserPlus,User
 import type { Actor } from '@/packages/core/src';
 import type { ParticipantRegistration } from '@ouro/protocol/http';
 import {participantUi} from './participant-presentation';
+import {twMerge} from 'tailwind-merge';
 
-export function ParticipantLogin({onSignedIn}:{onSignedIn?:()=>void}){
+type ParticipantLoginProps={onSignedIn?:()=>void;
+  /** Добавляет оформление поля в конкретном редакторе, сохраняя стандартную поверхность. */
+  inputClassName?:string;
+  /** Оформляет подпись без зависимости от селектора внешнего контейнера. */
+  captionClassName?:string;
+};
+export function ParticipantLogin({onSignedIn,inputClassName,captionClassName}:ParticipantLoginProps){
   const [credential,setCredential]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const login=async(event:FormEvent)=>{
     event.preventDefault();if(busy)return;setBusy(true);setError('');
@@ -26,7 +33,7 @@ export function ParticipantLogin({onSignedIn}:{onSignedIn?:()=>void}){
       setCredential('');if(onSignedIn)onSignedIn();else window.location.reload();
     }catch(error){setError(error instanceof Error?error.message:'Не удалось выйти.');setBusy(false);}
   };
-  return <section className={participantUi.section} aria-label="Войти участником"><div className={participantUi.sectionHeading}><h2 className={participantUi.heading}><LogIn size={17}/>Войти участником</h2></div><p className={participantUi.copy}>Введите ключ, полученный у оператора Ouro. История изменений будет показывать вашу отдельную идентичность.</p><form className={`participant-login-form ${participantUi.form}`} onSubmit={login}><label className={`${participantUi.label} flex-1`}><span>Ключ участника</span><input className={participantUi.field} type="password" autoComplete="off" autoCapitalize="none" spellCheck={false} required maxLength={80} value={credential} disabled={busy} onChange={event=>{setCredential(event.target.value);setError('');}} placeholder="ouro_human_…"/></label><button className={`btn btn-primary ${participantUi.formButton}`} disabled={busy||!credential.trim()} type="submit">{busy?<LoaderCircle className="spin" size={15}/>:<LogIn size={15}/>}Войти</button><button className={`btn btn-small ${participantUi.formButton}`} disabled={busy} type="button" onClick={()=>void reset()}>Выйти и сбросить сессию</button></form>{error&&<p className={participantUi.sectionError} role="alert">{error}</p>}</section>;
+  return <section className={participantUi.section} aria-label="Войти участником"><div className={participantUi.sectionHeading}><h2 className={participantUi.heading}><LogIn size={17}/>Войти участником</h2></div><p className={participantUi.copy}>Введите ключ, полученный у оператора Ouro. История изменений будет показывать вашу отдельную идентичность.</p><form className={`participant-login-form ${participantUi.form}`} onSubmit={login}><label className={`${participantUi.label} flex-1`}><span className={captionClassName}>Ключ участника</span><input className={twMerge(participantUi.field,inputClassName)} type="password" autoComplete="off" autoCapitalize="none" spellCheck={false} required maxLength={80} value={credential} disabled={busy} onChange={event=>{setCredential(event.target.value);setError('');}} placeholder="ouro_human_…"/></label><button className={`btn btn-primary ${participantUi.formButton}`} disabled={busy||!credential.trim()} type="submit">{busy?<LoaderCircle className="spin" size={15}/>:<LogIn size={15}/>}Войти</button><button className={`btn btn-small ${participantUi.formButton}`} disabled={busy} type="button" onClick={()=>void reset()}>Выйти и сбросить сессию</button></form>{error&&<p className={participantUi.sectionError} role="alert">{error}</p>}</section>;
 }
 
 type Directory={participants:ParticipantRegistration[];actor:Actor;canManageParticipants:boolean};

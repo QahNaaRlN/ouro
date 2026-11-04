@@ -22,6 +22,15 @@ promises.open=async(...args:Parameters<typeof originalOpen>)=>{
  const handle=await originalOpen(...args);if(args[1]==='wx'&&(temporary||file.includes('.ouro-profile-mutex.sqlite')))createdPath=file;return handle;
 };
 const originalExec=DatabaseSync.prototype.exec;
+const originalPrepare=DatabaseSync.prototype.prepare;
+let validationHeld=false;
+DatabaseSync.prototype.prepare=function(this:DatabaseSync,...args:Parameters<typeof originalPrepare>){
+ if(mode==='before-validation'&&!validationHeld&&this!==initializer&&args[0]==='PRAGMA journal_mode'){
+  validationHeld=true;barrier('before-validation');
+  while(!fs.existsSync(barrierFile+'.continue'))Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,10);
+ }
+ return originalPrepare.apply(this,args);
+};
 DatabaseSync.prototype.exec=function(this:DatabaseSync,sql:string){
  if(sql.includes('CREATE TABLE ouro_profile_mutex')){initializer=this;if(mode==='before-commit'){const commit=sql.lastIndexOf('COMMIT;');if(commit<0)throw new Error('Expected fixture initialization transaction.');originalExec.call(this,sql.slice(0,commit));barrier('before-commit');Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0);return;}}
  return originalExec.call(this,sql);
