@@ -45,20 +45,6 @@
       "ordinaryRules": 58,
       "legacyLayer": true,
       "owner": "specialized-panels"
-    },
-    {
-      "file": "components/verification.css",
-      "sha256": "a839468fbedbfaa3d0f21781ce4a194614bebe3afeb289e38c3fc9a48b9132b1",
-      "ordinaryRules": 46,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
-      "file": "components/work-status.css",
-      "sha256": "1bf92f76e1e7b69328747389e53ceb16d621e451c18e7c5f8a00a51b3b2ba4eb",
-      "ordinaryRules": 9,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
     }
   ],
   "inline": [
