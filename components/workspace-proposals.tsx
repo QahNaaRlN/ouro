@@ -11,7 +11,7 @@ import dagre from '@dagrejs/dagre';
 import type {AgentProposal,AgentProposalRevision,DomainEvent,FlowDefinition,ProjectState,RevisionContent} from '@/packages/core/src';
 import type {WorkspaceCommand} from './workspace-decisions';
 import {WorkspaceAccordion,WorkspaceSelect,WorkspaceTextarea} from './workspace-ui';
-import {selectWorkspaceProposals,type WorkspaceProposalScope} from '@/lib/workspace-proposals-view';
+import {selectWorkspaceProposals,type WorkspaceProposalScope} from '@/packages/frontend/src/entities/agent-proposal';
 
 /** Оформление элементов этого модуля; общие элементы используют workspacePresentation. */
 const presentationSlots={

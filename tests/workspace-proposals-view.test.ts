@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type {AgentProposal} from '../packages/core/src/types';
-import {selectWorkspaceProposals} from '../lib/workspace-proposals-view';
+import {selectWorkspaceProposals} from '../packages/frontend/src/entities/agent-proposal';
 
 const proposal=(id:string,overrides:Partial<AgentProposal>={}):AgentProposal=>({id,projectId:'project',specId:'spec',specRevisionId:'revision',executionId:'attempt',agentId:'agent',latestRevisionId:id+'-v1',state:'pending',...overrides});
 

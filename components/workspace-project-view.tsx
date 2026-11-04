@@ -27,7 +27,7 @@ import WorkspaceConnectionPanel from './workspace-connection';
 import WorkspaceBindingRecovery from './workspace-binding-recovery';
 import WorkspaceCurrentFlowControls from './workspace-flow-controls';
 import {WorkspaceProposals,WorkspaceSpecProposals} from './workspace-proposals';
-import {selectWorkspaceProposals} from '@/lib/workspace-proposals-view';
+import {selectWorkspaceProposals} from '@/packages/frontend/src/entities/agent-proposal';
 import {WorkspaceAcceptance,WorkspaceDecisions,WorkspaceExecutionControls,WorkspaceRevisionForm,WorkspaceStartAttempt,type WorkspaceCommand} from './workspace-decisions';
 import {selectWorkspaceHistory,workspaceHistoryEntry} from '@/lib/workspace-history-view';
 import {getWorkPairGroups} from '@/packages/core/src';
