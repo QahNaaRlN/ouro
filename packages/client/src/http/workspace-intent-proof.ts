@@ -1,5 +1,6 @@
 import type {WorkspaceIntent} from './workspace-intents';
 import {createProjectSnapshotAdopter} from '../../../../lib/project-snapshot';
+import {hasCommandReceiptHeader,verifiedCommandReceiptView} from './command-receipt-proof';
 
 function canonicalJSON(value:unknown):string{
  if(Array.isArray(value))return '['+value.map(canonicalJSON).join(',')+']';
@@ -61,4 +62,11 @@ export function isWorkspaceCommandReceipt(intent:WorkspaceIntent,wire:unknown):b
  if(receiptEvents.length>history.length||checked.snapshot.cursor!==expectedVersion+receiptEvents.length)return false;
  const events=history.slice(history.length-receiptEvents.length);
  return events.every((event,index)=>event.projectId===projectId&&event.requestId===intent.requestId&&event.actor.id===intent.actorId&&event.actor.kind==='human'&&Array.isArray(event.actor.projectIds)&&event.actor.projectIds.includes(projectId)&&event.version===expectedVersion+index+1&&canonicalJSON(event)===canonicalJSON(receiptEvents[index]));
+}
+
+/** Дополняет прежний suffix guard только доказанным empty-receipt fallback; bad header всегда UNKNOWN. */
+export async function verifyWorkspaceCommandReceipt(intent:WorkspaceIntent,response:Response,wire:unknown):Promise<boolean>{
+ const command=commandBody(intent);if(!command||!hasCommandReceiptHeader(response))return isWorkspaceCommandReceipt(intent,wire);
+ const verified=await verifiedCommandReceiptView(intent,response,wire,command);if(!verified)return false;
+ return verified.events.length===0?verified.cursor===intent.expectedVersion:isWorkspaceCommandReceipt(intent,wire);
 }

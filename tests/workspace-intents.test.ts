@@ -143,25 +143,25 @@ test('late duplicate failure cannot resurrect an exact request after another res
   const originalFetch=globalThis.fetch,{intent,proof}=fixture(),responses=[deferredResponse(),deferredResponse()];let count=0;
   try{
    globalThis.fetch=async()=>responses[count++].promise;
-   const first=sendWorkspaceIntent(intent),second=sendWorkspaceIntent(intent);responses[0].resolve(receiptFor(intent));assert.equal((await first).ok,true);assert.equal(readIntent(intent),undefined);
-   if(kind==='binding-rejection')responses[1].resolve(Response.json({error:{code:'WORKSPACE_BINDING_CONFLICT',details:{commandRejection:proof}}},{status:409}));else responses[1].reject(new Error('late transport error'));
-   await second;assert.equal(readIntent(intent),undefined,'A late duplicate failure must never resurrect the resolved request');
+   const first=sendWorkspaceIntent(intent),second=sendWorkspaceIntent(intent);responses[1].resolve(receiptFor(intent));assert.equal((await second).ok,true);assert.equal(readIntent(intent),undefined);
+   if(kind==='binding-rejection')responses[0].resolve(Response.json({error:{code:'WORKSPACE_BINDING_CONFLICT',details:{commandRejection:proof}}},{status:409}));else responses[0].reject(new Error('late transport error'));
+   await first;assert.equal(readIntent(intent),undefined,'A late duplicate failure must never resurrect the resolved request');
   }finally{globalThis.fetch=originalFetch;}
  });
 });
 test('concurrent uncertainty stays sticky when a later duplicate rejection began before the other call became unknown',async()=>{
  const originalFetch=globalThis.fetch,{intent,proof}=fixture(),responses=[deferredResponse(),deferredResponse()];let count=0;
  try{
-  globalThis.fetch=async()=>responses[count++].promise;const first=sendWorkspaceIntent(intent),second=sendWorkspaceIntent(intent);responses[0].reject(new Error('lost response'));await first;assert.equal(readIntent(intent)?.status,'unknown');responses[1].resolve(Response.json({error:{code:'WORKSPACE_BINDING_CONFLICT',details:{commandRejection:proof}}},{status:409}));await second;assert.equal(readIntent(intent)?.status,'unknown');assert.equal(readIntent(intent)?.body,intent.body);
+  globalThis.fetch=async()=>responses[count++].promise;const first=sendWorkspaceIntent(intent),second=sendWorkspaceIntent(intent),current=readIntent(intent);responses[0].reject(new Error('lost response'));await first;assert.equal(readIntent(intent),current);assert.equal(readIntent(intent)?.status,'sending');assert.equal(readIntent(intent)?.uncertain,true);responses[1].resolve(Response.json({error:{code:'WORKSPACE_BINDING_CONFLICT',details:{commandRejection:proof}}},{status:409}));await second;assert.equal(readIntent(intent)?.status,'unknown');assert.equal(readIntent(intent)?.body,intent.body);
  }finally{globalThis.fetch=originalFetch;}
 });
 test('late duplicate success or failure cannot clear or overwrite a newer request occupying the same slot',async(t)=>{
  for(const kind of ['success','failure'])await t.test(kind,async()=>{
   const originalFetch=globalThis.fetch,{intent}=fixture(),responses=[deferredResponse(),deferredResponse(),deferredResponse()];let count=0;
   try{
-   globalThis.fetch=async()=>responses[count++].promise;const first=sendWorkspaceIntent(intent),late=sendWorkspaceIntent(intent);responses[0].resolve(receiptFor(intent));await first;
+   globalThis.fetch=async()=>responses[count++].promise;const first=sendWorkspaceIntent(intent),late=sendWorkspaceIntent(intent);responses[1].resolve(receiptFor(intent));await late;
    const next={...intent,requestId:randomUUID(),body:JSON.stringify({...JSON.parse(intent.body),requestId:randomUUID(),specId:'new-spec'})};next.body=JSON.stringify({...JSON.parse(next.body),requestId:next.requestId});const newer=sendWorkspaceIntent(next),saved=readIntent(next)!;
-   if(kind==='success')responses[1].resolve(receiptFor(intent));else responses[1].reject(new Error('late failure'));await late;assert.equal(readIntent(next),saved);assert.equal(readIntent(next)?.body,next.body);
+   if(kind==='success')responses[0].resolve(receiptFor(intent));else responses[0].reject(new Error('late failure'));await first;assert.equal(readIntent(next),saved);assert.equal(readIntent(next)?.body,next.body);
    responses[2].resolve(receiptFor(next));await newer;assert.equal(readIntent(next),undefined);
   }finally{globalThis.fetch=originalFetch;}
  });

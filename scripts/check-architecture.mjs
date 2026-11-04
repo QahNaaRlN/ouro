@@ -10,7 +10,7 @@ const builtins = new Set(builtinModules.map(name => name.replace(/^node:/, '')))
 const frameworks = /^(?:react(?:-dom)?|next|@tauri-apps\/[^/]+)(?:\/|$)/;
 const serverDependencies = /^(?:pg|nodemailer|@electric-sql\/pglite|@node-rs\/argon2|@modelcontextprotocol\/sdk)(?:\/|$)/;
 const pureLegacyFiles = new Set([
-  'lib/client-project.ts', 'lib/project-snapshot.ts', 'lib/project-subscription.ts',
+  'lib/client-project.ts', 'lib/project-snapshot.ts', 'lib/project-subscription.ts', 'lib/command-canonical-json.ts',
   'lib/agent-client-config.ts', 'lib/workspace-graph.ts', 'lib/workspace-selection.ts',
   'lib/workspace-history-view.ts', 'lib/workspace-proposals-view.ts', 'lib/ouro-logo-geometry.ts', 'lib/select-availability.ts',
 ]);
