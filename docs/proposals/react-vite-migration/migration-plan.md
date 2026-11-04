@@ -9,13 +9,15 @@
 | Этап | Состояние |
 |---|---|
 | P0 Фиксация поведения и подготовка | IN_PROGRESS |
-| P1 Контракты и архитектурный контроль | IN_PROGRESS; pure ports/DTO, import guard, project session/Query и физические snapshot/subscription boundaries в эпике; catalog reads на отдельном CI; физическая UI hFSD-структура не завершена |
+| P1 Контракты и архитектурный контроль | IN_PROGRESS; pure ports/DTO, import guard, project session/Query, scoped catalog reads, snapshot/subscription boundaries и entities/work в эпике; остальные physical UI slices и semantic host operations ещё открыты |
 | P2 Backend и storage ownership | IN_PROGRESS; все47/59 bindings, URI parity, built lifecycle/resources/runner и cooperative profile mutex квалифицированы; окончательный cutover/old-profile rehearsal ещё впереди |
-| P3 Самостоятельный React/Vite клиент | IN_PROGRESS; shell/router работают, Tailwind переносится по UI families; общий final style gate и удаление temporary Next aliases ещё не выполнены |
+| P3 Самостоятельный React/Vite клиент | IN_PROGRESS; shell/router и family Tailwind stories квалифицированы; остаток2ordinary CSS/112rules и6computed geometry expressions, общий final style gate и удаление temporary Next aliases ещё открыты |
 | P4 Живые данные и восстановление | IN_PROGRESS; один session/SSE owner, scoped Query и frozen intents с durable HTTP receipt recovery в эпике; итоговый общий паритет остаётся открытым |
-| P5 Поставка и consumer compatibility | IN_PROGRESS; Node24 prerequisite и built resources квалифицированы; actual same-origin Vite/service проверяется отдельно, независимый npm consumer и dev pnpm ещё не готовы |
+| P5 Поставка и consumer compatibility | IN_PROGRESS; Node24, built resources, same-origin Vite/service и independent SOURCE_BUILD квалифицированы; generation launch/installed CLI/ZIP, old-profile rehearsal и dev pnpm ещё не завершены |
 | P6 Основа Meridian | IN_PROGRESS; переносимые порты и явные capability/error/lifecycle contracts подготовлены; coherent embedded composition и реальный host adapter ещё не реализованы |
 | P7 Удаление Next и итоговый паритет | NOT_STARTED |
+
+Последний интеграционный снимок и точные границы evidence: [журнал эпика](../../plans/react-vite-integration.md). PASS отдельного source-build не означает готовый installed launcher или допуск нативного Meridian.
 
 ## Исходная граница
 
