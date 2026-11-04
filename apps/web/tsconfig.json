@@ -18,5 +18,5 @@
       "next/navigation": ["./src/app/legacy-navigation.ts"]
     }
   },
-  "include": ["src", "tests", "vite.config.ts", "playwright.config.ts"]
+  "include": ["src", "tests", "vite.config.ts", "playwright.config.ts", "playwright.service.config.ts"]
 }
