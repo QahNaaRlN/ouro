@@ -1,6 +1,8 @@
 # Проверяемый остаток перехода на Tailwind 4
 
-Исходный снимок — эпик `7c0def1`: 20 CSS-файлов / 1919 правил, 11 frontend-файлов / 41 expression. После workspace, Human View, участников, интеграций, G1/G2/G3 и предложений/совместного редактора фактический остаток — **7 CSS-файлов с 445 обычными правилами**, **4 frontend-файла с 10 style expressions**. Это учёт незавершённой работы, а не полный Tailwind PASS.
+Исходный снимок — эпик `7c0def1`: 20 CSS-файлов / 1919 правил, 11 frontend-файлов / 41 expression. После принятых родителей и текущей истории фактический остаток — **5 CSS-файлов с 265 обычными правилами**, **4 frontend-файла с 10 style expressions**. Это учёт незавершённой работы, а не полный Tailwind PASS.
+
+Impact/Lessons удаляет 180 ordinary rules двух stylesheet; вычисляемый процент meter остаётся точным custom-property expression в inline debt. Два textarea expressions и их зависимости сохранены.
 
 G1 удалил `workspace-graphs.css`24 rules и30 graph rules в globals, перенёс11 обычных Roadmap/Reality expressions. G2 удалил `spec-flow.css`98 и `state-transitions.css`68 rules полностью, перенёс7 expressions и последние2 graph handle globals. Consumers Roadmap/process/state/Reality/proposal preview используют явные Handle props либо узкие public library slots. G3 удалил `flow-runtime.css`56 rules полностью: runtime-панель владеет собственными utilities, а SpecFlow — своими context/facts companions; parent presentation imports и business changes не добавлены. После review из ledger удалена только эта CSS-запись. Hashes двух proposal companions G2 сохранены, их retained AST expressions не менялись. Нет пустых CSS-файлов, keyframe-заглушек или новых technical CSS/inline exceptions.
 
