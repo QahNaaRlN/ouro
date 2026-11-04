@@ -12,7 +12,7 @@ test('P12 release then immediate same-scope acquire cannot clear or repopulate t
  const scope={projectId:PROJECT_ID,actorId:'local-human',accessEpoch:4},seed=createSeedEvents();
  let resolveOld:(value:{status:'available';value:ProjectSnapshotDTO})=>void=()=>{throw new Error('No old read');},reads=0,connected=0,disconnected=0;
  const oldRead=new Promise<{status:'available';value:ProjectSnapshotDTO}>(resolve=>{resolveOld=resolve;});
- const runtime=createProjectRuntime({listenConnectivity:()=>{connected++;return()=>{disconnected++;};},reporter:{report:()=>{}},ports:()=>({
+ const runtime=createProjectRuntime({sourceId:'ouro:same-origin',listenConnectivity:()=>{connected++;return()=>{disconnected++;};},reporter:{report:()=>{}},ports:()=>({
   read:{readSnapshot:async()=>{if(++reads===1)return oldRead;return {status:'available',value:{state:replay(seed.slice(0,20)),cursor:20}};},readWorkspace:async()=>({status:'unsupported',capability:'read-workspace'})},
   command:{execute:async()=>({status:'unknown',reason:'transport'})},subscription:{subscribe:()=>({close:()=>{},reconnect:()=>{}})},
  })});
@@ -33,7 +33,7 @@ test('P12 UNKNOWN retains its original action label and occupied slot across own
  const command={type:'createSpec' as const,expectedVersion:0,requestId,content},original=freezeProjectCommandIntent({scope,operation:'execute-command',requestId,expectedVersion:0,body:' '+JSON.stringify(command)+' '});
  const nextId=crypto.randomUUID(),replacement=freezeProjectCommandIntent({...original,requestId:nextId,body:JSON.stringify({...command,requestId:nextId})});
  let calls=0;const sent:Array<{url:string;body:unknown;key:string|undefined;label:string|undefined}>=[];
- const runtime=createProjectRuntime({listenConnectivity:()=>()=>{},reporter:{report:()=>{}},ports:options=>createProjectHttpPorts({...options,fetch:async(_url,init)=>{
+ const runtime=createProjectRuntime({sourceId:'ouro:same-origin',listenConnectivity:()=>()=>{},reporter:{report:()=>{}},ports:options=>createProjectHttpPorts({...options,fetch:async(_url,init)=>{
   calls++;const pending=getWorkspaceIntents(scope.projectId,scope.actorId).find(value=>value.requestId===requestId);sent.push({url:String(_url),body:init?.body,key:pending?.key,label:pending?.label});
   if(calls===1)throw new Error('lost response');const applied=applyCommand(replay([],scope.projectId),command,{id:scope.actorId,kind:'human',projectIds:[scope.projectId]});return Response.json({...applied,cursor:applied.state.version,replayed:true});
  }})});

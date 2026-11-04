@@ -36,7 +36,15 @@ export async function qualifyConsumerSource(options){
  let phase='ADMISSION',allocated=false,active,streamAbort,streamPump,streamError,environment,root,consumer;
  const delay=milliseconds=>new Promise(resolve=>setTimeout(resolve,milliseconds));
  const waitFor=async(predicate,deadline=15000)=>{const end=Date.now()+deadline;while(Date.now()<end){if(predicate())return;await delay(20);}throw new ConsumerQualificationError(phase);};
- const run=(cwd,args,deadline=240000)=>{const result=spawnSync(process.execPath,args,{cwd,env:environment,encoding:'utf8',shell:false,windowsHide:true,timeout:deadline,maxBuffer:8*1024*1024});if(result.status!==0||result.error)throw new ConsumerQualificationError(phase);return result.stdout;};
+ const run=(cwd,args,deadline=240000)=>{
+  const started=Date.now(),result=spawnSync(process.execPath,args,{cwd,env:environment,encoding:'utf8',shell:false,windowsHide:true,timeout:deadline,maxBuffer:8*1024*1024});
+  if(result.status!==0||result.error){
+   const code=result.error?.code;
+   report.toolFailure={phase,exitCode:Number.isSafeInteger(result.status)?result.status:null,signal:typeof result.signal==='string'&&/^SIG[A-Z0-9]{1,16}$/.test(result.signal)?result.signal:null,errorCode:typeof code==='string'&&/^[A-Z0-9_]{1,64}$/.test(code)?code:null,elapsedMs:Date.now()-started,deadlineMs:deadline};
+   throw new ConsumerQualificationError(phase);
+  }
+  return result.stdout;
+ };
  const stop=async()=>{
   if(!active)return;const {child,closed}=active;if(child.connected)child.send('ouro:shutdown',()=>{});let exit;void closed.then(value=>exit=value);
   try{await waitFor(()=>exit!==undefined);assert.deepEqual(exit,{code:0,signal:null});active=undefined;}
@@ -86,7 +94,8 @@ export async function qualifyConsumerSource(options){
   phase='RUNNER_AND_BROWSER';const scratch=path.join(root,'runner outside install');await mkdir(scratch);await writeFile(path.join(scratch,'package.json'),JSON.stringify({type:'module'}));const specs={'common.spec.cjs':"const{test,expect}=require('@playwright/test');test('common owned resolution',()=>expect(1).toBe(1));\n",'module.spec.mjs':"import{test,expect}from'@playwright/test';test('module owned resolution',()=>expect(2).toBe(2));\n",'typed.spec.ts':"import{test,expect}from'@playwright/test';test('typed owned resolution',()=>{const value:number=3;expect(value).toBe(3);});\n"};for(const[file,contents]of Object.entries(specs))await writeFile(path.join(scratch,file),contents);
   if(options.browser){const navigation=source.qualificationFiles.find(file=>file.path==='apps/web/tests/navigation.spec.ts');assert(navigation);await writeFile(path.join(scratch,'navigation.spec.ts'),navigation.bytes);}
   const preload=pathToFileURL(path.join(consumer,'apps/service/dist/resources/verification/playwright-preload.mjs'));preload.searchParams.set('package',pathToFileURL(path.join(consumer,'apps/service/package.json')).href);
-  if(options.installBrowser)run(foreign,[require.resolve('@playwright/test/cli'),'install','--with-deps','chromium']);
+  if(options.installBrowser){phase='BROWSER_INSTALL';run(foreign,[require.resolve('@playwright/test/cli'),'install','--with-deps','chromium']);report.phases.browserInstallation='PASS';}
+  phase='RUNNER_AND_BROWSER';
   await writeFile(path.join(scratch,'playwright.config.mjs'),`export default {testDir:${JSON.stringify(scratch)},testMatch:'*.spec.*',workers:1,retries:0,reporter:'list',outputDir:${JSON.stringify(path.join(root,'runner-output'))},use:{baseURL:${JSON.stringify(running.url)},headless:true,viewport:{width:1440,height:1000}}};`);
   const runner=run(foreign,['--import',preload.href,require.resolve('@playwright/test/cli'),'test','--config',path.join(scratch,'playwright.config.mjs')],180000);assert.match(runner,new RegExp((options.browser?9:3)+' passed'));for(const[file,contents]of Object.entries(specs))assert.equal(createHash('sha256').update(await readFile(path.join(scratch,file))).digest('hex'),createHash('sha256').update(contents).digest('hex'));if(options.browser)assert((await readFile(path.join(scratch,'navigation.spec.ts'))).equals(source.qualificationFiles[0].bytes));report.phases.ownedRunnerCjsEsmTs='PASS';report.phases.navigationCookieBrowser6=options.browser?'PASS':'NOT_RUN';
   await stop();report.phases.gracefulShutdown='PASS';report.overall=report.htmlIntegrity.status==='PASS'?'PASS':'PARTIAL_HTML_INTEGRITY_FAILED';return report;

@@ -13,45 +13,10 @@
   "css": [
     {
       "file": "app/globals.css",
-      "sha256": "3245e139899c6c36b4c94d11466d916d26c5b93896feafd5deca737d75c1471b",
-      "ordinaryRules": 163,
+      "sha256": "3b5a794f79da42683cd39a4c08c5a8e559154025ac419be2036829e62360cae5",
+      "ordinaryRules": 91,
       "legacyLayer": true,
       "owner": "legacy-human-view"
-    },
-    {
-      "file": "components/agent-proposals-panel.css",
-      "sha256": "85d02ed5bd8e65b6b7c2da0052d9f17eae1484985646927519a6e66415d7ec20",
-      "ordinaryRules": 102,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
-      "file": "components/collaborative-drafts.css",
-      "sha256": "a4088786273e8c55244fae8677e6e3e3ace75fc9749bfbe85511b6d4dc21d5a9",
-      "ordinaryRules": 41,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
-      "file": "components/flow-runtime.css",
-      "sha256": "2c5a2a2e2efed76b6bd1019aef96cee449ed990164419d8ac41582bec0165995",
-      "ordinaryRules": 56,
-      "legacyLayer": true,
-      "owner": "graphs"
-    },
-    {
-      "file": "components/github-panel.css",
-      "sha256": "104a154a88d42a388eba0ea835231ca71fd1ce17de317c9de280226f1e9cdf37",
-      "ordinaryRules": 73,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
-      "file": "components/impact-panel.css",
-      "sha256": "d1afc39ddbc083a094bd9e65c8b9979f156ad87183e34ebc98e0a980309a0a5b",
-      "ordinaryRules": 98,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
     },
     {
       "file": "components/legacy-shared-defaults.css",
@@ -59,118 +24,16 @@
       "ordinaryRules": 21,
       "legacyLayer": true,
       "owner": "dependent-ui-families/final-css-gate"
-    },
-    {
-      "file": "components/lessons-panel.css",
-      "sha256": "062efd417e288d9b57e9a191280d09761dc123abd6473f3ec3472337f159113e",
-      "ordinaryRules": 82,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
-      "file": "components/meridian-panel.css",
-      "sha256": "c650d92fb1bf3ff760186f8d07353d67421957ef3f23aa829697f95272268b6b",
-      "ordinaryRules": 73,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
-      "file": "components/methodology.css",
-      "sha256": "8dc1a7805cb19190532ec8ac5049ee3db991841c84a8e387377c49b7b499fc02",
-      "ordinaryRules": 58,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
-      "file": "components/onboarding.css",
-      "sha256": "bb4948008e151394edb64f85938ef335af890bf4dd64db4f43313a396e00cedd",
-      "ordinaryRules": 32,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
-      "file": "components/spec-flow.css",
-      "sha256": "25003dcb3a8588d238c3b030daa8de6df2b738f407752d4891541a18beda4991",
-      "ordinaryRules": 98,
-      "legacyLayer": true,
-      "owner": "graphs"
-    },
-    {
-      "file": "components/state-transitions.css",
-      "sha256": "c7d1e04fceea12d20a4f84c0c60e9693c0e0935846e49744ba53ef21c1b342bb",
-      "ordinaryRules": 68,
-      "legacyLayer": true,
-      "owner": "graphs"
-    },
-    {
-      "file": "components/verification.css",
-      "sha256": "a839468fbedbfaa3d0f21781ce4a194614bebe3afeb289e38c3fc9a48b9132b1",
-      "ordinaryRules": 46,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
-      "file": "components/work-status.css",
-      "sha256": "1bf92f76e1e7b69328747389e53ceb16d621e451c18e7c5f8a00a51b3b2ba4eb",
-      "ordinaryRules": 9,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
-      "file": "components/workspace-graphs.css",
-      "sha256": "d21056837624f1ab44243a91fa851e80e3fb160effb0354cd5c416a4af80ec7d",
-      "ordinaryRules": 24,
-      "legacyLayer": true,
-      "owner": "graphs"
     }
   ],
   "inline": [
     {
-      "file": "components/agent-proposals-panel.tsx",
-      "sha256": "2e8f06971960b2c5da56bd052cf560f3506f46c16eabebabcee0c6e3c190ce1e",
-      "expressions": [
-        {
-          "kind": "graph",
-          "sha256": "73bd686eeb65879a6f979527ff79d843dad929ec95a66ca72ed918f0a7673099",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "76b5cf2d3116e07cf361213c68add9fda4c9ef5b3dcfa85b62aad20bd63872c3",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "90ca7d7bc81bd597d9b2864ee2929a13a921060b301190411305d118c044ff03",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "c08bd47c96d048a326a7c0bb2644b22987d99ff65101bf6d7f51500c4e0d3d55",
-          "count": 1
-        }
-      ],
-      "owner": "specialized-panels"
-    },
-    {
       "file": "components/impact-panel.tsx",
-      "sha256": "035beee2d840c3e1bb07cff60cefc4179edfc123b5c77ff4d8865eb04745cc96",
+      "sha256": "e831a519c8b36e300f07dd771806e24cce6c86d04590641dce0ab8503017ba5d",
       "expressions": [
         {
           "kind": "jsx",
-          "sha256": "85433caf649e8bad3cd9cb451972426d4c742ef4675644737587bfd79f8b0cc1",
-          "count": 1
-        }
-      ],
-      "owner": "specialized-panels"
-    },
-    {
-      "file": "components/meridian-panel.tsx",
-      "sha256": "774b518d08da9f561d4ed8d189e52c713fd9310294a0ae0f8ef5abc1561d37b6",
-      "expressions": [
-        {
-          "kind": "jsx",
-          "sha256": "f4a019560b18210f781cd09fd5b0a2b22b802e68bf0760caeb6a0b1222a80a52",
+          "sha256": "b6968f32df2618d39450408c4684cd1d0619fd698ad4b6b127b95ada193ac9d1",
           "count": 1
         }
       ],
@@ -178,171 +41,21 @@
     },
     {
       "file": "components/onboarding.tsx",
-      "sha256": "b2b8e461475884e1b7cea1bfa14ba7e5ac0a9614433b857110a34a6d5ee0b831",
+      "sha256": "c7c1ee0839e68b2b0265a442df5a97990072191f9a56db7a59ff6eb3044968d4",
       "expressions": [
         {
-          "kind": "dom",
-          "sha256": "002faef44ef247045390fa5cf7d321b4afd393afbd3d6b0a492dea66a0acf5f3",
-          "count": 1
-        },
-        {
-          "kind": "dom",
-          "sha256": "2322f31b51c3e973729f02d8d7f3d07769098e49787a943175176b4d37522005",
+          "kind": "jsx",
+          "sha256": "24152c7e9306e858203596dfc095244d8e6cd05ef33f60ad333109f293ed0907",
           "count": 1
         },
         {
           "kind": "jsx",
-          "sha256": "5fd886dbaab9a4a424cadbdbf81aa125389d3fbf1d07106b28e4d1d2c4251752",
+          "sha256": "28d78d79a75a2987a217bc064fbd9485498c660dcc57983be16ab52adf610aa2",
           "count": 1
         },
         {
           "kind": "jsx",
-          "sha256": "85f9a7cfcb025e34862fa9c1f3c209c28adbac4be11b756eafc7283abdf01c38",
-          "count": 1
-        },
-        {
-          "kind": "jsx",
-          "sha256": "9dd7a6180aaa92fa23ff5063170c3a9df7943155bf96ee8ae809b281c6669ec9",
-          "count": 1
-        }
-      ],
-      "owner": "specialized-panels"
-    },
-    {
-      "file": "components/reality.tsx",
-      "sha256": "008d814a57575e0c76305d1374e8336870be40e53d3f30779dbe83d7c2c43e95",
-      "expressions": [
-        {
-          "kind": "graph",
-          "sha256": "1f2eae335f1c479e6860c44b206b23699424b3faeece9a9d0b6df8b7d19f2c53",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "22ae40b2bd6dc78c46942434e435b9132fabb5657100b212279bb789a4335825",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "76b5cf2d3116e07cf361213c68add9fda4c9ef5b3dcfa85b62aad20bd63872c3",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "c08bd47c96d048a326a7c0bb2644b22987d99ff65101bf6d7f51500c4e0d3d55",
-          "count": 1
-        },
-        {
-          "kind": "jsx",
-          "sha256": "0e5635075399a1c38b8bcf55ea1c206d5875353147f54375192e78066528061d",
-          "count": 1
-        },
-        {
-          "kind": "jsx",
-          "sha256": "7b556ed92262ba24527326db5c381ea34facdcdbb3ecc588d2162359a0738a24",
-          "count": 2
-        },
-        {
-          "kind": "jsx",
-          "sha256": "f8540426145c09cbb95990f38acbb88817b0cd1d1e77f39ebdaf45e31b2797f9",
-          "count": 1
-        }
-      ],
-      "owner": "graphs"
-    },
-    {
-      "file": "components/roadmap.tsx",
-      "sha256": "2da5937653441a2432a668eda340ee0ac1176802bf437f5bdf6f4373c4cf263c",
-      "expressions": [
-        {
-          "kind": "graph",
-          "sha256": "226c7dfc6c6885e09d711d56ec05c4729fd0ed6f3a9574a2a3d9831ee44d5581",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "3b07c07484b4b4cb599a9660da7ec86123f41eade100f5f6ea6349e4cbd542ef",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "ef27eda83541995bdaf579b93e311d95c649c95b93f900b18a07fd689e23bbed",
-          "count": 1
-        }
-      ],
-      "owner": "graphs"
-    },
-    {
-      "file": "components/spec-flow.tsx",
-      "sha256": "1b22961e74261636291c08a778ec2761dc4c0d488d4c69e396fab611f3fc302f",
-      "expressions": [
-        {
-          "kind": "graph",
-          "sha256": "00162354795bfbe429ebb935a3b974171fe052bb4e01b0f5fed11776fcd33093",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "b1cf643f1bb693c40ad4b2cdd62bf24aa73d61cd65d8b4d2d8c837268a8e2a6b",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "c08bd47c96d048a326a7c0bb2644b22987d99ff65101bf6d7f51500c4e0d3d55",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "c14549f88913629278501e3641e004e533aae62ad3366f930cdfadff419774f1",
-          "count": 1
-        }
-      ],
-      "owner": "graphs"
-    },
-    {
-      "file": "components/state-transitions.tsx",
-      "sha256": "f09bb06382f0090b6d40e6d116cd58a604c93840960db5d27da34c914a73096e",
-      "expressions": [
-        {
-          "kind": "graph",
-          "sha256": "3741425ba78e17664c65f19ba12f3bbb524af6109983f8e050694c7fad32fdba",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "46bd56fe73fa9ffe2eca2866da528d1671e105a526ad760437abc0da3eed168a",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "8dc183f080db9b4c269acbec71820980d8a2ce57f89093e1129ad9594ebc4ea4",
-          "count": 1
-        }
-      ],
-      "owner": "graphs"
-    },
-    {
-      "file": "components/workspace-proposals.tsx",
-      "sha256": "fedc9afe8709720f0290337f2250d26acc9d0e2a52f9e634fed8231626a8cc0d",
-      "expressions": [
-        {
-          "kind": "graph",
-          "sha256": "2ac2f712e9b93520d51a3f739b2a6b38fe6ab8f6b24820e0665585ef54c33863",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "76b5cf2d3116e07cf361213c68add9fda4c9ef5b3dcfa85b62aad20bd63872c3",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "90ca7d7bc81bd597d9b2864ee2929a13a921060b301190411305d118c044ff03",
-          "count": 1
-        },
-        {
-          "kind": "graph",
-          "sha256": "c08bd47c96d048a326a7c0bb2644b22987d99ff65101bf6d7f51500c4e0d3d55",
+          "sha256": "c74421dbdec91552be946cc7fd24d22338810a7dc6a9654ad517e867c47fe7c8",
           "count": 1
         }
       ],
@@ -350,7 +63,7 @@
     },
     {
       "file": "components/workspace-ui.tsx",
-      "sha256": "7a921ccbe0c765642fe0de048d0ab8e3e7781ff63c13a4bf5ef000b2ba886a83",
+      "sha256": "f3f4e90b81da96dd5c3dfa5274f0b6c1b76751fb6261aba4196ac2c1326e8bbe",
       "expressions": [
         {
           "kind": "dom",

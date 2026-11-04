@@ -8,9 +8,9 @@ import {currentDecisionRequests,isCurrentDecisionRequest} from '@/packages/core/
 import {validateFlowTrackingProfile} from '@/packages/core/src';
 import {getAcceptanceAvailability,getCanonicalStatusPresentation,getExecutionPresentation,probeWorkAction} from '@/packages/core/src/work-presentation';
 import type {AgentRegistration} from './agents-panel';
-import {workspaceContent} from './workspace-task';
+import {workspaceContent} from '@/packages/frontend/src/entities/specification';
 import {WorkspaceAccordion,WorkspaceSelect,WorkspaceTextarea} from './workspace-ui';
-import {WorkStatus} from './work-status';
+import {WorkStatus} from '@/packages/frontend/src/entities/work';
 
 /** Оформление элементов этого модуля; общие элементы используют workspacePresentation. */
 const presentationSlots={

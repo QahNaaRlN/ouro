@@ -5,6 +5,7 @@ import {workspacePresentation as ui} from './workspace-presentation';
 import {useEffect,useState,type FormEvent} from 'react';
 import {ArrowUpRight} from 'lucide-react';
 import type {RevisionContent} from '@/packages/core/src';
+import {workspaceContent} from '@/packages/frontend/src/entities/specification';
 import type {AgentRegistration} from './agents-panel';
 import {useWorkspaceIntents,useWorkspaceSession} from './workspace-client';
 import {WorkspaceSelect,WorkspaceTextarea} from './workspace-ui';
@@ -17,9 +18,6 @@ const presentationSlots={
 type TaskDraft={title:string;titleEdited:boolean;goal:string;dod:string;agentId:string};
 const drafts=new Map<string,TaskDraft>();
 
-export function workspaceContent(title:string,goal:string,dodText:string):RevisionContent{
-  return {title,goal,dod:dodText.split('\n').filter(text=>text.trim()).map((text,index)=>({id:`criterion-${index+1}`,text,required:true})),constraints:'',assumptions:'',risks:'',inputs:'',comment:''};
-}
 export default function WorkspaceTaskForm({projectId,agents,onStart,disabledReason}:{projectId:string;agents:AgentRegistration[];onStart:(agentId:string,content:RevisionContent)=>Promise<boolean>;disabledReason?:string}){
   const {actor}=useWorkspaceSession(),pending=useWorkspaceIntents(projectId,actor?.id);
   const draftKey=(actor?.id??'')+':'+projectId,previous=drafts.get(draftKey);

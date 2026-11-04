@@ -6,8 +6,10 @@ import { Box, LogIn, LogOut, Mail, Plus, ShieldCheck, UserPlus, Users } from 'lu
 import type { Actor } from '@/packages/core/src';
 import { selectedProjectId } from '@/lib/client-project';
 export { selectedProjectId } from '@/lib/client-project';
-import type { ProjectMembership, ProjectMetadata, ProjectRole } from '@ouro/protocol/http';
+import type { ProjectMembership, ProjectRole } from '@ouro/protocol/http';
 import {participantPresentation,type ParticipantSurface} from './participant-presentation';
+import {useCatalogProjects} from '@/packages/frontend/src/api/catalog-reads';
+import {ClientError,type CatalogReadScope} from '@/packages/client/src/ports';
 
 async function request(url: string, options?: RequestInit) {
   const response = await fetch(url, options);
@@ -76,15 +78,11 @@ export function EmailLogin({surface='legacy'}:{surface?:ParticipantSurface}) {
   </section>;
 }
 
-export function ProjectSwitcher({ identity }: { identity: Actor | null }) {
-  const [projects, setProjects] = useState<ProjectMetadata[]>([]), [current, setCurrent] = useState(selectedProjectId);
-  const [creating, setCreating] = useState(false), [name, setName] = useState(''), [error, setError] = useState('');
-  useEffect(() => {
-    if (!identity) return;
-    let live = true;
-    void request('/api/projects').then(body => { if (live) setProjects(body.projects); }).catch(cause => { if (live) setError(cause.message); });
-    return () => { live = false; };
-  }, [identity]);
+export function ProjectSwitcher({ identity,hasAccount,readScope }: { identity: Actor | null;hasAccount:boolean;readScope:CatalogReadScope }) {
+  const catalog=useCatalogProjects(readScope,hasAccount?'account':'workspace',!!identity),reading=hasAccount?catalog.account:catalog.workspace;
+  const projects=hasAccount?catalog.account.data??[]:catalog.workspace.data??[],[current]=useState(selectedProjectId);
+  const [creating, setCreating] = useState(false), [name, setName] = useState(''), [actionError, setError] = useState('');
+  const error=actionError||(reading.status==='unavailable'?'Чтение каталога недоступно в этом окружении.':reading.error?.message??'');
   const create = async (event: FormEvent) => {
     event.preventDefault(); if (!name.trim()) return; setError('');
     try { const body = await post('/api/projects', { name: name.trim() }); selectProject(body.project.id); }
@@ -95,7 +93,7 @@ export function ProjectSwitcher({ identity }: { identity: Actor | null }) {
     <label className="flex w-full flex-col gap-[6px]">
       <span className="quiet-label">ТЕКУЩИЙ ПРОЕКТ</span>
       <AppSelect aria-label="Текущий проект" value={projects.some(project => project.id === current) ? current : ''} onValueChange={selectedValue=> selectProject(selectedValue)} className="w-full rounded-[6px] border border-solid border-ouro-border bg-ouro-bg p-[8px] text-ouro-text">
-        {!projects.length && <option value="">Загрузка проектов…</option>}
+        {!projects.length && <option value="">{reading.status==='loading'?'Загрузка проектов…':reading.status==='unavailable'?'Каталог недоступен':reading.status==='error'?'Не удалось прочитать проекты':'Нет доступных проектов'}</option>}
         {projects.map(project => <option key={project.id} value={project.id}>{project.name} · {project.role}</option>)}
       </AppSelect>
     </label>
@@ -105,18 +103,19 @@ export function ProjectSwitcher({ identity }: { identity: Actor | null }) {
   </div>;
 }
 
-export function ProjectMembersPanel({ projectId, identity,surface='legacy' }: { projectId: string; identity: Actor;surface?:ParticipantSurface }) {
+export function ProjectMembersPanel({ projectId, identity,readScope,surface='legacy' }: { projectId: string; identity: Actor;readScope:CatalogReadScope;surface?:ParticipantSurface }) {
   const ui=participantPresentation(surface);
-  const [members, setMembers] = useState<ProjectMembership[]>([]), [projects, setProjects] = useState<ProjectMetadata[]>([]);
+  const [members, setMembers] = useState<ProjectMembership[]>([]),catalog=useCatalogProjects(readScope,'account',true),projects=catalog.account.data??[];
   const [email, setEmail] = useState(''), [role, setRole] = useState<ProjectRole>('Contributor'), [code, setCode] = useState('');
-  const [error, setError] = useState(''), [notice, setNotice] = useState(''), [busy, setBusy] = useState(false);
+  const [actionError, setError] = useState(''), [notice, setNotice] = useState(''), [busy, setBusy] = useState(false);
+  const error=actionError||(catalog.account.status==='unavailable'?'Чтение каталога недоступно в этом окружении.':catalog.account.error?.message??'');
   const currentRole = projects.find(project => project.id === projectId)?.role;
   const reload = useCallback(async () => {
     try {
-      const [memberData, projectData] = await Promise.all([request(`/api/projects/${encodeURIComponent(projectId)}/members`), request('/api/projects')]);
-      setMembers(memberData.members); setProjects(projectData.projects); setError('');
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Не удалось прочитать участников.'); }
-  }, [projectId]);
+      const [memberData] = await Promise.all([request(`/api/projects/${encodeURIComponent(projectId)}/members`), catalog.refresh()]);
+      setMembers(memberData.members); setError('');
+    } catch (cause) { if(!(cause instanceof ClientError&&cause.kind==='cancelled'))setError(cause instanceof Error ? cause.message : 'Не удалось прочитать участников.'); }
+  }, [projectId,catalog.refresh]);
   useEffect(() => { void reload(); }, [reload]);
   const invite = async (event: FormEvent) => {
     event.preventDefault(); if (busy) return; setBusy(true); setError(''); setNotice('');
