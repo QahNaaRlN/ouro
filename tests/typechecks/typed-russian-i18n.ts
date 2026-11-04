@@ -1,6 +1,6 @@
 import {createOuroI18n} from '../../packages/frontend/src/app/i18n';
 
-/** Compile-only проверки ключей; функция не вызывается и не является runtime test. */
+/** Проверки ключей при компиляции; функция не вызывается и не является runtime test. */
 function checkTranslationKeys(){
  const instance=createOuroI18n(),translate=instance.getFixedT('ru','assignWork');
  const text:string=translate('fields.goal.label');

@@ -26,7 +26,9 @@
     "hono": "4.13.16",
     "@playwright/test": "1.64.1",
     "@tanstack/react-router": "1.170.46",
-    "@ouro/protocol": "file:vendor/__OURO_PROTOCOL_TARBALL__"
+    "@ouro/protocol": "file:vendor/__OURO_PROTOCOL_TARBALL__",
+    "i18next": "26.7.1",
+    "react-i18next": "17.1.12"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",

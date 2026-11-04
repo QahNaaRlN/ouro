@@ -7,11 +7,11 @@
 | API/consumer audit и primary docs | COMPLETE |
 | Дизайн | ACCEPTED, без Form/state/command changes |
 | Immutable before | COMPLETE до source edits, exact base copies/SHA256 |
-| Source/test definitions | IMPLEMENTED_LOCAL, unqualified freeze для early peer |
+| Source/test definitions | IMPLEMENTED_LOCAL, root peer принят в указанном узком scope |
 | Static equivalence | PASS:19RU nodes/15texts,5handlers/16classNames,Provider runtime AST |
-| Dependency installation/RED/GREEN | NOT_RUN, producer lease / HEAVY-FREE |
-| Types/build/browser/consumer qualification | NOT_RUN |
-| Peer/commit/CI | PENDING; no push/PR |
+| Dependency installation/RED/GREEN | BOUNDED_WINDOWS_PASS; published pins, три fresh ci, admission regression |
+| Types/build/browser/consumer qualification | Root/web types, Next/Vite builds и scoped renderer PASS; committed consumer pipeline PENDING |
+| Peer/commit/CI | Root peer ACCEPTED; source checkpoint и parent sync сохранены, A/B provenance commits ниже; no push/PR |
 
 ## Сохранённый инвентарь
 
@@ -45,7 +45,7 @@
 
 ## Точный runbook выделенного dependency окна — пока STATIC ONLY
 
-Разрешение на запуск ещё не выдано. Ни одна команда ниже пока не выполнялась. Producer выполняет свой checkpoint, затем root выдаёт отдельный exclusive grant. Pinned executable — Node24.19.0 из существующего own runtime, npm CLI этой поставки **11.17.0**; системный Node/PATH глобально не меняется.
+Эта секция записана до разрешения: на тот момент ни одна команда ниже не выполнялась, producer владел окном. Последующий explicit exclusive grant и фактические результаты перечислены в следующей секции. Pinned executable — Node24.19.0 из существующего own runtime, npm CLI этой поставки **11.17.0**; системный Node/PATH глобально не меняется.
 
 Перед qualification рекомендован root-owned checkpoint/sync с принятым epic `4e826240` либо более новым явно выбранным SHA. Сохранить createWebProjectRuntime/WEB_PROJECT_SOURCE_ID и type-only public runtime import из PR72; добавить к ним D08 instance/wrapper, не вернуть прежний implicit HTTP factory. Старый707 before/static result остаётся историческим; after-sync Provider сравнивается с точным чистым новым parent отдельно. Семь dependency files между7074479 и4e826240 сейчас идентичны, что подтверждено read-only diff.
 
@@ -111,4 +111,62 @@ Root/web strict types, architecture/conventions/style/diff, new i18n cases и с
 
 После peer final source/metadata diff и local qualification root согласует atomic commit. Canonical consumer materialization читает committed Git source: full independent build/consumer proof для новых deps выполняется только на реально зафиксированном candidate/CI head, без dirty-tree обхода. До этого consumer provenance остаётся в указанном pending объёме. Root публикует/вливает историю после CI; никаких push/merge из этой static подготовки нет.
 
-Фактический статус всего runbook на момент записи: **NOT_RUN**, кроме read-only inventory и raw metadata snapshots. Producer/F lease не занимался, новых процессов установки/компиляции/браузера нет.
+Фактический статус всего runbook на момент первоначальной записи: **NOT_RUN**, кроме read-only inventory и raw metadata snapshots. Тогда producer/F lease не занимался, процессов установки/компиляции/браузера не было.
+
+## Фактическое exclusive D08 окно — 2026-11-05
+
+Root явно передал exclusive dependency/qualification окно после producer heavy-free. Все нижеуказанные процессы использовали собственный Node24.19.0/npm11.17.0 и process-local PATH; native/production/owner profiles не использовались. После завершения runtime checks root получил **HEAVY-FREE**; установки, компиляторы, браузеры и тестовые серверы закрыты.
+
+### Parent и source invariance
+
+Согласованный static source checkpoint сохранён как `2ad94b7`, затем объединён с exact `cf355523a1259b0e2826a4efa0a5fb4524e5fea5`. Единственный conflict был в Provider imports; сохранены public type-only runtime import, createWebProjectRuntime и WEB_PROJECT_SOURCE_ID, к существующему дереву добавлен только i18n instance/wrapper. Merge checkpoint `54ec2f9` получил Conventional Commit subject; первоначальный автоматически созданный subject не прошёл guard и был исправлен только в собственной неопубликованной истории.
+
+After-sync static proof повторён относительно чистого cf355 Provider: runtime/reporting/catalog/cleanup AST exact после исключения нового state/wrapper. Форма сохраняет прежний whole non-presentation AST, 5handlers и16classNames; 19RU nodes/15texts exact. Исторические707 before/evidence не переписаны. Source10modules, commands/Query/UNKNOWN и CSS/ledger/protocol не расширены. Protocol pack создал только content-identical EOL/stat output в source; `git diff --quiet -- packages/protocol` подтвердил нулевой content diff, собственный generated output восстановлен до чистого состояния.
+
+### Published metadata и конечные графы
+
+Проверены реальные published versions/integrities/peers: i18next26.7.1 и react-i18next17.1.12. Первый registry query из ограниченного окружения завершился DNS ENOTFOUND; это setup failure, не product RED. Разрешённый network path дал metadata и lock-only resolutions. Точные runtime pins добавлены во все три manifests/graphs.
+
+Во всех трёх graphs добавлены ровно4entries: i18next26.7.1, react-i18next17.1.12, html-parse-stringify4.0.1 и Babel runtime7.29.13. Root/consumer сохранили Babel8.1.0 на прежнем path;7.x установлен nested под react-i18next. В web7.x находится на свободном top-level path. Existing use-sync-external-store уже удовлетворял диапазону. Старые package path/version/resolved/integrity tuples не изменились и не удалялись. Единственная metadata reachability change — TypeScript dev→devOptional из-за нового optional runtime peer. Случайное npm inventory добавление6посторонних WASI inBundle rows в root удалено; исходный порядок прежних package entries сохранён. Dependency delta/сырой resolver output сохранены отдельно.
+
+Independent consumer graph построен от собственного прежнего template через materializer с настоящим portable protocol tarball0.3.0,159339bytes; root/web lock не использовались как его источник. После lock-only resolution восстановлены ровно прежние6slots. Новые counts:347non-protocol tuple entries, включая6bundled;341registry URLs и1отдельный protocol entry. Blueprint/template/tuple hashes вычислены тем же LF-canonical правилом, contract materialization PASS. Пять существующих CDC01–05 tests PASS, guards не ослаблялись.
+
+| Реальная установка | Результат |
+|---|---|
+| Root fresh ci окончательного графа | PASS,214installed packages; unrelated bundled inventory отсутствует |
+| Independent apps/web fresh ci | PASS,85installed packages |
+| Materialized consumer package graph fresh ci | PASS,258installed packages |
+
+Все три ci выполнялись с include=dev, ignore-scripts, no-audit/no-fund. Это package graph qualification; canonical committed consumer combined type/build/foreign-cwd/runtime/SSE/MCP/launcher pipeline не выполнялся. Его прежние PASS не перенесены в новый provenance.
+
+### Pure/type/error checks
+
+Установленные exact packages подтвердили initAsync:false synchronous bundled init, getI18n и explicit Provider APIs. Пять новых pure tests **5/5PASS**: config admission, empty dictionary, ready/no-global, nested instance isolation, finite injected error translation с getter/secret traps. На контролируемой реконструкции pre-admission candidate meaningful regression дал **RED Missing expected exception**, после восстановления frozen candidate — **5GREEN**. Это regression confirmation после первоначального source, не RED-first авторство.
+
+Root и independent web strict types **PASS** на окончательных исходниках. Root factory и web hook отдельно включают compile-negative key/defaultValue/namespace cases; unused @ts-expect-error также ломал бы compilation. Первый web fixture type pass выявил только optional instance access после изменения probe API; добавлен отсутствующий optional guard, без production source changes. Последний runner пишет новые отдельные empty-success logs и exit0 JSON: прежний Tee-Object при пустом stdout сохранял старую diagnostic file, что не выдаётся за новую type failure.
+
+Существующие client-error/Query/catalog regressions **32/32PASS**; handler/source invariance не подменяется этими тестами. Они проверяют прежние occurrence, UI ownership, cancellation и read-scope contracts без новых toast/global handlers.
+
+### Dev и production renderer — разные доказательства
+
+Проба монтирует два настоящих ProjectRuntimeProvider и настоящую WorkspaceTaskForm с WorkspaceProvider, обычными root/web bare imports. Сессия — собственный route fixture без SQL. Public I18nContext.i18n сравнивается напрямую, hook ready/RU тоже обязателен; global plugin/explicit hook instance не используется. Два Providers должны оставаться разными; изменение первого словаря не затрагивает второй.
+
+Первое сравнение useTranslation.i18n по object identity было неверным harness assumption: installed17.1.12 создаёт per-hook snapshot wrappers. Все hooks тогда уже были ready/RU; эта failure не объявляется duplicate-context RED. Probe исправлен на public context identity, private __original не используется. Dev затем дал2/2PASS без dedupe.
+
+Тот же test-only HTML input собран через реальный production Vite config без новых aliases/routes. Production дал actual **RED**: web hook выводил raw `heading`, public web context отсутствовал; Rollup inventory содержал две физические context.js и две i18next core implementations. Добавлены только два имени i18next/react-i18next к existing React dedupe list. После исправления inventory содержит **один context и один core**, те же assertions **GREEN**. Root peer этого bounded delta принят.
+
+Frozen final repeat: **dev2/2PASS6.7s**, **production preview2/2PASS5.2s**. Настоящая форма сохраняет пробелы/переводы строк в goal/title/DoD, выбранного агента и manual title при RU refresh и callback false; до refresh нет нового callback, всего0POST. Это UI/lifecycle proof, не server commit proof. Existing boundary/Query/async/UNKNOWN suite **4/4PASS9.8s** отдельно подтверждает сохранение exact RAM UNKNOWN bytes/IDs/scope и unload warning после child cleanup без повторного POST. Не заявляется сохранение любого child React state при boundary fallback.
+
+CI содержит отдельные dev и production fixture steps; test-only build config меняет только HTML input/output и module inventory. Test-only static preview не добавляет production route/API. Ни таймауты, ни assertions существующих suites не ослаблены.
+
+### Сборки, guards и ограничения
+
+Next16.4.3 production build с Webpack/strict TypeScript **PASS**:17.3scompile,25.3stype phase. Первый restricted worker attempt дал empty webpack diagnostics; без product source fix тот же approved-path build прошёл. Точная причина первой environment failure не доказана, поэтому она не называется product RED или установленным EPERM.
+
+Обычная Vite7.3.7 production сборка **PASS14.52s**, test-only production renderer build **PASS8.04s** на frozen fixture. Existing dependency annotation/chunk-size warnings сохранены; лимиты не менялись. Final root/web types и architecture/styles/migration/conventions runner все exit0; architecture929files/0violations/11exactlegacyedges, styles2ordinary CSS/3inline files/0violations, migration47routes/59method exports. Diff check PASS; service manifests/locks и protocol body без изменений.
+
+SDD source до install/последующего regression остаётся честной историей. CI/Linux/native/Meridian/full D08 acceptance и committed combined consumer delivery proof **PENDING**, fullP5 NOT_QUALIFIED. D10/Form, locale detector/loaders, новые languages, global error singleton и auth/UNKNOWN authority не входят в эту историю.
+
+### A/B committed provenance
+
+Root принял двухшаговую фиксацию: A содержит исходники, CI/fixture companions и все7dependency inputs с sourceCommit:null/status PENDING_COMMITTED_DEPENDENCY_INPUTS; старые canonical qualification PASS сняты. B ссылается на фактический SHA A и exact lock Git blobs, добавляя лишь bounded local proof metadata. A содержит реальные referenced manifests/locks/blueprint/template; self-reference или source-only SHA не используются. Полный canonical consumer CI остаётся pending до фактического результата root. SHA A/B и последующий CI head добавляются после записи соответствующих объектов Git, без выдумывания будущей ревизии.
