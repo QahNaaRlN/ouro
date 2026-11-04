@@ -1,5 +1,5 @@
 import type {WorkspaceIntent} from './workspace-intents';
-import {createProjectSnapshotAdopter} from '../../../../lib/project-snapshot';
+import {createProjectSnapshotAdopter} from '../lifecycle/project-snapshot';
 import {hasCommandReceiptHeader,verifiedCommandReceiptView} from './command-receipt-proof';
 
 function canonicalJSON(value:unknown):string{

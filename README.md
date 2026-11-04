@@ -18,7 +18,7 @@
 
 ## Первый запуск релиза
 
-Нужен [Node.js 24 LTS](https://nodejs.org/) с npm; проверенная версия закреплена в `.nvmrc`. Git, Docker, отдельный PostgreSQL и API-ключи для открытия интерфейса не требуются.
+Нужен стабильный [Node.js 24 LTS](https://nodejs.org/) с npm, минимум **24.19.0** в пределах major24; точная проверенная версия закреплена в `.nvmrc`. Launcher проверяет её до установки зависимостей. Git, Docker, отдельный PostgreSQL и API-ключи для открытия интерфейса не требуются.
 
 1. На [странице выпуска v0.1.0-beta.3](https://github.com/QahNaaRlN/ouro/releases/tag/v0.1.0-beta.3) выберите [ouro-0.1.0-beta.3-source.zip](https://github.com/QahNaaRlN/ouro/releases/download/v0.1.0-beta.3/ouro-0.1.0-beta.3-source.zip).
 2. Распакуйте архив и откройте терминал в папке с `package.json`.

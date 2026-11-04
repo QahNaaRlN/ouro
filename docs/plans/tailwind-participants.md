@@ -1,0 +1,45 @@
+# Журнал Tailwind: участники
+
+Дата: 2026-11-04. Статус: IN_PROGRESS. Ветка `codex/tailwind-panels` от эпика `d3949fd`.
+
+Порядок: исходный production browser baseline на отдельном профиле → явные JSX utilities → удаление stylesheet/import → сравнение тех же данных → C01/C02, typecheck/build, finite style gate → review и merge в эпик.
+
+Реализовано: обычные 31 правила `participants-panel.css` удалены, обе реальные семьи потребителей используют JSX utilities через явный `participant-presentation.ts`. Поведение запросов и credentials не менялось. Для аккаунта обнаружен прежний контекстный каскад: legacy использует flex/15px heading, workspace — grid/19px heading и другие field spacing. Первый rendered comparison выявил645 отличий метрик у аккаунта. Они устранены типизированным `surface`, который передаётся из workspace composition; DOM inspection и глобальные descendant overrides не используются.
+
+Фактические проверки на Node24.19.0 и отдельном порту3368:
+
+- Исходный реестр участников: production build и browser1/1 PASS; `.operations/before/` содержит4 PNG/геометрию. Один fixture profile `.operations/participant-visual-profile` сохранён для точного сравнения ID/дат.
+- Исходные три режима email-входа и membership: browser1/1 PASS; `.operations/account-before/` содержит16 PNG/геометрию. Здесь явно подставлены только GET-ответы для presentation; это не проверка backend-авторизации. Операции доступа в этом fixture не выполняются.
+- Финальный результат: **20/20 PNG побайтово совпадают**, все записанные geometry/font/color/padding/margin/gap/border metrics совпадают без нормализации. Обе темы и viewport1440×1000/390×844; реестр включает active/revoked. Три финальных PNG просмотрены отдельно, включая narrow membership и keyboard focus участника.
+- Реальные неизменённые C01/C02 на втором свежем `.operations/participant-functional-profile`: **2/2 PASS (13.7s)**. Проверены две независимые идентичности и авторство, одноразовый ключ и скрытие, отсутствие credential в browser storage, отзыв cookie read/write и отказ bootstrap восстанавливать demo identity.
+- Production build после финальной surface-коррекции PASS. Style gate: **19 обычных CSS/1888 rules;11 inline files**, zero violations. Из ledger удалён только фактически удалённый CSS. Пять ProjectSwitcher expressions в `project-account.tsx` побуквенно совпали по AST; обновлён только hash всего файла, изменённого account utilities. Их перенос по-прежнему принадлежит workspace-истории.
+
+Независимый read-only review подтвердил неизменность AST девяти handlers участника и одиннадцати handlers аккаунта, всех permission/readOnly/disabled/error/role условий и пяти ProjectSwitcher style expressions. Единственное замечание — язык новых JSDoc — исправлено на русский по D11. После установки существующего child lockfile архитектурная проверка прошла772 файла/zero violations/16 точных исторических edges; первоначально она обнаружила четыре отсутствующих Router module в ещё не установленном apps/web, source guard не ослаблялся. Conventions и diff whitespace — PASS. Vite strict TypeScript и production build PASS; начальный chunk304.13kB/98.71kB gzip, warnings о размере нет. Новый visual assertion на отозванный badge ограничен конкретной fixture article, чтобы другие участники общего CI-профиля не делали locator неоднозначным; продукт не менялся.
+
+После полного GREEN CI workspace вошёл в эпик `73f3b3a`. При синхронизации сохранены новые workspace utilities и явный `surface="workspace"` у EmailLogin/ProjectMembersPanel. ProjectSwitcher styles перенесены его историей; inline record не восстановлен. Объединённый точный остаток —16 CSS/1492 rules и10 inline files/35 expressions, `styles:check` zero violations. Проверка не расширяет технические исключения.
+
+Артефакты являются локальным evidence и игнорируются Git. Остальные специализированные панели, legacy Human View и графы остаются отдельными историями полного перевода. Рабочие профили пользователя не использовались. Peer review PASS; PR42 создан. После синхронизации Next/Vite build и web strict types PASS; повторные два visual cases PASS2/2 (14.7s), все20 PNG снова побайтово совпали с исходником, differences всех metrics=0. Данные/profiles те же. Полный CI объединённого commit остаётся PENDING.
+
+## PR42: длинное имя участника и узкий экран
+
+CI run `41825359484`, commit `8f0745b`: browser112 PASS /1 SKIP /1 FAIL. Единственный FAIL — действующий TWP root overflow invariant: scrollWidth556 при viewport390. Root source tree был чистым до расследования. Установленный Next CSS guide прочитан повторно; используются только новые изолированные profile/port3396.
+
+Реальное API-имя того же вида, которое ранее создаёт M06 (`Meridian Boris 00000000-0000-4000-8000-000000000000`), воспроизводит scrollWidth584. DOM-измерение нашло **ровно один** переполняющий элемент: собственная кнопка `Отозвать доступ <полное имя>`, `.btn btn-small`, white-space:nowrap, width514.515625, right583.515625. Панель имеет width356/right373, её scrollWidth567; вне панели переполняющих элементов нет. Значение556 в CI зависит от символов случайного UUID; локальный детерминированный UUID воспроизводит ту же причину.
+
+Диагностическое применение точного legacy `d3949fd:participants-panel.css` после удаления перенесённых utility-классов на этой странице дало те же scrollWidth584 и геометрию кнопки. Это **существующий дефект длинного имени**, обнаруженный общим CI fixture, не W/participant conversion regression. Это сопоставление CSS в реальном браузере, а не независимая production-сборка старого commit. Exact JSON — `.operations/pr42-overflow-current.json` / `pr42-overflow-legacy.json`, screenshot — `pr42-overflow-before.png`.
+
+На неизменённом UI реальный TWP дал RED584 на исходном assertion line66; trace `.operations/pr42-red-results`. Новая TWPL также RED584: сохраняет root invariant, отдельно проверяет panel overflow, полный accessible name, строки видимого текста внутри кнопки, focus и фактический отзыв в обеих темах. Source fix после этих RED ограничен max-width/min-width и переносом текста собственной revoke-кнопки, handlers и глобальные `.btn` не меняются. Общий assertion не удаляется и не заменяется более слабым локальным.
+
+GREEN на замороженном source: TWP с уже сохранённым длинным именем + TWPL — **2/2 PASS /30.6s**, `.operations/pr42-green-results`; прежние C01/C02 — **2/2 PASS /47.6s** на новом `.operations/pr42-functional-profile`. TWPL проверяет dark/light390, все строки полного имени внутри границ кнопки, focus, успешный revoke и сохранённый revokedAt реального API. Long-name screenshot dark390 просмотрен отдельно: текст полностью виден, action не уходит за карточку.
+
+На прежнем short-name visual profile TWA сохранил16 снимков, а первый TWP timeout произошёл **до показа панели**, в «Открываем рабочее место»: trace показывает session200, `/api/project` и `/api/projects` ещё pending/status-1. Это отдельное наблюдение запуска, не CSS RED и не доказанная причина; три изолированных browser-процесса тогда работали параллельно. Повтор только TWP на неизменённом source/том же профиле/том же15s assertion прошёл **1/1 /10.5s**. После него **20/20 прежних PNG побайтово идентичны**, обе полные JSON-записи geometry/font/color/focus metrics идентичны без нормализации. Артефакты `.operations/pr42-short-after`, первый trace `.operations/pr42-short-results`, повтор `.operations/pr42-short-rerun-results`. Исходный visual profile не заполнялся long-name regression данными.
+
+Production Next build/root TypeScript, strict web TypeScript и Vite build PASS. Style ledger не меняется:16 ordinary CSS /10 inline files /0 violations; ни новый stylesheet, ни inline styling не добавлены. Conventions и diff whitespace PASS. Production source diff — единственный className кнопки отзыва: `min-w-0 max-w-full whitespace-normal [overflow-wrap:anywhere]`. Accessible text/permissions/disabled/handler/request body не изменены. В собственный коммит входят только этот source, TWPL и два документа; push/merge остаются root. Полный CI нового commit ещё не запускался и GREEN не объявляется.
+## Сочетание с общей project session
+
+После слияния `d0206db` Next build и Vite types/build PASS. TWP/TWPL 2/2 PASS на новом изолированном профиле; TWA membership fixture отклонён новым identity validator: в его synthetic actor отсутствовал обязательный `projectIds`. Уточнён только fixture (тот же presentation-project); auth validation и все проверки оформления сохранены. Это setup/fixture defect при сочетании, не изменение production access policy. Финальный полный локальный набор TWA/TWP/TWPL: **3/3 PASS (10.6s)** на отдельном новом профиле; CI_PENDING.
+
+## Объединённый Human View
+
+Merge с `ca05037` (qualified profile owner + Human View) разрешил только описание остатка стилей; production TSX автоматически объединён. Фактический ledger:16CSS/1044rules/10inlinefiles/35expressions; style gate0violations. Новый production Next build PASS; TWA/TWP/TWPL **3/3 PASS (10.9s)** на новом профиле/port3396. Общая проверка ширины, читаемое полное длинное имя и настоящий revoke сохранены; полный CI_PENDING.
+

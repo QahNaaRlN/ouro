@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createProjectSnapshotAdopter} from '../lib/project-snapshot';
+import {createProjectSnapshotAdopter} from '../packages/client/src/lifecycle/project-snapshot';
 import {fixture} from './verification-fixture';
 
 test('legacy receipt empty derived collections normalize only in read projection, retaining original immutable bytes',()=>{
