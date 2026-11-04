@@ -1,5 +1,7 @@
 "use client";
 
+import {IntegrationSourceSwitch} from '@/components/IntegrationSourceSwitch';
+
 import {WorkspaceAccordion} from '@/components/workspace-ui';
 import {AppSelect} from '@/components/app-select';
 import { projectFetch } from '@/lib/client-project';
@@ -1409,7 +1411,7 @@ export default function Home() {
               {view === "methodology" && <Methodology />}
               {view === "agents" && <AgentsPanel onAgentsChange={setAgents} readOnly={projectRole!=='Owner'}/>}
               {view==='integrations'&&<>
-                <div className="integration-source-switch" role="group" aria-label="Источник интеграции"><button type="button" aria-pressed={integrationSource==='github'} onClick={()=>setIntegrationSource('github')}>GitHub</button><button type="button" aria-pressed={integrationSource==='meridian'} onClick={()=>setIntegrationSource('meridian')}>Meridian</button></div>
+                <IntegrationSourceSwitch value={integrationSource} onValueChange={setIntegrationSource}/>
                 <div hidden={integrationSource!=='github'}><GitHubPanel state={state} onSnapshot={adoptMutation} readOnly={!canWrite}/></div>
                 <div hidden={integrationSource!=='meridian'}><MeridianPanel key={`${state.projectId}:${meridianParticipantKey}`} participantKey={meridianParticipantKey} pendingIntent={meridianPendingIntent} theme={theme} state={state} onSnapshot={adoptMutation} readOnly={!canWrite} onOpenSpec={id=>{pick(id);setDetailTab('expectation');setView('specs');}}/></div>
               </>}
