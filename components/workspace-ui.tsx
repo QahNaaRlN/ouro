@@ -72,13 +72,15 @@ export const WorkspaceTextarea=forwardRef<HTMLTextAreaElement,TextareaHTMLAttrib
 type AccordionProps={title:ReactNode;children:ReactNode;open?:boolean;defaultOpen?:boolean;onOpenChange?:(open:boolean)=>void;className?:string;
   /** Локальное оформление кнопки раскрытия имеет приоритет над общими defaults. */
   triggerClassName?:string;
+  /** Сохраняет локальные отступы контейнера раскрытия, включая его закрытое состояние. */
+  readonly gridClassName?:string;
 };
-export function WorkspaceAccordion({title,children,open,defaultOpen=false,onOpenChange,className='',triggerClassName=''}:AccordionProps){
+export function WorkspaceAccordion({title,children,open,defaultOpen=false,onOpenChange,className='',triggerClassName='',gridClassName=''}:AccordionProps){
   const workspace=useContext(AppearanceContext);
   const [localOpen,setLocalOpen]=useState(defaultOpen),expanded=open??localOpen,id=useId();
   return <section className={twMerge('ws-accordion min-w-0',workspace&&'my-[14px]',className)}>
     <button type="button" className={twMerge(workspace&&ui.button,presentationSlots.accordionTrigger,workspace&&'justify-start font-normal',triggerClassName)} aria-expanded={expanded} aria-controls={id} onClick={()=>{if(open===undefined)setLocalOpen(!expanded);onOpenChange?.(!expanded);}}><ChevronRight className="shrink-0 transition-transform duration-[180ms] ease-[ease] group-aria-expanded/accordion:rotate-90 motion-reduce:transition-none" size={15} aria-hidden="true"/>{title}</button>
-    <div className="ws-accordion-grid grid grid-rows-[0fr] transition-[grid-template-rows] duration-[200ms] ease-[ease] data-[open=true]:grid-rows-[1fr] motion-reduce:transition-none" data-open={expanded} aria-hidden={!expanded} inert={!expanded}><div className="ws-accordion-clip min-h-0 overflow-hidden"><div className="ws-accordion-content pt-[10px]" id={id}>{children}</div></div></div>
+    <div className={twMerge('ws-accordion-grid grid grid-rows-[0fr] transition-[grid-template-rows] duration-[200ms] ease-[ease] data-[open=true]:grid-rows-[1fr] motion-reduce:transition-none',gridClassName)} data-open={expanded} aria-hidden={!expanded} inert={!expanded}><div className="ws-accordion-clip min-h-0 overflow-hidden"><div className="ws-accordion-content pt-[10px]" id={id}>{children}</div></div></div>
   </section>;
 }
 

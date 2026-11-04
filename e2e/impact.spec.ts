@@ -1,5 +1,5 @@
 import {chooseSelectOption} from './select-helpers';
-import { test, expect, type APIRequestContext } from '@playwright/test';
+import { test, expect, type APIRequestContext, type Locator } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import type { ProjectState, Spec } from '../packages/core/src/types';
 
@@ -10,6 +10,12 @@ async function human(request:APIRequestContext,payload:Record<string,unknown>):P
   const state=await project(request);
   const response=await request.post('/api/commands',{data:{...payload,requestId:crypto.randomUUID(),expectedVersion:state.version}});
   expect(response.ok(),await response.text()).toBeTruthy();return (await response.json()).state;
+}
+
+/** Проверяет геометрию шкалы независимо от способа задания её width. */
+async function expectMeter(panel:Locator,ratio:number){
+  const geometry=await panel.locator('.impact-meter').evaluate(node=>{const css=getComputedStyle(node);return {track:node.getBoundingClientRect().width-parseFloat(css.borderLeftWidth)-parseFloat(css.borderRightWidth),fill:node.firstElementChild!.getBoundingClientRect().width};});
+  expect(geometry.fill).toBeCloseTo(geometry.track*ratio,0);
 }
 
 test('M07 impact baseline, event sources and real JSON export explain a fixed cohort without writing domain history',async({page})=>{
@@ -31,11 +37,13 @@ test('M07 impact baseline, event sources and real JSON export explain a fixed co
   for(const spec of specs)await panel.getByRole('checkbox',{name:`${spec.humanId} — ${spec.title}`,exact:true}).check();
   await panel.getByRole('button',{name:'Пересчитать отчёт',exact:true}).click();
   await expect(panel).toContainText('0 из 2 исходных спек');
+  await expect(panel.getByLabel('Доля изменённых исходных ожиданий',{exact:true})).toHaveText('0,0%');await expectMeter(panel,0);
   const first=baseline.revisions.find(revision=>revision.id===specs[0].activeRevisionId)!;
   let state=await human(page.request,{type:'proposeRevision',specId:specs[0].id,content:{title:first.title,goal:'Наблюдаемое изменённое ожидание.',dod:first.dod,constraints:first.constraints,assumptions:first.assumptions,risks:first.risks,inputs:first.inputs,comment:first.comment,...(first.flow?{flow:first.flow}:{})}});
   state=await human(page.request,{type:'activateRevision',specId:specs[0].id,revisionId:state.revisions.at(-1)!.id});
   await expect(panel).toContainText('1 из 2 исходных спек');
   await expect(panel.getByLabel('Доля изменённых исходных ожиданий',{exact:true})).toHaveText('50,0%');
+  await expectMeter(panel,.5);
   await expect(panel).toContainText('Не оценивает качество агента');
   const source=panel.getByRole('group',{name:`Основание изменения ${specs[0].humanId}`});
   await source.locator('.ws-accordion-trigger').first().click();await expect(source).toContainText('RevisionActivated');
@@ -48,6 +56,7 @@ test('M07 impact baseline, event sources and real JSON export explain a fixed co
   await chooseSelectOption(panel.getByLabel('Конечная точка отчёта',{exact:true}),'historical');
   await panel.getByLabel('Конечная точка истории',{exact:true}).fill(String(c0));
   await panel.getByRole('button',{name:'Пересчитать отчёт',exact:true}).click();await expect(panel).toContainText('0 из 2 исходных спек');
+  await expectMeter(panel,0);
   for(const spec of specs)await panel.getByRole('checkbox',{name:`${spec.humanId} — ${spec.title}`,exact:true}).uncheck();
   await panel.getByRole('button',{name:'Пересчитать отчёт',exact:true}).click();await expect(panel).toContainText('Нет исходной утверждённой базы');
   expect((await project(page.request)).version).toBe(state.version);
