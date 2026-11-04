@@ -91,16 +91,16 @@ export function ProjectSwitcher({ identity }: { identity: Actor | null }) {
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Не удалось создать проект.'); }
   };
   if (!identity) return <div className="workspace-switch"><span className="workspace-avatar"><Box size={17}/></span><div><strong>Ouro</strong><small>Требуется вход</small></div></div>;
-  return <div className="workspace-switch" style={{ display: 'block' }}>
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%' }}>
+  return <div className="workspace-switch block">
+    <label className="flex w-full flex-col gap-[6px]">
       <span className="quiet-label">ТЕКУЩИЙ ПРОЕКТ</span>
-      <AppSelect aria-label="Текущий проект" value={projects.some(project => project.id === current) ? current : ''} onValueChange={selectedValue=> selectProject(selectedValue)} style={{ width: '100%', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 6, padding: 8 }}>
+      <AppSelect aria-label="Текущий проект" value={projects.some(project => project.id === current) ? current : ''} onValueChange={selectedValue=> selectProject(selectedValue)} className="w-full rounded-[6px] border border-solid border-ouro-border bg-ouro-bg p-[8px] text-ouro-text">
         {!projects.length && <option value="">Загрузка проектов…</option>}
         {projects.map(project => <option key={project.id} value={project.id}>{project.name} · {project.role}</option>)}
       </AppSelect>
     </label>
     {identity.id !== 'local-human' && identity.id !== 'human-token' && <button className="text-btn" type="button" onClick={() => setCreating(value => !value)}><Plus size={13}/>Новый проект</button>}
-    {creating && <form onSubmit={create} style={{ display: 'flex', gap: 6, marginTop: 8 }}><input aria-label="Название нового проекта" required maxLength={120} value={name} onChange={event => setName(event.target.value)} style={{ minWidth: 0, width: '100%' }}/><button className="btn btn-small" type="submit">Создать</button></form>}
+    {creating && <form onSubmit={create} className="mt-[8px] flex gap-[6px]"><input className="w-full min-w-0" aria-label="Название нового проекта" required maxLength={120} value={name} onChange={event => setName(event.target.value)}/><button className="btn btn-small" type="submit">Создать</button></form>}
     {error && <small role="alert">{error}</small>}
   </div>;
 }
