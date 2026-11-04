@@ -84,3 +84,5 @@ Evidence: `.operations/impact-lessons-before`, `impact-lessons-final`, `impact-l
 На исходном 8c11e9 — 11 CSS / 723 rules, 8 inline files / 28 expressions. После IL — 9 / 543, 8 / 28. Удалены именно 180 правил; meter custom property и обе textarea expressions остаются учтёнными, без blanket technical exemption. App globals, 21 shared default и остальные семейства сохраняют прежних owners.
 
 Root source peer принят: maps, буквальная meter formula и readonly grid slot проверены отдельно. Scope не включает hFSD/transport/backend migration, полный Tailwind final gate или CI acceptance. Подготовлен scoped local commit; push/PR делает root.
+
+После review объединён проверенный epic5070a0a с G1/G2/G3 и catalog reads. Style ledger согласован по исходным exact records: удалены только уже перенесённые файлы, meter и обе textarea dependencies сохранены. Повторные root/web strict types, architecture876/0/11, migration47/59, styles5CSS/265rules/4inline/10expressions/0 и diff checks PASS. Full CI требуется до merge.
