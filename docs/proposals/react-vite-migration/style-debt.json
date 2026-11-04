@@ -13,8 +13,8 @@
   "css": [
     {
       "file": "app/globals.css",
-      "sha256": "4c958bc7cf6b6ab9c70761d21f4ceb151e040766364770f666b362c16e4935ea",
-      "ordinaryRules": 131,
+      "sha256": "3b5a794f79da42683cd39a4c08c5a8e559154025ac419be2036829e62360cae5",
+      "ordinaryRules": 91,
       "legacyLayer": true,
       "owner": "legacy-human-view"
     },
@@ -24,13 +24,6 @@
       "ordinaryRules": 21,
       "legacyLayer": true,
       "owner": "dependent-ui-families/final-css-gate"
-    },
-    {
-      "file": "components/methodology.css",
-      "sha256": "8dc1a7805cb19190532ec8ac5049ee3db991841c84a8e387377c49b7b499fc02",
-      "ordinaryRules": 58,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
     }
   ],
   "inline": [
