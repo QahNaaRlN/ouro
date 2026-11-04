@@ -1,12 +1,13 @@
 import type { Actor } from '../packages/core/src';
 import { AGENT_ID,PROJECT_ID } from '../packages/core/src';
-import { AccessError,authenticatedParticipant,assertHuman,readCommandBody } from './auth';
+import { AccessError,authenticatedParticipant,assertHuman,readCommandBody,defaultAuthService,type AuthService } from './auth';
 import { apiError } from './http';
 import { requestedProjectId } from './connection-config';
 import type { createStore } from './store';
 
 type DraftStore=Pick<Awaited<ReturnType<typeof createStore>>,'createCollaborativeDraft'|'listCollaborativeDrafts'|'getCollaborativeDraft'|'updateCollaborativeDraft'|'publishCollaborativeDraft'>;
-export function createCollaborativeHandlers(deps:{getStore?:()=>Promise<DraftStore>;authenticateHuman?:(request:Request)=>Actor|Promise<Actor>}={}){
+export function createCollaborativeHandlers(deps:{getStore?:()=>Promise<DraftStore>;authenticateHuman?:(request:Request)=>Actor|Promise<Actor>;auth?:AuthService}={}){
+  const {authenticatedParticipant,readCommandBody}=deps.auth??defaultAuthService;
   const getStore=deps.getStore??(async()=>(await import('./store')).getCollaborativeDraftStore());
   const human=async(request:Request,projectId:string)=>{const actor=await(deps.authenticateHuman?.(request)??authenticatedParticipant(request,projectId,AGENT_ID));assertHuman(actor);return actor;};
   const json=(body:unknown,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store'}});

@@ -105,12 +105,12 @@ jobs:
         run: npm --prefix apps/service ci
       - name: Run unit and integration tests
         run: npm test
-      - name: Qualify the Node HTTP service adapter over TCP
-        run: npm --prefix apps/service test
-      - name: Check and build the isolated service adapter
+      - name: Check and build the isolated service runtime
         run: |
           npm --prefix apps/service run typecheck
           npm --prefix apps/service run build
+      - name: Qualify all service routes, lifecycle and built artifact over TCP
+        run: npm --prefix apps/service test
       - name: Check TypeScript
         run: npm run typecheck
       - name: Verify canonical protocol schemas
