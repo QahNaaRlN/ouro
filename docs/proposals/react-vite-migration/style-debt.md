@@ -1,6 +1,6 @@
 # Проверяемый остаток перехода на Tailwind 4
 
-Исходный снимок — эпик `7c0def1`: 20 CSS-файлов / 1919 правил, 11 frontend-файлов / 41 expression. После workspace, Human View, участников и G1 Roadmap/Reality фактический остаток — **15 CSS-файлов с 990 обычными правилами**, **8 frontend-файлов с 24 style expressions**. Keyframe steps не входят в число обычных правил. Это учёт незавершённой работы, а не полный Tailwind PASS.
+Исходный снимок — эпик `7c0def1`: 20 CSS-файлов / 1919 правил, 11 frontend-файлов / 41 expression. После workspace, Human View, участников, интеграций и G1 Roadmap/Reality фактический остаток — **12 CSS-файлов с 812 обычными правилами**, **7 frontend-файлов с 21 style expression**. Keyframe steps не входят в число обычных правил. Это учёт незавершённой работы, а не полный Tailwind PASS.
 
 G1 удалил `workspace-graphs.css`24 rules и30 graph rules в globals, перенёс11 обычных Roadmap/Reality expressions. Hashes process/state/proposal companions обновлены после review; их оставшиеся AST expressions точно совпадают с прежними записями. Два graph handle rules остаются конечным обычным G2-долгом: consumers — Roadmap, process/state, Reality и оба proposal preview с генерируемыми default-node handles. Shared graph presentation использует public className/slots установленной библиотеки и не создаёт новых technical CSS/inline exceptions.
 
@@ -9,6 +9,8 @@ Workspace-срез удалил четыре старых CSS-файла, пер
 История участников удаляет31 правило общего participant stylesheet после переноса обеих семей потребителей и сравнения20 PNG. ProjectSwitcher expressions полностью перенесены отдельным workspace-срезом. При объединении сохранены его utilities и явный account surface; удалённый inline record не восстановлен. Реестр сочетает только проверенные изменения обеих историй, без новых широких исключений.
 
 [Машинный реестр](style-debt.json) назначает каждой точной записи семейство реализации: legacy Human View, workspace, graphs либо специализированные панели. CSS хранит отпечаток нормализованного исходника и число правил; inline-запись — отпечаток всего файла и разобранных AST expressions, включая их количество. Изменение referenced константы в том же файле также потребует review. Реестр не применяет glob-исключения и не обновляется при проверке автоматически.
+
+Срез интеграций удалил Meridian/GitHub/onboarding stylesheets: 178 rules / 647 declarations. Meridian theme style expression удалён; 16 локальных переменных связаны со статическими light/dark utilities и проверяются относительно канонической палитры. Три onboarding geometry attributes вызывают точные typed custom-property helpers и продолжают учитываться как inline debt. Две body overflow writes удалены: узкая lease управляет utility-классом, не меняя inline style. Legacy global native controls и 21 workspace default остаются ordinary debt; точные зависимости и runtime формулы приведены в журнале среза. Это не blanket exception всех стилей обучения.
 
 `npm run styles:check` проверяет соответствие этому конечному остатку. Он отказывает при новых/изменённых/устаревших записях, bulk `@apply`, попытке спрятать component CSS в technical theme/base и непроверенных исходных junction/symlink. **PASS означает, что остаток учтён; это не полный Tailwind PASS.**
 
