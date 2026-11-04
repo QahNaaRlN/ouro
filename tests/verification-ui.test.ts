@@ -9,7 +9,7 @@ requireForTest.extensions['.css'] = () => { };
 import { getWorkPairGroups, getWorkPairPresentation, replay } from '../packages/core/src';
 import { fixture, report } from './verification-fixture';
 test('pair and details use identical result/applicability; rendering historical state never reads live runs or mutates domain', async () => {
-    const { VerificationPairCard } = await import('../components/verification-pair-card');
+    const { VerificationPairCard } = await import('../packages/frontend/src/entities/work');
     const { WorkspaceVerification } = await import('../components/verification-panel');
     const f = fixture(), historical = replay(f.state.events);
     f.current();
@@ -21,7 +21,7 @@ test('pair and details use identical result/applicability; rendering historical 
     assert(card.includes(projection.verifications[0].resultLabel));
     assert(details.includes(projection.verifications[0].resultLabel));
     assert(card.includes('aria-pressed="true"'));
-    assert.equal((card.match(/class="verification-rotor"/g) ?? []).length, 1);
+    assert.equal((card.match(/class="verification-rotor(?:\s[^"]*)?"/g) ?? []).length, 1);
     assert.equal((card.match(/class="verification-face verification-face-/g) ?? []).length, 2);
     assert.match(card, /verification-face-work[^>]*aria-hidden="true"[^>]*inert=""/);
     assert.match(card, /verification-face-verification[^>]*aria-hidden="false"/);

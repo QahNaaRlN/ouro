@@ -1,6 +1,8 @@
 # Проверяемый остаток перехода на Tailwind 4
 
-Исходный снимок — эпик `7c0def1`: 20 CSS-файлов / 1919 правил, 11 frontend-файлов / 41 expression. После принятых родителей и текущей истории фактический остаток — **4 CSS-файлов с 167 обычными правилами**, **4 frontend-файла с 10 style expressions**. Это учёт незавершённой работы, а не полный Tailwind PASS.
+Исходный снимок — эпик `7c0def1`: 20 CSS-файлов / 1919 правил, 11 frontend-файлов / 41 expression. После принятых родителей и текущей истории фактический остаток — **2 CSS-файлов с 112 обычными правилами**, **4 frontend-файла с 10 style expressions**. Это учёт незавершённой работы, а не полный Tailwind PASS.
+
+Verification и WorkStatus удаляют 55 ordinary rules двух stylesheet; Pair получает конечные readonly presentation slots без parent imports. Команды, обе грани и inert сохраняются.
 
 История/recovery удаляет methodology.css и его 58 ordinary rules; существующая статья Methodology не переписывается.
 
