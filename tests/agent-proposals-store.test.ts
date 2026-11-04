@@ -6,7 +6,7 @@ import path from 'node:path';
 import {createStore} from '../lib/store';
 import {createAgentService,type AgentToolResult} from '../packages/mcp/src/agent-service';
 import {PROJECT_ID,type Actor,type ProjectState} from '../packages/core/src';
-import {createProjectSnapshotAdopter} from '../lib/project-snapshot';
+import {createProjectSnapshotAdopter} from '../packages/client/src/lifecycle/project-snapshot';
 const human:Actor={id:'proposal-sql-human',kind:'human',projectIds:[PROJECT_ID]};
 const revision=(title='Предлагаемая работа')=>({title,goal:'Проверяемая цель.',dod:[{id:'proof',text:'Результат проверен',required:true}],constraints:'',assumptions:'',risks:'',inputs:'',comment:''});
 const success=(result:AgentToolResult)=>{assert.equal(result.isError,undefined,JSON.stringify(result.structuredContent));return result.structuredContent as any;};

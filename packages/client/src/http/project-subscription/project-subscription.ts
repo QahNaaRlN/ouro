@@ -1,4 +1,4 @@
-import type { ProjectSnapshot, ProjectSnapshotAdopter, SnapshotAdoption } from './project-snapshot';
+import type { ProjectSnapshot, ProjectSnapshotAdopter, SnapshotAdoption } from '../../lifecycle/project-snapshot';
 
 export type ProjectSubscriptionStatus = 'connecting'|'connected'|'reconnecting'|'reload-required';
 export type ProjectEventSource = {
