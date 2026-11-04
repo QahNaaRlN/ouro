@@ -1,7 +1,7 @@
 import {createProjectSnapshotAdopter,type ProjectSnapshotAdopter,type SnapshotAdoption} from './project-snapshot';
 import type {FrozenProjectCommandIntent,ProjectClientScope,ProjectCommandPort,ProjectReadPort,ProjectSubscriptionPort,ProjectSnapshotDTO,WorkspaceSnapshotDTO,ProjectConnectionStatus,ProjectSubscription} from '../ports';
 import {ClientError,type ErrorReporterPort} from '../ports/client-error.types';
-import {normalizeClientError,captureClientError} from './client-error-reporting';
+import {normalizeAppError,normalizeClientError,captureClientError} from './client-error-reporting';
 import {createClientCancellation} from './create-client-cancellation';
 import type {ProjectCommandPresentation,ProjectCommandPresentationLookup} from './project-command-presentation.types';
 
@@ -24,12 +24,29 @@ export function createProjectSession(options:ProjectSessionOptions){
  const scope=Object.freeze({...options.scope}),adopter=createProjectSnapshotAdopter(scope.projectId),listeners=new Set<()=>void>(),cancellation=createClientCancellation(),occurrencePrefix=String(++nextSessionOccurrence);
  let active=true,revoked=false,subscription:ProjectSubscription|undefined,occurrence=0,busyCount=0;
  let view:ProjectSessionView={snapshot:null,metadata:null,status:'connecting',error:null,active:true,busy:false};
- const update=(patch:Partial<ProjectSessionView>)=>{if(!active)return;view={...view,...patch};listeners.forEach(listener=>listener());};
+ /** Ошибка наблюдателя не меняет исход операции и не блокирует отзыв доступа. */
+ const notifyObservers=(observers:readonly (()=>void)[])=>{
+  for(const observer of observers){try{observer();}catch(error){
+   captureClientError(error,{normalize:normalizeAppError,reporter:options.reporter,occurrence:normalized=>({occurrenceId:occurrencePrefix+':observer:'+String(++occurrence),code:normalized.code,kind:normalized.kind,operation:'async-operation',sourceId:options.sourceId})});
+  }}
+ };
+ const update=(patch:Partial<ProjectSessionView>)=>{if(!active)return;view={...view,...patch};notifyObservers([...listeners]);};
  const capture=(value:unknown,operation:'read-project'|'project-command'|'project-stream')=>{
   const error=captureClientError(value,{reporter:options.reporter,normalize:normalizeClientError,occurrence:normalized=>({occurrenceId:occurrencePrefix+':'+String(++occurrence),code:normalized.code,kind:normalized.kind,operation,sourceId:options.sourceId,accessEpoch:scope.accessEpoch,...(scope.hostEpoch===undefined?{}:{hostEpoch:scope.hostEpoch})})});
-  if(active&&error.kind!=='cancelled')update({error});return error;
+  if(active&&error.kind!=='cancelled'&&error.kind!=='access')update({error});return error;
  };
- const revoke=(error:ClientError)=>{revoked=true;cancellation.abort();subscription?.close();subscription=undefined;update({snapshot:null,metadata:null,error,status:'reload-required',active:false});};
+ /** Сначала уведомляет о закрытом контексте, затем пытается завершить все собственные ресурсы. */
+ const closeResources=(notify:readonly (()=>void)[])=>{
+  const owned=subscription;subscription=undefined;
+  const failures:unknown[]=[];
+  for(const close of [()=>notifyObservers(notify),()=>cancellation.abort(),()=>owned?.close()]){try{close();}catch(error){failures.push(error);}}
+  if(failures.length===1)throw failures[0];
+  if(failures.length>1)throw new AggregateError(failures,'Project session cleanup failed.');
+ };
+ const revoke=(error:ClientError)=>{
+  revoked=true;view={...view,snapshot:null,metadata:null,error,status:'reload-required',active:false};
+  closeResources([...listeners]);
+ };
  const admit=(value:unknown):SnapshotAdoption=>{
   if(!active||revoked)return {status:'invalid',reason:'disposed-scope',snapshot:adopter.getSnapshot()};
   const result=adopter.adopt(value);
@@ -60,7 +77,7 @@ export function createProjectSession(options:ProjectSessionOptions){
  const start=()=>{
   if(!active||revoked||subscription)return;
   subscription=ports.subscription.subscribe(scope,adopter.getSnapshot()?.cursor??0,{
-   onSnapshot:value=>{if(!active)return;const result=admit(value);if(result.status==='invalid')throw new ClientError('SNAPSHOT_CONTRACT','История проекта не подтверждена.','contract');},
+   onSnapshot:value=>{if(!active||revoked)return;const result=admit(value);if(result.status==='invalid')throw new ClientError('SNAPSHOT_CONTRACT','История проекта не подтверждена.','contract');},
    onStatus:(status,reason)=>{if(!active||revoked)return;if(reason==='access-denied'){revoke(capture(new ClientError('ACCESS_REVOKED','Доступ к проекту отозван.','access'),'project-stream'));return;}update({status});if(status==='reload-required')capture(new ClientError('STREAM_RECOVERY_REQUIRED','Нужно перечитать историю: '+(reason??'stream')+'.','contract'),'project-stream');},
   });
  };
@@ -77,7 +94,13 @@ export function createProjectSession(options:ProjectSessionOptions){
   }catch(value){const error=capture(value,'project-command');if(active&&error.kind==='access')revoke(error);return {status:'unknown',reason:'transport'} as const;}
   finally{presentations.delete(intent);busyCount--;update({busy:busyCount>0});}
  };
- return {id:occurrencePrefix,scope,sourceId:options.sourceId,getSnapshot:()=>active&&!revoked?adopter.getSnapshot():null,getView:()=>view,subscribe:(listener:()=>void)=>{listeners.add(listener);return()=>{listeners.delete(listener);};},refresh,admit,start,execute,reconnect:()=>{if(active)subscription?.reconnect();},dispose:()=>{if(!active)return;cancellation.abort();subscription?.close();subscription=undefined;view={...view,snapshot:null,metadata:null,active:false};active=false;listeners.forEach(listener=>listener());listeners.clear();}};
+ const dispose=()=>{
+  if(!active)return;
+  active=false;view={...view,snapshot:null,metadata:null,active:false};
+  const notify=[...listeners];listeners.clear();
+  closeResources(notify);
+ };
+ return {id:occurrencePrefix,scope,sourceId:options.sourceId,getSnapshot:()=>active&&!revoked?adopter.getSnapshot():null,getView:()=>view,subscribe:(listener:()=>void)=>{if(!active)return()=>{};listeners.add(listener);return()=>{listeners.delete(listener);};},refresh,admit,start,execute,reconnect:()=>{if(active)subscription?.reconnect();},dispose};
 }
 /** Тип, описывающий публичный lifecycle одного проектного контекста. */
 export type ProjectSession=ReturnType<typeof createProjectSession>;
@@ -91,5 +114,5 @@ export const projectSessionKey=(sourceId:string,scope:ProjectClientScope)=>JSON.
  */
 export function createProjectSessionRegistry(){
  const sessions=new Map<string,{session:ProjectSession;leases:number}>();
- return {acquire:(options:ProjectSessionOptions)=>{const key=projectSessionKey(options.sourceId,options.scope);let entry=sessions.get(key);if(!entry){entry={session:createProjectSession(options),leases:0};sessions.set(key,entry);}entry.leases++;let released=false;return {session:entry.session,release:()=>{if(released)return;released=true;if(--entry.leases===0){entry.session.dispose();sessions.delete(key);}}};}};
+ return {acquire:(options:ProjectSessionOptions)=>{const key=projectSessionKey(options.sourceId,options.scope);let entry=sessions.get(key);if(!entry){entry={session:createProjectSession(options),leases:0};sessions.set(key,entry);}entry.leases++;let released=false;return {session:entry.session,release:()=>{if(released)return;released=true;if(--entry.leases===0){sessions.delete(key);entry.session.dispose();}}};}};
 }
