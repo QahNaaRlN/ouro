@@ -233,10 +233,9 @@ function technicalShape(root, file, entries, dependencies, collection) {
     if (ts.isIdentifier(node) && node.text === 'undefined' && !info(current).bindings.has('undefined')) return 0;
     if (ts.isConditionalExpression(node)) { if (!safeComputation(node.condition, current)) return -1; const yes = shape(node.whenTrue, current), no = shape(node.whenFalse, current); return yes < 0 || no < 0 ? -1 : yes + no; }
     if (ts.isObjectLiteralExpression(node)) {
-      const names = new Set(); let runtime = false; if (!node.properties.length) return -1;
-      for (const property of node.properties) { if (!ts.isPropertyAssignment(property) || !ts.isStringLiteralLike(property.name) || !customProperty(property.name.text) || names.has(property.name.text) || !scalar(property.initializer, current)) return -1; names.add(property.name.text); }
-      for (const property of node.properties) if (!staticValue(property.initializer, current)) runtime = true;
-      return runtime ? 1 : -1;
+      const names = new Set(); if (!node.properties.length) return -1;
+      for (const property of node.properties) { if (!ts.isPropertyAssignment(property) || !ts.isStringLiteralLike(property.name) || !customProperty(property.name.text) || names.has(property.name.text) || !scalar(property.initializer, current) || staticValue(property.initializer, current)) return -1; names.add(property.name.text); }
+      return 1;
     }
     if (ts.isIdentifier(node)) { const found = binding(current, node.text); if (!constant(found) || info(current).escaped.has(node.text)) return -1; return guarded(found, current, () => shape(found.initializer, current)); }
     if (ts.isCallExpression(node) && ts.isIdentifier(unwrap(node.expression)) && !node.arguments.some(ts.isSpreadElement) && node.arguments.every(value => safeComputation(value, current))) return helper(binding(current, unwrap(node.expression).text), current, { nodes: node.arguments, file: current, environment: parameters });

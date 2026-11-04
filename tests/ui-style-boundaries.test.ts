@@ -59,6 +59,16 @@ for(const [name,source,helper]of [
  const f=await fixture(entries);try{const result=inspectStyles({root:f.root,ledger:{...f.ledger,inline:[],technicalInline:[await technicalPolicy(f.root,'components/view.tsx',helper?['components/geometry.ts']:[])]},final:true});assert(result.violations.length>0,name);assert.equal(result.remaining.inlineFiles,1);}finally{await f.close();}
 });
 
+for(const [name,source,helper]of [
+ ['JSX','export const View=({width}:Props)=> <div style={{"--x":width,"--padding":"20px"}}/>;',undefined],
+ ['graph','export function node(width:number){return {style:{"--x":width,"--padding":"20px"}};}',undefined],
+ ['local helper','function variables(rect:Rect){return {"--x":`${rect.left}px`,"--padding":"20px"};}export const View=({rect}:Props)=> <div style={variables(rect)}/>;',undefined],
+ ['imported helper','import {variables} from "./geometry";export const View=({rect}:Props)=> <div style={variables(rect)}/>;','export function variables(rect:Rect){return {"--x":`${rect.left}px`,"--padding":"20px"};}'],
+] as const)test('STI09 measured '+name+' field cannot cover static presentation in the same object',async()=>{
+ const entries:Record<string,string>={'components/view.tsx':source};if(helper)entries['components/geometry.ts']=helper;
+ const f=await fixture(entries);try{const result=inspectStyles({root:f.root,ledger:{...f.ledger,inline:[],technicalInline:[await technicalPolicy(f.root,'components/view.tsx',helper?['components/geometry.ts']:[])]},final:true});assert(result.violations.length>0,name);assert.equal(result.remaining.inlineFiles,1);}finally{await f.close();}
+});
+
 test('STI02 resolves an explicitly hashed helper chain and exact duplicated-expression counts',async()=>{
  const f=await fixture({'components/inner.ts':'export const inner=(rect:Rect)=>({"--left":`${rect.left}px`});','components/geometry.ts':'import {inner} from "./inner"; export function variables(rect:Rect){return rect?inner(rect):undefined;}','components/view.tsx':'import {variables as measured} from "./geometry"; export const View=({rect}:Props)=><><div style={measured(rect)}/><div style={measured(rect)}/></>;'});
  try{const policy=await technicalPolicy(f.root,'components/view.tsx',['components/geometry.ts','components/inner.ts']);assert.equal(policy.expressions[0].count,2);assert.deepEqual(inspectStyles({root:f.root,ledger:{...f.ledger,inline:[],technicalInline:[policy]},final:true}).violations,[]);}finally{await f.close();}
