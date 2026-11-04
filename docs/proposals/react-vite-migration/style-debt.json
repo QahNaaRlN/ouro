@@ -19,13 +19,6 @@
       "owner": "legacy-human-view"
     },
     {
-      "file": "components/flow-runtime.css",
-      "sha256": "2c5a2a2e2efed76b6bd1019aef96cee449ed990164419d8ac41582bec0165995",
-      "ordinaryRules": 56,
-      "legacyLayer": true,
-      "owner": "graphs"
-    },
-    {
       "file": "components/impact-panel.css",
       "sha256": "d1afc39ddbc083a094bd9e65c8b9979f156ad87183e34ebc98e0a980309a0a5b",
       "ordinaryRules": 98,

@@ -11,6 +11,7 @@ process.env.OURO_E2E_DATA_DIR=dataDir;
 
 export default defineConfig({
  testDir:'./e2e',fullyParallel:false,workers:1,retries:0,
+ projects:[{name:'functional',testIgnore:'**/tailwind-*.spec.ts'},{name:'presentation',testMatch:'**/tailwind-*.spec.ts'}],
  globalSetup:'./e2e/binding-recovery-global-setup.ts',
  use:{baseURL,headless:true,viewport:{width:1440,height:1000},launchOptions:{...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{}),args:['--no-sandbox']}},
  webServer:{command:`node scripts/local-next.mjs start --port ${port}`,url:baseURL,reuseExistingServer:false,timeout:120000,gracefulShutdown:{signal:'SIGTERM',timeout:10000},env:{OURO_DATA_DIR:dataDir}},
