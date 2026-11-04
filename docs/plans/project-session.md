@@ -1,6 +1,6 @@
 # Project session implementation journal
 
-Date: 2026-11-04. Status: P1.2 implemented within the stated scope; scoped local checks PASS; parent review ACCEPTED; historical empty-receipt recovery gap OPEN; CI and integration PENDING. Specification: [project-session](../specs/project-session.md).
+Date: 2026-11-04. Status: P1.2 implemented within the stated scope; scoped local and combined integration checks PASS; parent review ACCEPTED; historical empty-receipt recovery gap OPEN; exact-head full CI PENDING. Specification: [project-session](../specs/project-session.md).
 
 ## Plan
 
@@ -66,7 +66,9 @@ GREEN: **114/114 scoped tests**, consisting of the accepted 104 lifecycle/HTTP/i
 
 On frozen source and a second fresh profile, all six previously failing production Chromium cases passed **6/6 in30.7 seconds**: FR09/FR11 exact receipt recovery, F04/F07 explicit Flow rebase, the three G09 controlled API cases and R03 late GET versus committed SSE. RED traces are `.operations/ci-browser-repro`; GREEN traces are `.operations/ci-browser-fixed`; each uses its own isolated profile on port3387. Real profiles, `.ouro`, credentials and endpoint schemas were not changed.
 
-Root completed an independent read-only review of the dispatch policy, Home serialization/owner reuse and safe release function, found no blocking issue, and accepted both114 tests and6/6 browser results. The correction is ready for a scoped local commit and synchronization with reviewed epic85039af. Exact-head full CI and publication remain parent-owned; the original full job's six failures are not rewritten as a green full run. The historical eventless receipt gap remains OPEN.
+Root completed an independent read-only review of the dispatch policy, Home serialization/owner reuse and safe release function, found no blocking issue, and accepted both114 tests and6/6 browser results. Parent then authorized a scoped local commit and synchronization with reviewed epic85039af. Exact-head full CI and publication remain parent-owned; the original full job's six failures are not rewritten as a green full run. The historical eventless receipt gap remains OPEN.
+
+Accepted correction commit: `feec345`. The published branch was merged with `origin/codex/react-vite-epic@85039af6af421a9a9a4043df6207b9d02619196a` using merge commit `9005aed`; no rebase or push was performed. The merge changed no app/components/client/frontend/e2e source, but did change shared server auth/store/HTTP/stream dependencies. Combined root and web TypeScript passed; architecture remained830 files / zero violations /16 exact legacy edges; style gate remained20 CSS /11 inline /zero violations; migration inventory remained47 routes /59 explicit methods. After a fresh combined production build, only the six affected browser cases were repeated on a third isolated profile: **6/6 PASS in22.5 seconds**, artifacts `.operations/ci-browser-combined`. The unchanged114 client tests and already-qualified service suites were not repeated. Full exact-head CI remains PENDING for the parent's publication step.
 
 ## Remaining work
 
