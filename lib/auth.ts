@@ -6,6 +6,8 @@ import {requestOrigin} from './connection-config';
 
 const authGlobal = globalThis as unknown as { ouroSessionSecret?: string };
 const secret = authGlobal.ouroSessionSecret ??= randomBytes(32).toString('hex');
+/** Явные зависимости identity и конфигурации для независимого service runtime. */
+export type AuthDependencies={env?:Record<string,string|undefined>;sessionSecret?:string;resolveUserSession?:(token:string)=>Promise<{actor:Actor}|null>;resolveParticipantIdentity?:ParticipantIdentityResolver;resolveAgentToken?:(token:string)=>Promise<Actor|null>};
 export class AccessError extends Error {
   constructor(public code: string, message: string, public status = 403) { super(message); }
 }
@@ -13,31 +15,31 @@ const eq = (a: string, b: string) => {
   const left=Buffer.from(a), right=Buffer.from(b);
   return left.length === right.length && timingSafeEqual(left,right);
 };
-export function isLocalDemo(request: Request): boolean {
+export function isLocalDemo(request: Request,dependencies:AuthDependencies={}): boolean {
   const url = new URL(request.url);
   let host: string;
   try { host=new URL(`${url.protocol}//${request.headers.get('host') ?? url.host}`).hostname; }
   catch { return false; }
   const loopbacks=['localhost','127.0.0.1','[::1]'];
-  return process.env.OURO_LOCAL_DEMO === '1' && loopbacks.includes(url.hostname) && loopbacks.includes(host);
+  return (dependencies.env??process.env).OURO_LOCAL_DEMO === '1' && loopbacks.includes(url.hostname) && loopbacks.includes(host);
 }
-export function issueLocalSession(request: Request): string {
-  if (!isLocalDemo(request)) throw new AccessError('UNAUTHENTICATED', 'Демо-сессия доступна только на loopback. Настройте адаптер идентичности.', 401);
+export function issueLocalSession(request: Request,dependencies:AuthDependencies={}): string {
+  if (!isLocalDemo(request,dependencies)) throw new AccessError('UNAUTHENTICATED', 'Демо-сессия доступна только на loopback. Настройте адаптер идентичности.', 401);
   const expires = String(Date.now() + 12 * 60 * 60 * 1000);
-  const signature = createHmac('sha256', secret).update(expires).digest('hex');
+  const signature = createHmac('sha256', dependencies.sessionSecret??secret).update(expires).digest('hex');
   return `${expires}.${signature}`;
 }
-export function authenticatedActor(request: Request, projectId: string, agentId: string): Actor {
+export function authenticatedActor(request: Request, projectId: string, agentId: string,dependencies:AuthDependencies={}): Actor {
   const bearer = request.headers.get('authorization')?.replace(/^Bearer /, '');
-  const humanToken = process.env.OURO_HUMAN_TOKEN;
-  const agentToken = process.env.OURO_AGENT_TOKEN;
+  const humanToken = (dependencies.env??process.env).OURO_HUMAN_TOKEN;
+  const agentToken = (dependencies.env??process.env).OURO_AGENT_TOKEN;
   if (humanToken && agentToken && eq(humanToken, agentToken)) throw new AccessError('CONFIGURATION_ERROR', 'У человека и агента должны быть разные ключи.', 503);
   if (bearer && humanToken && eq(bearer, humanToken)) return {id: 'human-token', kind:'human', name:'Человек', projectIds:[projectId]};
   if (bearer && agentToken && eq(bearer, agentToken)) return {id: agentId, kind:'agent', name:'Внешний агент', projectIds:[projectId]};
   const token = request.headers.get('cookie')?.split(';').map(x=>x.trim()).find(x=>x.startsWith('ouro_session='))?.slice(13);
-  if (token && isLocalDemo(request)) {
+  if (token && isLocalDemo(request,dependencies)) {
     const [expires, signature] = token.split('.');
-    const expected = createHmac('sha256', secret).update(expires ?? '').digest('hex');
+    const expected = createHmac('sha256', dependencies.sessionSecret??secret).update(expires ?? '').digest('hex');
     if (signature && eq(signature, expected) && Number(expires) > Date.now()) return { id:'local-human', kind:'human', name:'Человек · локальная сессия', projectIds:[projectId] };
   }
   throw new AccessError('UNAUTHENTICATED', 'Необходима сессия человека или серверный токен агента.', 401);
@@ -65,51 +67,53 @@ export function userSessionCookie(request:Request):string|undefined{
   if(values.length>1)throw new AccessError('UNAUTHENTICATED','Сессия пользователя недействительна. Войдите повторно.',401);
   return values[0]?.slice('ouro_user_session='.length);
 }
-export function issueParticipantSession(actor:Actor,projectId:string,expires=Date.now()+12*60*60*1000):string{
+export function issueParticipantSession(actor:Actor,projectId:string,expires=Date.now()+12*60*60*1000,dependencies:AuthDependencies={}):string{
   assertHuman(actor);
   if(!actor.id||!actor.projectIds.includes(projectId)||!Number.isSafeInteger(expires)||expires<=Date.now())throw new AccessError('FORBIDDEN','Нельзя выдать сессию для этого проекта.');
   const claims=Buffer.from(JSON.stringify({participantId:actor.id,projectId,expires})).toString('base64url');
-  return `${claims}.${createHmac('sha256',secret).update(`participant:${claims}`).digest('hex')}`;
+  return `${claims}.${createHmac('sha256',dependencies.sessionSecret??secret).update(`participant:${claims}`).digest('hex')}`;
 }
 /** A supplied participant cookie never falls back to the shared local demo. */
-export async function authenticatedParticipant(request:Request,projectId:string,agentId:string,resolveIdentity?:ParticipantIdentityResolver):Promise<Actor>{
+export async function authenticatedParticipant(request:Request,projectId:string,agentId:string,resolveIdentity?:ParticipantIdentityResolver,dependencies:AuthDependencies={}):Promise<Actor>{
   if(request.headers.has('authorization')){
     if(!request.headers.get('authorization')?.startsWith('Bearer '))throw new AccessError('UNAUTHENTICATED','Недействительный Authorization.',401);
     const headers=new Headers(request.headers);headers.delete('cookie');
-    const actor=authenticatedActor(new Request(request.url,{headers}),projectId,agentId);
+    const actor=authenticatedActor(new Request(request.url,{headers}),projectId,agentId,dependencies);
     assertExpectedParticipant(request,actor);return actor;
   }
   const userToken=userSessionCookie(request);
   if(userToken!==undefined){
-    const session=userToken?await (await (await import('./store')).getUserAuth()).resolveSession(userToken):null;
+    const resolveSession=dependencies.resolveUserSession??(async(token:string)=>(await (await import('./store')).getUserAuth()).resolveSession(token));
+    const session=userToken?await resolveSession(userToken):null;
     if(!session||!session.actor.projectIds.includes(projectId))throw new AccessError('UNAUTHENTICATED','Сессия пользователя недействительна или не имеет доступа к проекту.',401);
     assertExpectedParticipant(request,session.actor);return session.actor;
   }
   const cookie=participantCookie(request);
-  if(cookie===undefined){const actor=authenticatedActor(request,projectId,agentId);assertExpectedParticipant(request,actor);return actor;}
+  if(cookie===undefined){const actor=authenticatedActor(request,projectId,agentId,dependencies);assertExpectedParticipant(request,actor);return actor;}
   const denied=()=>new AccessError('UNAUTHENTICATED','Сессия участника недействительна или отозвана. Войдите повторно.',401);
   if(!cookie||cookie.length>2048)throw denied();
   const parts=cookie.split('.');if(parts.length!==2||!/^[A-Za-z0-9_-]+$/.test(parts[0])||!/^[a-f0-9]{64}$/.test(parts[1]))throw denied();
-  const expected=createHmac('sha256',secret).update(`participant:${parts[0]}`).digest('hex');if(!eq(parts[1],expected))throw denied();
+  const expected=createHmac('sha256',dependencies.sessionSecret??secret).update(`participant:${parts[0]}`).digest('hex');if(!eq(parts[1],expected))throw denied();
   let claims:unknown;try{claims=JSON.parse(Buffer.from(parts[0],'base64url').toString('utf8'));}catch{throw denied();}
   if(!claims||typeof claims!=='object'||Array.isArray(claims))throw denied();
   const data=claims as Record<string,unknown>;
   if(Object.keys(data).sort().join(',')!=='expires,participantId,projectId'||typeof data.participantId!=='string'||!data.participantId||data.participantId.length>200||data.projectId!==projectId||!Number.isSafeInteger(data.expires)||(data.expires as number)<=Date.now())throw denied();
-  const resolve=resolveIdentity??(async id=>(await import('./store')).resolveParticipantIdentity(id));
+  const resolve=resolveIdentity??dependencies.resolveParticipantIdentity??(async id=>(await import('./store')).resolveParticipantIdentity(id));
   const actor=await resolve(data.participantId);
   if(!actor||actor.kind!=='human'||actor.id!==data.participantId||!actor.projectIds.includes(projectId))throw denied();
   assertExpectedParticipant(request,actor);return actor;
 }
 
 /** MCP uses an explicit agent credential; browser cookies never grant this role. */
-export async function authenticatedAgent(request: Request, projectId: string, legacyAgentId: string,resolveToken:(token:string)=>Promise<Actor|null>=authenticateAgentToken): Promise<Actor> {
+export async function authenticatedAgent(request: Request, projectId: string, legacyAgentId: string,resolveToken:(token:string)=>Promise<Actor|null>=authenticateAgentToken,dependencies:AuthDependencies={}): Promise<Actor> {
   const authorization=request.headers.get('authorization');
   if(!authorization?.startsWith('Bearer ')) throw new AccessError('UNAUTHENTICATED','Нужен отдельный ключ агента в Authorization: Bearer.',401);
   const bearer=authorization.slice(7);
-  if(projectId!==PROJECT_ID&&process.env.OURO_AGENT_TOKEN&&eq(bearer,process.env.OURO_AGENT_TOKEN))throw new AccessError('UNAUTHENTICATED','Серверный ключ агента доступен только прежнему проекту.',401);
+  const agentToken=(dependencies.env??process.env).OURO_AGENT_TOKEN;
+  if(projectId!==PROJECT_ID&&agentToken&&eq(bearer,agentToken))throw new AccessError('UNAUTHENTICATED','Серверный ключ агента доступен только прежнему проекту.',401);
   const headers=new Headers(request.headers);headers.delete('cookie');
   try {
-    const actor=authenticatedActor(new Request(request.url,{headers}),projectId,legacyAgentId);
+    const actor=authenticatedActor(new Request(request.url,{headers}),projectId,legacyAgentId,dependencies);
     if(actor.kind!=='agent') throw new AccessError('FORBIDDEN','MCP доступен только агенту.');
     return actor;
   }catch(error){
@@ -119,19 +123,38 @@ export async function authenticatedAgent(request: Request, projectId: string, le
   if(!actor||actor.kind!=='agent'||!actor.projectIds.includes(projectId))throw new AccessError('UNAUTHENTICATED','Ключ агента недействителен или отозван.',401);
   return actor;
 }
-export function assertJsonWrite(request: Request,maxBytes=256_000) {
+export function assertJsonWrite(request: Request,maxBytes=256_000,dependencies:AuthDependencies={}) {
   if (!request.headers.get('content-type')?.startsWith('application/json')) throw new AccessError('UNSUPPORTED_MEDIA_TYPE', 'Используйте application/json.', 415);
   const origin = request.headers.get('origin');
   // The configured HTTPS origin survives TLS termination; forwarded headers do
   // not authorize another host or origin. Loopback keeps its existing policy.
-  const expectedOrigin=requestOrigin(request);
+  const expectedOrigin=requestOrigin(request,dependencies.env);
   if (origin && origin !== expectedOrigin) throw new AccessError('FORBIDDEN', 'Межсайтовая запись запрещена.');
   const length = Number(request.headers.get('content-length') ?? 0);
   if (length > maxBytes) throw new AccessError('PAYLOAD_TOO_LARGE', `Команда превышает ${maxBytes} байт.`, 413);
 }
-export async function readCommandBody(request: Request): Promise<unknown> {
-  assertJsonWrite(request);
+export async function readCommandBody(request: Request,dependencies:AuthDependencies={}): Promise<unknown> {
+  assertJsonWrite(request,256_000,dependencies);
   const body = await request.text();
   if (Buffer.byteLength(body) > 256_000) throw new AccessError('PAYLOAD_TOO_LARGE', 'Команда превышает 256 КБ.', 413);
   try { return JSON.parse(body); } catch { throw new AccessError('VALIDATION_ERROR', 'Некорректный JSON.', 400); }
 }
+
+/** Создаёт один identity adapter с явными resolver/configuration и совместимыми legacy defaults. */
+export function createAuthService(dependencies:AuthDependencies={}){
+ return {
+  isLocalDemo:(request:Request)=>isLocalDemo(request,dependencies),
+  issueLocalSession:(request:Request)=>issueLocalSession(request,dependencies),
+  issueParticipantSession:(actor:Actor,projectId:string,expires?:number)=>issueParticipantSession(actor,projectId,expires,dependencies),
+  authenticatedParticipant:(request:Request,projectId:string,agentId:string)=>authenticatedParticipant(request,projectId,agentId,dependencies.resolveParticipantIdentity,dependencies),
+  authenticatedAgent:(request:Request,projectId:string,agentId:string,resolve?:typeof authenticateAgentToken)=>authenticatedAgent(request,projectId,agentId,resolve??dependencies.resolveAgentToken??authenticateAgentToken,dependencies),
+  assertJsonWrite:(request:Request,maxBytes?:number)=>assertJsonWrite(request,maxBytes,dependencies),
+  readCommandBody:(request:Request)=>readCommandBody(request,dependencies),
+  requestOrigin:(request:Request)=>requestOrigin(request,dependencies.env),
+ };
+}
+
+/** Совместимый adapter прежнего Next owner; независимый service всегда передаёт собственный. */
+export const defaultAuthService=createAuthService();
+/** Identity adapter одного явно выбранного server context. */
+export type AuthService=ReturnType<typeof createAuthService>;

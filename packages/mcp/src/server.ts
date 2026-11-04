@@ -9,6 +9,7 @@ export type McpDependencies = {
   actor: Actor;
   projectId?: string;
   workspace?: AgentWorkspace;
+  deploymentMode?:string;
 };
 
 export function createOuroMcpServer(dependencies: McpDependencies) {
