@@ -4,7 +4,7 @@
 
 ## Проверки и build
 
-Требуется Node **24.19.0**. Из корня:
+Application runtime — stable Node24, минимум **24.19.0**, major24. Точная CI/dev qualification —24.19.0. Другие stable24.x допускаются prerequisite classifier, но не получают автоматически результаты этой qualification. Из корня:
 
 ```sh
 npm ci
@@ -17,7 +17,7 @@ npm --prefix apps/service test
 
 Dependencies закреплены отдельным lockfile; runtime pins взяты из текущего root lock без обновления PGlite. CI обязательно устанавливает пакет, проверяет strict TypeScript, собирает artifact и выполняет TCP/lifecycle tests. Root Next tsconfig исключает `apps/service`.
 
-Build создаёт `dist/main.mjs`, `dist/index.mjs`, `dist/resources/migrations`, `dist/resources/mcp/bin/ouro-mcp.mjs`, `dist/resources/verification/playwright-preload.mjs`, package metadata и build manifest. Это Node ESM bundles с external packages; Next и tsx runtime не нужны. Требуются установленные runtime dependencies и portable protocol. Одного `.mjs` без dependencies/resources недостаточно.
+Build создаёт прежний внешний `dist/main.mjs`, application bundle `dist/application.mjs`, `dist/index.mjs`, `dist/resources/runtime-node.mjs`, `dist/resources/migrations`, `dist/resources/mcp/bin/ouro-mcp.mjs`, `dist/resources/verification/playwright-preload.mjs`, package metadata и build manifest. Стандартный main wrapper проверяет Node до dynamic application import, загрузки SQLite/PGlite и профиля. Это Node ESM bundles с external packages; Next и tsx runtime не нужны. Требуются установленные runtime dependencies и portable protocol. Одного `.mjs` без dependencies/resources недостаточно.
 
 ## Запуск и authority
 

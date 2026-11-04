@@ -1,4 +1,4 @@
-import {createProjectSnapshotAdopter,type ProjectSnapshotAdopter,type SnapshotAdoption} from '../../../../lib/project-snapshot';
+import {createProjectSnapshotAdopter,type ProjectSnapshotAdopter,type SnapshotAdoption} from './project-snapshot';
 import type {FrozenProjectCommandIntent,ProjectClientScope,ProjectCommandPort,ProjectReadPort,ProjectSubscriptionPort,ProjectSnapshotDTO,WorkspaceSnapshotDTO,ProjectConnectionStatus,ProjectSubscription} from '../ports';
 import {ClientError,type ErrorReporterPort} from '../ports/client-error.types';
 import {normalizeClientError,reportClientError} from './normalize-client-error';

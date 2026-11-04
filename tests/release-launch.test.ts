@@ -12,6 +12,7 @@ async function fixture(){
  await writeFile(path.join(repository,'package.json'),JSON.stringify({name:'ouro-launch-fixture',private:true}));await writeFile(path.join(repository,'package-lock.json'),'{}');
  await writeFile(path.join(repository,'.ouro','sentinel'),'PRESERVE_EXISTING_DATA');
  const launcher=path.join(repository,'scripts','launch.mjs');await copyFile(path.resolve('scripts/launch.mjs'),launcher);
+ await copyFile(path.resolve('scripts/runtime-node.mjs'),path.join(repository,'scripts/runtime-node.mjs'));
  const log=path.join(directory,'phases.jsonl'),heartbeat=path.join(directory,'heartbeat'),descendant=path.join(directory,'descendant.json'),npm=path.join(directory,"npm cli & ' пробел.mjs");
  await writeFile(npm,`import {appendFileSync,writeFileSync,readFileSync} from 'node:fs';import {spawn} from 'node:child_process';
  const args=process.argv.slice(2),phase=args[0]==='run'?args[1]:args[0];appendFileSync(process.env.FAKE_PHASE_LOG,JSON.stringify({phase,args,cwd:process.cwd(),dataDir:process.env.OURO_DATA_DIR})+'\\n');
@@ -80,8 +81,21 @@ test('FRL03 launcher announces its local projects URL only after the start phase
 
 test('FRL03 the runtime boundary accepts the supported minimum and rejects older Node versions',async()=>{
  const script=path.resolve('scripts/launch.mjs');
- const source=`import assert from 'node:assert/strict';import {pathToFileURL} from 'node:url';const {validateNodeVersion}=await import(pathToFileURL(process.argv[2]));for(const version of ['20.9.0','20.19.0','22.0.0','24.19.0','25.0.0'])assert.doesNotThrow(()=>validateNodeVersion(version));for(const version of ['18.20.0','20.8.9','invalid'])assert.throws(()=>validateNodeVersion(version),/20.9/);`;
+ const source=`import assert from 'node:assert/strict';import {pathToFileURL} from 'node:url';const {validateNodeVersion}=await import(pathToFileURL(process.argv[2]));for(const version of ['24.19.0','24.19.1','24.20.0'])assert.doesNotThrow(()=>validateNodeVersion(version));for(const version of ['23.11.0','20.9.0','22.0.0','24.18.9','25.0.0','24.19.0-rc.1','24.019.0','v24.19.0','invalid','18.20.0'])assert.throws(()=>validateNodeVersion(version),/24.19/);`;
  const result=spawnSync(process.execPath,['--input-type=module','-e',source,'runtime-fixture',script],{encoding:'utf8',timeout:10000});assert.equal(result.status,0,result.stderr);
+});
+
+test('RNC05 a real unsupported Node stops the release launcher before installation',async context=>{
+ const executable=process.env.OURO_TEST_UNSUPPORTED_NODE??(process.platform==='win32'?path.join(process.env.ProgramFiles??'C:\\Program Files','nodejs','node.exe'):undefined);
+ if(!executable){context.skip('Separate unsupported Node is unavailable; strict minimum matrix still runs.');return;}
+ const version=spawnSync(executable,['--version'],{windowsHide:true,shell:false,encoding:'utf8',timeout:10000});
+ if(version.error&&'code' in version.error&&version.error.code==='ENOENT'){context.skip('Separate unsupported Node is unavailable.');return;}
+ assert.equal(version.status,0,version.stderr);const {validateNodeVersion}=await import('../scripts/runtime-node.mjs');let unsupported=false;try{validateNodeVersion(version.stdout.trim().replace(/^v/,''));}catch{unsupported=true;}
+ if(!unsupported){context.skip('Separate executable now satisfies the application runtime.');return;}
+ const f=await fixture();try{
+  const result=spawnSync(executable,[f.launcher],{cwd:f.foreign,env:f.env,windowsHide:true,shell:false,encoding:'utf8',timeout:10000});
+  assert.equal(result.status,1);assert.match(result.stderr,/24\.19\.0/);assert.deepEqual(await f.phases(),[]);assert.equal(await readFile(path.join(f.repository,'.ouro','sentinel'),'utf8'),'PRESERVE_EXISTING_DATA');
+ }finally{await f.close();}
 });
 
 test('FRL03 a child terminated by SIGTERM preserves the signal exit code without another phase',{skip:process.platform==='win32'},async()=>{
