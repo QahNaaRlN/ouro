@@ -128,6 +128,7 @@ test('WTW02 ProjectSwitcher keeps a full-width consumer appearance and dismisses
   const project=page.getByRole('combobox',{name:'Текущий проект',exact:true});
   await expect(project).toBeVisible();
   await expect(page.locator('.workspace-switch label').filter({has:project})).toBeVisible();
+  await expect(project).toHaveAttribute('data-value',/\S+/);
   const selected=await project.getAttribute('data-value');
   const geometry=await project.evaluate(node=>{
     const css=getComputedStyle(node),label=node.closest('label');
