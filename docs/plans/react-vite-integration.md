@@ -1,5 +1,26 @@
 # React/Vite эпик · интеграционный снимок
 
+## Последний квалифицированный checkpoint
+
+Состояние на `4e826240bde2cce64c6ca4d10a39c3682bf14da4`, 2026-11-05: **IN_PROGRESS**, PR36 остаётся draft в dev. После первого снимка ниже интегрированы PR68–72. Пользовательские profiles/env/DB, исходная dirty main и Meridian не изменялись; эпик ещё не вливался в dev/main.
+
+| Дополнение | Проверенный результат и предел |
+|---|---|
+| Entity public APIs | Work, agent-proposal и specification content интегрированы. Полная physical hFSD ещё не завершена; project-event projection отдельно в PR73. |
+| Client error policy | PR70: safe occurrence/reporting, Query ownership и renderer boundary. Четыре browser cases включают UNKNOWN после render failure. Формы размонтируются в fallback; сохранность всех local drafts и global framework-console redaction не заявлены. |
+| Explicit project runtime | PR72: обязательные source/ports/reporter/connectivity, web composition adapter отдельно. Failing observers не прерывают revoke/accepted read; failed cleanup не сохраняет активный logical owner. Физическое закрытие неисправного транспорта не подтверждено. Локально97/97, types/guards и все5CI jobs PASS. |
+| Independent source | [Job126890641684/run41920279439](https://github.com/QahNaaRlN/ouro/actions/runs/41920279439/job/126890641684): Node24.19/Linux,249source files, no source dependency install. Все phases PASS, включая browser installation, runner3/navigation6, SQL restart/exact receipt, MCP/SSE/assets и graceful stop. HTML672/672. Это source-build qualification, не full end-user release. |
+| Generation launcher | Draft PR74 на отдельной feature-ветке: focused PORT/TCP/lifecycle/materialization checks PASS, шестой consumer-generation CI job добавлен в этой ветке. Combined full proof, Windows npm/shell teardown и final checks ещё PENDING. |
+| Tailwind остаток | 112ordinary rules/2CSS files. Шесть geometry expressions в3files уже используют custom properties, но production technical policies ещё0: нужна отдельная qualification, а не blanket approval. Shared-native conversion не завершён. |
+
+Первый PR72 consumer run завершился FAIL в общем runner/browser phase при PASS всех предыдущих phases. Причина не установлена по старому отчёту; новый qualifier разделяет browser installation и сохраняет только safe finite tool diagnostics. Новый exact head прошёл все5jobs; старый FAIL не переписан как PASS. Windows strict HTML injection FAIL также сохраняется отдельно.
+
+Shared-native baseline сейчас собирается новым opt-in measurement contract: один PNG, strict DOM/state/geometry и все standard computed properties. Первый4scene smoke PASS; полный G1 остановился после21captured frames из-за общего180s case budget. Это незавершённая instrumentation qualification, не UI acceptance и не21/24PASS. Отделение затрат измерения от прежних UI/domain deadlines требует собственного bounded review. Старые selected-property snapshots и неудачные primer probes не объявляются полным новым evidence.
+
+Открытый остаток: shared Tailwind и geometry policies; physical hFSD/semantic ports/coherent embedded export; реальная typed RU/Form интеграция; Temporal compatibility для новой calendar logic; pnpm и остальные universal rule checks; совместимый generation launch/installed CLI/ZIP/hosted cutover; удаление Next и final combined unit/browser/PG/package/data gates. Наличие нескольких зелёных feature PR не завершает этот эпик.
+
+## Первый снимок
+
 Дата: 2026-11-05. Снимок принятой ветки `codex/react-vite-epic` на `0db3f243a0117dbeeb12f387c2865a9fe09fa249`. Эпик **IN_PROGRESS**, draft PR36 в dev; dev/main ещё не переключались. Принятые D01–D16 не переоткрываются. Этот журнал описывает фактический состав; нормы остаются в [решениях](../proposals/react-vite-migration/decisions.md) и [стеке](../proposals/react-vite-migration/react-stack.md).
 
 ## Что интегрировано
