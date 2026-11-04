@@ -1,4 +1,6 @@
 'use client';
+import {twMerge} from 'tailwind-merge';
+import {workspacePresentation as ui} from './workspace-presentation';
 
 import Link from 'next/link';
 import type {Execution,RevisionContent} from '@/packages/core/src';
@@ -8,8 +10,8 @@ import {WorkspacePending,useWorkspaceIntents,useWorkspaceSession} from './worksp
 
 export default function WorkspaceProjectPage({projectId}:{projectId:string}){
  const {actor,accessEpoch,loading,error}=useWorkspaceSession();
- if(loading)return <p className="ws-loading">Проверяем сессию…</p>;
- if(!actor)return <div className="ws-error" role="alert">{error||'Войдите в свой аккаунт Ouro.'}<Link href="/projects">Войти</Link></div>;
+ if(loading)return <p className={twMerge(ui.paragraph,"ws-loading",ui.paragraph)}>Проверяем сессию…</p>;
+ if(!actor)return <div className={twMerge("ws-error",ui.error)} role="alert">{error||'Войдите в свой аккаунт Ouro.'}<Link className={ui.link} href="/projects">Войти</Link></div>;
  return <ProjectScope key={projectId+':'+actor.id+':'+accessEpoch} projectId={projectId} actorId={actor.id} accessEpoch={accessEpoch}/>;
 }
 function ProjectScope({projectId,actorId,accessEpoch}:{projectId:string;actorId:string;accessEpoch:number}){
@@ -20,6 +22,6 @@ function ProjectScope({projectId,actorId,accessEpoch}:{projectId:string;actorId:
  const assign=async(agentId:string,content:RevisionContent)=>{if(disabled)return null;try{const result=await owner.execute({agentId,content},'start-project-work',{slot:'task',label:'Назначить работу: '+content.title});if(result.status!=='confirmed'||!owner.session?.getView().active)return null;await owner.refresh().catch(()=>{});return result.receipt.events.find(event=>event.type==='ExecutionCreated')?.payload.execution as Execution??null;}catch{return null;}};
  const reload=async()=>{try{return await owner.refresh();}catch{return null;}};
  const receipt=(value:unknown)=>{const result=owner.session?.admit(value);if(!result||result.status==='invalid')throw new Error('История проекта не подтверждена.');};
- if(!metadata||!snapshot)return <><Link href="/projects">← Проекты</Link>{error?<div role="alert" className="ws-error">{error}<button onClick={()=>void reload()}>Повторить чтение</button></div>:<p>Читаем проект…</p>}</>;
+ if(!metadata||!snapshot)return <><Link className={ui.link} href="/projects">← Проекты</Link>{error?<div role="alert" className={twMerge("ws-error",ui.error)}>{error}<button className={twMerge(ui.button,"leading-[1.6]")} onClick={()=>void reload()}>Повторить чтение</button></div>:<p className={twMerge(ui.paragraph,ui.paragraph)}>Читаем проект…</p>}</>;
  return <WorkspaceProjectView metadata={metadata} state={snapshot.state} cursor={snapshot.cursor} subscriptionStatus={status} error={error} disabled={disabled} command={command} onAssign={assign} onRefresh={reload} pending={<WorkspacePending projectId={projectId} onRecovered={owner.refresh} onReceipt={receipt}/>}/>;
 }

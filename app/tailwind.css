@@ -20,6 +20,7 @@
   --spacing: 4px;
   --font-sans: Inter, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-workspace-mono: "JetBrains Mono", monospace;
   --color-ouro-bg: var(--bg);
   --color-ouro-subtle: var(--subtle);
   --color-ouro-muted: var(--muted);

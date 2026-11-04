@@ -71,7 +71,7 @@ export async function sendWorkspaceIntent<T=unknown>(intent:WorkspaceIntent,onRe
     const current=pending.get(intent.key);if(sameFrozenIntent(current,intent)){pending.set(intent.key,{...current,uncertain:true,status:'unknown',httpStatus:responseStatus,message:'Ответ не получен. Действие могло сохраниться. Повторите тот же запрос.'});notify();}return {ok:false};
   }
 }
-export function forgetRejectedWorkspaceIntent(intent:WorkspaceIntent){if(pending.get(intent.key)?.status==='rejected'){pending.delete(intent.key);notify();}}
+export function forgetRejectedWorkspaceIntent(intent:WorkspaceIntent){const current=pending.get(intent.key);if(sameFrozenIntent(current,intent)&&current.status==='rejected'&&!current.uncertain){pending.delete(intent.key);notify();}}
 
 /** Утилита, которая читает поколение изменений RAM-реестра намерений. */
 export const getWorkspaceIntentsVersion=()=>pendingVersion;

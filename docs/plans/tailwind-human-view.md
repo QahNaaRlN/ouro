@@ -12,7 +12,7 @@
 
 Оформление shell/navigation/topbar/footer/loading/error/toast, roadmap toolbar/metrics/table/context, spec expectation/comparison/revisions, decisions/execution, timeline/history, private Methodology и контролируемых модалок перенесено в явные readonly presentation slots в `app/human-view/` и конкретные JSX элементы. Нет runtime class converter, `@apply`, глобального important или свалки ancestor utilities. Семантические hook-классы сохранены для действующих tests/consumers.
 
-`app/globals.css`: **611 → 163 ordinary rules**, то есть448 правил удалены;455 reviewed rule/selector-branch edits с учётом частичного удаления comma groups. Файл сократился с2843 до720 непустых строк. Изменён только его точный hash/count в style-debt.json. Другие записи не расширялись; новых ordinary CSS/inline expressions нет. В этой stacked ветке текущий общий остаток —20 CSS/1471 ordinary rules,11 inline files/41 expressions; это не финальный CSS PASS.
+`app/globals.css`: **611 → 163 ordinary rules**, то есть448 правил удалены;455 reviewed rule/selector-branch edits с учётом частичного удаления comma groups. Файл сократился с2843 до720 непустых строк. Изменён только его точный hash/count в style-debt.json. Другие записи не расширялись; новых ordinary CSS/inline expressions нет. До синхронизации с W/P1 в этой stacked ветке остаток составлял20 CSS/1471 ordinary rules,11 inline files/41 expressions; это не финальный CSS PASS.
 
 Inclusive media variants упорядочены1250/1100/1050/1000/900/760/680/560/520, совместно со vocabulary W-среза. Они сохраняют фактический поздний cascade исходника: например sidebar208px при1250, context280px до900, footer6px18px и gap18px tabs. Для состояния history main явно получает max-width:none, как прежний `.historical-preview .main-content`.
 
@@ -29,6 +29,14 @@ Inclusive media variants упорядочены1250/1100/1050/1000/900/760/680/5
 Финальная проверка исходника после удаления неиспользуемых recipes и уточнения grid tracks: comparison/Blocker используют точные `1fr 1fr`, а не стандартный Tailwind `repeat(2,minmax(0,1fr))`. Повторный Next production build — PASS; TWH01 — **1 PASS,19.2s**,44 PNG,38 полностью идентичны, оставшиеся6 отличаются только11–12 пограничными пикселями с максимумом1–2/255; все44 metric sets идентичны. Артефакты `.operations/visual-review/`. Меняющееся распределение этих малых edge-разниц между повторами сохранено в артефактах и не превращено в заявление о44 exact PNG.
 
 Дополнительная readonly AST-проверка: все129 JSX `on*` bindings и выражения обработчиков точно совпадают с исходным HEAD. Родительский bounded review source/maps/render evidence принят; новые JSDoc и комментарии переведены на русский по D11. Это не заменяет точный CI после синхронизации.
+
+## Синхронизация P1/W
+
+Родитель явно разрешил merge чистого `codex/project-session@3d568a802400ca623de9f135f6b9ca3101f7647c`, который содержит50b command-dispatch fix и W-эпик73. Локальный L source commit: `2af5f46bb997a9ef18d09fd66a9395434aac55e0`. Два конфликта затронули только app/tailwind.css и style-debt.md: сохранены W font-workspace-mono token, упорядоченное объединение всех named media variants, W consumer ledger и точный combined остаток **17 CSS/1075 ordinary rules,10 inline files/35 expressions**. Удалённые W stylesheets и ProjectSwitcher inline styles не восстановлены.
+
+app/page автоматически получил только принятые P1 imports/command-dispatch changes относительно L; прежняя RAM-реализация не возвращалась. Все129 JSX event handler bindings по-прежнему точно совпали с L HEAD. Root strict TypeScript — PASS; architecture839/0 violations/16 exact legacy edges; styles:check17 CSS/10 inline files/0 violations. Существующий service lockfile подготовлен130 packages, без изменения зависимостей.
+
+Из-за изменения root/layout CSS inputs выполнен необходимый повтор: объединённый Next production build — PASS; TWH01 — **1 PASS,24.2s**, те же44 screenshots исходного fixture-профиля.37 PNG полностью идентичны исходному5a baseline, оставшиеся7 имеют только11–17 edge pixels с максимумом1–2/255 RGB; все44 metric sets идентичны. Артефакты `.operations/visual-synced/`. Полная P1/epic CI и публикация остаются родительскими gates.
 
 Функциональная группа из16 существующих cases: **15 PASS** и первый R07 завершился5s timeout на холодном identity/store bootstrap. Error context показывал loading и «Вход не выполнен», остальные сценарии затем проходили. Собственная конфигурация ждала только HTML; readiness исправлена на существующий `/api/health`, который готовит backend перед тестом. Без изменения timeout/assertions тот же R07 прошёл **1/1,12.0s total** на новом профиле `.operations/functional-profile-02`. Результат не объявляется единым uninterrupted16/16 run.
 

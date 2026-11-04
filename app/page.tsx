@@ -81,7 +81,10 @@ import HistoricalPanel from "@/components/historical-panel";
 import {useProjectSession} from '@/components/project-session-provider';
 import {createIdentityReadController} from '@/packages/client/src/lifecycle/create-identity-read-controller';
 import {readIdentitySession} from '@/packages/client/src/http/read-identity-session';
-import {WorkspacePendingList,useWorkspaceIntents,readWorkspaceJSON} from '@/components/workspace-client';
+import {WorkspacePendingList,readWorkspaceJSON} from '@/components/workspace-client';
+import {freezeProjectCommandIntent} from '@/packages/client/src/ports';
+import {planProjectCommandDispatch} from '@/packages/client/src/http/project-command-dispatch';
+import {getWorkspaceIntents,forgetRejectedWorkspaceIntent} from '@/packages/client/src/http/workspace-intents';
 import { getRoadmapFilterOptions, matchesRoadmapFilter } from '@/packages/core/src/roadmap-filter';
 import { currentDecisionRequests, decisionRoot, isCurrentDecisionRequest, openPhysicalBlockers } from '@/packages/core/src/decision-lineage';
 import {
@@ -179,7 +182,6 @@ export default function Home() {
   const [identityReads]=useState(createIdentityReadController),[accessEpoch,setAccessEpoch]=useState(0);
   const owner=useProjectSession(identity?{projectId:selectedProjectId(),actorId:identity.id,accessEpoch}:undefined,'legacy');
   const state=owner.snapshot?.state??null,storage=owner.snapshot?.storage??'',cursor=owner.snapshot?.cursor??0;
-  const rootPending=useWorkspaceIntents(selectedProjectId(),identity?.id);
   const [flowTrackingSelections,setFlowTrackingSelections]=useState<Record<string,boolean>>({});
   const flowRuntimeIntents=useRef<RuntimeIntentRegistry>(new Map());
   const [projectRole,setProjectRole]=useState<ProjectRole|null>(null);
@@ -300,12 +302,18 @@ export default function Home() {
   ) => {
     if(!canWrite){setError('Роль Viewer разрешает только чтение проекта.');return false;}
     if(historicalCursorRef.current!==null){setError('Историческое состояние доступно только для чтения. Вернитесь к текущей работе.');return false;}
-    if (!state || busy || !owner.view.active || rootPending.length>0) return false;
+    const session=owner.session;
+    if (!state || busy || !owner.view.active || !session) return false;
     setBusy(true);
     pendingRef.current = true;
     setError("");
     try {
-      const outcome=await owner.execute({...payload,expectedVersion:expectedVersionOverride??owner.session?.getSnapshot()?.cursor??state.version});
+      const expectedVersion=expectedVersionOverride??session.getSnapshot()?.cursor??state.version,requestId=typeof payload.requestId==='string'?payload.requestId:crypto.randomUUID(),body={...payload,expectedVersion,requestId};
+      const intent=freezeProjectCommandIntent({scope:session.scope,operation:'execute-command',expectedVersion,requestId,body:JSON.stringify(body)});
+      const dispatch=planProjectCommandDispatch(session.getView().active?session.scope:undefined,intent,getWorkspaceIntents(session.scope.projectId,session.scope.actorId));
+      if(!dispatch.allowed)return false;
+      dispatch.rejected.forEach(forgetRejectedWorkspaceIntent);
+      const outcome=await owner.execute(body);
       if(!owner.session?.getView().active)return false;
       onOutcome?.(outcome.status==='confirmed'?{status:200}:outcome.status==='rejected'?{status:outcome.httpStatus,code:outcome.code}:{});
       if(outcome.status!=='confirmed')throw new Error(outcome.status==='rejected'?outcome.message:'Исход действия неизвестен. Сохранён исходный запрос для точного повтора.');
