@@ -22,6 +22,18 @@ async function cleanup(directory:string){if(path.dirname(path.resolve(directory)
 /** Отбирает только закрытый private namespace temp-файлов, не выполняя cleanup. */
 const temporaryNames=(names:string[])=>names.filter(name=>/^\.ouro-[0-9a-f]{20}$/.test(name));
 
+test('SPP16 canonical SQL validation already holds exclusion against another process',async()=>{
+ const directory=await mkdtemp(path.join(tmpdir(),'ouro-profile-publication-')),profile=path.join(directory,'postgres'),first=ownerChild(profile,'before-validation');
+ let second:ReturnType<typeof ownerChild>|undefined,restarted:ReturnType<typeof ownerChild>|undefined;
+ try{
+  assert.equal((await first.waitBarrier()).stage,'before-validation');
+  const canonical=profile+'.ouro-profile-mutex.sqlite',bytes=await readFile(canonical);second=ownerChild(profile);
+  const blocked=await second.waitOutcome();assert.equal(blocked.stage,'rejected','The canonical SQL validation window must already exclude another process.');assert.match(blocked.message??'',/already owned/);
+  await first.continueValidation();assert.equal((await first.waitOutcome()).stage,'acquired');await first.close();await second.kill();
+  restarted=ownerChild(profile);assert.equal((await restarted.waitOutcome()).stage,'acquired');await restarted.close();assert.deepEqual(await readFile(canonical),bytes);
+ }finally{await first.kill();await second?.kill();await restarted?.kill();await cleanup(directory);}
+});
+
 test('SPP01 kill before initial marker COMMIT leaves no ambiguous canonical file and ordinary restart succeeds',async()=>{
  const directory=await mkdtemp(path.join(tmpdir(),'ouro-profile-publication-')),profile=path.join(directory,'postgres'),canonical=profile+'.ouro-profile-mutex.sqlite';
  const first=ownerChild(profile,'before-commit');let restarted:ReturnType<typeof ownerChild>|undefined;
