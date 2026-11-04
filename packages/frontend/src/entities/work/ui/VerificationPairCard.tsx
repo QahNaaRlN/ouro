@@ -3,7 +3,7 @@ import { useId, useState } from 'react';
 import { getWorkPairPresentation, type WorkPairGroup, type ProjectState } from '@/packages/core/src';
 import { currentDecisionRequests } from '@/packages/core/src/decision-lineage';
 import { getSpecWorkPresentation } from '@/packages/core/src/work-presentation';
-import { WorkStatus } from './work-status';
+import { WorkStatus } from './WorkStatus';
 import {twMerge} from 'tailwind-merge';
 import {verificationPairPresentation as ui} from './verification-pair-presentation';
 
