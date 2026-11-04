@@ -9,7 +9,7 @@ async function main(){
  if(process.argv.length!==2)throw new Error('Service accepts environment configuration only.');
  const serviceRoot=fileURLToPath(new URL('./',import.meta.url)),resourceRoot=fileURLToPath(new URL('../../../',import.meta.url));
  const built=path.basename(path.dirname(fileURLToPath(import.meta.url)))==='dist';
- const configuration=runtimeConfiguration(process.env,{resourceRoot,migrationsDir:built?path.join(serviceRoot,'resources/migrations'):undefined,mcpPath:built?path.join(serviceRoot,'resources/mcp/bin/ouro-mcp.mjs'):undefined,packageRoot:path.dirname(serviceRoot)});
+ const configuration=runtimeConfiguration(process.env,{resourceRoot,migrationsDir:built?path.join(serviceRoot,'resources/migrations'):undefined,mcpPath:built?path.join(serviceRoot,'resources/mcp/bin/ouro-mcp.mjs'):undefined,playwrightPreloadPath:built?path.join(serviceRoot,'resources/verification/playwright-preload.mjs'):undefined,packageRoot:path.dirname(serviceRoot)});
  const service=await startService(configuration,{report:event=>{process.stderr.write(JSON.stringify(event)+'\n');}});
  process.stdout.write('OURO_SERVICE_READY '+JSON.stringify({url:service.url})+'\n');
  let stopping=false;

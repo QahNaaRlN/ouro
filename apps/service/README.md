@@ -17,7 +17,7 @@ npm --prefix apps/service test
 
 Dependencies закреплены отдельным lockfile; runtime pins взяты из текущего root lock без обновления PGlite. CI обязательно устанавливает пакет, проверяет strict TypeScript, собирает artifact и выполняет TCP/lifecycle tests. Root Next tsconfig исключает `apps/service`.
 
-Build создаёт `dist/main.mjs`, `dist/index.mjs`, `dist/resources/migrations`, `dist/resources/mcp/bin/ouro-mcp.mjs`, package metadata и build manifest. Это Node ESM bundles с external packages; Next и tsx runtime не нужны. Требуются установленные runtime dependencies и portable protocol. Одного `.mjs` без dependencies/resources недостаточно.
+Build создаёт `dist/main.mjs`, `dist/index.mjs`, `dist/resources/migrations`, `dist/resources/mcp/bin/ouro-mcp.mjs`, `dist/resources/verification/playwright-preload.mjs`, package metadata и build manifest. Это Node ESM bundles с external packages; Next и tsx runtime не нужны. Требуются установленные runtime dependencies и portable protocol. Одного `.mjs` без dependencies/resources недостаточно.
 
 ## Запуск и authority
 
@@ -48,6 +48,10 @@ Startup cleanup независимо пытается остановить HTTP,
 
 Проверены real TCP negotiation всех 47 routes/59 методов, SQL replay, cookies/revocation, оба MCP endpoint, progressive SSE, byte-exact webhook HMAC, handler/worker drain, startup failure, file-profile restart и ordinary Node artifact вне source cwd. Исторические transport checks сохранены.
 
-**NOT_QUALIFIED:** packaged runner dependency resolution из scratch вне install root (отдельный preload story), URI parity trailing/repeated slashes и backslash с Next, PostgreSQL service profile, Linux OS mutex, TLS deployment, все browser сценарии, live cutover, consumer packaging, load/backpressure stress и Meridian host. Existing source-runner regression/cancellation не заменяет packaged-runner qualification.
+Runner использует фиксированный server-owned `--import` preload только в собственном Node child. Точный allowlist `@playwright/test` и `@playwright/test/package.json` разрешается из установленного service package, включая отдельные Playwright workers. Прочие imports используют обычный resolver; это не общий доступ к server node_modules. Project payload не выбирает preload/package anchor. NODE_PATH/NODE_OPTIONS не передаются runner child; snapshots не переписываются и не получают node_modules/junction. Отсутствующий resource останавливает startup до открытия profile.
 
-Контракты: [SR SDD](../../docs/specs/service-runtime.md), [журнал SR](../../docs/plans/service-runtime.md); история transport: [SQ](../../docs/specs/service-qualification.md).
+На Windows Node 24.19 / Playwright 1.64.1 проверены CJS, ESM и TypeScript config/test snapshots вне install root, реальные HTTP/MCP observation/run/replay paths собранного сервиса вне source cwd, точные bytes и отдельные workers. Успех этих тестов не подтверждает наличие browser binaries или произвольного проекта. Версии и Linux CI требуют своего фактического evidence; API Node registerHooks имеет статус release candidate.
+
+**NOT_QUALIFIED:** URI parity trailing/repeated slashes и backslash с Next, первоначальная atomic marker publication, PostgreSQL service profile, Linux OS mutex/runner, TLS deployment, все browser сценарии, live cutover, consumer packaging, load/backpressure stress и Meridian host.
+
+Контракты: [SR SDD](../../docs/specs/service-runtime.md), [журнал SR](../../docs/plans/service-runtime.md), [SRP SDD](../../docs/specs/service-runner-packaging.md), [журнал SRP](../../docs/plans/service-runner-packaging.md); история transport: [SQ](../../docs/specs/service-qualification.md).

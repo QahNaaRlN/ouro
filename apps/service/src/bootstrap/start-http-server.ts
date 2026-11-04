@@ -5,6 +5,8 @@ import type { Socket } from 'node:net';
 import { createServiceApp } from '../http/create-service-app.js';
 import { serviceError } from '../http/service-error.js';
 import type { ServiceOptions } from '../http/service-types.js';
+import {normalizeRequestTarget} from '../http/normalize-request-target.js';
+import {createRedirectRequestOwner} from '../http/redirect-request-owner.js';
 
 /** Запускает loopback HTTP/1 listener с явным bounded shutdown и владением соединениями. */
 export async function startHttpServer(options: ServiceOptions & { port?: number;host?:string; shutdownTimeoutMs?: number }) {
@@ -12,9 +14,14 @@ export async function startHttpServer(options: ServiceOptions & { port?: number;
   const deadlineMs = options.shutdownTimeoutMs ?? 1000;
   if (!Number.isSafeInteger(deadlineMs) || deadlineMs < 1) throw new Error('Shutdown timeout must be a positive safe integer');
   const listener = getRequestListener((request, bindings) => app.fetch(request, { outgoing: bindings.outgoing,body:()=>['GET','HEAD'].includes(request.method)?null:Readable.toWeb(bindings.incoming) as ReadableStream<Uint8Array> }), { overrideGlobalObjects: false, autoCleanupIncoming: true, errorHandler: () => serviceError() });
-  const server = createServer(listener), sockets = new Set<Socket>();
-  const requests=new Map<Socket,number>();
+  const redirects=createRedirectRequestOwner();
   let closing=false;
+  const server = createServer((incoming,outgoing)=>{
+    const location=closing?undefined:normalizeRequestTarget(incoming.url??'/');
+    if(location!==undefined){redirects.reply(incoming,outgoing,location);return;}
+    return listener(incoming,outgoing);
+  }), sockets = new Set<Socket>();
+  const requests=new Map<Socket,number>();
   server.on('request',(incoming,outgoing)=>{
     const socket=incoming.socket;requests.set(socket,(requests.get(socket)??0)+1);let released=false;
     const release=()=>{if(released)return;released=true;const remaining=(requests.get(socket)??1)-1;if(remaining)requests.set(socket,remaining);else{requests.delete(socket);if(closing)socket.destroy();}};
@@ -34,7 +41,7 @@ export async function startHttpServer(options: ServiceOptions & { port?: number;
     url: `http://${address.address.includes(':')?'['+address.address+']':address.address}:${address.port}`,
     stop(): Promise<void> {
       if (!stopping) stopping = (async () => {
-        closing=true;app.stopAdmission(); app.abortRequests(); app.abortTasks();
+        closing=true;app.stopAdmission();redirects.stop(); app.abortRequests(); app.abortTasks();
         let timer: ReturnType<typeof setTimeout> | undefined;
         const closed = new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
         server.closeIdleConnections();
