@@ -5,7 +5,7 @@ export type GraphControlTone='default'|'process'|'state';
 
 /** Публичные slots React Flow оформляют только DOM библиотеки; String.raw сохраняет подчёркивания имён классов. */
 export const graphPresentation={
- fullscreen:String.raw`fullscreen:w-screen! fullscreen:h-screen! fullscreen:min-h-0 fullscreen:rounded-none fullscreen:border-0 fullscreen:bg-ouro-bg motion-reduce:[&_.react-flow\_\_edge.animated_path]:animate-none!`,
+ fullscreen:String.raw`[&:fullscreen]:w-screen! [&:fullscreen]:h-screen! [&:fullscreen]:min-h-0 [&:fullscreen]:rounded-none [&:fullscreen]:[border:0] [&:fullscreen]:bg-ouro-bg motion-reduce:[&_.react-flow\_\_edge.animated_path]:animate-none!`,
  minimap:'bottom-0 right-0 m-0 h-[65px] w-[110px] rounded-[4px] border border-solid border-ouro-border bg-ouro-subtle [&>svg]:h-[65px] [&>svg]:w-[110px] at-most-680:hidden',
  attribution:String.raw`[&_.react-flow\_\_attribution]:bg-ouro-bg [&_.react-flow\_\_attribution]:text-[12px] [&_.react-flow\_\_attribution]:text-[var(--text-faint)]`,
  processAttribution:String.raw`[&_.react-flow\_\_attribution]:bg-ouro-subtle [&_.react-flow\_\_attribution]:text-[12px] [&_.react-flow\_\_attribution]:text-ouro-text-muted`,

@@ -36,6 +36,8 @@ Verification-paired Roadmap node получает отдельную прове�
 
 Фактическая исходная позиция Controls/MiniMap задавалась более специфичными library Panel.left/bottom/right (0), которые перекрывали старые offsets 14/22/12/25px. Целевая recipe сохраняет выигравшее значение 0. Для CSS selector tokens со знаком `_` используется `String.raw` и экранирование имён классов: Tailwind иначе трактует `_` как пробел. Это синтаксис статических utilities, без runtime-преобразования исходного CSS.
 
+Fullscreen оформляется через explicit `[&:fullscreen]` arbitrary variant: installed Tailwind4.3.3 не генерирует первоначально выбранный `fullscreen:` shorthand. Этот пробел воспроизведён новым TWG02 actual RED и исправлен до публикации G1. Отдельное original/corrected сравнение обоих графов в двух темах и двух viewport дало8/8 побайтно идентичных PNG и точных computed metrics; Escape и сохранённый viewport проверены. История прежнего UA-only proof и точные артефакты остаются в журнале.
+
 ## Проверки
 
 До source changes создан deterministic G1 fixture baseline на изолированном профиле с фактической готовностью `/api/health`. Сравниваются те же данные в dark/light при1440×1000 и390×844: legacy, workspace Roadmap, keyboard focus, actual graph, planned graph, verification face. В fixture обычная и парная карточки имеют реальные вопрос и предложение через MCP. Настройка темы рабочего пространства выполняется test DOM-атрибутом, поскольку там нет theme toggle; legacy-тема меняется действующей кнопкой. Данные сохраняются между сборками; повторный прогон их не изменяет.
