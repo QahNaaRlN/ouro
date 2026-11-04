@@ -1,5 +1,5 @@
-import type { ProjectState } from '../packages/core/src/types';
-import { replay } from '../packages/core/src/engine';
+import type { ProjectState } from '../../../../core/src/types';
+import { replay } from '../../../../core/src/engine';
 
 export type ProjectSnapshot = {state:ProjectState;cursor:number;storage?:string};
 export type SnapshotAdoption =
