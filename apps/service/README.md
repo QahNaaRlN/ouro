@@ -36,7 +36,9 @@ Storage adapter удерживает `BEGIN EXCLUSIVE` в rollback-mode служ
 
 Marker имеет собственный application ID и точную служебную схему. Foreign bytes/SQLite, symlinks/junctions и пустой/незавершённый marker отклоняются без перезаписи. Mutex-файл сохраняется после close; OS lock освобождается после **PGlite.close**. Параллельный процесс не удаляет marker.
 
-Crash после readiness проверен. Crash до первого COMMIT marker может оставить пустой/неполный файл: автоматическая recovery этой неоднозначности **не квалифицирована**, startup fail-closed. Нужны остановка owners и отдельная явная операторская recovery, а не автоматическое удаление файла.
+Первый marker создаётся в уникальном sibling temp: прежний v1 формат, COMMIT, закрытие SQLite, затем exclusive `fs.link` в canonical имя. EEXIST ведёт к проверке уже опубликованного файла. Copy/rename fallback и overwrite отсутствуют; unsupported hardlink завершает startup ошибкой. Удаляется только своё temp-имя с проверенной identity. Kill до публикации оставляет игнорируемый orphan, обычный restart создаёт новый marker; kill после link оставляет полностью готовый canonical файл. Это проверено настоящими Node processes и двумя одновременно публикующими initializers на текущем Windows temp filesystem. Power loss и произвольная порча filesystem этим не квалифицируются.
+
+Уже существующий пустой/неполный/чужой canonical marker по-прежнему отклоняется без удаления: эта история не добавляет generic repair/reclaim. Orphan temps не сканируются, не переиспользуются и не удаляются автоматически. После readiness process kill/restart проверен; ownership удерживается до завершения PGlite.close.
 
 Stop снимает readiness/admission, отменяет streams/tasks и worker/runner signals, останавливает timers, ждёт handlers, observer/runtime operations и SQL tail, затем закрывает БД и освобождает mutex. Закрытый socket не считается завершённым query. Неотменяемое Promise приводит к bounded timeout; принудительная отмена произвольного ресурса не обещается.
 
@@ -52,6 +54,6 @@ Runner использует фиксированный server-owned `--import` p
 
 На Windows Node 24.19 / Playwright 1.64.1 проверены CJS, ESM и TypeScript config/test snapshots вне install root, реальные HTTP/MCP observation/run/replay paths собранного сервиса вне source cwd, точные bytes и отдельные workers. Успех этих тестов не подтверждает наличие browser binaries или произвольного проекта. Версии и Linux CI требуют своего фактического evidence; API Node registerHooks имеет статус release candidate.
 
-**NOT_QUALIFIED:** URI parity trailing/repeated slashes и backslash с Next, первоначальная atomic marker publication, PostgreSQL service profile, Linux OS mutex/runner, TLS deployment, все browser сценарии, live cutover, consumer packaging, load/backpressure stress и Meridian host.
+**NOT_QUALIFIED:** URI parity trailing/repeated slashes и backslash с Next, PostgreSQL service profile, Linux OS mutex/atomic publication/runner, TLS deployment, все browser сценарии, live cutover, consumer packaging, load/backpressure stress и Meridian host.
 
-Контракты: [SR SDD](../../docs/specs/service-runtime.md), [журнал SR](../../docs/plans/service-runtime.md), [SRP SDD](../../docs/specs/service-runner-packaging.md), [журнал SRP](../../docs/plans/service-runner-packaging.md); история transport: [SQ](../../docs/specs/service-qualification.md).
+Контракты: [SR SDD](../../docs/specs/service-runtime.md), [журнал SR](../../docs/plans/service-runtime.md), [SRP SDD](../../docs/specs/service-runner-packaging.md), [журнал SRP](../../docs/plans/service-runner-packaging.md), [SPP SDD](../../docs/specs/service-profile-publication.md), [журнал SPP](../../docs/plans/service-profile-publication.md); история transport: [SQ](../../docs/specs/service-qualification.md).
