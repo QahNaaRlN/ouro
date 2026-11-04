@@ -1,8 +1,11 @@
 {
   "schemaVersion": 1,
-  "status": "PENDING_COMMITTED_DEPENDENCY_INPUTS",
-  "sourceCommit": null,
-  "qualifiedLocks": {},
+  "status": "WINDOWS_TYPED_RU_LOCAL_QUALIFICATION",
+  "sourceCommit": "fcea298c705bf6a8fbedc4264491ed34280d284c",
+  "qualifiedLocks": {
+    "package-lock.json": "31be8a08cb14c69d8a263099dc88b04f1b538483",
+    "apps/web/package-lock.json": "9a3257a722572cdf4275e4c6a27df56bc255cb12"
+  },
   "protocolTree": "1ee2e38c3e06fc5ca6f13cca622f2223cac71476",
   "registryTupleSha256": "a4872ad6f960a14b4d9964bda8ec4be3d015690acef72f5de5e378c552d09ab3",
   "templateSha256": "075b676a297f235107f7929442194ae22c3a250f0366db1af8a06efccd3cfb5d",
@@ -24,5 +27,24 @@
     "linuxCi": "PENDING",
     "publicLauncher": "NOT_IMPLEMENTED",
     "fullP5": "NOT_QUALIFIED"
+  },
+  "localQualification": {
+    "platform": "win32-x64",
+    "node": "24.19.0",
+    "npm": "11.17.0",
+    "rootCi": "PASS_IGNORE_SCRIPTS",
+    "webCi": "PASS_IGNORE_SCRIPTS",
+    "consumerPackageGraphCi": "PASS_IGNORE_SCRIPTS",
+    "rootStrictTypes": "PASS",
+    "webStrictTypes": "PASS",
+    "i18nPure": "PASS_5",
+    "existingErrorQueryRegressions": "PASS_32",
+    "consumerDependencyContract": "PASS_5",
+    "devRenderer": "PASS_2",
+    "productionRenderer": "PASS_2",
+    "existingBoundaryAsyncUnknown": "PASS_4",
+    "nextProductionBuild": "PASS",
+    "viteProductionBuild": "PASS",
+    "canonicalCommittedConsumerPipeline": "PENDING"
   }
 }
