@@ -6,8 +6,8 @@ import { Box, LogIn, LogOut, Mail, Plus, ShieldCheck, UserPlus, Users } from 'lu
 import type { Actor } from '@/packages/core/src';
 import { selectedProjectId } from '@/lib/client-project';
 export { selectedProjectId } from '@/lib/client-project';
-import type { ProjectMembership, ProjectMetadata, ProjectRole } from '@/lib/projects';
-import './participants-panel.css';
+import type { ProjectMembership, ProjectMetadata, ProjectRole } from '@ouro/protocol/http';
+import {participantPresentation,type ParticipantSurface} from './participant-presentation';
 
 async function request(url: string, options?: RequestInit) {
   const response = await fetch(url, options);
@@ -35,7 +35,8 @@ export function AccountLogout({ identity }: { identity: Actor | null }) {
   return <><button className="icon-btn" type="button" aria-label="Выйти из аккаунта" title="Выйти из аккаунта" disabled={busy} onClick={() => void logout()}><LogOut size={15}/></button>{error&&<span role="alert">{error}</span>}</>;
 }
 
-export function EmailLogin() {
+export function EmailLogin({surface='legacy'}:{surface?:ParticipantSurface}) {
+  const ui=participantPresentation(surface);
   const [mode, setMode] = useState<'login' | 'invitation' | 'reset'>('login');
   const [email, setEmail] = useState(''), [password, setPassword] = useState(''), [name, setName] = useState(''), [code, setCode] = useState('');
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
@@ -55,23 +56,23 @@ export function EmailLogin() {
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Не удалось запросить код.'); }
     finally { setBusy(false); }
   };
-  return <section className="participant-section" aria-label="Вход в аккаунт">
-    <div className="section-heading"><h2><LogIn size={17}/>Аккаунт Ouro</h2></div>
+  return <section className={ui.section} aria-label="Вход в аккаунт">
+    <div className={ui.sectionHeading}><h2 className={ui.heading}><LogIn size={17}/>Аккаунт Ouro</h2></div>
     <div className="segmented" aria-label="Операция аккаунта">
       <button type="button" className={mode === 'login' ? 'selected' : ''} onClick={() => { setMode('login'); setError(''); }}>Вход</button>
       <button type="button" className={mode === 'invitation' ? 'selected' : ''} onClick={() => { setMode('invitation'); setError(''); }}>Приглашение</button>
       <button type="button" className={mode === 'reset' ? 'selected' : ''} onClick={() => { setMode('reset'); setError(''); }}>Сброс пароля</button>
     </div>
-    <form className="participant-login-form" onSubmit={run}>
-      {mode !== 'invitation' && <label><span>Email</span><input type="email" autoComplete="email" required maxLength={254} value={email} disabled={busy} onChange={event => setEmail(event.target.value)}/></label>}
-      {mode === 'invitation' && <label><span>Имя для нового аккаунта</span><input autoComplete="name" maxLength={120} value={name} disabled={busy} onChange={event => setName(event.target.value)}/></label>}
-      {mode !== 'login' && <label><span>Одноразовый код из письма</span><input required minLength={43} maxLength={43} value={code} disabled={busy} onChange={event => setCode(event.target.value.trim())}/></label>}
-      <label><span>{mode === 'login' ? 'Пароль' : 'Новый пароль'}</span><input type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={mode === 'login' ? 1 : 12} maxLength={128} value={password} disabled={busy} onChange={event => setPassword(event.target.value)}/></label>
-      <button className="btn btn-primary" disabled={busy} type="submit">{mode === 'login' ? 'Войти' : mode === 'invitation' ? 'Принять приглашение' : 'Установить пароль'}</button>
+    <form className={`participant-login-form ${ui.form}`} onSubmit={run}>
+      {mode !== 'invitation' && <label className={`${ui.label} flex-1`}><span>Email</span><input className={ui.field} type="email" autoComplete="email" required maxLength={254} value={email} disabled={busy} onChange={event => setEmail(event.target.value)}/></label>}
+      {mode === 'invitation' && <label className={`${ui.label} flex-1`}><span>Имя для нового аккаунта</span><input className={ui.field} autoComplete="name" maxLength={120} value={name} disabled={busy} onChange={event => setName(event.target.value)}/></label>}
+      {mode !== 'login' && <label className={`${ui.label} flex-1`}><span>Одноразовый код из письма</span><input className={ui.field} required minLength={43} maxLength={43} value={code} disabled={busy} onChange={event => setCode(event.target.value.trim())}/></label>}
+      <label className={`${ui.label} flex-1`}><span>{mode === 'login' ? 'Пароль' : 'Новый пароль'}</span><input className={ui.field} type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={mode === 'login' ? 1 : 12} maxLength={128} value={password} disabled={busy} onChange={event => setPassword(event.target.value)}/></label>
+      <button className={`btn btn-primary ${ui.formButton}`} disabled={busy} type="submit">{mode === 'login' ? 'Войти' : mode === 'invitation' ? 'Принять приглашение' : 'Установить пароль'}</button>
     </form>
-    {mode === 'invitation' && <p>Для существующего аккаунта сначала войдите, затем примите приглашение на странице участников.</p>}
+    {mode === 'invitation' && <p className={ui.copy}>Для существующего аккаунта сначала войдите, затем примите приглашение на странице участников.</p>}
     {mode === 'reset' && <button className="btn btn-small" type="button" disabled={busy || !email.trim()} onClick={() => void requestReset()}><Mail size={14}/>Отправить код сброса</button>}
-    {notice && <p className="participant-notice" role="status">{notice}</p>}{error && <p className="participant-error" role="alert">{error}</p>}
+    {notice && <p className={ui.sectionNotice} role="status">{notice}</p>}{error && <p className={ui.sectionError} role="alert">{error}</p>}
   </section>;
 }
 
@@ -104,7 +105,8 @@ export function ProjectSwitcher({ identity }: { identity: Actor | null }) {
   </div>;
 }
 
-export function ProjectMembersPanel({ projectId, identity }: { projectId: string; identity: Actor }) {
+export function ProjectMembersPanel({ projectId, identity,surface='legacy' }: { projectId: string; identity: Actor;surface?:ParticipantSurface }) {
+  const ui=participantPresentation(surface);
   const [members, setMembers] = useState<ProjectMembership[]>([]), [projects, setProjects] = useState<ProjectMetadata[]>([]);
   const [email, setEmail] = useState(''), [role, setRole] = useState<ProjectRole>('Contributor'), [code, setCode] = useState('');
   const [error, setError] = useState(''), [notice, setNotice] = useState(''), [busy, setBusy] = useState(false);
@@ -134,10 +136,10 @@ export function ProjectMembersPanel({ projectId, identity }: { projectId: string
     event.preventDefault(); try { await post('/api/auth/invitations/accept', { code }); setCode(''); location.reload(); }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Не удалось принять приглашение.'); }
   };
-  return <div className="participants-panel"><div className="page-heading"><div><div className="eyebrow">ДОСТУП К ПРОЕКТУ</div><h1><Users size={25}/>Участники</h1><p className="page-description">Ваша роль: {currentRole ?? 'проверяется'}. Изменения сохраняются с отдельным user ID.</p></div></div>
-    {error && <p className="participant-error" role="alert">{error}</p>}{notice && <p className="participant-notice" role="status">{notice}</p>}
-    {currentRole === 'Owner' && <section className="participant-section"><div className="section-heading"><h2><UserPlus size={17}/>Пригласить по email</h2></div><form className="participant-create-form" onSubmit={invite}><label><span>Email</span><input type="email" required value={email} onChange={event => setEmail(event.target.value)}/></label><label><span>Роль</span><AppSelect aria-label="Роль" value={role} onValueChange={selectedValue=> setRole(selectedValue as ProjectRole)}><option>Contributor</option><option>Viewer</option><option>Owner</option></AppSelect></label><button className="btn btn-primary" disabled={busy}>Пригласить</button></form></section>}
-    <section className="participant-section"><div className="section-heading"><h2>Участники проекта</h2></div><div className="participant-directory">{members.map(member => <article className="participant-card" key={member.id}><div><strong>{member.name}</strong><small>{member.email}</small><code className="participant-id">{member.userId}</code>{member.revokedAt && <small>Доступ отозван</small>}</div><div>{currentRole === 'Owner' && !member.revokedAt ? <><AppSelect aria-label={`Роль ${member.name}`} value={member.role} onValueChange={selectedValue=> void changeRole(member.id, selectedValue as ProjectRole)}><option>Owner</option><option>Contributor</option><option>Viewer</option></AppSelect><button className="btn btn-small" onClick={() => void revoke(member.id)}>Отозвать доступ</button></> : <span className="participant-badge">{member.role}</span>}</div></article>)}</div></section>
-    <section className="participant-section"><div className="section-heading"><h2><ShieldCheck size={17}/>Приглашение для {identity.name ?? 'текущего аккаунта'}</h2></div><form className="participant-login-form" onSubmit={accept}><label><span>Одноразовый код</span><input required minLength={43} maxLength={43} value={code} onChange={event => setCode(event.target.value.trim())}/></label><button className="btn">Принять приглашение</button></form></section>
+  return <div className={ui.panel}><div className="page-heading"><div><div className="eyebrow">ДОСТУП К ПРОЕКТУ</div><h1 className={ui.title}><Users size={25}/>Участники</h1><p className="page-description">Ваша роль: {currentRole ?? 'проверяется'}. Изменения сохраняются с отдельным user ID.</p></div></div>
+    {error && <p className={ui.error} role="alert">{error}</p>}{notice && <p className={ui.notice} role="status">{notice}</p>}
+    {currentRole === 'Owner' && <section className={ui.section}><div className={ui.sectionHeading}><h2 className={ui.heading}><UserPlus size={17}/>Пригласить по email</h2></div><form className={`participant-create-form ${ui.form}`} onSubmit={invite}><label className={`${ui.label} flex-1`}><span>Email</span><input className={ui.field} type="email" required value={email} onChange={event => setEmail(event.target.value)}/></label><label className={`${ui.label} flex-1`}><span>Роль</span><AppSelect aria-label="Роль" value={role} onValueChange={selectedValue=> setRole(selectedValue as ProjectRole)}><option>Contributor</option><option>Viewer</option><option>Owner</option></AppSelect></label><button className={`btn btn-primary ${ui.formButton}`} disabled={busy}>Пригласить</button></form></section>}
+    <section className={ui.section}><div className={ui.sectionHeading}><h2 className={ui.heading}>Участники проекта</h2></div><div className={ui.directory}>{members.map(member => <article className={ui.card} key={member.id}><div className={ui.cardIdentity}><strong className={ui.name}>{member.name}</strong><small className={ui.small}>{member.email}</small><code className={ui.id}>{member.userId}</code>{member.revokedAt && <small className={ui.small}>Доступ отозван</small>}</div><div className={ui.cardActions}>{currentRole === 'Owner' && !member.revokedAt ? <><AppSelect aria-label={`Роль ${member.name}`} value={member.role} onValueChange={selectedValue=> void changeRole(member.id, selectedValue as ProjectRole)}><option>Owner</option><option>Contributor</option><option>Viewer</option></AppSelect><button className="btn btn-small" onClick={() => void revoke(member.id)}>Отозвать доступ</button></> : <span className={ui.badge}>{member.role}</span>}</div></article>)}</div></section>
+    <section className={ui.section}><div className={ui.sectionHeading}><h2 className={ui.heading}><ShieldCheck size={17}/>Приглашение для {identity.name ?? 'текущего аккаунта'}</h2></div><form className={`participant-login-form ${ui.form}`} onSubmit={accept}><label className={`${ui.label} flex-1`}><span>Одноразовый код</span><input className={ui.field} required minLength={43} maxLength={43} value={code} onChange={event => setCode(event.target.value.trim())}/></label><button className={`btn ${ui.formButton}`}>Принять приглашение</button></form></section>
   </div>;
 }
