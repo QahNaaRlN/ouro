@@ -57,4 +57,3 @@ export async function processFixture(page:Page,baseURL:string|undefined):Promise
  }}finally{await client.close();}
  await writeFile(manifest,JSON.stringify(result));return result;
 }
-
