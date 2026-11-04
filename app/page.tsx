@@ -2,7 +2,7 @@
 
 import {WorkspaceAccordion} from '@/components/workspace-ui';
 import {AppSelect} from '@/components/app-select';
-import { projectFetch, projectRequestUrl } from '@/lib/client-project';
+import { projectFetch } from '@/lib/client-project';
 
 import packageInfo from '../package.json';
 import Link from 'next/link';
@@ -69,8 +69,10 @@ import {FlowTrackingChoice,flowTrackingUnavailable} from '@/components/flow-runt
 import {runtimeEventNames,type FlowRuntimeCommand,type FlowCommandOutcome,type RuntimeIntentRegistry} from '@/components/flow-runtime-ui';
 import { StateTransitions } from "@/components/state-transitions";
 import HistoricalPanel from "@/components/historical-panel";
-import { createProjectSnapshotAdopter, type ProjectSnapshot } from '@/lib/project-snapshot';
-import { startProjectSubscription, type ProjectSubscriptionStatus } from '@/lib/project-subscription';
+import {useProjectSession} from '@/components/project-session-provider';
+import {createIdentityReadController} from '@/packages/client/src/lifecycle/create-identity-read-controller';
+import {readIdentitySession} from '@/packages/client/src/http/read-identity-session';
+import {WorkspacePendingList,useWorkspaceIntents,readWorkspaceJSON} from '@/components/workspace-client';
 import { getRoadmapFilterOptions, matchesRoadmapFilter } from '@/packages/core/src/roadmap-filter';
 import { currentDecisionRequests, decisionRoot, isCurrentDecisionRequest, openPhysicalBlockers } from '@/packages/core/src/decision-lineage';
 import {
@@ -86,7 +88,6 @@ import {
 
 type View = "roadmap" | "specs" | "decisions" | "history" | "methodology" | "agents" | "integrations" | "lessons" | "impact" | "participants" | "drafts" | "proposals";
 type Modal = "create" | "revision" | "accept" | "dependency" | null;
-type ProjectResponse = { state: ProjectState; cursor: number; storage: string };
 type Payload = Record<string, unknown>;
 const kinds: Record<string, string> = {
   Question: "Вопрос",
@@ -164,11 +165,12 @@ function Empty({ children }: { children: ReactNode }) {
 }
 
 export default function Home() {
-  const [state, setState] = useState<ProjectState | null>(null),
-    [storage, setStorage] = useState(""),
-    [cursor, setCursor] = useState(0);
   const [agents, setAgents] = useState<AgentRegistration[]>([]);
   const [identity,setIdentity]=useState<Actor|null>(null),[sharedPending,setSharedPending]=useState(false);
+  const [identityReads]=useState(createIdentityReadController),[accessEpoch,setAccessEpoch]=useState(0);
+  const owner=useProjectSession(identity?{projectId:selectedProjectId(),actorId:identity.id,accessEpoch}:undefined,'legacy');
+  const state=owner.snapshot?.state??null,storage=owner.snapshot?.storage??'',cursor=owner.snapshot?.cursor??0;
+  const rootPending=useWorkspaceIntents(selectedProjectId(),identity?.id);
   const [flowTrackingSelections,setFlowTrackingSelections]=useState<Record<string,boolean>>({});
   const flowRuntimeIntents=useRef<RuntimeIntentRegistry>(new Map());
   const [projectRole,setProjectRole]=useState<ProjectRole|null>(null);
@@ -181,8 +183,7 @@ export default function Home() {
     window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);
   },[]);
   const [assignmentAgentId, setAssignmentAgentId] = useState(AGENT_ID);
-  const [snapshotAdopter] = useState(()=>createProjectSnapshotAdopter(selectedProjectId()));
-  const [streamStatus,setStreamStatus] = useState<ProjectSubscriptionStatus>('connecting');
+  const streamStatus=owner.view.status;
   const [agentFilter,setAgentFilter] = useState(''),[requestFilter,setRequestFilter] = useState('');
   const [flowRevisionId, setFlowRevisionId] = useState<string | null>(null);
   const [integrationSource,setIntegrationSource]=useState<'github'|'meridian'>('github');
@@ -195,29 +196,30 @@ export default function Home() {
     [status, setStatus] = useState(""),
     [graphView, setGraphView] = useState(true),
     [layoutKey, setLayoutKey] = useState(0);
-  const [loading, setLoading] = useState(true),
+  const [authLoading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
+    [localError, setError] = useState(""),
     [toast, setToast] = useState("");
+  const error=localError||owner.view.error?.message||'',loading=authLoading||!!identity&&!state&&!owner.view.error;
   const [theme, setTheme] = useState<'light'|'dark'>("dark"),
     [mobileNav, setMobileNav] = useState(false),
     [modal, setModal] = useState<Modal>(null),
     [detailTab, setDetailTab] = useState("expectation"),
     [realityView, setRealityView] = useState<"history" | "graph">("history");
-  const cursorRef = useRef(0);
   const [historicalCursor,setHistoricalCursor]=useState<number|null>(null);
   const [historicalInput,setHistoricalInput]=useState('');
   const historicalCursorRef=useRef<number|null>(null);
   const returnToLive=()=>{historicalCursorRef.current=null;setHistoricalCursor(null);};
   const hasInitialSelection = useRef(false);
   const pendingRef = useRef(false);
+  useEffect(()=>{setBusy(false);pendingRef.current=false;},[owner.session]);
   // An uncertain import belongs to the authenticated human and project. The raw
   // source remains in this page's RAM across panel/history navigation only.
   const meridianParticipantKey=identity?.id??'unauthenticated';
   const meridianPendingIntent=useRef<MeridianPendingIntent|null>(null);
   useEffect(()=>{
     const saved=meridianPendingIntent.current;
-    if(saved&&(saved.participantKey!==identity?.id||saved.projectId!==state?.projectId))meridianPendingIntent.current=null;
+    if(saved&&identity&&state&&(saved.participantKey!==identity.id||saved.projectId!==state.projectId))meridianPendingIntent.current=null;
   },[identity?.id,state?.projectId]);
   useEffect(()=>{
     const guard=(event:BeforeUnloadEvent)=>{
@@ -227,66 +229,41 @@ export default function Home() {
     window.addEventListener('beforeunload',guard);
     return()=>window.removeEventListener('beforeunload',guard);
   },[]);
-  const presentSnapshot=useCallback((snapshot:ProjectSnapshot)=>{
-    setState(snapshot.state);
-    if(snapshot.storage)setStorage(snapshot.storage);
-    setCursor(snapshot.cursor);cursorRef.current=snapshot.cursor;
-  },[]);
   const adoptSnapshot=useCallback((value:unknown)=>{
-    const result=snapshotAdopter.adopt(value);
-    if(result.status==='invalid')throw new Error(`Невозможно подтвердить историю: ${result.reason}. Обновите страницу после проверки сервера.`);
-    presentSnapshot(result.snapshot);return result.snapshot;
-  },[snapshotAdopter,presentSnapshot]);
-  const refresh = useCallback(async () => {
-    const response = await projectFetch("/api/project", { cache: "no-store" });
-    const data = await response.json();
-    if (!response.ok)
-      throw new Error(data.error?.message ?? "Не удалось прочитать проект");
-    const adopted=adoptSnapshot(data);
-    if (!hasInitialSelection.current) {
-      setSelected(adopted.state.specs[0]?.id ?? null);
-      hasInitialSelection.current = true;
-    }
-    return adopted as ProjectResponse;
-  }, [adoptSnapshot]);
-  const adoptMutation=async(data:unknown)=>{
-    if((data as {replayed?:boolean})?.replayed)await refresh();else adoptSnapshot(data);
-  };
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const session = await projectFetch("/api/session");
-        const sessionData=await session.json();
-        if (!session.ok) {
-          throw new Error(
-            sessionData.error?.message ?? "Не удалось открыть сессию",
-          );
-        }
-        if (!cancelled) {
-          const actor=(sessionData.actor??null) as Actor|null;
-          setIdentity(actor);
-          if(sessionData.account&&actor){
-            const projectsResponse=await projectFetch('/api/projects',{cache:'no-store'}),projectsData=await projectsResponse.json();
-            if(!projectsResponse.ok)throw new Error(projectsData.error?.message??'Не удалось прочитать список проектов.');
-            const selectedId=selectedProjectId(),current=projectsData.projects.find((project:{id:string})=>project.id===selectedId);
-            if(!current&&projectsData.projects[0]){selectProject(projectsData.projects[0].id);return;}
-            setProjectRole(current?.role??null);
-          }else setProjectRole(actor&&['local-human','human-token'].includes(actor.id)?'Owner':'Contributor');
-          await refresh();
-          const agentsResponse=await projectFetch('/api/agents',{cache:'no-store'});
-          if(agentsResponse.ok){const body=await agentsResponse.json();if(!cancelled)setAgents(body.agents);}
-        }
-      } catch (e) {
-        if (!cancelled) setError((e as Error).message);
-      } finally {
-        if (!cancelled) setLoading(false);
+    const result=owner.session?.admit(value);
+    if(!result||result.status==='invalid')throw new Error('Невозможно подтвердить историю проекта.');
+    return result.snapshot;
+  },[owner.session]);
+  const refresh=useCallback(async()=>{
+    await owner.session?.refresh(false);
+    const adopted=owner.session?.getSnapshot();if(!adopted)throw new Error('Состояние проекта не подтверждено.');
+    if(!hasInitialSelection.current){setSelected(adopted.state.specs[0]?.id??null);hasInitialSelection.current=true;}
+    return adopted;
+  },[owner.session]);
+  const adoptMutation=async(data:unknown)=>{adoptSnapshot(data);if((data as {replayed?:boolean})?.replayed)await refresh();};
+  useEffect(()=>{if(!state||hasInitialSelection.current)return;setSelected(state.specs[0]?.id??null);hasInitialSelection.current=true;},[state]);
+  const refreshIdentity=useCallback(async()=>{
+    const ticket=identityReads.begin();if(!ticket)return;
+    setAccessEpoch(ticket.accessEpoch);setIdentity(null);setProjectRole(null);setAgents([]);setLoading(true);setError('');
+    const outcome=await ticket.run(async signal=>{
+      const session=await readIdentitySession(signal),actor=session.actor;
+      let role:ProjectRole|null=actor&&['local-human','human-token'].includes(actor.id)?'Owner':actor?'Contributor':null,fallbackProjectId:string|null=null;
+      if(session.hasAccount&&actor){
+        const projects=await readWorkspaceJSON<{projects:Array<{id:string;role?:ProjectRole}>}>('/api/projects',signal),selectedId=selectedProjectId(),current=projects.projects.find(project=>project.id===selectedId);
+        if(!current&&projects.projects[0])fallbackProjectId=projects.projects[0].id;
+        role=current?.role??null;
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [refresh]);
+      const agents=await readWorkspaceJSON<{agents:AgentRegistration[]}>('/api/agents?projectId='+encodeURIComponent(selectedProjectId()),signal).then(value=>value.agents).catch(()=>[]);
+      return {actor,role,agents,fallbackProjectId};
+    });
+    if(outcome.status==='superseded')return;
+    if(outcome.status==='accepted'){
+      if(outcome.value.fallbackProjectId){selectProject(outcome.value.fallbackProjectId);return;}
+      setIdentity(outcome.value.actor);setProjectRole(outcome.value.role);setAgents(outcome.value.agents);
+    }else setError(outcome.error instanceof Error?outcome.error.message:'Не удалось проверить сессию.');
+    setLoading(false);
+  },[identityReads]);
+  useEffect(()=>{identityReads.mount();void refreshIdentity();return()=>identityReads.unmount();},[identityReads,refreshIdentity]);
   useEffect(() => {
     const saved = localStorage.getItem("ouro-theme");
     if (saved === "light") setTheme(saved);
@@ -295,18 +272,6 @@ export default function Home() {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem("ouro-theme", theme);
   }, [theme]);
-  useEffect(() => {
-    if(loading||!snapshotAdopter.getSnapshot())return;
-    const subscription=startProjectSubscription({adopter:snapshotAdopter,createEventSource:url=>new EventSource(projectRequestUrl(url)),onSnapshot:presentSnapshot,onStatus:setStreamStatus,reconcile:async()=>{
-      const response=await projectFetch('/api/project',{cache:'no-store'});
-      if(!response.ok)throw new Error('Не удалось сверить историю');return response.json();
-    }});
-    const offline=()=>{subscription.reconnect();setStreamStatus(current=>current==='reload-required'?current:'reconnecting');};
-    const online=()=>subscription.reconnect();
-    window.addEventListener('offline',offline);window.addEventListener('online',online);
-    if(!navigator.onLine)offline();
-    return ()=>{window.removeEventListener('offline',offline);window.removeEventListener('online',online);subscription.close();};
-  }, [loading,snapshotAdopter,presentSnapshot]);
   useEffect(()=>{
     if(loading)return;let live=true;
     const timer=setInterval(()=>{void projectFetch('/api/agents',{cache:'no-store'}).then(async response=>{if(response.ok){const data=await response.json();if(live)setAgents(data.agents);}}).catch(()=>{});},8000);
@@ -326,43 +291,23 @@ export default function Home() {
   ) => {
     if(!canWrite){setError('Роль Viewer разрешает только чтение проекта.');return false;}
     if(historicalCursorRef.current!==null){setError('Историческое состояние доступно только для чтения. Вернитесь к текущей работе.');return false;}
-    if (!state || busy) return false;
+    if (!state || busy || !owner.view.active || rootPending.length>0) return false;
     setBusy(true);
     pendingRef.current = true;
     setError("");
     try {
-      const r = await projectFetch("/api/commands", {
-        method: "POST",
-        headers: { "Content-Type": "application/json",...(identity?{'X-Ouro-Expected-Participant':identity.id}:{}) },
-        body: JSON.stringify({
-          ...payload,
-          requestId: typeof payload.requestId==='string'?payload.requestId:crypto.randomUUID(),
-          expectedVersion: expectedVersionOverride ?? state.version,
-        }),
-      });
-      const data = await r.json();
-      onOutcome?.({status:r.status,...(typeof data.error?.code==='string'?{code:data.error.code}:{})});
-      if (!r.ok) {
-        if (data.state) adoptSnapshot(data);
-        else await refresh();
-        throw new Error(
-          `${data.error?.code ?? "ERROR"}: ${data.error?.message ?? "Команда не выполнена"}`,
-        );
-      }
-      if (data.replayed) {
-        await refresh();
-      } else if (data.state) {
-        adoptSnapshot(data);
-      } else await refresh();
-      onCommitted?.(Array.isArray(data.events)?data.events:[]);
+      const outcome=await owner.execute({...payload,expectedVersion:expectedVersionOverride??owner.session?.getSnapshot()?.cursor??state.version});
+      if(!owner.session?.getView().active)return false;
+      onOutcome?.(outcome.status==='confirmed'?{status:200}:outcome.status==='rejected'?{status:outcome.httpStatus,code:outcome.code}:{});
+      if(outcome.status!=='confirmed')throw new Error(outcome.status==='rejected'?outcome.message:'Исход действия неизвестен. Сохранён исходный запрос для точного повтора.');
+      onCommitted?.([...outcome.receipt.events]);
       setToast(notice);
       return true;
     } catch (e) {
-      setError((e as Error).message);
+      if(owner.session?.getView().active)setError((e as Error).message);
       return false;
     } finally {
-      setBusy(false);
-      pendingRef.current = false;
+      if(owner.session?.getView().active){setBusy(false);pendingRef.current = false;}
     }
   };
   const runFlowCommand:FlowRuntimeCommand=async(payload,expectedVersion)=>{
@@ -636,6 +581,7 @@ export default function Home() {
             </button>
           </div>
         )}
+        {identity&&<WorkspacePendingList projectId={selectedProjectId()} actorId={identity.id} onRecovered={refresh} onReceipt={value=>{adoptSnapshot(value);}}/>}
         {toast && (
           <div className="toast" role="status">
             <Check size={16} />
@@ -656,7 +602,7 @@ export default function Home() {
             <p>{error || "Проверьте запуск сервера и локальную сессию."}</p>
             <EmailLogin/>
             <WorkspaceAccordion defaultOpen title={<>Вход по прежнему ключу участника</>}><ParticipantLogin/></WorkspaceAccordion>
-            <button className="btn" onClick={() => location.reload()}>
+            <button className="btn" onClick={() => void refreshIdentity()}>
               Повторить
             </button>
           </main>
