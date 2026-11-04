@@ -11,7 +11,7 @@ import {createPortProbe} from './fixtures/consumer-delivery/port-project.mjs';
 import {parseConsumerArguments,forceOwnedChild} from '../scripts/consumer-delivery/consumer-owner.mjs';
 import {selectConsumerPort,parseStartPort,assertBrowserPort} from '../scripts/consumer-delivery/consumer-port.mjs';
 
-const repository=fileURLToPath(new URL('../',import.meta.url)),require=createRequire(import.meta.url),keys=['SystemRoot','WINDIR','ComSpec','TEMP','TMP','PATH','HOME','USERPROFILE','APPDATA','LOCALAPPDATA'],environment={...Object.fromEntries(keys.filter(key=>process.env[key]!==undefined).map(key=>[key,process.env[key]])),NODE_ENV:'production',NEXT_TELEMETRY_DISABLED:'1'};
+const repository=fileURLToPath(new URL('../',import.meta.url)),require=createRequire(import.meta.url),keys=['SystemRoot','WINDIR','ComSpec','TEMP','TMP','PATH','HOME','USERPROFILE','APPDATA','LOCALAPPDATA'];const environment:NodeJS.ProcessEnv={...Object.fromEntries(keys.filter(key=>process.env[key]!==undefined).map(key=>[key,process.env[key]])),NODE_ENV:'production',NEXT_TELEMETRY_DISABLED:'1'};
 /** Ограничивает baseline новым synthetic root, никогда не открывает пользовательский profile/port3000. */
 async function fixture(){const directory=await mkdtemp(path.join(tmpdir(),'ouro-port-characterization-')),root=path.join(directory,'installed root');await mkdir(root);return {directory,root,close:async()=>{assert.equal(path.dirname(path.resolve(directory)),path.resolve(tmpdir()));assert(path.basename(directory).startsWith('ouro-port-characterization-'));await rm(directory,{recursive:true,force:true});}};}
 

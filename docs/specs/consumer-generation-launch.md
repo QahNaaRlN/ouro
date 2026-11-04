@@ -1,6 +1,6 @@
 # CGL — запуск независимой поставки через поколения установки
 
-Дата: 2026-11-05. Ветка `codex/consumer-generation-launch`, base `f79bdc0d079ae516f4d28fafc442a18a7db28c96`. Статус: **IMPLEMENTED_PARTIAL / PORT_FOCUSED_CHECKPOINT_PASS / LINUX_CI_PENDING**. Root разрешил implementation после source-build producer. [Журнал](../plans/consumer-generation-launch.md). Основание: принятые D13/P5, [SWD2](consumer-source-delivery.md), REC и scoped evidence. Windows strict HTML TCP limitation не повышается до PASS. [Early-listener DI](consumer-prebound-startup.md) получила узкий design review и focused RED→GREEN; повторный полный consumer proof и source freeze ещё требуются.
+Дата: 2026-11-05. Ветка `codex/consumer-generation-launch`, base `f79bdc0d079ae516f4d28fafc442a18a7db28c96`. Статус: **IMPLEMENTED_PARTIAL / PORT_FOCUSED_CHECKPOINT_PASS / FIRST_LINUX_GENERATION_FAILED / FINAL_QUALIFICATION_PENDING**. Root разрешил implementation после source-build producer. [Журнал](../plans/consumer-generation-launch.md). Основание: принятые D13/P5, [SWD2](consumer-source-delivery.md), REC и scoped evidence. Windows strict HTML TCP limitation не повышается до PASS. [Early-listener DI](consumer-prebound-startup.md) получила узкий design review и focused RED→GREEN; source freeze сохранён, повторный полный consumer proof ещё требуется.
 
 ## Цель и полномочия
 

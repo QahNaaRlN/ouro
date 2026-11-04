@@ -95,7 +95,7 @@ let renameFaultOwner:Promise<void>=Promise.resolve();
 async function renameFault(context:TestContext,fault:(source:PathLike,destination:PathLike,original:typeof import('node:fs/promises').rename)=>Promise<void>,work:()=>Promise<void>){
  const prior=renameFaultOwner;let release:()=>void=()=>{};renameFaultOwner=new Promise<void>(resolve=>release=()=>resolve());await prior;
  const filesystem=createRequire(import.meta.url)('node:fs/promises')as typeof import('node:fs/promises'),original=filesystem.rename,platform=Object.getOwnPropertyDescriptor(process,'platform');
- try{assert(platform);context.mock.method(filesystem,'rename',(source,destination)=>fault(source,destination,original));Object.defineProperty(process,'platform',{...platform,value:'win32'});syncBuiltinESMExports();await work();}
+ try{assert(platform);context.mock.method(filesystem,'rename',(source:PathLike,destination:PathLike)=>fault(source,destination,original));Object.defineProperty(process,'platform',{...platform,value:'win32'});syncBuiltinESMExports();await work();}
  finally{try{context.mock.restoreAll();if(platform)Object.defineProperty(process,'platform',platform);syncBuiltinESMExports();}finally{release();}}
 }
 
