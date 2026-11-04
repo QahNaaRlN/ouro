@@ -40,13 +40,6 @@
       "owner": "graphs"
     },
     {
-      "file": "components/github-panel.css",
-      "sha256": "104a154a88d42a388eba0ea835231ca71fd1ce17de317c9de280226f1e9cdf37",
-      "ordinaryRules": 73,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
       "file": "components/impact-panel.css",
       "sha256": "d1afc39ddbc083a094bd9e65c8b9979f156ad87183e34ebc98e0a980309a0a5b",
       "ordinaryRules": 98,
@@ -68,23 +61,9 @@
       "owner": "specialized-panels"
     },
     {
-      "file": "components/meridian-panel.css",
-      "sha256": "c650d92fb1bf3ff760186f8d07353d67421957ef3f23aa829697f95272268b6b",
-      "ordinaryRules": 73,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
       "file": "components/methodology.css",
       "sha256": "8dc1a7805cb19190532ec8ac5049ee3db991841c84a8e387377c49b7b499fc02",
       "ordinaryRules": 58,
-      "legacyLayer": true,
-      "owner": "specialized-panels"
-    },
-    {
-      "file": "components/onboarding.css",
-      "sha256": "bb4948008e151394edb64f85938ef335af890bf4dd64db4f43313a396e00cedd",
-      "ordinaryRules": 32,
       "legacyLayer": true,
       "owner": "specialized-panels"
     },
@@ -172,44 +151,22 @@
       "owner": "specialized-panels"
     },
     {
-      "file": "components/meridian-panel.tsx",
-      "sha256": "774b518d08da9f561d4ed8d189e52c713fd9310294a0ae0f8ef5abc1561d37b6",
-      "expressions": [
-        {
-          "kind": "jsx",
-          "sha256": "f4a019560b18210f781cd09fd5b0a2b22b802e68bf0760caeb6a0b1222a80a52",
-          "count": 1
-        }
-      ],
-      "owner": "specialized-panels"
-    },
-    {
       "file": "components/onboarding.tsx",
-      "sha256": "b2b8e461475884e1b7cea1bfa14ba7e5ac0a9614433b857110a34a6d5ee0b831",
+      "sha256": "c7c1ee0839e68b2b0265a442df5a97990072191f9a56db7a59ff6eb3044968d4",
       "expressions": [
         {
-          "kind": "dom",
-          "sha256": "002faef44ef247045390fa5cf7d321b4afd393afbd3d6b0a492dea66a0acf5f3",
-          "count": 1
-        },
-        {
-          "kind": "dom",
-          "sha256": "2322f31b51c3e973729f02d8d7f3d07769098e49787a943175176b4d37522005",
+          "kind": "jsx",
+          "sha256": "24152c7e9306e858203596dfc095244d8e6cd05ef33f60ad333109f293ed0907",
           "count": 1
         },
         {
           "kind": "jsx",
-          "sha256": "5fd886dbaab9a4a424cadbdbf81aa125389d3fbf1d07106b28e4d1d2c4251752",
+          "sha256": "28d78d79a75a2987a217bc064fbd9485498c660dcc57983be16ab52adf610aa2",
           "count": 1
         },
         {
           "kind": "jsx",
-          "sha256": "85f9a7cfcb025e34862fa9c1f3c209c28adbac4be11b756eafc7283abdf01c38",
-          "count": 1
-        },
-        {
-          "kind": "jsx",
-          "sha256": "9dd7a6180aaa92fa23ff5063170c3a9df7943155bf96ee8ae809b281c6669ec9",
+          "sha256": "c74421dbdec91552be946cc7fd24d22338810a7dc6a9654ad517e867c47fe7c8",
           "count": 1
         }
       ],
