@@ -3,6 +3,7 @@ import {graphPresentation,graphControlsClassName,graphHandlePresentation} from '
 
 import {twMerge} from 'tailwind-merge';
 import {workspacePresentation as ui} from './workspace-presentation';
+import {flowPreviewPresentation as previewUi} from './flow-preview-presentation';
 
 import {useMemo,useRef,useState,type FormEvent} from 'react';
 import {Background,Controls,MarkerType,ReactFlow,type Edge,type Node} from '@xyflow/react';
@@ -131,8 +132,8 @@ function FlowPreview({flow}:{flow:FlowDefinition}){
   const {nodes,edges}=useMemo(()=>{
     const layout=new dagre.graphlib.Graph().setGraph({rankdir:'LR',nodesep:28,ranksep:65}).setDefaultEdgeLabel(()=>({}));
     flow.nodes.forEach(node=>layout.setNode(node.id,{width:210,height:80}));flow.edges.forEach(edge=>layout.setEdge(edge.source,edge.target));dagre.layout(layout);
-    const nodes:Node[]=flow.nodes.map(node=>{const place=layout.node(node.id);return {id:node.id,position:{x:place.x-105,y:place.y-40},data:{label:<><small>{ownerNames[node.owner]} · {node.kind}</small><div>{node.title}</div></>},style:{width:210,minHeight:80,background:'var(--bg)',color:'var(--text)',border:'1px solid var(--border)',borderRadius:7}};});
-    const edges:Edge[]=flow.edges.map(edge=>({id:edge.id,source:edge.source,target:edge.target,label:edge.label,markerEnd:{type:MarkerType.ArrowClosed,color:'var(--graph-edge)'},style:{stroke:'var(--graph-edge)'},labelStyle:{fill:'var(--text-muted)',fontSize:11},labelBgStyle:{fill:'var(--bg)'}}));
+    const nodes:Node[]=flow.nodes.map(node=>{const place=layout.node(node.id);return {id:node.id,position:{x:place.x-105,y:place.y-40},data:{label:<><small>{ownerNames[node.owner]} · {node.kind}</small><div>{node.title}</div></>},className:previewUi.node};});
+    const edges:Edge[]=flow.edges.map(edge=>({id:edge.id,source:edge.source,target:edge.target,label:edge.label,markerEnd:{type:MarkerType.ArrowClosed,color:'var(--graph-edge)'},className:previewUi.edge}));
     return {nodes,edges};
   },[flow]);
   return <section className="ws-proposal-flow" aria-label="Предложенная блок-схема"><h4 className={twMerge(ui.h4,"leading-[1.5]")}>Предложенная блок-схема</h4><p className={twMerge(ui.paragraph,"ws-muted",ui.muted,ui.paragraph,"text-[12px] leading-[1.8] whitespace-pre-wrap [overflow-wrap:break-word]")}>Возможный процесс из предложения. Фактов исполнения здесь нет.</p><div className={twMerge("h-[300px] min-w-0 overflow-hidden rounded-[8px] border border-solid border-ouro-border")} ><ReactFlow className={`${graphPresentation.attribution} ${graphHandlePresentation.defaultNodes}`} nodes={nodes} edges={edges} fitView nodesDraggable={false} nodesConnectable={false} elementsSelectable={false} minZoom={.2} maxZoom={1.6}><Background color="var(--graph-dot)" gap={18}/><Controls className={graphControlsClassName('workspace','default')} showInteractive={false}/></ReactFlow></div><WorkspaceAccordion title={<>Шаги и переходы процесса</>}><ol className={twMerge("pl-[20px]")}>{flow.nodes.map(node=><li className={twMerge("text-[12px] leading-[1.8] whitespace-pre-wrap [overflow-wrap:break-word]")} key={node.id}><strong>{node.title}</strong> · {ownerNames[node.owner]} · {node.kind}{node.id===flow.entryNodeId&&' · вход'}<p className={twMerge(ui.paragraph,ui.paragraph,"text-[12px] leading-[1.8] whitespace-pre-wrap [overflow-wrap:break-word]")}>{node.description}</p><ul className={twMerge("pl-[20px]")}>{flow.edges.filter(edge=>edge.source===node.id).map(edge=><li className={twMerge("text-[12px] leading-[1.8] whitespace-pre-wrap [overflow-wrap:break-word]")} key={edge.id}>{edge.label||'Переход'} → {flow.nodes.find(target=>target.id===edge.target)?.title??edge.target}{edge.optionId&&` · вариант ${edge.optionId}`}</li>)}</ul></li>)}</ol></WorkspaceAccordion></section>;
