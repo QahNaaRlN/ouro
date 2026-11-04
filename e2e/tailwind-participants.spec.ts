@@ -67,3 +67,22 @@ test('TWP participant presentation preserves theme, responsive geometry and focu
  }
  await writeFile(join(output,'presentation.json'),JSON.stringify(metrics,null,2));
 });
+
+test('TWPL a CI-shaped long participant name stays readable and revocable within a narrow viewport',async({page})=>{
+ await page.goto('/');await expect(page.getByRole('heading',{name:/^Дорожная карта/})).toBeVisible();
+ const name=`Meridian Boris ${crypto.randomUUID()}`,response=await page.request.post('/api/participants',{data:{name}});
+ expect(response.ok(),await response.text()).toBe(true);const participant=(await response.json()).participant as {id:string;name:string};
+ await page.getByRole('button',{name:'Участники',exact:true}).click();const panel=page.locator('.participants-panel'),card=panel.locator('article').filter({hasText:participant.id}),revoke=card.getByRole('button',{name:`Отозвать доступ ${name}`,exact:true});
+ await expect(revoke).toBeVisible();await page.setViewportSize({width:390,height:844});
+ for(const theme of ['dark','light']){
+  await page.evaluate(value=>{document.documentElement.dataset.theme=value;},theme);await page.evaluate(()=>document.fonts.ready);
+  await expect(card.getByText(name,{exact:true})).toBeVisible();await revoke.focus();await expect(revoke).toBeFocused();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(await panel.evaluate(element=>element.scrollWidth-element.clientWidth)).toBeLessThanOrEqual(0);
+  const text=await revoke.evaluate(element=>{const box=element.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(element);return {width:box.width,cardWidth:element.closest('article')!.getBoundingClientRect().width,lines:Array.from(range.getClientRects(),rect=>({left:rect.left-box.left,right:rect.right-box.left}))};});
+  expect(text.width).toBeLessThanOrEqual(text.cardWidth);expect(text.lines.length).toBeGreaterThan(1);
+  for(const line of text.lines){expect(line.left).toBeGreaterThanOrEqual(0);expect(line.right).toBeLessThanOrEqual(text.width+1);}
+ }
+ await revoke.click();await expect(card.getByText('Доступ отозван',{exact:true})).toBeVisible();await expect(revoke).toHaveCount(0);
+ const directory=await(await page.request.get('/api/participants')).json() as {participants:{id:string;revokedAt?:string}[]};expect(directory.participants.find(value=>value.id===participant.id)?.revokedAt).toBeTruthy();
+});
