@@ -281,5 +281,34 @@
       "packages/contracts/unsafe.cjs": "module.exports=require('node:fs');"
     },
     "codes": ["node-boundary"]
+  },
+  {
+    "name": "moved event projection cannot return through its legacy lib path",
+    "entries": ["components/history.tsx"],
+    "files": {
+      "components/history.tsx": "export {workspaceHistoryEntry} from '@/lib/workspace-history-view';",
+      "lib/workspace-history-view.ts": "export const workspaceHistoryEntry=(event:unknown)=>event;"
+    },
+    "codes": ["server-boundary"]
+  },
+  {
+    "name": "moved proposal projection cannot return through its legacy lib path",
+    "entries": ["components/proposals.tsx"],
+    "files": {
+      "components/proposals.tsx": "export {selectWorkspaceProposals} from '@/lib/workspace-proposals-view';",
+      "lib/workspace-proposals-view.ts": "export const selectWorkspaceProposals=()=>[];"
+    },
+    "codes": ["server-boundary"]
+  },
+  {
+    "name": "project event public entry accepts its pure core type dependency",
+    "entries": ["components/history.tsx"],
+    "files": {
+      "components/history.tsx": "export {selectWorkspaceHistory} from '@/packages/frontend/src/entities/project-event';",
+      "packages/frontend/src/entities/project-event/index.ts": "export {selectWorkspaceHistory} from './model/project-event-presentation';",
+      "packages/frontend/src/entities/project-event/model/project-event-presentation.ts": "import type {DomainEvent,ProjectState} from '@/packages/core/src'; export const selectWorkspaceHistory=(state:Pick<ProjectState,'events'>):DomainEvent[]=>state.events;",
+      "packages/core/src/index.ts": "export type DomainEvent={id:string}; export type ProjectState={events:DomainEvent[]};"
+    },
+    "codes": []
   }
 ]

@@ -5,7 +5,7 @@ import {workspacePresentation as ui} from './workspace-presentation';
 import {useState} from 'react';
 import {Bot,ClipboardCheck,Cpu,FlaskConical,ShieldCheck,UserRound} from 'lucide-react';
 import type {ProjectState} from '@/packages/core/src';
-import {selectWorkspaceHistory,workspaceHistoryEntry,workspaceHistoryRelations,workspaceHistoryRowLabel,type WorkspaceEventProvenance} from '@/lib/workspace-history-view';
+import {selectWorkspaceHistory,workspaceHistoryEntry,workspaceHistoryRelations,workspaceHistoryRowLabel,type WorkspaceEventProvenance} from '@/packages/frontend/src/entities/project-event';
 import {WorkspaceAccordion,WorkspaceCopyValue} from './workspace-ui';
 
 /** Оформление элементов этого модуля; общие элементы используют workspacePresentation. */

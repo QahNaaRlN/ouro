@@ -29,7 +29,7 @@ import WorkspaceCurrentFlowControls from './workspace-flow-controls';
 import {WorkspaceProposals,WorkspaceSpecProposals} from './workspace-proposals';
 import {selectWorkspaceProposals} from '@/packages/frontend/src/entities/agent-proposal';
 import {WorkspaceAcceptance,WorkspaceDecisions,WorkspaceExecutionControls,WorkspaceRevisionForm,WorkspaceStartAttempt,type WorkspaceCommand} from './workspace-decisions';
-import {selectWorkspaceHistory,workspaceHistoryEntry} from '@/lib/workspace-history-view';
+import {selectWorkspaceHistory,workspaceHistoryEntry} from '@/packages/frontend/src/entities/project-event';
 import {getWorkPairGroups} from '@/packages/core/src';
 import {WorkspaceVerification} from './verification-panel';
 
