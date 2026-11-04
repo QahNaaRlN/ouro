@@ -39,7 +39,8 @@ function committedPackage(repoDir,commit,file){
 async function asset(file,name=path.basename(file)){
  const bytes=await readFile(file);return {name,sha256:checksum(bytes),bytes:bytes.length};
 }
-function protocolMetadata(bytes){
+/** Проверяет bounded portable protocol tarball; используется обоими producer без изменения старой упаковки. */
+export function protocolMetadata(bytes){
  let tar;try{tar=gunzipSync(bytes,{maxOutputLength:32*1024*1024});}catch{fail('The protocol asset must be a valid bounded npm tarball.');}
  if(tar.length%512!==0)fail('The protocol tarball is truncated.');
  let metadata;

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "status": "WINDOWS_INDEPENDENT_SOURCE_BUILD_PROTOTYPE",
+  "sourceCommit": "a10cc386c8f71142448383d8bf379cb721f0ae5c",
+  "qualifiedLocks": {
+    "package-lock.json": "e7a72a4e060bbbb12d3726e6aceb7c2e7af9baa9",
+    "apps/web/package-lock.json": "0f3f828dd0eba60d8f648f71aa40e25d2c525ca1",
+    "apps/service/package-lock.json": "cdec2ee4d2688cead4da875f8cf738963e0c6a29"
+  },
+  "protocolTree": "1ee2e38c3e06fc5ca6f13cca622f2223cac71476",
+  "registryTupleSha256": "1ec0acef254a2c001953123ac14af3d305f5de522b54ea60322a33c036901c20",
+  "templateSha256": "73fcc3cba7cb716651712426b09b22c4e8910be063b191086619414ab329f913",
+  "blueprintSha256": "adc24d8749d326f14ab63c207650e0a6de0805302f09eb8bee551096309d40cd",
+  "registryPackageEntries": 343,
+  "inBundleMetadataEntries": 6,
+  "slots": {
+    "__OURO_PRODUCT_VERSION__": 2,
+    "__OURO_PROTOCOL_TARBALL__": 2,
+    "__OURO_PROTOCOL_VERSION__": 1,
+    "__OURO_PROTOCOL_INTEGRITY__": 1
+  },
+  "qualification": {
+    "independentCi": "PASS",
+    "combinedTypecheck": "PASS",
+    "freshBuildForeignCwd": "PASS",
+    "actualServiceRestartSseMcp": "PASS",
+    "ownedRunnerCjsEsmTs": "PASS",
+    "linuxCi": "PENDING",
+    "publicLauncher": "NOT_IMPLEMENTED",
+    "fullP5": "NOT_QUALIFIED"
+  }
+}
