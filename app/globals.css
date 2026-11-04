@@ -217,15 +217,6 @@ pre {
   background: var(--muted);
   color: var(--text);
 }
-.react-flow__handle {
-  width: 5px;
-  height: 5px;
-  background: var(--selected);
-  border-color: var(--border);
-}
-.react-flow__node.selected .react-flow__handle {
-  background: var(--text-muted);
-}
 .status {
   display: inline-flex;
   align-items: center;

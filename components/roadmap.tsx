@@ -26,7 +26,7 @@ import {getCanonicalStatusPresentation,getSpecWorkPresentation} from '@/packages
 import {WorkStatus} from './work-status';
 import {twMerge} from 'tailwind-merge';
 import {useWorkspaceAppearance} from './workspace-ui';
-import {graphPresentation} from '@/packages/frontend/src/shared/ui/graph';
+import {graphPresentation,graphHandlePresentation} from '@/packages/frontend/src/shared/ui/graph';
 import {roadmapPresentation as ui} from './roadmap-presentation';
 import {InitialGraphViewportFit,useGraphMeasurements,WorkspaceGraphControls} from './workspace-graph-controls';
 import {isExecutingDependency,layoutRoadmap,ROADMAP_FIT_OPTIONS,ROADMAP_MIN_ZOOM,ROADMAP_NODE_HEIGHT,ROADMAP_NODE_WIDTH} from '@/lib/workspace-graph';
@@ -59,10 +59,10 @@ type CardData = {
 type SpecFlowNode = Node<CardData, "spec">;
 function SpecNode({ data }: NodeProps<SpecFlowNode>) {
   const workspace=useWorkspaceAppearance();
-  if(data.group.verifications.length)return <div className={twMerge(`spec-node verification-graph-node ${data.selected?'is-selected':''}`,ui.pair)}><Handle type="target" position={Position.Left}/><VerificationPairCard classNames={{attention:twMerge(ui.attention,workspace&&ui.pairWorkspaceAttention),proposals:ui.proposals,updated:ui.updated,time:ui.time}} state={data.state} group={data.group} onOpen={data.openLayer} onOpenRequests={data.openRequests} onOpenProposals={data.openProposals}/><Handle type="source" position={Position.Right}/></div>;
+  if(data.group.verifications.length)return <div className={twMerge(`spec-node verification-graph-node ${data.selected?'is-selected':''}`,ui.pair)}><Handle className={graphHandlePresentation.roadmap} type="target" position={Position.Left}/><VerificationPairCard classNames={{attention:twMerge(ui.attention,workspace&&ui.pairWorkspaceAttention),proposals:ui.proposals,updated:ui.updated,time:ui.time}} state={data.state} group={data.group} onOpen={data.openLayer} onOpenRequests={data.openRequests} onOpenProposals={data.openProposals}/><Handle className={graphHandlePresentation.roadmap} type="source" position={Position.Right}/></div>;
   return (
     <div className={twMerge(`spec-node ${data.selected ? "is-selected" : ""}`,ui.card,data.selected&&ui.selected)}>
-      <Handle type="target" position={Position.Left} />
+      <Handle className={graphHandlePresentation.roadmap} type="target" position={Position.Left} />
       <div className={twMerge('node-top',ui.top)}>
         <span className={twMerge('mono',ui.id)}>{data.spec.humanId}</span>
         <ArrowUpRight size={14} />
@@ -76,7 +76,7 @@ function SpecNode({ data }: NodeProps<SpecFlowNode>) {
       {data.presentation.currentRequestCount>0&&(data.openRequests?<button className={twMerge('node-attention nodrag nopan',ui.attention,ui.requestButton,workspace&&ui.workspaceRequestButton)} aria-label={`Вопросы спеки ${data.spec.humanId}`} onClick={event=>{event.stopPropagation();data.openRequests?.(data.spec.id);}}><CircleHelp size={12}/>{data.presentation.currentRequestCount} запросов · открыто {data.presentation.pendingRequestCount}</button>:<div className={twMerge('node-attention',ui.attention)}><CircleHelp size={12}/>{data.presentation.currentRequestCount} запросов · открыто {data.presentation.pendingRequestCount}</div>)}
       {data.proposalCount>0&&(data.openProposals?<button className={twMerge('node-proposals nodrag nopan',ui.proposals,ui.proposalButton)} aria-label={`Предложения спеки ${data.spec.humanId}`} onClick={event=>{event.stopPropagation();data.openProposals?.(data.spec.id);}}>Предложения · {data.proposalCount}</button>:<div className={twMerge('node-proposals',ui.proposals)}>Предложения · {data.proposalCount}</div>)}
       <p className={twMerge('node-updated',ui.updated)}>{data.presentation.lastUpdatedAt?<><span>Обновлено </span><time className={ui.time} dateTime={data.presentation.lastUpdatedAt} aria-label={`Последнее событие ${data.spec.humanId}`}>{new Date(data.presentation.lastUpdatedAt).toLocaleString('ru-RU')}</time></>:<span>Событий пока нет</span>}</p>
-      <Handle type="source" position={Position.Right} />
+      <Handle className={graphHandlePresentation.roadmap} type="source" position={Position.Right} />
     </div>
   );
 }
