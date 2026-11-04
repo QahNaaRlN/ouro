@@ -3,6 +3,7 @@
 @import "tailwindcss/utilities.css" layer(utilities) source(none);
 @source "./";
 @source "../components";
+@source "../packages/frontend/src";
 
 /** Включительные responsive-границы упорядочены от широкого ограничения к узкому. */
 @custom-variant at-most-1250 { @media (max-width:1250px) { @slot; } }
