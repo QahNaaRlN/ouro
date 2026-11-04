@@ -34,6 +34,7 @@ export type ServiceOptions = {
   routes: readonly ServiceRoute[];
   report?: ServiceReporter;
   maxBackgroundTasks?: number;
+  fallback?:(request:Request)=>Response|Promise<Response>;
 };
 
 /** Минимальный Node response lifecycle, не раскрывающий application handlers типы Hono. */
@@ -44,7 +45,7 @@ export type ServiceResponseLifecycle = {
 };
 
 /** Привязка HTTP adapter к управляемому Node response. */
-export type ServiceNodeBindings = { outgoing: ServiceResponseLifecycle };
+export type ServiceNodeBindings = { outgoing: ServiceResponseLifecycle;body?:()=>ReadableStream<Uint8Array>|null };
 
 /** Управляемый Web adapter отдельного Node-сервиса. */
 export type ServiceApplication = {

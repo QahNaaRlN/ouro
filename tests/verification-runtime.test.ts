@@ -113,6 +113,22 @@ test('stop during the bounded process kills owned runner and records a late erro
  }finally{await f.close();}
 });
 
+test('store shutdown aborts and drains its owned runner before closing SQL',async()=>{
+ const f=await fixture();
+ try{
+  await writeFile(path.join(f.folder,'behavior.spec.cjs'),(await readFile(path.join(f.folder,'behavior.spec.cjs'),'utf8')).replace("expect(add(2,3))","await new Promise(resolve=>setTimeout(resolve,5000));expect(add(2,3))"));
+  const state=await f.store.getProject();
+  const pending=f.store.runVerification({requestId:randomUUID(),expectedVersion:state.version,executionId:f.execution.id,scopeCaseIds:['case-0','case-1']},f.human);
+  void pending.catch(()=>undefined);
+  await new Promise(resolve=>setTimeout(resolve,300));
+  await f.owner.close();
+  const result=await pending;
+  assert.equal(result.state.verificationRuns.at(-1)?.outcome,'error');
+  assert.equal(result.events.some(event=>event.type==='ExecutionResumed'),false);
+  await assert.rejects(f.store.getProject(),{code:'STORE_CLOSED'});
+ }finally{await f.close();}
+});
+
 test('changed checkout cannot alter the copied test input or reuse its former GREEN as current evidence',async()=>{
  const f=await fixture();try{
   const original=await readFile(path.join(f.folder,'behavior.spec.cjs'),'utf8');await writeFile(path.join(f.folder,'behavior.spec.cjs'),original.replace("expect(add(2,3))","await new Promise(resolve=>setTimeout(resolve,1300));expect(add(2,3))"));
