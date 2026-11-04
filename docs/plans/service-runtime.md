@@ -92,3 +92,13 @@ Alias review: direct PGlite0.3.16 на Windows отвергает final-componen
 Дополнительный **NOT_QUALIFIED URI parity gate**: Next trailing-slash308, repeated-slash и backslash normalization требуют отдельной истории перед cutover. Методный47/59 gate не подтверждает полный HTTP/URI parity. Hono internal auto cleanup не отключался без доказанного отдельного дефекта.
 
 Финальный post-review повтор: service typecheck/build PASS, полный service suite **37/37 PASS** (`service-review-final-green.log`). Sync-throw cleanup дополнительно3/3 PASS. Общий root code после прежних552 checks не менялся; post-review изменения ограничены service/tests/docs. До интеграции root app/core/protocol/package/launcher/Docker остаются без diff.
+
+## Синхронизация с основой миграции
+
+Scoped implementation сохранён commit `49d6f02`; разрешённый epic `d3949fdc` включён без конфликтов merge commit `11edd4f`. Изменения web/Tailwind/client guards пришли из epic, не являются расширением этой сервисной истории. Обязательные CI install/typecheck/build/test сервиса сохранены вместе с проверками architecture, migration и UI styles. Push не выполнялся.
+
+На объединённом дереве: service typecheck/build и полный TCP suite **37/37 PASS**; root TypeScript, Next production build, web typecheck/build — PASS. Architecture — 0 violations при 16 точных legacy edges; migration inventory — 47 routes / 59 methods; styles и conventions — PASS. Дополнительные architecture/migration/client/style/Meridian tests — **65/65 PASS**, без SKIP.
+
+Первый offline install остановился из-за отсутствующего cache entry `forwarded`; обычный разрешённый `npm ci` по lock завершён. Первый guard запуск требовал изолированный web install, как в CI. Restricted запуск дополнительной группы tests получил EPERM на существующем temporary junction и PGlite init; повтор с разрешённым доступом к disposable fixtures прошёл. Эти результаты окружения не считаются domain RED. Generated protocol files после build имеют только EOL side effects и не входят в сервисный diff.
+
+Повторные evidence logs: `.operations/service-sync-service.log`, `service-sync-integration-tests.log`, `service-sync-root-build.log`, `service-sync-web.log`. Gates packaged runner resolution, первоначальная atomic marker publication и URI normalization остаются **NOT_QUALIFIED**; синхронизация их не закрывает.
