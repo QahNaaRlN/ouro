@@ -1,6 +1,8 @@
 # Проверяемый остаток перехода на Tailwind 4
 
-Исходный снимок — эпик `7c0def1`: 20 CSS-файлов / 1919 правил, 11 frontend-файлов / 41 expression. После принятых родителей, Impact/Lessons и подключений агентов фактический остаток — **5 CSS-файлов с 225 обычными правилами**, **4 frontend-файла с 10 style expressions**. Это учёт незавершённой работы, а не полный Tailwind PASS.
+Исходный снимок — эпик `7c0def1`: 20 CSS-файлов / 1919 правил, 11 frontend-файлов / 41 expression. После принятых родителей и текущей истории фактический остаток — **4 CSS-файлов с 167 обычными правилами**, **4 frontend-файла с 10 style expressions**. Это учёт незавершённой работы, а не полный Tailwind PASS.
+
+История/recovery удаляет methodology.css и его 58 ordinary rules; существующая статья Methodology не переписывается.
 
 Impact/Lessons удаляет 180 ordinary rules двух stylesheet; вычисляемый процент meter остаётся точным custom-property expression в inline debt. Два textarea expressions и их зависимости сохранены.
 
