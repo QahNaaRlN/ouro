@@ -101,6 +101,7 @@ export type ProjectCommandOutcome = Readonly<{
   status: 'rejected';
   code: string;
   message: string;
+  httpStatus?: number;
 }> | Readonly<{
   status: 'unknown';
   reason: 'transport' | 'response-contract' | 'unconfirmed';

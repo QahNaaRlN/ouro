@@ -44,7 +44,8 @@ test('R03 a delayed manual GET cannot replace a newer committed SSE snapshot',as
   let release=()=>{},markCaptured=()=>{};
   const held=new Promise<void>(resolve=>{release=resolve;}),captured=new Promise<void>(resolve=>{markCaptured=resolve;});
   let intercepted=false;
-  await page.route('**/api/project',async route=>{
+  const projectId=(await project(request)).projectId,matchesProjectRead=(url:URL)=>url.pathname==='/api/project'&&url.searchParams.get('projectId')===projectId;
+  await page.route(matchesProjectRead,async route=>{
     if(intercepted){await route.continue();return;}
     intercepted=true;const response=await route.fetch(),body=await response.body();
     markCaptured();await held;await route.fulfill({response,body});
@@ -54,14 +55,14 @@ test('R03 a delayed manual GET cannot replace a newer committed SSE snapshot',as
     const title=`Событие новее задержанного GET ${Date.now()}`;
     const state=await human(request,{type:'createSpec',content:content(title)});
     await expect.poll(()=>cursor(page)).toBe(state.version);
-    const delivered=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/project'&&response.request().method()==='GET');
+    const delivered=page.waitForResponse(response=>matchesProjectRead(new URL(response.url()))&&response.request().method()==='GET');
     release();await(await delivered).finished();
     await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
     expect(await cursor(page)).toBe(state.version);
     await page.getByRole('button',{name:'Таблица',exact:true}).click();
     await expect(page.getByRole('table').getByRole('row').filter({hasText:title})).toHaveCount(1);
     await expect(page.getByRole('status').filter({hasText:'Живые обновления подключены'})).toBeVisible();
-  }finally{release();await page.unroute('**/api/project');}
+  }finally{release();await page.unroute(matchesProjectRead);}
 });
 
 test('R03/R05 offline reconnect restores two missed commits once without changing domain states',async({page,request})=>{

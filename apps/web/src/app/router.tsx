@@ -1,6 +1,7 @@
 import { createRootRoute, createRoute, createRouter, lazyRouteComponent, Outlet, useRouter } from '@tanstack/react-router';
 import { lazy, Suspense, useMemo } from 'react';
 import { ProjectLocationProvider, type ProjectLocationPort } from '@/components/project-location';
+import { ProjectRuntimeProvider } from '@/components/project-session-provider';
 
 const HumanView = lazyRouteComponent(() => import('@/app/page'));
 const ProjectsLayout = lazy(() => import('@/app/projects/layout'));
@@ -25,7 +26,7 @@ function WebRoot() {
     pushSearch(search) { void router.navigate({ href: router.history.location.pathname + (search ? '?' + search : ''), resetScroll: false }); },
     subscribe: listener => router.history.subscribe(listener),
   }), [router]);
-  return <ProjectLocationProvider value={navigation}><Outlet /></ProjectLocationProvider>;
+  return <ProjectRuntimeProvider><ProjectLocationProvider value={navigation}><Outlet /></ProjectLocationProvider></ProjectRuntimeProvider>;
 }
 
 /** Передаёт декодированный router parameter существующему проектному экрану. */
