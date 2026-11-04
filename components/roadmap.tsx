@@ -1,4 +1,5 @@
 "use client";
+import {verificationPairWorkspacePresentation} from './verification-pair-presentation';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -59,7 +60,7 @@ type CardData = {
 type SpecFlowNode = Node<CardData, "spec">;
 function SpecNode({ data }: NodeProps<SpecFlowNode>) {
   const workspace=useWorkspaceAppearance();
-  if(data.group.verifications.length)return <div className={twMerge(`spec-node verification-graph-node ${data.selected?'is-selected':''}`,ui.pair)}><Handle className={graphHandlePresentation.roadmap} type="target" position={Position.Left}/><VerificationPairCard classNames={{attention:twMerge(ui.attention,workspace&&ui.pairWorkspaceAttention),proposals:ui.proposals,updated:ui.updated,time:ui.time}} state={data.state} group={data.group} onOpen={data.openLayer} onOpenRequests={data.openRequests} onOpenProposals={data.openProposals}/><Handle className={graphHandlePresentation.roadmap} type="source" position={Position.Right}/></div>;
+  if(data.group.verifications.length)return <div className={twMerge(`spec-node verification-graph-node ${data.selected?'is-selected':''}`,ui.pair)}><Handle className={graphHandlePresentation.roadmap} type="target" position={Position.Left}/><VerificationPairCard classNames={{...(workspace?verificationPairWorkspacePresentation:{}),face:data.selected?'border-ouro-text-muted':'',button:'max-w-full whitespace-normal [overflow-wrap:anywhere]',attention:twMerge(ui.attention,workspace&&ui.pairWorkspaceAttention),proposals:ui.proposals,updated:ui.updated,time:ui.time}} state={data.state} group={data.group} onOpen={data.openLayer} onOpenRequests={data.openRequests} onOpenProposals={data.openProposals}/><Handle className={graphHandlePresentation.roadmap} type="source" position={Position.Right}/></div>;
   return (
     <div className={twMerge(`spec-node ${data.selected ? "is-selected" : ""}`,ui.card,data.selected&&ui.selected)}>
       <Handle className={graphHandlePresentation.roadmap} type="target" position={Position.Left} />
