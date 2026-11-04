@@ -62,3 +62,18 @@ HRP14 same-actor accessEpoch 10→11 и A→B→A GREEN. При A→B→A snapsh
 Core/domain/MCP/protocol source, DB SQL migrations, protocol versions/schemas/manifest, historical HTTP baseline и package manifests/locks не изменены (`git diff --exit-code` для этих путей PASS). В source нет новых explicit `any` или `//` comments. `git diff --check` PASS. В финальном browser fixture виден существующий Yjs duplicate-import warning из seed source + bundled Next в одном test process; collaboration/Yjs там не исполняется, mutation/snapshot проверка использует реальные HTTP JSON/client ports. Это fixture boundary, не утверждение новой collaboration qualification.
 
 Scope результата: HTTP-only causal proof трёх command endpoints, совместимый raw JSON/MCP, одно shared normalization правило и bounded client admission/dispatch ownership. Это не подпись, не обход нынешней авторизации, не автоматическое разрешение чужого nonempty suffix и не приёмка всей миграции. Публикацию PR, финальный CI и integration выполняет root.
+
+## Синхронизация с эпиком
+
+После scoped implementation commit `d55814f72a8c0d57ff87f28697dfd88994581fab` выполнен порученный merge `origin/codex/react-vite-epic` на `d0206db7a86f1af199a6f0f479687c092e183675`. Итоговый merge commit: `981b0938c9786b45070b194178681672de5dcf72` (`chore: sync React Vite epic`). Автоматический merge subject сначала отклонён conventions guard; исправлен только заголовок собственного непубликованного merge commit, код и родители сохранены. Конфликтов не было.
+
+В `lib/store.ts` автоматическое объединение добавило runner preload option/owner forwarding рядом с сохранённым receipt path. Новая service сборка содержит точную копию `lib/verification/runtime/playwright-preload.mjs` и явную запись resource в manifest; URI owner перенесён из эпика. Package manifests/locks не менялись. Client typed admission/dispatch identity, receipt canonicalizer/normalizer/header helpers и finite 3-wrapper source map побайтно/по Git diff сохранены относительно `d55814f`. Historical HTTP baseline не генерировался и остался прежним.
+
+После merge на Node 24.19.0 повторены:
+
+- Root/service/web strict types — PASS; service build и actual resource bytes/manifest — PASS.
+- `--no-wasm-code-gc --import tsx --test --test-concurrency=1 apps/service/tests/http-receipt-proof.test.ts tests/http-command-receipt.test.ts tests/migration-baseline.test.ts` — **38/38 GREEN**.
+- Next production build — PASS; затем `node_modules/@playwright/test/cli.js test --config=playwright.receipt-proof.config.ts` — **2/2 GREEN** на объединённом artifact, собственном synthetic профиле и настоящем browser fetch/WebCrypto.
+- HTTP inventory **47/59 PASS**, architecture **0 violations / 16 finite legacy edges**, conventions — PASS.
+
+Это затронутые локальные проверки синхронизации, **не полный CI**. PostgreSQL и Linux остаются CI_PENDING. Отдельное исправление SPP/Linux mutex находится в другом worktree и в этот merge не входит. Рабочие профили, host environment, push/PR и live cutover не выполнялись.
