@@ -9,12 +9,12 @@
 | Этап | Состояние |
 |---|---|
 | P0 Фиксация поведения и подготовка | IN_PROGRESS |
-| P1 Контракты и архитектурный контроль | IN_PROGRESS; P1.1 ports/import guard в эпике, session/Query wiring проверяется отдельно |
-| P2 Backend и storage ownership | IN_PROGRESS; HTTP transport qualification в эпике, extraction/lifecycle проверяются отдельно |
-| P3 Самостоятельный React/Vite клиент | IN_PROGRESS; standalone shell и первый Tailwind-срез, полный UI/CSS-паритет ещё не завершён |
-| P4 Живые данные и восстановление | NOT_STARTED |
-| P5 Поставка и consumer compatibility | NOT_STARTED |
-| P6 Основа Meridian | NOT_STARTED |
+| P1 Контракты и архитектурный контроль | IN_PROGRESS; pure ports/DTO, import guard, project session/Query и физические snapshot/subscription boundaries в эпике; catalog reads на отдельном CI; физическая UI hFSD-структура не завершена |
+| P2 Backend и storage ownership | IN_PROGRESS; все47/59 bindings, URI parity, built lifecycle/resources/runner и cooperative profile mutex квалифицированы; окончательный cutover/old-profile rehearsal ещё впереди |
+| P3 Самостоятельный React/Vite клиент | IN_PROGRESS; shell/router работают, Tailwind переносится по UI families; общий final style gate и удаление temporary Next aliases ещё не выполнены |
+| P4 Живые данные и восстановление | IN_PROGRESS; один session/SSE owner, scoped Query и frozen intents с durable HTTP receipt recovery в эпике; итоговый общий паритет остаётся открытым |
+| P5 Поставка и consumer compatibility | IN_PROGRESS; Node24 prerequisite и built resources квалифицированы; actual same-origin Vite/service проверяется отдельно, независимый npm consumer и dev pnpm ещё не готовы |
+| P6 Основа Meridian | IN_PROGRESS; переносимые порты и явные capability/error/lifecycle contracts подготовлены; coherent embedded composition и реальный host adapter ещё не реализованы |
 | P7 Удаление Next и итоговый паритет | NOT_STARTED |
 
 ## Исходная граница

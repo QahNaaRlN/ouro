@@ -100,3 +100,9 @@ Combined root TypeScript, strict web TypeScript, production Next webpack и Vite
 На новом `.operations/integration-combined-functional-profile`, port3393, неизменном объединённом production build: **Meridian5 +onboarding11 =16/16 PASS /33.7s**, без SKIP/retry. Trace/results `.operations/integration-combined-functional-results`. Подтверждены canonical16-variable palette parity обеих тем, exact receipt recovery/proven absence, participant switching/revocation, native focus/geometry/zoom/scroll lock/restore и сохранение prior inline values/lock class. Accepted P1 actor fixture и handlers не ослаблялись. Тяжёлые сборки/проверки выполнялись по одной; прежние60PNG не снимались повторно. Protocol generated diff после доказанного восстановления пуст.
 
 Merge commit создаётся локально с родителями `4429506` и `d0206db`; дополнительно изменён только этот журнал результатов. Публикация, push/PR и native qualification этим объединением не разрешаются; полный CI объединённого P3 ещё не запускался.
+## Объединение с Human View и исправленным profile owner
+
+Root объединил `ca05037`: source Home автоматически сохранил новый controlled `IntegrationSourceSwitch` и единый P1 owner. Два конфликта касались только упорядоченного набора variants и текстового остатка. Сохранён точный union1250/1100/1050/1000/950/900/760/700/680/560/520/420; source parser/runtime класса не добавлен. JSON ledger автоматически объединил удаления отдельных семейств; actual style gate **14CSS/897rules/9inlinefiles/32expressions/0violations**.
+
+Новый production Next build с этим набором PASS. На собственном новом профиле/port3393 Meridian5+onboarding11 — **16/16 PASS (22.9s)**: canonical16 palette vars обеих тем, receipts/participant switching/revoke, geometry/zoom/focus/scroll leases. Скриншоты60 состояний относятся к исходному сравнению P3 и повторно не объявляются снятыми на этом merge. Полный combined CI_PENDING.
+

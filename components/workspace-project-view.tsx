@@ -12,7 +12,7 @@ import {getSpecWorkPresentation,getExecutionPresentation} from '@/packages/core/
 import packageMetadata from '../package.json';
 import {matchesRoadmapFilter} from '@/packages/core/src/roadmap-filter';
 import {selectWorkspaceContext} from '@/lib/workspace-selection';
-import type {ProjectSubscriptionStatus} from '@/lib/project-subscription';
+import type {ProjectConnectionStatus} from '@/packages/client/src/ports';
 import type {WorkspaceSnapshot} from './workspace-client';
 import Roadmap,{specLabels} from './roadmap';
 import SpecFlow from './spec-flow';
@@ -58,7 +58,7 @@ const tabs:Tab[]=['overview','process','questions','proposals','history'];
 const date=(value:string)=>new Date(value).toLocaleString('ru-RU');
 export const promptFor=(projectId:string,execution:Execution,withFolder=true)=>'Работай в Ouro с проектом '+projectId+' и назначенной попыткой '+execution.id+'. Вызови ouro.get_context с executionId «'+execution.id+'», прочитай назначенную ревизию, цель и DoD.'+(withFolder?' Для контекста папки используй read-only tools ouro.list_workspace_files и ouro.read_workspace_file с этим executionId; пути только относительные.':' Файлы проекта доступны в разрешённой среде твоего клиента; облачный Ouro не читает локальную папку и не запускает тесты. Продолжай сохранять факты в единую облачную историю.')+' Перед работой подтверди разрешённое начало через ouro.confirm_started. Сообщай реальные Action с evidence, а вопросы, развилки и блокеры — через соответствующие tools. Ожидай человеческого решения; применение, разрешение продолжения и ACK — отдельные действия. Предъяви результат через ouro.complete_execution. Не принимай DoD за человека.';
 
-export default function WorkspaceProjectView({metadata,state,cursor,subscriptionStatus,error,disabled:requestDisabled,command,onAssign,onRefresh,pending}:{metadata:WorkspaceSnapshot;state:ProjectState;cursor:number;subscriptionStatus:ProjectSubscriptionStatus;error:string;disabled:boolean;command:WorkspaceCommand;onAssign:(agentId:string,content:RevisionContent)=>Promise<Execution|null>;onRefresh:()=>Promise<unknown>;pending:React.ReactNode}){
+export default function WorkspaceProjectView({metadata,state,cursor,subscriptionStatus,error,disabled:requestDisabled,command,onAssign,onRefresh,pending}:{metadata:WorkspaceSnapshot;state:ProjectState;cursor:number;subscriptionStatus:ProjectConnectionStatus;error:string;disabled:boolean;command:WorkspaceCommand;onAssign:(agentId:string,content:RevisionContent)=>Promise<Execution|null>;onRefresh:()=>Promise<unknown>;pending:React.ReactNode}){
  const navigation=useProjectLocation();
  const canWrite=metadata.project.role!=='Viewer',canManageAgents=!metadata.project.role||metadata.project.role==='Owner',disabled=requestDisabled||!canWrite;
  const [location,setLocation]=useState<Location>(initial),[dialog,setDialog]=useState<null|'task'|'connect'|'metadata'|'acceptance'|'instruction'|'decision'>(null);

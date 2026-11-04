@@ -37,6 +37,7 @@ test('PCV01 proposals and collaborative drafts retain frozen real-profile presen
  const capture=async(name:string,target:Locator)=>{
   await target.page().evaluate(()=>document.fonts.ready);await target.scrollIntoViewIfNeeded();await target.page().evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
   measured[name]=await presentation(target);await target.screenshot({path:join(output,name+'.png'),animations:'disabled',caret:'hide'});
+  expect(await presentation(target),'Измеренный DOM должен сохраняться во время захвата '+name).toEqual(measured[name]);
   const viewport=target.page().viewportSize()!.width,scrollWidth=await target.page().evaluate(()=>document.documentElement.scrollWidth);overflow[name]={viewport,scrollWidth};
   if(!legacyBaseline)expect(scrollWidth).toBeLessThanOrEqual(viewport);
  };
