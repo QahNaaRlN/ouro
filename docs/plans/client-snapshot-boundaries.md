@@ -50,3 +50,8 @@ Service build manifest проверен фактически: единствен
 `git diff --check` PASS. DB/core/MCP/protocol, API wrappers/historical baseline/HRP adaptation map, store/stream/drain, frozen intent dispatch, другие legacy helpers, dependency manifests/locks, Node version и UI styles не изменены. Protocol generation оставил только semantic-zero EOL diff, проверенный и затем убранный до commit. Новые source comments — русские JSDoc; существующие комментарии перенесены без массового перевода.
 
 Full CI, Linux и external PostgreSQL в этой истории **NOT_RUN**, не LOCAL_PASS. Полный hFSD/Tailwind/native integration и live cutover не входят в этот перенос. Финальный peer review и интеграцию в эпик выполняет root; локальный scoped commit не является публикацией или полной приёмкой миграции.
+## Синхронизация с окончательными receipt/type prerequisites
+
+Root source review подтвердил pure leaf/public API, исправленную HTTP responsibility и отсутствие поведенческих изменений. После объединения `9d09caf`/эпика`bb1d1a2` перенесён и fixture fix явного migration path из HRP (не source normalizer). Root/service strict types PASS, protocol71 build PASS; architecture **850files/0violations/11finite framework edges** после принятого DTO-среза. Старые source-файлы отсутствуют, актуальная таблица владельцев теперь ссылается на новые public indexes.
+
+Первая root-команда проверки остановилась на отсутствующей `.operations` directory до запуска tools; после явного создания папки команды действительно выполнены. Это setup failure, не RED. Ранее98 regressions и2 browser cases сохраняют собственный проверенный source scope; полный combined CI_PENDING.
