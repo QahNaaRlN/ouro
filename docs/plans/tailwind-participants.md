@@ -39,3 +39,7 @@ Production Next build/root TypeScript, strict web TypeScript и Vite build PASS.
 
 После слияния `d0206db` Next build и Vite types/build PASS. TWP/TWPL 2/2 PASS на новом изолированном профиле; TWA membership fixture отклонён новым identity validator: в его synthetic actor отсутствовал обязательный `projectIds`. Уточнён только fixture (тот же presentation-project); auth validation и все проверки оформления сохранены. Это setup/fixture defect при сочетании, не изменение production access policy. Финальный полный локальный набор TWA/TWP/TWPL: **3/3 PASS (10.6s)** на отдельном новом профиле; CI_PENDING.
 
+## Объединённый Human View
+
+Merge с `ca05037` (qualified profile owner + Human View) разрешил только описание остатка стилей; production TSX автоматически объединён. Фактический ledger:16CSS/1044rules/10inlinefiles/35expressions; style gate0violations. Новый production Next build PASS; TWA/TWP/TWPL **3/3 PASS (10.9s)** на новом профиле/port3396. Общая проверка ширины, читаемое полное длинное имя и настоящий revoke сохранены; полный CI_PENDING.
+
