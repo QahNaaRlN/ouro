@@ -6,7 +6,7 @@ import { Box, LogIn, LogOut, Mail, Plus, ShieldCheck, UserPlus, Users } from 'lu
 import type { Actor } from '@/packages/core/src';
 import { selectedProjectId } from '@/lib/client-project';
 export { selectedProjectId } from '@/lib/client-project';
-import type { ProjectMembership, ProjectMetadata, ProjectRole } from '@/lib/projects';
+import type { ProjectMembership, ProjectMetadata, ProjectRole } from '@ouro/protocol/http';
 import {participantPresentation,type ParticipantSurface} from './participant-presentation';
 
 async function request(url: string, options?: RequestInit) {

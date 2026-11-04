@@ -9,10 +9,5 @@
   {"source":"components/workspace-members.tsx","specifier":"next/link","kind":"import","code":"framework-boundary","owner":"P3","reason":"Existing members navigation until the route migration."},
   {"source":"components/workspace-navigation.tsx","specifier":"next/link","kind":"import","code":"framework-boundary","owner":"P3","reason":"Existing shell navigation until the route migration."},
   {"source":"components/workspace-project-view.tsx","specifier":"next/link","kind":"import","code":"framework-boundary","owner":"P3","reason":"Existing project navigation until the route migration."},
-  {"source":"components/workspace-project.tsx","specifier":"next/link","kind":"import","code":"framework-boundary","owner":"P3","reason":"Existing project entry navigation until the route migration."},
-  {"source":"app/page.tsx","specifier":"@/lib/projects","kind":"type","code":"server-boundary","owner":"P1.2","reason":"Existing role DTO import; no server runtime is imported."},
-  {"source":"components/project-account.tsx","specifier":"@/lib/projects","kind":"type","code":"server-boundary","owner":"P1.2","reason":"Existing membership/read-model DTO import until client wiring."},
-  {"source":"components/participants-panel.tsx","specifier":"@/lib/participant-registry","kind":"type","code":"server-boundary","owner":"P1.2","reason":"Existing participant DTO import until client wiring."},
-  {"source":"components/collaborative-drafts.tsx","specifier":"@/lib/collaborative-drafts","kind":"type","code":"server-boundary","owner":"P1.2","reason":"Existing collaboration DTO import until client wiring."},
-  {"source":"components/workspace-binding-recovery.tsx","specifier":"@/lib/store","kind":"type","code":"server-boundary","owner":"P1.2","reason":"Existing binding inspection DTO import until client wiring."}
+  {"source":"components/workspace-project.tsx","specifier":"next/link","kind":"import","code":"framework-boundary","owner":"P3","reason":"Existing project entry navigation until the route migration."}
 ]

@@ -23,6 +23,10 @@
         "default": "./dist/cjs/index.js"
       }
     },
+    "./http": {
+      "import": { "types": "./dist/esm/http/index.d.ts", "default": "./dist/esm/http/index.js" },
+      "require": { "types": "./dist/cjs/http/index.d.ts", "default": "./dist/cjs/http/index.js" }
+    },
     "./schemas/*": "./schemas/*",
     "./package.json": "./package.json"
   },
