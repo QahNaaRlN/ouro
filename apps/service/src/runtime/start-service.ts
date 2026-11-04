@@ -7,6 +7,7 @@ import {createBackendRoutes} from '../backend/create-backend.js';
 import {createOwnedGitHubWorker} from './owned-github-worker.js';
 import {createStaticHandler} from './static-handler.js';
 import {throwAfterStartupCleanup} from './cleanup-startup.js';
+import {access} from 'node:fs/promises';
 import type {RuntimeConfiguration} from './configuration.js';
 import type {ServiceReporter} from '../http/service-types.js';
 
@@ -18,8 +19,9 @@ export async function startService(configuration:RuntimeConfiguration,options:{r
  const stores=interop(storeSource),mailers=interop(mailerSource),workers=interop(workerSource),clients=interop(clientSource);
  let store:Awaited<ReturnType<typeof stores.createStore>>|undefined,http:Awaited<ReturnType<typeof startHttpServer>>|undefined,worker:ReturnType<typeof createOwnedGitHubWorker>|undefined,ready=false;
  try{
+  await access(configuration.playwrightPreloadPath);
   const fallback=configuration.staticRoot?await createStaticHandler(configuration.staticRoot):undefined;
-  store=await stores.createStore({dataDir:configuration.dataDir,databaseUrl:configuration.databaseUrl,migrationsDir:configuration.migrationsDir,verificationRuntimeDir:configuration.verificationRuntimeDir,playwrightPackageRoot:configuration.packageRoot,deploymentMode:configuration.environment.OURO_DEPLOYMENT_MODE??'local',startObservers:false,mailer:mailers.createSmtpMailerFromEnv(configuration.environment)});
+  store=await stores.createStore({dataDir:configuration.dataDir,databaseUrl:configuration.databaseUrl,migrationsDir:configuration.migrationsDir,verificationRuntimeDir:configuration.verificationRuntimeDir,playwrightPackageRoot:configuration.packageRoot,playwrightPreloadPath:configuration.playwrightPreloadPath,deploymentMode:configuration.environment.OURO_DEPLOYMENT_MODE??'local',startObservers:false,mailer:mailers.createSmtpMailerFromEnv(configuration.environment)});
   const owner=store,domainWorker=workers.createGitHubWorker({getStore:async()=>owner,client:clients.createGitHubClient({token:configuration.environment.OURO_GITHUB_TOKEN})});
   worker=createOwnedGitHubWorker({enabled:!!configuration.environment.OURO_GITHUB_WEBHOOK_SECRET,run:signal=>domainWorker.run(signal)});
   const routes=createBackendRoutes({store:owner,environment:configuration.environment,resourceRoot:configuration.resourceRoot,mcpPath:configuration.mcpPath,storage:configuration.databaseUrl?'postgres':'embedded-postgres',ready:()=>ready,kickWorker:worker.kick});
