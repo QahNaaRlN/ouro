@@ -24,3 +24,11 @@ Final-table TWP01 scoped PASS6.0s (8.5s total): **все4 computed style/geometr
 Reviewed head: Next production/strictTS и Vite strictTS/build11.97s PASS; architecture846/0/16 PASS;120callback bindings идентичны;334utility candidates приняты установленным Tailwind4.3.3 compiler; `git diff --check` PASS. Root source review подтвердил собственную runtime boundary, public library slots и отсутствие handler/state/domain changes; требование о полном удалении CSS подтверждено actual `delete mode100644` и `Test-Path=false` для обоих файлов. Никаких пустых CSS/keyframe-only remnants нет.
 
 Локальный feature commit ограничен G2; parent G1 history/новые backend commits синхронизируются отдельно. Этот scope не объявляет runtime56, remaining panels/common defaults или полный Tailwind/React переход завершёнными.
+
+## Синхронизация с G1 и durable receipts
+
+Feature commit `e15fb79` синхронизирован с чистым G1 `8adabc4` merge commit `994aa5a`, без конфликтов. Унаследованы исправления profile ownership, HTTP receipt proof, portable contracts и service lifecycle/URI. Собственная fullscreen строка совпала с G1 c83ed7b автоматически. Parent sync не менял CSS/presentation classes, поэтому124 visual состояния без причины не переснимались.
+
+На synced head: Next production/strictTS PASS; **свежий отдельный profile —20/20 functional PASS1.4m** (включая receipt recovery после UNKNOWN, retries/loops, explicit decisions и GR01–GR06); Vite strictTS/build PASS7.75s; architecture855files/0violations/11exactlegacyedges; styles14CSS853rules/6inline17expressions/0violations;334compiler candidates PASS. Parent portable-contract work уменьшил прежний legacy inventory; UI-срез не расширял разрешения guard.
+
+Журнал синхронизации фиксируется отдельно; G2 source передаётся владельцу эпика для PR/CI без child push. Собственные profiles/artifacts остаются в `.operations`, исходный main/реальные пользовательские данные не менялись. G3 runtime56 и оставшиеся общие/специализированные стили остаются открытыми.
