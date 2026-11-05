@@ -1,7 +1,8 @@
 'use client';
 
 import {useCallback,useEffect,useId,useLayoutEffect,useRef,useState,type KeyboardEvent} from 'react';
-import './onboarding.css';
+import {onboardingPresentation as o,tourRectVariables,tourCardVariables} from './onboarding-presentation';
+import {acquireTourScrollLock} from './onboarding-scroll-lock';
 
 type Scope='catalog'|'project';
 type Preference={version:1;status:'dismissed'|'completed'};
@@ -38,6 +39,7 @@ function stepsFor(scope:Scope,hasFlow:boolean):Step[]{
   ];
 }
 
+/** Показывает пошаговые подсказки для каталога или проекта с подсветкой целевых элементов. */
 export default function WorkspaceOnboarding({scope,hasFlow=false,steps:customSteps}:{scope:Scope;hasFlow?:boolean;steps?:readonly Step[]}){
   const key=`ouro:onboarding:${scope}:v1`,launcher=useRef<HTMLButtonElement>(null),returnFocus=useRef<HTMLElement|null>(null);
   const [ready,setReady]=useState(false),[preference,setPreference]=useState<Preference|null>(null),[active,setActive]=useState<{steps:Step[];index:number}|null>(null);
@@ -52,11 +54,11 @@ export default function WorkspaceOnboarding({scope,hasFlow=false,steps:customSte
   const exit=useCallback((completed=false)=>{remember(completed?'completed':'dismissed');setActive(null);},[remember]);
   const restoreFocus=useCallback(()=>{const target=returnFocus.current?.isConnected?returnFocus.current:launcher.current;target?.focus({preventScroll:true});},[]);
   return <>
-    <div className="onboarding-entry">
-      <button type="button" ref={launcher} onClick={start}>Обучение</button>
-      {ready&&!preference&&<section className="onboarding-invitation" aria-label="Знакомство с Ouro">
-        <p><strong>Первый раз в Ouro?</strong> Короткий обзор покажет, с чего начать.</p>
-        <div className="onboarding-invitation-actions"><button type="button" onClick={start}>Начать обзор</button><button type="button" onClick={()=>remember('dismissed')}>Не сейчас</button></div>
+    <div className={o.entry}>
+      <button className={o.launcher} type="button" ref={launcher} onClick={start}>Обучение</button>
+      {ready&&!preference&&<section className={o.invitation} aria-label="Знакомство с Ouro">
+        <p className={o.invitationText}><strong className={o.invitationStrong}>Первый раз в Ouro?</strong> Короткий обзор покажет, с чего начать.</p>
+        <div className={o.invitationActions}><button className={o.invitationButton} type="button" onClick={start}>Начать обзор</button><button className={o.invitationButton} type="button" onClick={()=>remember('dismissed')}>Не сейчас</button></div>
       </section>}
     </div>
     {active&&<GuidedTour steps={active.steps} index={active.index} onStep={index=>setActive(current=>current?{...current,index}:null)} onExit={exit} restoreFocus={restoreFocus}/>}
@@ -68,12 +70,13 @@ function GuidedTour({steps,index,onStep,onExit,restoreFocus}:{steps:Step[];index
   const [geometry,setGeometry]=useState<Geometry|null>(null),step=steps[index];
   useLayoutEffect(()=>{
     const element=dialog.current;if(!element)return;
-    const scroll={x:window.scrollX,y:window.scrollY},previousOverflow=document.body.style.overflow;
-    element.showModal();document.body.style.overflow='hidden';
+    const openedDetails=opened.current;
+    const scroll={x:window.scrollX,y:window.scrollY};
+    element.showModal();const releaseScrollLock=acquireTourScrollLock(document.body);
     return()=>{
       if(element.open)element.close();
-      document.body.style.overflow=previousOverflow;
-      for(const details of opened.current)if(details.isConnected)details.open=false;
+      releaseScrollLock();
+      for(const details of openedDetails)if(details.isConnected)details.open=false;
       window.scrollTo({left:scroll.x,top:scroll.y,behavior:'instant'});
       restoreFocus();
     };
@@ -140,13 +143,13 @@ function GuidedTour({steps,index,onStep,onExit,restoreFocus}:{steps:Step[];index
     {left:highlight.left+highlight.width,top:highlight.top,width:view.left+view.width-highlight.left-highlight.width,height:highlight.height},
     {left:view.left,top:highlight.top+highlight.height,width:view.width,height:view.top+view.height-highlight.top-highlight.height},
   ]:[view];
-  return <dialog ref={dialog} className="onboarding-dialog" aria-labelledby={`${id}-title`} aria-describedby={`${id}-body`} onCancel={event=>{event.preventDefault();onExit();}} onKeyDown={trapFocus}>
-    <div className="onboarding-mask" aria-hidden="true">{panes.map((pane,part)=><div key={part} className="onboarding-pane" style={pane}/>)}{highlight&&<div data-onboarding-highlight className="onboarding-highlight" style={highlight}/>}</div>
-    <section ref={card} data-onboarding-card className="onboarding-card" style={geometry?{...geometry.card,width:Math.max(0,Math.min(360,geometry.view.width-32)),maxWidth:Math.max(0,geometry.view.width-32),maxHeight:Math.max(0,geometry.view.height-32)}:undefined}>
-      <div className="onboarding-card-header"><p className="onboarding-count" aria-live="polite">Шаг {index+1} из {steps.length}</p><button className="onboarding-close" type="button" aria-label="Закрыть обучение" onClick={()=>onExit()}>×</button></div>
-      <h2 id={`${id}-title`} ref={heading} tabIndex={-1}>{step.title}</h2><p id={`${id}-body`}>{step.body}</p>
-      {geometry?.missing&&<p className="onboarding-unavailable" role="status">Элемент сейчас недоступен. Перейдите дальше или закройте обучение — рабочее место останется доступно.</p>}
-      <div className="onboarding-controls"><button type="button" onClick={()=>onExit()} aria-label="Пропустить обучение">Пропустить</button><div><button type="button" onClick={()=>onStep(index-1)} disabled={index===0}>Назад</button><button className="onboarding-next" type="button" onClick={()=>index===steps.length-1?onExit(true):onStep(index+1)}>{index===steps.length-1?'Завершить':'Далее'}</button></div></div>
+  return <dialog ref={dialog} className={o.dialog} aria-labelledby={`${id}-title`} aria-describedby={`${id}-body`} onCancel={event=>{event.preventDefault();onExit();}} onKeyDown={trapFocus}>
+    <div className={o.mask} aria-hidden="true">{panes.map((pane,part)=><div key={part} className={o.pane} style={tourRectVariables(pane)}/>)}{highlight&&<div data-onboarding-highlight className={o.highlight} style={tourRectVariables(highlight)}/>}</div>
+    <section ref={card} data-onboarding-card className={o.card} style={tourCardVariables(geometry)}>
+      <div className={o.header}><p className={o.count} aria-live="polite">Шаг {index+1} из {steps.length}</p><button className={o.close} type="button" aria-label="Закрыть обучение" onClick={()=>onExit()}>×</button></div>
+      <h2 className={o.heading} id={`${id}-title`} ref={heading} tabIndex={-1}>{step.title}</h2><p className={o.body} id={`${id}-body`}>{step.body}</p>
+      {geometry?.missing&&<p className={o.unavailable} role="status">Элемент сейчас недоступен. Перейдите дальше или закройте обучение — рабочее место останется доступно.</p>}
+      <div className={o.controls}><button className={o.control} type="button" onClick={()=>onExit()} aria-label="Пропустить обучение">Пропустить</button><div className={o.controlsGroup}><button className={o.control} type="button" onClick={()=>onStep(index-1)} disabled={index===0}>Назад</button><button className={o.next} type="button" onClick={()=>index===steps.length-1?onExit(true):onStep(index+1)}>{index===steps.length-1?'Завершить':'Далее'}</button></div></div>
     </section>
   </dialog>;
 }

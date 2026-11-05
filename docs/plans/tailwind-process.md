@@ -1,0 +1,40 @@
+# Журнал G2: процесс и диаграммы состояний
+
+Дата: 2026-11-04. Статус: IMPLEMENTED / BOUNDED_QUALIFICATION_PASS / peer review addressed / LOCAL_ONLY. Ветка `codex/tailwind-process` от `ff4f13805671d457909cf2738890eece97b10055`, отдельный worktree. G1 исправлен отдельным `c83ed7b` после root sync b729f56; та же fullscreen строка находится в G2 до history sync.
+
+Исходные parser counts проверены по действительным CSS/ledger: SpecFlow98, States68 (не69), runtime56. G2 удаляет166 process/state rules плюс2 handle globals; runtime56 сохраняется для G3. Ожидаемые итоги будут установлены по фактическому инвентарю, не по предположению о blanket graph exception.
+
+Порядок: installed Next guide/consumer audit → deterministic baseline → локальные typed recipes/JSX utilities → proof callbacks/geometry/edge targets → точные comparative snapshots/functional checks → peer review → exact ledger → scoped commit. Первые четыре этапа выполнены; финальные qualification/review продолжаются.
+
+Внимание к библиотечным targets: `Node.style` относится к outer node, `Edge.style` — только к видимому path. Inline `labelStyle`/`labelBgStyle` относятся к text/rect, не к общему group. Escape `_` в arbitrary library selectors сохраняется через статические `String.raw` tokens, как в проверенном G1. Controls и measured viewport fitting не заменяются.
+
+## Реализация и evidence
+
+- До source changes: production build PASS, TWP01 baseline100 PNG PASS2.0m (2.1m total); shared TWG01 baseline24 PNG PASS25.4s (31.3s total). Собственный fixture-профиль сохраняет4 legacy specs (planned/chosen/applied/tracked), все7видов узлов, живые MCP facts/decisions и отдельный workspace graph fixture. Повторные снимки не создают факты. Первоначальный setup VALIDATION_ERROR исправлен добавлением второго исхода condition до source changes; сохранён `.operations/fixture-setup-01.log`, это не product RED.
+- Source: два CSS удалены, globals133→131;7 expressions перенесены на finite node/path/text/rect slots. Shared handles и default-node companions охватывают6 graph consumers. Runtime labels/input/request slots перенесены на собственные узлы дочерней панели; её56 CSS rules остаются G3. Ни commands/runtime logic, ни query/session owner, ни geometry/routing не менялись.
+- AST proof:120 JSX on* bindings/expressions идентичны HEAD в9компонентах. TypeScript и Next production build PASS; architecture846files/0violations/16exactlegacyedges PASS.
+- Первый comparative run выявил реальные ошибки: `twMerge` классифицировал legacy `text-btn` как text-color и удалил styling hook у двух delete buttons; hook сохранён отдельно от merge. Неподдерживаемый `border-t-dashed` не создавал пунктир legend; заменён действительным arbitrary property. Квалификация установленным compiler принимает все334 новых/shared candidates. Неисполняемый `fullscreen:` выявлен и исправлен отдельным G1 commit c83ed7b с actualRED и8original/corrected identical PNG; в G2 line идентична, подробная история остаётся в G1 журнале.
+- После исправлений TWP01 full100 PASS57.3s (1.0m total): **91 PNG побайтно идентичны;9 отличаются11–12 AA-пикселями max1–2/255**. Все geometry/font/color/padding/margin/gap поля совпали;4 states-table cases сохранили лишь различие style нулевой нижней границы. Оно исправлено локальным last-cell slot; повторяются только эти4 cases. Class-name diagnostic hook исключён из computed-style equality, остальные поля и DOM tag/count сравниваются точно; raw JSON и изображения сохранены.
+- Shared TWG01 после переноса: **24/24 PNG и computed metric sets точно идентичны**, PASS13.6s (16.0s total). Source artifacts `.operations/visual-before`, `.operations/visual-corrected`, `.operations/shared-before`, `.operations/shared-corrected` и comparison JSON сохранены.
+- Existing functional: **20/20 PASS в одном прогоне1.3m**. FR09/11 UNKNOWN receipt recovery; FR10/11 teaching; FR02/07 explicit tracking/skip; FR05/07/11 retries/loops/history; FR06 distinct fork visits/choice/application/resume; FR01/12 legacy light mobile; F04/07 immutable draft; F08 chosen/applied/unbound attempts; F07/10 forms; PW09/10 proposal adoption; оба F11; F09 fouraxes; paired exact navigation; все GR01–GR06. Assertions/timeouts этих тестов не менялись. После этого изменён только невидимый style border-width0 последней строки; functional набор без причины не повторяется.
+- Фактический inventory:14ordinary CSS files/853rules;6inline files/17expressions;0parserproblems. После root bounded source review exact ledger обновлён: удалены два CSS и два inline-file entries, globals131, только hashes двух retained proposal companions обновлены с доказанно прежними expressions. `styles:check` PASS0violations; `styles:final` намеренно FAIL17violations из-за реального остатка/layer. Никаких technical exemptions/изменений scanner не вводится.
+
+Final-table TWP01 scoped PASS6.0s (8.5s total): **все4 computed style/geometry sets идентичны**,3PNG побайтно одинаковы,1darkdesktop отличается12 AA-пикселями max2/255. Это точечный повтор после full100 run; остальные96 неизменных случаев не перезаписывались и не объявляются новым единым full100 run. Артефакты `.operations/table-before`/`.operations/visual-table-final` и comparison JSON сохранены отдельно.
+
+Reviewed head: Next production/strictTS и Vite strictTS/build11.97s PASS; architecture846/0/16 PASS;120callback bindings идентичны;334utility candidates приняты установленным Tailwind4.3.3 compiler; `git diff --check` PASS. Root source review подтвердил собственную runtime boundary, public library slots и отсутствие handler/state/domain changes; требование о полном удалении CSS подтверждено actual `delete mode100644` и `Test-Path=false` для обоих файлов. Никаких пустых CSS/keyframe-only remnants нет.
+
+Локальный feature commit ограничен G2; parent G1 history/новые backend commits синхронизируются отдельно. Этот scope не объявляет runtime56, remaining panels/common defaults или полный Tailwind/React переход завершёнными.
+
+## Синхронизация с G1 и durable receipts
+
+Feature commit `e15fb79` синхронизирован с чистым G1 `8adabc4` merge commit `994aa5a`, без конфликтов. Унаследованы исправления profile ownership, HTTP receipt proof, portable contracts и service lifecycle/URI. Собственная fullscreen строка совпала с G1 c83ed7b автоматически. Parent sync не менял CSS/presentation classes, поэтому124 visual состояния без причины не переснимались.
+
+На synced head: Next production/strictTS PASS; **свежий отдельный profile —20/20 functional PASS1.4m** (включая receipt recovery после UNKNOWN, retries/loops, explicit decisions и GR01–GR06); Vite strictTS/build PASS7.75s; architecture855files/0violations/11exactlegacyedges; styles14CSS853rules/6inline17expressions/0violations;334compiler candidates PASS. Parent portable-contract work уменьшил прежний legacy inventory; UI-срез не расширял разрешения guard.
+
+Журнал синхронизации фиксируется отдельно; G2 source передаётся владельцу эпика для PR/CI без child push. Собственные profiles/artifacts остаются в `.operations`, исходный main/реальные пользовательские данные не менялись. G3 runtime56 и оставшиеся общие/специализированные стили остаются открытыми.
+
+## Общая композиция с интеграциями и участниками
+
+Root объединил G1/P3/P42 и текущие client/runtime contracts. Source конфликтов не было; два конфликта ledger разрешены трёхсторонним сравнением каждой записи с merge base. Независимые изменения сохранены, одновременное несовпадающее изменение одной записи приводит к отказу вспомогательной проверки. Фактический остаток: **10 CSS-файлов / 644 правила / 5 inline-файлов / 14 выражений**, style gate0violations. Root/web strict types PASS; architecture863files/0violations/11existingedges и diff check PASS.
+
+Исторические 124 visual состояния и последующий 20/20 functional run сохраняют свои исходные границы; эта синхронизация не переснимает их и не выдаёт за результат новой сборки. Full combined CI текущего PR обязателен до merge. G1 и P3 являются родительскими историями и объединяются в эпик раньше G2. Runtime и другие CSS families остаются отдельной работой.

@@ -20,7 +20,8 @@ export type AgentWorkspace={
   listFiles(path?:string,cursor?:number):Promise<WorkspaceFileList>;
   readFile(path:string):Promise<WorkspaceFile>;
 };
-export type AgentServiceDependencies={store:AgentStore;actor:Actor;projectId?:string;workspace?:AgentWorkspace};
+/** Задаёт store, контекст агента и проекта, а также доступные workspace-возможности MCP-инструментов. */
+export type AgentServiceDependencies={store:AgentStore;actor:Actor;projectId?:string;workspace?:AgentWorkspace;deploymentMode?:string};
 
 // Validate the constant when the module loads, before a store can commit work.
 const outputFailure=agentErrorSchema.parse({ok:false,error:{
@@ -46,8 +47,8 @@ function result(name:string,body:Record<string,unknown>,isError=false):AgentTool
 const fail=(code:string,message:string):never=>{throw new DomainError(code,message);};
 const terminal=new Set(['succeeded','failed','cancelled','skipped']);
 
-/** Read/write facade for an already authenticated identity. It grants no human capabilities. */
-export function createAgentService({ store, actor, projectId=PROJECT_ID, workspace }: AgentServiceDependencies) {
+/** Предоставляет MCP-фасад чтения и записи проверенному агенту в границах его проекта и назначенных исполнений. */
+export function createAgentService({ store, actor, projectId=PROJECT_ID, workspace,deploymentMode }: AgentServiceDependencies) {
   const assertActor=()=>{
     if(actor.kind!=='agent'||!actor.id||!actor.projectIds.includes(projectId))fail('FORBIDDEN','Требуется назначенная агентская идентичность этого проекта.');
   };
@@ -130,7 +131,7 @@ export function createAgentService({ store, actor, projectId=PROJECT_ID, workspa
         if(state.projectId!==projectId)fail('FORBIDDEN','Недоступный проект.');
         if(name==='ouro.get_context'){
           const contract=negotiateProtocol(input as {protocolVersion?:string;requiredCapabilities?:string[]});
-          if(process.env.OURO_DEPLOYMENT_MODE==='cloud'){
+          if((deploymentMode??process.env.OURO_DEPLOYMENT_MODE)==='cloud'){
             const localOnly=new Set(['verification.observation.v1','verification.local-runner.v1']);
             contract.capabilities=contract.capabilities.filter(capability=>!localOnly.has(capability));
             if((input.requiredCapabilities as string[]|undefined)?.some(capability=>localOnly.has(capability)))fail('UNSUPPORTED_CAPABILITY','Облачный проект не читает локальные папки и не запускает тесты на сервере.');

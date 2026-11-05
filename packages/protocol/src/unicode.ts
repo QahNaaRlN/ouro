@@ -1,6 +1,5 @@
-/** Validate Unicode scalar text without replacing unpaired UTF-16 surrogates.
- * Unlike TextEncoder, this never repairs invalid input into U+FFFD. Keeping
- * valid pairs unchanged preserves exact source bytes and JSONB round-trips.
+/** Проверяет Unicode scalar text без замены одиночных UTF-16 surrogate на U+FFFD.
+ * Сохраняет допустимые пары, точные исходные байты и представление после JSONB round-trip.
  */
 export function isWellFormedUnicode(value:string):boolean{
  for(let i=0;i<value.length;i++){

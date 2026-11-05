@@ -9,15 +9,18 @@ export type GitHubWorkerStore={
   finishGitHubDelivery(jobId:string,leaseToken:string,reason?:string,projectId?:string):Promise<void>;
   failGitHubDelivery(jobId:string,leaseToken:string,error:{code:string;retryAfterMs?:number;permanent?:boolean},projectId?:string):Promise<void>;
 };
-export type GitHubWorkerDependencies={getStore:()=>Promise<GitHubWorkerStore>;client:{verifyCommit(repository:{id:number;fullName:string},sha:string):Promise<GitHubVerifiedCommit>};maxJobs?:number;leaseMs?:number};
+/** Связывает worker доставок GitHub с хранилищем, проверкой коммитов и ограничениями обработки и lease. */
+export type GitHubWorkerDependencies={getStore:()=>Promise<GitHubWorkerStore>;client:{verifyCommit(repository:{id:number;fullName:string},sha:string,signal?:AbortSignal):Promise<GitHubVerifiedCommit>};maxJobs?:number;leaseMs?:number};
+/** Создаёт обработчик очереди GitHub с проверкой коммитов и записью результатов в границах действующего lease. */
 export function createGitHubWorker(dependencies:GitHubWorkerDependencies){
   let running:Promise<{processed:number}>|null=null;
-  return {run:():Promise<{processed:number}>=>{
+  return {run:(signal?:AbortSignal):Promise<{processed:number}>=>{
     if(running)return running;
     running=(async()=>{
       const store=await dependencies.getStore();let processed=0;
       const limit=Math.max(1,Math.min(100,dependencies.maxJobs??10));
       for(let count=0;count<limit;count++){
+        if(signal?.aborted)break;
         const job=await store.claimGitHubDelivery({leaseMs:dependencies.leaseMs??60_000});if(!job)break;
         const projectId=job.projectId??PROJECT_ID;
         try{
@@ -33,13 +36,17 @@ export function createGitHubWorker(dependencies:GitHubWorkerDependencies){
             if(!binding||binding.revokedAt){revoked=true;continue;}
             if(binding.repositoryId!==job.payload.repositoryId||binding.ref!==job.payload.ref)throw Object.assign(new Error('Несовпавший контекст доставки.'),{code:'VERIFICATION_FAILED'});
             for(const sha of job.payload.commitShas){
-              const commit=await dependencies.client.verifyCommit({id:binding.repositoryId,fullName:binding.repositoryFullName},sha);
+              if(signal?.aborted)throw new Error('Worker stopped');
+              const repository={id:binding.repositoryId,fullName:binding.repositoryFullName};
+              const commit=await(signal?dependencies.client.verifyCommit(repository,sha,signal):dependencies.client.verifyCommit(repository,sha));
+              if(signal?.aborted)throw new Error('Worker stopped');
               try{await store.ingestVerifiedGitHubCommit({jobId:job.id,leaseToken:job.leaseToken,bindingId,commit},projectId);}
               catch(error){if((error as {code?:string}).code==='BINDING_REVOKED'){revoked=true;break;}throw error;}
             }
           }
           await store.finishGitHubDelivery(job.id,job.leaseToken,revoked?'BINDING_REVOKED':undefined,projectId);processed++;
         }catch(error){
+          if(signal?.aborted)break;
           const code=(error as {code?:string}).code;
           // The current owner alone can change a job. Expired/stolen leases recover in the store.
           if(code==='LEASE_CONFLICT'||code==='LEASE_EXPIRED'||code==='LEASE_LOST')continue;

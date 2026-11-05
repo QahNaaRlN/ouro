@@ -1,15 +1,18 @@
 import { z } from 'zod';
 import { PROJECT_ID,AGENT_ID,type Actor } from '../packages/core/src';
-import { AccessError,authenticatedParticipant,assertHuman,issueLocalSession,issueParticipantSession,participantCookie,readCommandBody } from './auth';
+import { AccessError,authenticatedParticipant,assertHuman,issueLocalSession,issueParticipantSession,participantCookie,readCommandBody,defaultAuthService,type AuthService } from './auth';
 import { requestOrigin } from './connection-config';
 import { apiError } from './http';
 import type { ParticipantRegistry } from './participant-registry';
 
-export type ParticipantHttpDependencies={getRegistry?:()=>Promise<ParticipantRegistry>;authenticateHuman?:(request:Request)=>Actor|Promise<Actor>};
+/** Задаёт реестр локальных участников и адаптеры проверки человеческой идентичности для HTTP-операций. */
+export type ParticipantHttpDependencies={getRegistry?:()=>Promise<ParticipantRegistry>;authenticateHuman?:(request:Request)=>Actor|Promise<Actor>;auth?:AuthService};
 const nameInput=z.strictObject({name:z.string().trim().min(1).max(120)}),credentialInput=z.strictObject({credential:z.string().regex(/^ouro_human_[A-Za-z0-9_-]{43}$/)}),empty=z.strictObject({});
 const json=(data:unknown,status=200,headers?:HeadersInit)=>Response.json(data,{status,headers:{'Cache-Control':'no-store',...Object.fromEntries(new Headers(headers))}});
 const manager=(actor:Actor)=>actor.kind==='human'&&['local-human','human-token'].includes(actor.id);
+/** Создаёт HTTP-обработчики сессий и реестра локальных участников с проверкой прав на управление. */
 export function createParticipantHandlers(dependencies:ParticipantHttpDependencies={}){
+  const {authenticatedParticipant,issueLocalSession,issueParticipantSession,readCommandBody,requestOrigin}=dependencies.auth??defaultAuthService;
   const registry=dependencies.getRegistry??(async()=>(await import('./store')).getParticipantRegistry());
   const authenticate=async(request:Request)=>{const actor=await(dependencies.authenticateHuman?dependencies.authenticateHuman(request):authenticatedParticipant(request,PROJECT_ID,AGENT_ID));assertHuman(actor);return actor;};
   const cookie=(request:Request,value:string,age=43200)=>`ouro_participant=${value}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${age}${requestOrigin(request).startsWith('https:')?'; Secure':''}`;

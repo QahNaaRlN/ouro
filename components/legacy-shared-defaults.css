@@ -1,0 +1,26 @@
+@layer theme, base, ouro-legacy, utilities;
+
+/** Временные обычные defaults для ещё не перенесённых семейств; ledger находится в docs/plans/tailwind-workspace.md. */
+@layer ouro-legacy {
+.ws-shell a{color:var(--text);text-decoration:none}
+.ws-shell a:hover{text-decoration:underline}
+.ws-muted{color:var(--text-muted);font-size:12px;line-height:1.7}
+.ws-shell p{line-height:1.75}
+.ws-shell h2{font-size:19px;font-weight:500;line-height:1.4;margin:0 0 12px}
+.ws-shell h3{font-size:16px;font-weight:500;line-height:1.5;margin:0 0 10px}
+.ws-shell h4{font-size:14px;line-height:1.5;margin:16px 0 8px}
+.ws-shell code,.ws-shell pre{font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.7;overflow-wrap:anywhere}
+.ws-shell pre{white-space:pre-wrap;max-width:100%;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:6px}
+.ws-shell form{display:grid;gap:16px;min-width:0}
+.ws-shell label{display:grid;gap:8px;font-size:12px;line-height:1.6;color:var(--text-muted);min-width:0}
+.ws-shell input:not([type=checkbox]),.ws-shell textarea{width:100%;min-width:0;max-width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:11px 12px;font-size:13px;line-height:1.6;font-family:inherit}
+.ws-shell textarea{resize:vertical;min-height:75px}
+.ws-shell textarea[readonly]{font-family:'JetBrains Mono',monospace;font-size:11px}
+.ws-shell button{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:10px 14px;font:500 12px/1.6 Inter,sans-serif;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;width:fit-content;max-width:100%;min-width:0;white-space:normal;overflow-wrap:break-word}
+.ws-shell button:disabled{opacity:.45;cursor:not-allowed}
+.ws-shell button:not(:disabled):hover{border-color:var(--control)}
+.ws-shell :is(button,a,input,textarea,summary,[tabindex]):focus-visible{outline:2px solid var(--text);outline-offset:3px}
+.ws-shell details{font-size:12px;line-height:1.8;margin:16px 0}
+.ws-shell summary{cursor:pointer;color:var(--text-muted)}
+.ws-project-page>.ws-map>.graph-container{height:100%;min-height:0}
+}

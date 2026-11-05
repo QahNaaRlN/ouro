@@ -1,8 +1,20 @@
 "use client";
 
+import {IntegrationSourceSwitch} from '@/components/IntegrationSourceSwitch';
+
 import {WorkspaceAccordion} from '@/components/workspace-ui';
 import {AppSelect} from '@/components/app-select';
-import { projectFetch, projectRequestUrl } from '@/lib/client-project';
+import { projectFetch } from '@/lib/client-project';
+import {twMerge} from 'tailwind-merge';
+import {humanShell} from './human-view/shell-presentation';
+import {humanElements} from './human-view/element-presentation';
+import {humanRoadmap} from './human-view/roadmap-presentation';
+import {humanSpec} from './human-view/spec-presentation';
+import {humanContext,humanRequestKinds} from './human-view/context-presentation';
+import {humanHistory,humanMethodology} from './human-view/history-presentation';
+import {humanModal} from './human-view/modal-presentation';
+import {humanMaintenance} from './human-view/maintenance-presentation';
+import {humanDecision} from './human-view/decision-presentation';
 
 import packageInfo from '../package.json';
 import Link from 'next/link';
@@ -61,7 +73,7 @@ import LessonsPanel from '@/components/lessons-panel';
 import ImpactPanel from '@/components/impact-panel';
 import ParticipantsPanel,{ParticipantLogin} from '@/components/participants-panel';
 import { AccountLogout, EmailLogin, ProjectMembersPanel, ProjectSwitcher, selectProject, selectedProjectId } from '@/components/project-account';
-import type { ProjectRole } from '@/lib/projects';
+import type { ProjectRole } from '@ouro/protocol/http';
 import CollaborativeDraftsPanel from '@/components/collaborative-drafts';
 import AgentProposalsPanel,{type ProposalReviewIntentRegistry} from '@/components/agent-proposals-panel';
 import SpecFlow from "@/components/spec-flow";
@@ -69,8 +81,13 @@ import {FlowTrackingChoice,flowTrackingUnavailable} from '@/components/flow-runt
 import {runtimeEventNames,type FlowRuntimeCommand,type FlowCommandOutcome,type RuntimeIntentRegistry} from '@/components/flow-runtime-ui';
 import { StateTransitions } from "@/components/state-transitions";
 import HistoricalPanel from "@/components/historical-panel";
-import { createProjectSnapshotAdopter, type ProjectSnapshot } from '@/lib/project-snapshot';
-import { startProjectSubscription, type ProjectSubscriptionStatus } from '@/lib/project-subscription';
+import {useProjectSession} from '@/components/project-session-provider';
+import {createIdentityReadController} from '@/packages/client/src/lifecycle/create-identity-read-controller';
+import {useIdentitySessionQuery} from '@/packages/frontend/src/api/catalog-reads';
+import {WorkspacePendingList,readWorkspaceJSON} from '@/components/workspace-client';
+import {freezeProjectCommandIntent} from '@/packages/client/src/ports';
+import {planProjectCommandDispatch} from '@/packages/client/src/http/project-command-dispatch';
+import {getWorkspaceIntents,forgetRejectedWorkspaceIntent} from '@/packages/client/src/http/workspace-intents';
 import { getRoadmapFilterOptions, matchesRoadmapFilter } from '@/packages/core/src/roadmap-filter';
 import { currentDecisionRequests, decisionRoot, isCurrentDecisionRequest, openPhysicalBlockers } from '@/packages/core/src/decision-lineage';
 import {
@@ -86,7 +103,6 @@ import {
 
 type View = "roadmap" | "specs" | "decisions" | "history" | "methodology" | "agents" | "integrations" | "lessons" | "impact" | "participants" | "drafts" | "proposals";
 type Modal = "create" | "revision" | "accept" | "dependency" | null;
-type ProjectResponse = { state: ProjectState; cursor: number; storage: string };
 type Payload = Record<string, unknown>;
 const kinds: Record<string, string> = {
   Question: "Вопрос",
@@ -163,12 +179,16 @@ function Empty({ children }: { children: ReactNode }) {
   );
 }
 
+/** Показывает текущий Human View и координирует его действия через существующих владельцев проекта. */
 export default function Home() {
-  const [state, setState] = useState<ProjectState | null>(null),
-    [storage, setStorage] = useState(""),
-    [cursor, setCursor] = useState(0);
   const [agents, setAgents] = useState<AgentRegistration[]>([]);
   const [identity,setIdentity]=useState<Actor|null>(null),[sharedPending,setSharedPending]=useState(false);
+  const [identityReads]=useState(createIdentityReadController),[accessEpoch,setAccessEpoch]=useState(0);
+  const {read:readIdentity,scope:identityScope,readAccountProjects}=useIdentitySessionQuery();
+  const [hasAccount,setHasAccount]=useState(false),[identityUnavailable,setIdentityUnavailable]=useState(false);
+  const readScope=identityScope({accessEpoch,actorId:identity?.id??null,projectId:selectedProjectId()});
+  const owner=useProjectSession(identity?{projectId:selectedProjectId(),actorId:identity.id,accessEpoch}:undefined,'legacy');
+  const state=owner.snapshot?.state??null,storage=owner.snapshot?.storage??'',cursor=owner.snapshot?.cursor??0;
   const [flowTrackingSelections,setFlowTrackingSelections]=useState<Record<string,boolean>>({});
   const flowRuntimeIntents=useRef<RuntimeIntentRegistry>(new Map());
   const [projectRole,setProjectRole]=useState<ProjectRole|null>(null);
@@ -181,8 +201,7 @@ export default function Home() {
     window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);
   },[]);
   const [assignmentAgentId, setAssignmentAgentId] = useState(AGENT_ID);
-  const [snapshotAdopter] = useState(()=>createProjectSnapshotAdopter(selectedProjectId()));
-  const [streamStatus,setStreamStatus] = useState<ProjectSubscriptionStatus>('connecting');
+  const streamStatus=owner.view.status;
   const [agentFilter,setAgentFilter] = useState(''),[requestFilter,setRequestFilter] = useState('');
   const [flowRevisionId, setFlowRevisionId] = useState<string | null>(null);
   const [integrationSource,setIntegrationSource]=useState<'github'|'meridian'>('github');
@@ -195,30 +214,32 @@ export default function Home() {
     [status, setStatus] = useState(""),
     [graphView, setGraphView] = useState(true),
     [layoutKey, setLayoutKey] = useState(0);
-  const [loading, setLoading] = useState(true),
+  const [authLoading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
+    [localError, setError] = useState(""),
     [toast, setToast] = useState("");
+  const error=localError||owner.view.error?.message||'',loading=authLoading||!!identity&&!state&&!owner.view.error;
   const [theme, setTheme] = useState<'light'|'dark'>("dark"),
     [mobileNav, setMobileNav] = useState(false),
     [modal, setModal] = useState<Modal>(null),
     [detailTab, setDetailTab] = useState("expectation"),
     [realityView, setRealityView] = useState<"history" | "graph">("history");
-  const cursorRef = useRef(0);
   const [historicalCursor,setHistoricalCursor]=useState<number|null>(null);
   const [historicalInput,setHistoricalInput]=useState('');
   const historicalCursorRef=useRef<number|null>(null);
   const returnToLive=()=>{historicalCursorRef.current=null;setHistoricalCursor(null);};
   const hasInitialSelection = useRef(false);
   const pendingRef = useRef(false);
+  useEffect(()=>{setBusy(false);pendingRef.current=false;},[owner.session]);
   // An uncertain import belongs to the authenticated human and project. The raw
   // source remains in this page's RAM across panel/history navigation only.
-  const meridianParticipantKey=identity?.id??'unauthenticated';
+  const meridianIdentityId=identity?.id,meridianProjectId=state?.projectId;
+  const meridianParticipantKey=meridianIdentityId??'unauthenticated';
   const meridianPendingIntent=useRef<MeridianPendingIntent|null>(null);
   useEffect(()=>{
     const saved=meridianPendingIntent.current;
-    if(saved&&(saved.participantKey!==identity?.id||saved.projectId!==state?.projectId))meridianPendingIntent.current=null;
-  },[identity?.id,state?.projectId]);
+    if(saved&&meridianIdentityId!==undefined&&meridianProjectId!==undefined&&(saved.participantKey!==meridianIdentityId||saved.projectId!==meridianProjectId))meridianPendingIntent.current=null;
+  },[meridianIdentityId,meridianProjectId]);
   useEffect(()=>{
     const guard=(event:BeforeUnloadEvent)=>{
       if(!meridianPendingIntent.current)return;
@@ -227,66 +248,46 @@ export default function Home() {
     window.addEventListener('beforeunload',guard);
     return()=>window.removeEventListener('beforeunload',guard);
   },[]);
-  const presentSnapshot=useCallback((snapshot:ProjectSnapshot)=>{
-    setState(snapshot.state);
-    if(snapshot.storage)setStorage(snapshot.storage);
-    setCursor(snapshot.cursor);cursorRef.current=snapshot.cursor;
-  },[]);
   const adoptSnapshot=useCallback((value:unknown)=>{
-    const result=snapshotAdopter.adopt(value);
-    if(result.status==='invalid')throw new Error(`Невозможно подтвердить историю: ${result.reason}. Обновите страницу после проверки сервера.`);
-    presentSnapshot(result.snapshot);return result.snapshot;
-  },[snapshotAdopter,presentSnapshot]);
-  const refresh = useCallback(async () => {
-    const response = await projectFetch("/api/project", { cache: "no-store" });
-    const data = await response.json();
-    if (!response.ok)
-      throw new Error(data.error?.message ?? "Не удалось прочитать проект");
-    const adopted=adoptSnapshot(data);
-    if (!hasInitialSelection.current) {
-      setSelected(adopted.state.specs[0]?.id ?? null);
-      hasInitialSelection.current = true;
-    }
-    return adopted as ProjectResponse;
-  }, [adoptSnapshot]);
-  const adoptMutation=async(data:unknown)=>{
-    if((data as {replayed?:boolean})?.replayed)await refresh();else adoptSnapshot(data);
-  };
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const session = await projectFetch("/api/session");
-        const sessionData=await session.json();
-        if (!session.ok) {
-          throw new Error(
-            sessionData.error?.message ?? "Не удалось открыть сессию",
-          );
-        }
-        if (!cancelled) {
-          const actor=(sessionData.actor??null) as Actor|null;
-          setIdentity(actor);
-          if(sessionData.account&&actor){
-            const projectsResponse=await projectFetch('/api/projects',{cache:'no-store'}),projectsData=await projectsResponse.json();
-            if(!projectsResponse.ok)throw new Error(projectsData.error?.message??'Не удалось прочитать список проектов.');
-            const selectedId=selectedProjectId(),current=projectsData.projects.find((project:{id:string})=>project.id===selectedId);
-            if(!current&&projectsData.projects[0]){selectProject(projectsData.projects[0].id);return;}
-            setProjectRole(current?.role??null);
-          }else setProjectRole(actor&&['local-human','human-token'].includes(actor.id)?'Owner':'Contributor');
-          await refresh();
-          const agentsResponse=await projectFetch('/api/agents',{cache:'no-store'});
-          if(agentsResponse.ok){const body=await agentsResponse.json();if(!cancelled)setAgents(body.agents);}
-        }
-      } catch (e) {
-        if (!cancelled) setError((e as Error).message);
-      } finally {
-        if (!cancelled) setLoading(false);
+    const result=owner.session?.admit(value);
+    if(!result||result.status==='invalid')throw new Error('Невозможно подтвердить историю проекта.');
+    return result.snapshot;
+  },[owner.session]);
+  const refresh=useCallback(async()=>{
+    await owner.session?.refresh(false);
+    const adopted=owner.session?.getSnapshot();if(!adopted)throw new Error('Состояние проекта не подтверждено.');
+    if(!hasInitialSelection.current){setSelected(adopted.state.specs[0]?.id??null);hasInitialSelection.current=true;}
+    return adopted;
+  },[owner.session]);
+  const adoptMutation=async(data:unknown)=>{adoptSnapshot(data);if((data as {replayed?:boolean})?.replayed)await refresh();};
+  useEffect(()=>{if(!state||hasInitialSelection.current)return;setSelected(state.specs[0]?.id??null);hasInitialSelection.current=true;},[state]);
+  const refreshIdentity=useCallback(async()=>{
+    const ticket=identityReads.begin();if(!ticket)return;
+    setAccessEpoch(ticket.accessEpoch);setIdentity(null);setHasAccount(false);setIdentityUnavailable(false);setProjectRole(null);setAgents([]);setLoading(true);setError('');
+    const outcome=await ticket.run(async signal=>{
+      const result=await readIdentity({accessEpoch:ticket.accessEpoch,projectId:selectedProjectId()},signal);
+      if(result.status==='unsupported')return result;
+      const session=result.value,actor=session.actor;
+      let role:ProjectRole|null=actor&&session.canManageParticipants?'Owner':actor?'Contributor':null,fallbackProjectId:string|null=null;
+      if(session.hasAccount&&actor){
+        const projects=await readAccountProjects(identityScope({accessEpoch:ticket.accessEpoch,actorId:actor.id,projectId:selectedProjectId()}),signal);
+        if(projects.status==='unsupported')return projects;
+        const selectedId=selectedProjectId(),current=projects.value.find(project=>project.id===selectedId);
+        if(!current&&projects.value[0])fallbackProjectId=projects.value[0].id;
+        role=current?.role??null;
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [refresh]);
+      const agents=await readWorkspaceJSON<{agents:AgentRegistration[]}>('/api/agents?projectId='+encodeURIComponent(selectedProjectId()),signal).then(value=>value.agents).catch(()=>[]);
+      return {status:'available' as const,actor,role,agents,fallbackProjectId,hasAccount:session.hasAccount};
+    });
+    if(outcome.status==='superseded')return;
+    if(outcome.status==='accepted'){
+      if(outcome.value.status==='unsupported'){setIdentityUnavailable(true);setError('Чтение сессии или каталога недоступно в этом окружении.');}
+      else{if(outcome.value.fallbackProjectId){selectProject(outcome.value.fallbackProjectId);return;}
+      setIdentity(outcome.value.actor);setHasAccount(outcome.value.hasAccount);setProjectRole(outcome.value.role);setAgents(outcome.value.agents);}
+    }else setError(outcome.error instanceof Error?outcome.error.message:'Не удалось проверить сессию.');
+    setLoading(false);
+  },[identityReads,readIdentity,identityScope,readAccountProjects]);
+  useEffect(()=>{identityReads.mount();void refreshIdentity();return()=>identityReads.unmount();},[identityReads,refreshIdentity]);
   useEffect(() => {
     const saved = localStorage.getItem("ouro-theme");
     if (saved === "light") setTheme(saved);
@@ -295,18 +296,6 @@ export default function Home() {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem("ouro-theme", theme);
   }, [theme]);
-  useEffect(() => {
-    if(loading||!snapshotAdopter.getSnapshot())return;
-    const subscription=startProjectSubscription({adopter:snapshotAdopter,createEventSource:url=>new EventSource(projectRequestUrl(url)),onSnapshot:presentSnapshot,onStatus:setStreamStatus,reconcile:async()=>{
-      const response=await projectFetch('/api/project',{cache:'no-store'});
-      if(!response.ok)throw new Error('Не удалось сверить историю');return response.json();
-    }});
-    const offline=()=>{subscription.reconnect();setStreamStatus(current=>current==='reload-required'?current:'reconnecting');};
-    const online=()=>subscription.reconnect();
-    window.addEventListener('offline',offline);window.addEventListener('online',online);
-    if(!navigator.onLine)offline();
-    return ()=>{window.removeEventListener('offline',offline);window.removeEventListener('online',online);subscription.close();};
-  }, [loading,snapshotAdopter,presentSnapshot]);
   useEffect(()=>{
     if(loading)return;let live=true;
     const timer=setInterval(()=>{void projectFetch('/api/agents',{cache:'no-store'}).then(async response=>{if(response.ok){const data=await response.json();if(live)setAgents(data.agents);}}).catch(()=>{});},8000);
@@ -326,43 +315,29 @@ export default function Home() {
   ) => {
     if(!canWrite){setError('Роль Viewer разрешает только чтение проекта.');return false;}
     if(historicalCursorRef.current!==null){setError('Историческое состояние доступно только для чтения. Вернитесь к текущей работе.');return false;}
-    if (!state || busy) return false;
+    const session=owner.session;
+    if (!state || busy || !owner.view.active || !session) return false;
     setBusy(true);
     pendingRef.current = true;
     setError("");
     try {
-      const r = await projectFetch("/api/commands", {
-        method: "POST",
-        headers: { "Content-Type": "application/json",...(identity?{'X-Ouro-Expected-Participant':identity.id}:{}) },
-        body: JSON.stringify({
-          ...payload,
-          requestId: typeof payload.requestId==='string'?payload.requestId:crypto.randomUUID(),
-          expectedVersion: expectedVersionOverride ?? state.version,
-        }),
-      });
-      const data = await r.json();
-      onOutcome?.({status:r.status,...(typeof data.error?.code==='string'?{code:data.error.code}:{})});
-      if (!r.ok) {
-        if (data.state) adoptSnapshot(data);
-        else await refresh();
-        throw new Error(
-          `${data.error?.code ?? "ERROR"}: ${data.error?.message ?? "Команда не выполнена"}`,
-        );
-      }
-      if (data.replayed) {
-        await refresh();
-      } else if (data.state) {
-        adoptSnapshot(data);
-      } else await refresh();
-      onCommitted?.(Array.isArray(data.events)?data.events:[]);
+      const expectedVersion=expectedVersionOverride??session.getSnapshot()?.cursor??state.version,requestId=typeof payload.requestId==='string'?payload.requestId:crypto.randomUUID(),body={...payload,expectedVersion,requestId};
+      const intent=freezeProjectCommandIntent({scope:session.scope,operation:'execute-command',expectedVersion,requestId,body:JSON.stringify(body)});
+      const dispatch=planProjectCommandDispatch(session.getView().active?session.scope:undefined,intent,getWorkspaceIntents(session.scope.projectId,session.scope.actorId));
+      if(!dispatch.allowed)return false;
+      dispatch.rejected.forEach(forgetRejectedWorkspaceIntent);
+      const outcome=await owner.execute(body);
+      if(!owner.session?.getView().active)return false;
+      onOutcome?.(outcome.status==='confirmed'?{status:200}:outcome.status==='rejected'?{status:outcome.httpStatus,code:outcome.code}:{});
+      if(outcome.status!=='confirmed')throw new Error(outcome.status==='rejected'?outcome.message:'Исход действия неизвестен. Сохранён исходный запрос для точного повтора.');
+      onCommitted?.([...outcome.receipt.events]);
       setToast(notice);
       return true;
     } catch (e) {
-      setError((e as Error).message);
+      if(owner.session?.getView().active)setError((e as Error).message);
       return false;
     } finally {
-      setBusy(false);
-      pendingRef.current = false;
+      if(owner.session?.getView().active){setBusy(false);pendingRef.current = false;}
     }
   };
   const runFlowCommand:FlowRuntimeCommand=async(payload,expectedVersion)=>{
@@ -533,22 +508,22 @@ export default function Home() {
   };
 
   return (
-    <div className={`app-shell ${historicalCursor!==null?'historical-preview':''}`}>
-      <aside className={`sidebar ${mobileNav ? "mobile-open" : ""}`}>
-        <Link className="brand" href="/projects" aria-label="Ouro — проекты">
+    <div className={`${humanShell.root} ${historicalCursor!==null?'historical-preview':''}`}>
+      <aside className={twMerge(humanShell.sidebar,mobileNav?humanShell.sidebarOpen:'')}>
+        <Link className={humanShell.brand} href="/projects" aria-label="Ouro — проекты">
           <OuroLogo size={28}/>
           <span>
-            ouro<span className="brand-dot">.</span>
+            ouro<span className={humanShell.brandDot}>.</span>
           </span>
-          <span className="alpha-label">{packageInfo.version.split('-')[1]?.split('.')[0].toUpperCase()??'RELEASE'}</span>
+          <span className={humanShell.alpha}>{packageInfo.version.split('-')[1]?.split('.')[0].toUpperCase()??'RELEASE'}</span>
         </Link>
-        <ProjectSwitcher identity={identity}/>
-        <div className="nav-label">ПРОЕКТ</div>
-        <nav aria-label="Основная навигация">
-          <a className="nav-item" href="/projects"><Box size={18}/><span>Проекты</span></a>
+        <ProjectSwitcher identity={identity} hasAccount={hasAccount} readScope={readScope}/>
+        <div className={humanShell.navigationLabel}>ПРОЕКТ</div>
+        <nav className={humanShell.navigation} aria-label="Основная навигация">
+          <a className={humanShell.navigationItem} href="/projects"><Box size={18}/><span>Проекты</span></a>
           {nav.map((item) => (
             <button
-              className={`nav-item ${view === item.id ? "active" : ""}`}
+              className={twMerge(humanShell.navigationItem,view===item.id?humanShell.navigationActive:'')}
               key={item.id}
               disabled={historicalCursor!==null}
               onClick={() => navigate(item.id)}
@@ -556,56 +531,56 @@ export default function Home() {
               <item.icon size={18} />
               <span>{item.label}</span>
               {item.id === "decisions" && pending.length > 0 && (
-                <span className="nav-count">{pending.length}</span>
+                <span className={humanShell.count}>{pending.length}</span>
               )}
             </button>
           ))}
         </nav>
-        <div className="sidebar-bottom">
+        <div className={humanShell.bottom}>
           <button
-            className={`nav-item ${view === "methodology" ? "active" : ""}`}
+            className={twMerge(humanShell.navigationItem,humanShell.navigationFooter,view==='methodology'?humanShell.navigationActive:'')}
             disabled={historicalCursor!==null}
             onClick={() => navigate("methodology")}
           >
             <BookOpen size={18} />
             Методология и источники
           </button>
-          <div className="session-status" role="status" aria-label="Текущая сессия">
+          <div className={humanShell.session} role="status" aria-label="Текущая сессия">
             <span className="avatar">ВЫ</span>
             <div>
-              <strong>{identity?.name??'Вход не выполнен'}</strong>
-              <small>{identity?`${projectRole??'Проверяем роль'} · ${['local-human','human-token'].includes(identity.id)?'Локальный оператор':'Участник проекта'}`:'Нужна сессия человека'}</small>
+              <strong className={humanShell.sessionName}>{identity?.name??'Вход не выполнен'}</strong>
+              <small className={humanShell.sessionDescription}>{identity?`${projectRole??'Проверяем роль'} · ${['local-human','human-token'].includes(identity.id)?'Локальный оператор':'Участник проекта'}`:'Нужна сессия человека'}</small>
             </div>
             {identity&&!['local-human','human-token'].includes(identity.id)&&<AccountLogout identity={identity}/>}
             <ShieldCheck size={15} />
           </div>
         </div>
       </aside>
-      <div className="app-main">
-        <header className="topbar">
-          <div className="topbar-left">
+      <div className={humanShell.main}>
+        <header className={humanShell.topbar}>
+          <div className={humanShell.topbarLeft}>
             <button
-              className="icon-btn mobile-menu"
+              className={twMerge(humanShell.icon,humanShell.mobileMenu)}
               aria-label="Открыть меню"
               onClick={() => setMobileNav(!mobileNav)}
             >
               <Menu size={19} />
             </button>
-            <Link className="project-crumb" href="/projects">Проекты</Link>
-            <span className="crumb-slash">/</span>
-            <span className="current-project">
-              <Box size={15} />
+            <Link className={humanShell.projectCrumb} href="/projects">Проекты</Link>
+            <span className={humanShell.slash}>/</span>
+            <span className={humanShell.currentProject}>
+              <Box className={humanShell.currentProjectIcon} size={15} />
               {state?.roadmap.title ?? 'Ouro'}
             </span>
-            <span className="project-tag">Human View</span>
+            <span className={humanShell.projectTag}>Human View</span>
           </div>
-          <div className="topbar-actions">
-            <span className="demo-label">
-              <span className="tiny-dot" />
+          <div className={humanShell.topbarActions}>
+            <span className={humanShell.demo}>
+              <span className={humanShell.dot} />
               {selectedAgentName}
             </span>
             <button
-              className="icon-btn"
+              className={twMerge(humanShell.icon,humanShell.topbarIcon)}
               title={theme === "dark" ? "Светлая тема" : "Тёмная тема"}
               aria-label={
                 theme === "dark"
@@ -618,7 +593,7 @@ export default function Home() {
             </button>
             <a
               href="https://github.com/QahNaaRlN/ouro"
-              className="icon-btn"
+              className={twMerge(humanShell.icon,humanShell.topbarIcon,humanShell.repositoryLink)}
               target="_blank"
               rel="noreferrer"
               aria-label="Открыть репозиторий"
@@ -628,121 +603,123 @@ export default function Home() {
           </div>
         </header>
         {error && (
-          <div className="error-banner" role="alert">
-            <TriangleAlert size={16} />
+          <div className={humanShell.error} role="alert">
+            <TriangleAlert className={humanShell.errorIcon} size={16} />
             <span>{error}</span>
-            <button aria-label="Закрыть сообщение" onClick={() => setError("")}>
+            <button className={humanShell.errorClose} aria-label="Закрыть сообщение" onClick={() => setError("")}>
               <X size={15} />
             </button>
           </div>
         )}
+        {identity&&<WorkspacePendingList projectId={selectedProjectId()} actorId={identity.id} onRecovered={refresh} onReceipt={value=>{adoptSnapshot(value);}}/>}
         {toast && (
-          <div className="toast" role="status">
-            <Check size={16} />
+          <div className={humanShell.toast} role="status">
+            <Check className={humanShell.toastIcon} size={16} />
             {toast}
           </div>
         )}
-        {projectRole==='Viewer'&&state&&<div className="toast" role="status"><ShieldCheck size={16}/>Роль Viewer: проект доступен только для чтения.</div>}
+        {projectRole==='Viewer'&&state&&<div className={humanShell.toast} role="status"><ShieldCheck className={humanShell.toastIcon} size={16}/>Роль Viewer: проект доступен только для чтения.</div>}
         {loading ? (
-          <main className="loading-screen">
+          <main className={humanShell.loading}>
             <LoaderCircle className="spin" size={25} />
-            <h1>Открываем рабочее место</h1>
-            <p>Восстанавливаем состояние из истории событий…</p>
+            <h1 className={humanShell.loadingHeading}>Открываем рабочее место</h1>
+            <p className={humanShell.loadingCopy}>Восстанавливаем состояние из истории событий…</p>
           </main>
         ) : !state ? (
-          <main className="loading-screen">
+          <main className={humanShell.loading}>
             <TriangleAlert size={30} />
-            <h1>Проект недоступен</h1>
-            <p>{error || "Проверьте запуск сервера и локальную сессию."}</p>
-            <EmailLogin/>
-            <WorkspaceAccordion defaultOpen title={<>Вход по прежнему ключу участника</>}><ParticipantLogin/></WorkspaceAccordion>
-            <button className="btn" onClick={() => location.reload()}>
+            <h1 className={humanShell.loadingHeading}>Проект недоступен</h1>
+            <p className={humanShell.loadingCopy}>{error || "Проверьте запуск сервера и локальную сессию."}</p>
+            {!identityUnavailable&&<EmailLogin/>}
+            {!identityUnavailable&&<WorkspaceAccordion defaultOpen title={<>Вход по прежнему ключу участника</>}><ParticipantLogin/></WorkspaceAccordion>}
+            <button className="btn" onClick={() => void refreshIdentity()}>
               Повторить
             </button>
           </main>
         ) : (
-          <div className="workspace-body">
-            <main className={`main-content view-${view}`}>
+          <div className={humanShell.body}>
+            <main className={twMerge(`${humanShell.content} view-${view}`,historicalCursor!==null?humanShell.historicalContent:'')}>
               {historicalCursor!==null?<HistoricalPanel latest={state} cursor={historicalCursor} onReturn={returnToLive}/>:<>
               {view === "roadmap" && (
                 <>
-                  <div className="page-heading">
+                  <div className={humanElements.pageHeading}>
                     <div>
-                      <h1>
+                      <h1 className={humanElements.pageTitle}>
                         Дорожная карта{" "}
-                        <span className="heading-count">
+                        <span className={humanElements.count}>
                           {state.specs.length}
                         </span>
                       </h1>
-                      <p>
+                      <p className={humanElements.pageDescription}>
                         {state.roadmap.goal ||
                           "От замысла до подтверждённого результата — с решениями человека."}
                       </p>
                     </div>
                     <button
-                      className="btn btn-primary"
+                      className={twMerge('btn btn-primary',humanElements.pageAction)}
                       disabled={!canWrite} onClick={() => setModal("create")}
                     >
-                      <Plus size={16} />
+                      <Plus className={humanElements.pageActionIcon} size={16} />
                       Новая спека
                     </button>
                   </div>
-                  <div className="overview-metrics">
-                    <div>
-                      <span className="metric-dot running" />
-                      <strong>
+                  <div className={humanRoadmap.metrics}>
+                    <div className={humanRoadmap.metric}>
+                      <span className={twMerge(humanRoadmap.metricDot,humanRoadmap.running)} />
+                      <strong className={humanRoadmap.metricValue}>
                         {
                           state.specs.filter((s) => s.state === "in_progress")
                             .length
                         }
                       </strong>
-                      <span>в работе</span>
+                      <span className={humanRoadmap.firstMetricLabel}>в работе</span>
                     </div>
-                    <div>
-                      <span className="metric-dot attention" />
-                      <strong>{pending.length}</strong>
+                    <div className={humanRoadmap.metric}>
+                      <span className={twMerge(humanRoadmap.metricDot,humanRoadmap.attention)} />
+                      <strong className={humanRoadmap.metricValue}>{pending.length}</strong>
                       <span>ждут решения</span>
                     </div>
-                    <div>
-                      <span className="metric-dot done" />
-                      <strong>
+                    <div className={humanRoadmap.metric}>
+                      <span className={twMerge(humanRoadmap.metricDot,humanRoadmap.done)} />
+                      <strong className={humanRoadmap.metricValue}>
                         {state.specs.filter((s) => s.state === "done").length}
-                        <small> / {state.specs.length}</small>
+                        <small className={humanRoadmap.metricTotal}> / {state.specs.length}</small>
                       </strong>
                       <span>принято по DoD</span>
                     </div>
-                    <span className="metrics-divider" />
-                    <span className="roadmap-state">
-                      <span className="tiny-dot" />
+                    <span className={humanRoadmap.divider} />
+                    <span className={humanRoadmap.state}>
+                      <span className={twMerge(humanShell.dot,humanRoadmap.stateDot)} />
                       {state.roadmap.state === "active"
                         ? "Активная карта"
                         : state.roadmap.state}
                     </span>
                   </div>
-                  <div className="canvas-toolbar">
+                  <div className={humanRoadmap.toolbar}>
                     <div
-                      className="segmented"
+                      className={humanRoadmap.segmented}
                       aria-label="Представление дорожной карты"
                     >
                       <button
-                        className={graphView ? "selected" : ""}
+                        className={twMerge(humanRoadmap.segment,graphView?humanRoadmap.segmentSelected:'')}
                         onClick={() => setGraphView(true)}
                       >
                         <Network size={15} />
                         Граф
                       </button>
                       <button
-                        className={!graphView ? "selected" : ""}
+                        className={twMerge(humanRoadmap.segment,!graphView?humanRoadmap.segmentSelected:'')}
                         onClick={() => setGraphView(false)}
                       >
                         <List size={15} />
                         Таблица
                       </button>
                     </div>
-                    <div className="toolbar-right">
-                      <div className="search-field">
+                    <div className={humanRoadmap.toolbarRight}>
+                      <div className={humanRoadmap.search}>
                         <Search size={14} />
                         <input
+                          className={humanRoadmap.searchInput}
                           aria-label="Поиск спецификаций"
                           placeholder="Найти спеку…"
                           value={query}
@@ -751,7 +728,7 @@ export default function Home() {
                       </div>
                       <AppSelect
                         aria-label="Фильтр по статусу"
-                        className="filter-select"
+                        className="filter-select h-[34px] max-w-[143px] border-ouro-border px-[5px] py-[4px] text-[12px] [@media(max-width:1250px)]:max-w-[118px] [@media(max-width:900px)]:w-[114px] [@media(max-width:680px)]:max-w-[120px] [@media(max-width:680px)]:w-[120px]"
                         value={status}
                         onValueChange={(value) => setStatus(value)}
                       >
@@ -762,14 +739,14 @@ export default function Home() {
                           </option>
                         ))}
                       </AppSelect>
-                      <AppSelect aria-label="Фильтр по агенту" className="filter-select" value={agentFilter} onValueChange={(value) =>setAgentFilter(value)}>
+                      <AppSelect aria-label="Фильтр по агенту" className="filter-select h-[34px] max-w-[143px] border-ouro-border px-[5px] py-[4px] text-[12px] [@media(max-width:1250px)]:max-w-[118px] [@media(max-width:900px)]:w-[114px] [@media(max-width:680px)]:max-w-[120px] [@media(max-width:680px)]:w-[120px]" value={agentFilter} onValueChange={(value) =>setAgentFilter(value)}>
                         <option value="">Все агенты</option>{[...new Set([...filterOptions.agentIds,...(agentFilter?[agentFilter]:[])])].map(id=><option key={id} value={id}>{id===AGENT_ID?'Симулятор агента':`${agents.find(a=>a.id===id)?.name??id.slice(0,8)}${agents.find(a=>a.id===id)?.revokedAt?' · ключ отозван':''}`}</option>)}
                       </AppSelect>
-                      <AppSelect aria-label="Фильтр по открытому запросу" className="filter-select" value={requestFilter} onValueChange={(value) =>setRequestFilter(value)}>
+                      <AppSelect aria-label="Фильтр по открытому запросу" className="filter-select h-[34px] max-w-[143px] border-ouro-border px-[5px] py-[4px] text-[12px] [@media(max-width:1250px)]:max-w-[118px] [@media(max-width:900px)]:w-[114px] [@media(max-width:680px)]:max-w-[120px] [@media(max-width:680px)]:w-[120px]" value={requestFilter} onValueChange={(value) =>setRequestFilter(value)}>
                         <option value="">Все открытые запросы</option>{Object.entries(kinds).map(([kind,label])=><option key={kind} value={kind}>{label}</option>)}
                       </AppSelect>
                       <button
-                        className="icon-btn"
+                        className={twMerge(humanShell.icon,humanRoadmap.toolbarIcon)}
                         title="Новая зависимость"
                         aria-label="Добавить зависимость"
                         disabled={!canWrite}
@@ -778,7 +755,7 @@ export default function Home() {
                         <GitBranch size={17} />
                       </button>
                       <button
-                        className="icon-btn"
+                        className={twMerge(humanShell.icon,humanRoadmap.toolbarIcon)}
                         title="Пересчитать расположение графа"
                         aria-label="Пересчитать расположение графа"
                         onClick={() => setLayoutKey((k) => k + 1)}
@@ -788,7 +765,7 @@ export default function Home() {
                     </div>
                   </div>
                   <div
-                    className={graphView ? "roadmap-surface" : "table-surface"}
+                    className={graphView?humanRoadmap.graph:humanRoadmap.tableSurface}
                   >
                     {graphView ? (
                       <Roadmap
@@ -810,21 +787,21 @@ export default function Home() {
                     )}
                   </div>
                   {selected&&!visibleSpecs.some(s=>s.id===selected)&&<p className="helper-note" role="status">Выбранная спека вне фильтра. Выбор и контекст сохранены.</p>}
-                  <div className="canvas-bottom">
-                    <span>
-                      <span className="legend-line" />
+                  <div className={humanRoadmap.canvasBottom}>
+                    <span className={humanRoadmap.legend}>
+                      <span className={humanRoadmap.legendLine} />
                       Обязательная зависимость
                     </span>
-                    <span>Положение узла не определяет порядок исполнения</span>
+                    <span className={humanRoadmap.canvasExplanation}>Положение узла не определяет порядок исполнения</span>
                   </div>
                   {spec && (
-                    <div className="selection-strip">
-                      <div>
-                        <span className="mono">{spec.humanId}</span>
-                        <strong>{spec.title}</strong>
+                    <div className={humanRoadmap.selection}>
+                      <div className={humanRoadmap.selectionText}>
+                        <span className={humanRoadmap.selectionId}>{spec.humanId}</span>
+                        <strong className={humanRoadmap.selectionTitle}>{spec.title}</strong>
                       </div>
                       <button
-                        className="text-btn"
+                        className={twMerge('text-btn',humanRoadmap.selectionAction)}
                         onClick={() => openSpecProcess(spec.id)}
                       >
                         Открыть процесс
@@ -846,8 +823,8 @@ export default function Home() {
                       Новая спека
                     </button>
                   </div>
-                  <div className="spec-picker">
-                    <AppSelect
+                  <div className={humanSpec.picker}>
+                    <AppSelect className="w-full border-ouro-border bg-ouro-subtle p-[10px] text-[12px]"
                       aria-label="Выбрать спецификацию"
                       value={selected ?? ""}
                       onValueChange={(value) => pick(value)}
@@ -861,54 +838,52 @@ export default function Home() {
                   </div>
                   {spec && revision ? (
                     <>
-                      <div className="spec-title-row">
+                      <div className={humanSpec.titleRow}>
                         <div>
                           <span className="mono eyebrow">{spec.humanId}</span>
-                          <h2>{spec.title}</h2>
+                          <h2 className={humanSpec.title}>{spec.title}</h2>
                         </div>
                         <Status state={spec.state} />
                       </div>
-                      <div className="spec-submeta">
+                      <div className={humanSpec.metadata}>
                         <span>
-                          Ревизия <strong>{revision.revision}</strong>
+                          Ревизия <strong className={humanSpec.revisionNumber}>{revision.revision}</strong>
                         </span>
-                        <span className="mono id-text" title={spec.id}>
+                        <span className={`mono ${humanSpec.id}`} title={spec.id}>
                           Agent ID · {spec.id}
                         </span>
                       </div>
-                      <div className="detail-tabs">
+                      <div className={humanSpec.tabs}>
                         <button
-                          className={
-                            detailTab === "expectation" ? "selected" : ""
-                          }
+                          className={twMerge(humanSpec.tab,detailTab==='expectation'?humanSpec.tabSelected:'')}
                           onClick={() => setDetailTab("expectation")}
                         >
-                          <FileText size={15} />
+                          <FileText className={humanSpec.tabIcon} size={15} />
                           Ожидание
                         </button>
                         <button
-                          className={detailTab==='process'?'selected':''}
+                          className={twMerge(humanSpec.tab,detailTab==='process'?humanSpec.tabSelected:'')}
                           onClick={()=>{if(!state.revisions.some(r=>r.id===flowRevisionId&&r.specId===spec.id))setFlowRevisionId(spec.revisionIds.at(-1)??revision.id);setDetailTab('process');}}
                         >
-                          <GitBranch size={15}/>Процесс
+                          <GitBranch className={humanSpec.tabIcon} size={15}/>Процесс
                         </button>
-                        <button className={detailTab==='states'?'selected':''} onClick={()=>setDetailTab('states')}>
-                          <Network size={15}/>Состояния
+                        <button className={twMerge(humanSpec.tab,detailTab==='states'?humanSpec.tabSelected:'')} onClick={()=>setDetailTab('states')}>
+                          <Network className={humanSpec.tabIcon} size={15}/>Состояния
                         </button>
                         <button
-                          className={detailTab === "compare" ? "selected" : ""}
+                          className={twMerge(humanSpec.tab,detailTab==='compare'?humanSpec.tabSelected:'')}
                           onClick={() => setDetailTab("compare")}
                         >
-                          <Columns2 size={15} />
+                          <Columns2 className={humanSpec.tabIcon} size={15} />
                           Сопоставление
                         </button>
                         <button
-                          className={detailTab === "reality" ? "selected" : ""}
+                          className={twMerge(humanSpec.tab,detailTab==='reality'?humanSpec.tabSelected:'')}
                           onClick={() => setDetailTab("reality")}
                         >
-                          <History size={15} />
+                          <History className={humanSpec.tabIcon} size={15} />
                           Реальность
-                          <span>
+                          <span className={humanSpec.tabCount}>
                             {
                               state.events.filter((e) => e.specId === selected)
                                 .length
@@ -916,20 +891,18 @@ export default function Home() {
                           </span>
                         </button>
                         <button
-                          className={
-                            detailTab === "revisions" ? "selected" : ""
-                          }
+                          className={twMerge(humanSpec.tab,detailTab==='revisions'?humanSpec.tabSelected:'')}
                           onClick={() => setDetailTab("revisions")}
                         >
-                          <Layers3 size={15} />
-                          Ревизии<span>{spec.revisionIds.length}</span>
+                          <Layers3 className={humanSpec.tabIcon} size={15} />
+                          Ревизии<span className={humanSpec.tabCount}>{spec.revisionIds.length}</span>
                         </button>
                       </div>
                       {detailTab==='process' && (()=>{
                         const shown=state.revisions.find(r=>r.id===flowRevisionId&&r.specId===spec.id)??state.revisions.find(r=>r.id===spec.revisionIds.at(-1))??revision;
                         return <>
-                          <div className="run-toolbar">
-                            <label className="form-label">Ревизия схемы<AppSelect aria-label="Ревизия схемы" value={shown.id} onValueChange={(value) =>setFlowRevisionId(value)}>{state.revisions.filter(r=>r.specId===spec.id).toReversed().map(r=><option key={r.id} value={r.id}>r{r.revision} · {r.id===spec.activeRevisionId?'активная':r.id===spec.revisionIds.at(-1)?'предложена':'историческая'}</option>)}</AppSelect></label>
+                          <div className={humanSpec.toolbar}>
+                            <label className={humanElements.formLabel}>Ревизия схемы<AppSelect className="w-full font-normal max-w-full p-[8px] text-[12px]" aria-label="Ревизия схемы" value={shown.id} onValueChange={(value) =>setFlowRevisionId(value)}>{state.revisions.filter(r=>r.specId===spec.id).toReversed().map(r=><option key={r.id} value={r.id}>r{r.revision} · {r.id===spec.activeRevisionId?'активная':r.id===spec.revisionIds.at(-1)?'предложена':'историческая'}</option>)}</AppSelect></label>
                             {shown.id!==spec.activeRevisionId&&shown.id===spec.revisionIds.at(-1)&&<button className="btn" disabled={!canWrite||busy} onClick={()=>command({type:'activateRevision',specId:spec.id,revisionId:shown.id},'Ревизия схемы активирована. История прежних попыток сохранена.')}><Check size={14}/>Активировать ревизию {shown.revision}</button>}
                           </div>
                           <SpecFlow key={shown.id} revision={shown} state={state} busy={busy} readOnly={!canWrite} onSave={saveFlow} actorId={identity?.id??'unauthenticated'} intents={flowRuntimeIntents.current} onCommand={runFlowCommand} onSimulateFlow={identity&&['local-human','human-token'].includes(identity.id)?simulateFlowCommand:undefined}/>
@@ -937,14 +910,14 @@ export default function Home() {
                       })()}
                       {detailTab==='states'&&<StateTransitions state={state} specId={spec.id} executionId={execution?.id}/>}
                       {detailTab === "expectation" && (
-                        <div className="expectation-content">
+                        <div className={humanSpec.expectation}>
                           <MeridianOrigin spec={spec} state={state}/>
-                          {spec.origin?.kind==='lesson'&&<section className="content-section small-section" aria-label="Происхождение спеки">
-                            <h3>Происхождение спеки</h3>
-                            {originLessonRevision?<><p>Урок «{originLessonRevision.title}» · r{originLessonRevision.revision}</p><p>Спека создана из этой опубликованной редакции. Новые публикации урока не меняют её источник.</p></>:<p>Редакция урока-источника недоступна в текущем снимке.</p>}
+                          {spec.origin?.kind==='lesson'&&<section className={`${humanSpec.section} small-section`} aria-label="Происхождение спеки">
+                            <h3 className={humanSpec.smallHeading}>Происхождение спеки</h3>
+                            {originLessonRevision?<><p className={humanSpec.smallCopy}>Урок «{originLessonRevision.title}» · r{originLessonRevision.revision}</p><p className={humanSpec.smallCopy}>Спека создана из этой опубликованной редакции. Новые публикации урока не меняют её источник.</p></>:<p className={humanSpec.smallCopy}>Редакция урока-источника недоступна в текущем снимке.</p>}
                           </section>}
-                          {spec.origin?.kind==='agent_proposal'&&(()=>{const origin=spec.origin,proposal=state.agentProposals.find(p=>p.id===origin.proposalId),source=state.agentProposalRevisions.find(r=>r.id===origin.proposalRevisionId);return <section className="content-section" aria-label="Происхождение предложения агента"><div className="section-heading"><h3>Происхождение</h3><span className="quiet-label">ПРЕДЛОЖЕНИЕ АГЕНТА · v{source?.revision??'?'}</span></div><p>{source?.content.title} · {proposal?.agentId}</p><p className="helper-note">Исходная интерпретация сохранена. Человек создал и отредактировал это ожидание; активация отдельно.</p><button className="text-btn" onClick={()=>{setProposalFocus({proposalId:origin.proposalId,proposalRevisionId:origin.proposalRevisionId});setView('proposals');}}>Прочитать предложение и источники<ArrowRight size={14}/></button></section>;})()}
-                          <section className="content-section">
+                          {spec.origin?.kind==='agent_proposal'&&(()=>{const origin=spec.origin,proposal=state.agentProposals.find(p=>p.id===origin.proposalId),source=state.agentProposalRevisions.find(r=>r.id===origin.proposalRevisionId);return <section className={humanSpec.section} aria-label="Происхождение предложения агента"><div className="section-heading"><h3>Происхождение</h3><span className="quiet-label">ПРЕДЛОЖЕНИЕ АГЕНТА · v{source?.revision??'?'}</span></div><p>{source?.content.title} · {proposal?.agentId}</p><p className="helper-note">Исходная интерпретация сохранена. Человек создал и отредактировал это ожидание; активация отдельно.</p><button className="text-btn" onClick={()=>{setProposalFocus({proposalId:origin.proposalId,proposalRevisionId:origin.proposalRevisionId});setView('proposals');}}>Прочитать предложение и источники<ArrowRight size={14}/></button></section>;})()}
+                          <section className={humanSpec.section}>
                             <div className="section-heading">
                               <h3>Что должно измениться</h3>
                               <span className="quiet-label">
@@ -953,20 +926,20 @@ export default function Home() {
                                   : "ПРОЕКТ РЕВИЗИИ"}
                               </span>
                             </div>
-                            <p className="goal-text">{revision.goal}</p>
+                            <p className={humanSpec.goal}>{revision.goal}</p>
                           </section>
-                          <section className="content-section">
+                          <section className={humanSpec.section}>
                             <div className="section-heading">
                               <h3>Definition of Done</h3>
                               <span className="quiet-label">
                                 {revision.dod.length} КРИТЕРИЯ
                               </span>
                             </div>
-                            <div className="criterion-list">
+                            <div className={humanSpec.criteria}>
                               {revision.dod.map((c, i) => (
-                                <div className="criterion" key={c.id}>
+                                <div className={humanSpec.criterion} key={c.id}>
                                   <span
-                                    className={`criterion-check ${spec.acceptance ? "checked" : ""}`}
+                                    className={twMerge(humanSpec.criterionNumber,spec.acceptance?humanSpec.criterionChecked:'')}
                                   >
                                     {spec.acceptance ? (
                                       <Check size={13} />
@@ -975,15 +948,15 @@ export default function Home() {
                                     )}
                                   </span>
                                   <div>
-                                    <p>{c.text}</p>
+                                    <p className={humanSpec.criterionCopy}>{c.text}</p>
                                     {spec.acceptance?.evidence[c.id] && (
-                                      <small>
+                                      <small className={humanSpec.criterionEvidence}>
                                         {spec.acceptance.evidence[c.id]}
                                       </small>
                                     )}
                                   </div>
                                   {c.required && (
-                                    <span className="criterion-required">
+                                    <span className={humanSpec.criterionRequired}>
                                       обязательный
                                     </span>
                                   )}
@@ -1000,16 +973,16 @@ export default function Home() {
                             .filter(([, v]) => v)
                             .map(([label, value]) => (
                               <section
-                                className="content-section small-section"
+                                className={`${humanSpec.section} small-section`}
                                 key={label}
                               >
-                                <h3>{label}</h3>
-                                <p>{value}</p>
+                                <h3 className={humanSpec.smallHeading}>{label}</h3>
+                                <p className={humanSpec.smallCopy}>{value}</p>
                               </section>
                             ))}
                           {!spec.activeRevisionId && (
-                            <div className="draft-notice">
-                              <p>
+                            <div className={humanSpec.draft}>
+                              <p className={humanSpec.draftCopy}>
                                 Ревизия ещё не активирована. До активации
                                 исполнение недоступно.
                               </p>
@@ -1031,9 +1004,9 @@ export default function Home() {
                               </button>
                             </div>
                           )}
-                          <div className="detail-actions">
+                          <div className={humanSpec.actions}>
                             <button
-                              className="btn"
+                              className={twMerge('btn',humanSpec.actionButton)}
                               disabled={!canWrite}
                               onClick={() => setModal("revision")}
                             >
@@ -1041,7 +1014,7 @@ export default function Home() {
                               Предложить ревизию
                             </button>
                             <button
-                              className="btn btn-primary"
+                              className={twMerge('btn btn-primary',humanSpec.actionButton)}
                               disabled={!canWrite || busy || spec.state === "done"}
                               onClick={() => setModal("accept")}
                             >
@@ -1056,24 +1029,24 @@ export default function Home() {
                         </div>
                       )}
                       {detailTab === "compare" && (
-                        <div className="comparison-view">
-                          <section className="comparison-expectation">
-                            <div className="comparison-heading">
+                        <div className={humanSpec.comparison}>
+                          <section className={humanSpec.comparisonExpectation}>
+                            <div className={humanSpec.comparisonHeading}>
                               <FileText size={16} />
-                              <h3>Ожидание</h3>
-                              <span>Ревизия {revision.revision}</span>
+                              <h3 className={humanSpec.comparisonTitle}>Ожидание</h3>
+                              <span className={humanSpec.comparisonCaption}>Ревизия {revision.revision}</span>
                             </div>
-                            <div className="comparison-block">
+                            <div className={humanSpec.comparisonBlock}>
                               <span className="quiet-label">ЦЕЛЬ</span>
-                              <p className="goal-text">{revision.goal}</p>
+                              <p className={twMerge(humanSpec.goal,humanSpec.comparisonCopy)}>{revision.goal}</p>
                             </div>
-                            <div className="comparison-block">
-                              <h3>Definition of Done</h3>
-                              <div className="criterion-list">
+                            <div className={humanSpec.comparisonBlock}>
+                              <h3 className={humanSpec.comparisonBlockTitle}>Definition of Done</h3>
+                              <div className={humanSpec.criteria}>
                                 {revision.dod.map((c, i) => (
-                                  <div className="criterion" key={c.id}>
+                                  <div className={twMerge(humanSpec.criterion,humanSpec.comparisonCriterion)} key={c.id}>
                                     <span
-                                      className={`criterion-check ${spec.acceptance ? "checked" : ""}`}
+                                      className={twMerge(humanSpec.criterionNumber,spec.acceptance?humanSpec.criterionChecked:'')}
                                     >
                                       {spec.acceptance ? (
                                         <Check size={13} />
@@ -1082,9 +1055,9 @@ export default function Home() {
                                       )}
                                     </span>
                                     <div>
-                                      <p>{c.text}</p>
+                                      <p className={twMerge(humanSpec.criterionCopy,humanSpec.comparisonCriterionCopy)}>{c.text}</p>
                                       {spec.acceptance?.evidence[c.id] && (
-                                        <small>
+                                        <small className={humanSpec.criterionEvidence}>
                                           {spec.acceptance.evidence[c.id]}
                                         </small>
                                       )}
@@ -1094,9 +1067,9 @@ export default function Home() {
                               </div>
                             </div>
                             {revision.constraints && (
-                              <div className="comparison-block">
-                                <h3>Ограничения</h3>
-                                <p>{revision.constraints}</p>
+                              <div className={humanSpec.comparisonBlock}>
+                                <h3 className={humanSpec.comparisonBlockTitle}>Ограничения</h3>
+                                <p className={humanSpec.comparisonCopy}>{revision.constraints}</p>
                               </div>
                             )}
                             <button
@@ -1107,11 +1080,11 @@ export default function Home() {
                               <ArrowRight size={14} />
                             </button>
                           </section>
-                          <section className="comparison-reality">
-                            <div className="comparison-heading">
+                          <section className={humanSpec.comparisonReality}>
+                            <div className={humanSpec.comparisonHeading}>
                               <History size={16} />
-                              <h3>Реальность</h3>
-                              <span>Только r{revision.revision}</span>
+                              <h3 className={humanSpec.comparisonTitle}>Реальность</h3>
+                              <span className={humanSpec.comparisonCaption}>Только r{revision.revision}</span>
                             </div>
                             {execution &&
                               execution.specRevisionId === revision.id && (
@@ -1130,6 +1103,7 @@ export default function Home() {
                                 />
                               )}
                             <Timeline
+                              comparison
                               state={{
                                 ...state,
                                 events: state.events.filter(
@@ -1150,10 +1124,10 @@ export default function Home() {
                       )}
                       {detailTab === "reality" && (
                         <>
-                          <div className="run-toolbar">
-                            <div>
-                              <h3>Управление попыткой</h3>
-                              <p>
+                          <div className={humanSpec.toolbar}>
+                            <div className={humanSpec.toolbarGroup}>
+                              <h3 className={humanSpec.toolbarHeading}>Управление попыткой</h3>
+                              <p className={humanSpec.toolbarCopy}>
                                 Выберите исполнителя и разрешите одну попытку.
                                 Назначенный агент отдельно подтверждает запуск.
                               </p>
@@ -1167,7 +1141,7 @@ export default function Home() {
                               ].includes(execution.state)) &&
                               spec.activeRevisionId &&
                               spec.state !== "done" && (
-                                <div className="agent-assignment-actions">
+                                <div className={twMerge(humanSpec.assignment,humanSpec.toolbarGroup)}>
                                 <FlowTrackingChoice checked={trackingChecked} reason={trackingReason} disabled={!canWrite||busy} onChange={setTrackingChecked}/>
                                 <AgentPicker agents={agents} value={assignmentAgentId} onChange={setAssignmentAgentId} disabled={!canWrite||busy}/>
                                 <button
@@ -1182,7 +1156,7 @@ export default function Home() {
                                 </button>
                                 </div>
                               )}
-                            <AppSelect
+                            <AppSelect className="max-w-full p-[8px] text-[12px]"
                               aria-label="Симулятор в контексте спецификации"
                               value=""
                               disabled={busy || !simulatorAvailable}
@@ -1238,12 +1212,12 @@ export default function Home() {
                         </>
                       )}
                       {detailTab === "revisions" && (
-                        <div className="revisions-list">
+                        <div className={humanSpec.revisions}>
                           {state.revisions
                             .filter((r) => r.specId === selected)
                             .toReversed()
                             .map((r) => (
-                              <article key={r.id} className="revision-card">
+                              <article key={r.id} className={humanSpec.revision}>
                                 <div className="section-heading">
                                   <h3>Ревизия {r.revision}</h3>
                                   {r.id === spec.activeRevisionId ? (
@@ -1270,12 +1244,12 @@ export default function Home() {
                                     </button>
                                   )}
                                 </div>
-                                <strong>{r.title}</strong>
-                                <p>{r.goal}</p>
-                                <small>
+                                <strong className={humanSpec.revisionTitle}>{r.title}</strong>
+                                <p className={humanSpec.revisionGoal}>{r.goal}</p>
+                                <small className={humanSpec.revisionAuthor}>
                                   {shortDate(r.createdAt)} · {r.authorId}
                                 </small>
-                                <code>{r.id}</code>
+                                <code className={humanSpec.revisionId}>{r.id}</code>
                               </article>
                             ))}
                           <button
@@ -1311,12 +1285,12 @@ export default function Home() {
                       </p>
                     </div>
                   </div>
-                  <div className="decision-layout">
-                    <div className="decision-list">
+                  <div className={humanDecision.layout}>
+                    <div className={humanDecision.list}>
                       {state.requests.length ? (
                         state.requests.toReversed().map((r) => (
                           <button
-                            className={`decision-row ${r.id === currentRequest?.id ? "selected" : ""}`}
+                            className={twMerge(humanDecision.row,r.id===currentRequest?.id?humanDecision.selected:'')}
                             key={r.id}
                             data-testid={`decision-${r.id}`}
                             onClick={() => {
@@ -1325,16 +1299,16 @@ export default function Home() {
                             }}
                           >
                             <div
-                              className={`request-kind kind-${r.kind.toLowerCase()}`}
+                              className={twMerge(humanContext.kind,humanRequestKinds[r.kind])}
                             >
                               <RequestIcon kind={r.kind} />
                               <span>{kinds[r.kind]}</span>
                               <span
-                                className={`request-state-dot ${r.state === "pending" ? "pending" : ""}`}
+                                className={twMerge(humanDecision.dot,r.state==='pending'?humanDecision.pendingDot:'')}
                               />
                             </div>
-                            <strong>{r.title}</strong>
-                            <small>
+                            <strong className={humanDecision.rowTitle}>{r.title}</strong>
+                            <small className={humanDecision.rowMeta}>
                               {
                                 state.specs.find((s) => s.id === r.specId)
                                   ?.humanId
@@ -1394,15 +1368,15 @@ export default function Home() {
                       Экспорт JSON
                     </button>
                   </div>
-                  <form className="history-cursor-form" onSubmit={event=>{event.preventDefault();const value=Number(historicalInput);if(historicalInput.trim()===''||!Number.isSafeInteger(value)||value<0||value>state.version){setError(`Cursor должен быть целым числом от 0 до ${state.version}.`);return;}historicalCursorRef.current=value;setHistoricalCursor(value);setModal(null);setError('');}}>
-                    <label>Исторический cursor<input type="number" min={0} max={state.version} step={1} required value={historicalInput} onChange={event=>setHistoricalInput(event.target.value)}/></label>
+                  <form className={twMerge("history-cursor-form",humanMaintenance.cursorForm)} onSubmit={event=>{event.preventDefault();const value=Number(historicalInput);if(historicalInput.trim()===''||!Number.isSafeInteger(value)||value<0||value>state.version){setError(`Cursor должен быть целым числом от 0 до ${state.version}.`);return;}historicalCursorRef.current=value;setHistoricalCursor(value);setModal(null);setError('');}}>
+                    <label className={humanMaintenance.cursorLabel}>Исторический cursor<input className={humanMaintenance.cursorInput} type="number" min={0} max={state.version} step={1} required value={historicalInput} onChange={event=>setHistoricalInput(event.target.value)}/></label>
                     <button type="submit" className="btn" disabled={busy}>Открыть состояние на cursor</button>
-                    <p>Состояние из сохранённого префикса истории. В просмотре прошлой точки запись недоступна.</p>
+                    <p className={humanMaintenance.cursorCopy}>Состояние из сохранённого префикса истории. В просмотре прошлой точки запись недоступна.</p>
                   </form>
-                  <div className="history-filter">
-                    <label>
+                  <div className={humanHistory.filter}>
+                    <label className={humanHistory.filterLabel}>
                       Контекст
-                      <AppSelect
+                      <AppSelect className="mt-[6px] block w-full border-ouro-border p-[8px] text-[12px]"
                         aria-label="Контекст"
                         value={selected ?? ""}
                         onValueChange={(value) => setSelected(value || null)}
@@ -1416,7 +1390,7 @@ export default function Home() {
                       </AppSelect>
                     </label>
                     <button
-                      className="text-btn"
+                      className={twMerge('text-btn',humanHistory.filterAction)}
                       onClick={() => setSelected(null)}
                     >
                       Показать весь проект
@@ -1440,76 +1414,76 @@ export default function Home() {
               {view === "methodology" && <Methodology />}
               {view === "agents" && <AgentsPanel onAgentsChange={setAgents} readOnly={projectRole!=='Owner'}/>}
               {view==='integrations'&&<>
-                <div className="integration-source-switch" role="group" aria-label="Источник интеграции"><button type="button" aria-pressed={integrationSource==='github'} onClick={()=>setIntegrationSource('github')}>GitHub</button><button type="button" aria-pressed={integrationSource==='meridian'} onClick={()=>setIntegrationSource('meridian')}>Meridian</button></div>
+                <IntegrationSourceSwitch value={integrationSource} onValueChange={setIntegrationSource}/>
                 <div hidden={integrationSource!=='github'}><GitHubPanel state={state} onSnapshot={adoptMutation} readOnly={!canWrite}/></div>
                 <div hidden={integrationSource!=='meridian'}><MeridianPanel key={`${state.projectId}:${meridianParticipantKey}`} participantKey={meridianParticipantKey} pendingIntent={meridianPendingIntent} theme={theme} state={state} onSnapshot={adoptMutation} readOnly={!canWrite} onOpenSpec={id=>{pick(id);setDetailTab('expectation');setView('specs');}}/></div>
               </>}
               {view==='lessons'&&<LessonsPanel state={state} onSnapshot={adoptMutation} readOnly={!canWrite} onOpenSpec={id=>{pick(id);setView('specs');setDetailTab('expectation');}}/>}
               {view==='impact'&&<ImpactPanel state={state}/>}
-              {view==='participants'&&(identity&&!['local-human','human-token'].includes(identity.id)?<ProjectMembersPanel projectId={state.projectId} identity={identity}/>:<ParticipantsPanel/>)}
+              {view==='participants'&&(identity&&!['local-human','human-token'].includes(identity.id)?<ProjectMembersPanel projectId={state.projectId} identity={identity} readScope={{...readScope,projectId:state.projectId}}/>:<ParticipantsPanel/>)}
               {view==='drafts'&&<CollaborativeDraftsPanel state={state} actorId={identity?.id??'local-human'} onSnapshot={adoptMutation} onPendingChange={setSharedPending} readOnly={!canWrite} onOpenSpec={id=>{pick(id);setView('specs');}}/>}
               {view==='proposals'&&<AgentProposalsPanel state={state} actorId={identity?.id??'unauthenticated'} onSnapshot={adoptMutation} intents={proposalIntents} initialSelection={proposalFocus} readOnly={!canWrite} onOpenSpec={id=>{pick(id);setView('specs');setDetailTab('expectation');}}/>}
               </>}
             </main>
-            {historicalCursor===null && view !== 'agents' && view!=='integrations' && view!=='lessons' && view!=='impact' && view!=='participants' && view!=='drafts' && view!=='proposals' && <aside className="context-panel">
-              <div className="context-panel-heading">
+            {historicalCursor===null && view !== 'agents' && view!=='integrations' && view!=='lessons' && view!=='impact' && view!=='participants' && view!=='drafts' && view!=='proposals' && <aside className={humanShell.context}>
+              <div className={humanContext.heading}>
                 <span>Требует внимания</span>
-                <span className="attention-counter">{pending.length}</span>
+                <span className={humanContext.count}>{pending.length}</span>
                 <button
-                  className="icon-btn"
+                  className={twMerge(humanShell.icon,humanContext.refresh)}
                   aria-label="Обновить проект"
                   onClick={() => refresh().catch((e) => setError(e.message))}
                 >
                   <RefreshCw size={14} />
                 </button>
               </div>
-              <div className="attention-list">
+              <div className={humanContext.list}>
                 {pending.length ? (
                   pending.slice(0, 4).map((r) => (
                     <button
-                      className={`attention-card ${r.specId === selected ? "selected" : ""}`}
+                      className={twMerge(humanContext.card,r.specId===selected?humanContext.selectedCard:'')}
                       key={r.id}
                       onClick={() => openRequest(r)}
                     >
                       <div
-                        className={`request-kind kind-${r.kind.toLowerCase()}`}
+                        className={twMerge(humanContext.kind,humanRequestKinds[r.kind])}
                       >
                         <RequestIcon kind={r.kind} />
                         <span>{kinds[r.kind]}</span>
-                        <ArrowUpRight size={14} />
+                        <ArrowUpRight className={humanContext.openRequestIcon} size={14} />
                       </div>
-                      <strong>{r.title}</strong>
-                      <small>
+                      <strong className={humanContext.cardTitle}>{r.title}</strong>
+                      <small className={humanContext.cardMeta}>
                         {state.specs.find((s) => s.id === r.specId)?.humanId}
-                        <span>Решение за вами</span>
+                        <span className={humanContext.cardMetaLabel}>Решение за вами</span>
                       </small>
                     </button>
                   ))
                 ) : (
-                  <div className="attention-clear">
-                    <ShieldCheck size={22} />
-                    <strong>Всё разобрано</strong>
-                    <p>Новых запросов человеку нет.</p>
+                  <div className={humanContext.clear}>
+                    <ShieldCheck className={humanContext.clearIcon} size={22} />
+                    <strong className={humanContext.clearTitle}>Всё разобрано</strong>
+                    <p className={humanContext.clearCopy}>Новых запросов человеку нет.</p>
                   </div>
                 )}
               </div>
               {spec && (
-                <div className="context-selected">
-                  <div className="section-heading">
-                    <h3>Контекст работы</h3>
+                <div className={humanContext.selected}>
+                  <div className={humanElements.sectionHeading}>
+                    <h3 className={humanContext.selectedHeading}>Контекст работы</h3>
                     <FileText size={15} />
                   </div>
-                  <span className="mono">{spec.humanId}</span>
-                  <strong className="selected-title">{spec.title}</strong>
+                  <span className={humanContext.selectedId}>{spec.humanId}</span>
+                  <strong className={humanContext.selectedTitle}>{spec.title}</strong>
                   <Status state={spec.state} />
-                  <div className="context-facts">
-                    <div>
-                      <span>Ревизия</span>
-                      <strong>{revision?.revision ?? "—"}</strong>
+                  <div className={humanContext.facts}>
+                    <div className={humanContext.fact}>
+                      <span className={humanContext.factLabel}>Ревизия</span>
+                      <strong className={humanContext.factValue}>{revision?.revision ?? "—"}</strong>
                     </div>
-                    <div>
-                      <span>Исполнение</span>
-                      <strong>
+                    <div className={humanContext.fact}>
+                      <span className={humanContext.factLabel}>Исполнение</span>
+                      <strong className={humanContext.factValue}>
                         {execution
                           ? execution.kind === "remediation"
                             ? "Устранение блокера"
@@ -1517,9 +1491,9 @@ export default function Home() {
                           : "Не начато"}
                       </strong>
                     </div>
-                    <div>
-                      <span>Результат принят</span>
-                      <strong>{spec.acceptance ? "Человеком" : "Нет"}</strong>
+                    <div className={humanContext.fact}>
+                      <span className={humanContext.factLabel}>Результат принят</span>
+                      <strong className={humanContext.factValue}>{spec.acceptance ? "Человеком" : "Нет"}</strong>
                     </div>
                   </div>
                   {(!execution ||
@@ -1529,11 +1503,11 @@ export default function Home() {
                     spec.activeRevisionId &&
                     spec.state !== "done" &&
                     spec.state !== "invalidated" && (
-                      <div className="agent-assignment-actions agent-assignment-vertical">
+                      <div className={twMerge(humanSpec.assignment,humanSpec.verticalAssignment)}>
                       <FlowTrackingChoice checked={trackingChecked} reason={trackingReason} disabled={!canWrite||busy} onChange={setTrackingChecked}/>
                       <AgentPicker agents={agents} value={assignmentAgentId} onChange={setAssignmentAgentId} disabled={!canWrite||busy}/>
                       <button
-                        className="btn btn-small btn-full"
+                        className={twMerge('btn btn-small btn-full',humanContext.action)}
                         disabled={!canWrite || busy || !assignmentValid || externalStopUnknown}
                         onClick={() =>
                           authorizeAttempt("Попытка разрешена человеком. Ожидается подтверждение назначенного исполнителя")
@@ -1547,6 +1521,7 @@ export default function Home() {
                   {execution && (
                     <ExecutionPanel
                       compact
+                      context
                       execution={execution}
                       agents={agents}
                       version={state.version}
@@ -1558,7 +1533,7 @@ export default function Home() {
                     />
                   )}
                   <button
-                    className="btn btn-full"
+                    className={twMerge('btn btn-full',humanContext.action)}
                     onClick={() => setView("specs")}
                   >
                     Открыть ожидание и реальность
@@ -1566,18 +1541,18 @@ export default function Home() {
                   </button>
                 </div>
               )}
-              <div className="simulator-panel">
+              <div className={humanContext.simulator}>
                 <div className="section-heading">
-                  <h3>
+                  <h3 className={humanContext.simulatorHeading}>
                     <Zap size={15} />
                     Симулятор
                   </h3>
-                  <span className="small-tag">DEMO</span>
+                  <span className={humanContext.badge}>DEMO</span>
                 </div>
-                <p>{execution?.agentId && execution.agentId!==AGENT_ID ? 'Эта попытка назначена MCP-агенту. Его факты и подтверждения поступают через подключение.' : 'Учебные сценарии работают только для попыток, назначенных симулятору.'}</p>
-                <label>
+                <p className={humanContext.simulatorCopy}>{execution?.agentId && execution.agentId!==AGENT_ID ? 'Эта попытка назначена MCP-агенту. Его факты и подтверждения поступают через подключение.' : 'Учебные сценарии работают только для попыток, назначенных симулятору.'}</p>
+                <label className={humanContext.simulatorLabel}>
                   Сообщение агента
-                  <AppSelect
+                  <AppSelect className="mt-[7px] block w-full p-[8px] text-[12px]"
                     aria-label="Сценарий симулятора"
                     value=""
                     disabled={busy || !selected || !simulatorAvailable}
@@ -1604,29 +1579,29 @@ export default function Home() {
                     </option>
                   </AppSelect>
                 </label>
-                <span className="simulator-footnote">
+                <span className={humanContext.simulatorNote}>
                   Action фиксирует факт. Решения остаются за человеком.
                 </span>
               </div>
             </aside>}
           </div>
         )}
-        <footer className="statusbar">
-          <div role="status" aria-live="polite">
-            <span className={`connection-dot ${connected ? "online" : ""}`} />
+        <footer className={humanShell.footer}>
+          <div className={humanShell.footerGroup} role="status" aria-live="polite">
+            <span className={twMerge(humanShell.connection,connected?humanShell.connected:'')} />
             {connected?'Живые обновления подключены':streamStatus==='reload-required'?'История сервера изменилась · требуется проверка и перезагрузка':streamStatus==='connecting'?'Подключаем живые обновления…':'Нет связи · переподключаемся, показаны последние данные'}
-            <span className="footer-separator" />
+            <span className={humanShell.footerSeparator} />
             <span className="mono">cursor {cursor}</span>
           </div>
-          <div>
-            <span>
+          <div className={humanShell.footerGroup}>
+            <span className={humanShell.footerStorage}>
               {storage === "postgres"
                 ? "PostgreSQL"
                 : storage
                   ? "PostgreSQL · embedded"
                   : "Хранилище…"}
             </span>
-            <span className="footer-separator" />
+            <span className={twMerge(humanShell.footerSeparator,humanShell.footerStorage)} />
             <span>{packageInfo.version}</span>
           </div>
         </footer>
@@ -1732,42 +1707,42 @@ function SpecTable({
   onSelect: (id: string) => void;
 }) {
   return (
-    <div className="table-wrap">
-      <table>
+    <div className={humanRoadmap.tableWrap}>
+      <table className={humanRoadmap.table}>
         <thead>
           <tr>
-            <th>Спецификация</th>
-            <th>Статус</th>
-            <th>Ревизия</th>
-            <th>Решения</th>
-            <th />
+            <th className={humanRoadmap.tableHeading}>Спецификация</th>
+            <th className={humanRoadmap.tableHeading}>Статус</th>
+            <th className={humanRoadmap.tableHeading}>Ревизия</th>
+            <th className={humanRoadmap.tableHeading}>Решения</th>
+            <th className={humanRoadmap.tableHeading}/>
           </tr>
         </thead>
         <tbody>
           {specs.map((s) => (
-            <tr key={s.id} className={s.id === selected ? "selected" : ""}>
-              <td>
-                <button className="table-spec" onClick={() => onSelect(s.id)}>
-                  <span className="mono">{s.humanId}</span>
-                  <strong>{s.title}</strong>
+            <tr key={s.id} className={twMerge(humanRoadmap.tableRow,s.id===selected?humanRoadmap.tableSelected:'')}>
+              <td className={humanRoadmap.tableCell}>
+                <button className={humanRoadmap.tableSpec} onClick={() => onSelect(s.id)}>
+                  <span className={humanRoadmap.tableSpecId}>{s.humanId}</span>
+                  <strong className={humanRoadmap.tableSpecTitle}>{s.title}</strong>
                 </button>
               </td>
-              <td>
+              <td className={humanRoadmap.tableCell}>
                 <Status state={s.state} />
               </td>
-              <td className="mono">
+              <td className={twMerge('mono',humanRoadmap.tableCell)}>
                 r
                 {state.revisions.find((r) => r.id === s.activeRevisionId)
                   ?.revision ?? "—"}
               </td>
-              <td>
+              <td className={humanRoadmap.tableCell}>
                 {state.requests.filter(
                   (r) => r.specId === s.id && r.state === "pending",
                 ).length || "—"}
               </td>
-              <td>
+              <td className={humanRoadmap.tableCell}>
                 <button
-                  className="icon-btn"
+                  className={humanShell.icon}
                   onClick={() => onSelect(s.id)}
                   aria-label={`Открыть ${s.humanId}`}
                 >
@@ -1789,7 +1764,7 @@ function SpecTable({
 
 function AgentPicker({agents,value,onChange,disabled=false}:{agents:AgentRegistration[];value:string;onChange:(id:string)=>void;disabled?:boolean}){
   const valid=value===AGENT_ID||agents.some(a=>a.id===value&&!a.revokedAt);
-  return <label className="agent-picker">Исполнитель попытки<AppSelect aria-label="Исполнитель попытки" value={valid?value:''} onValueChange={(value) =>onChange(value)} disabled={disabled}><option value="" disabled>Выберите исполнителя</option><option value={AGENT_ID}>Симулятор · учебный режим</option>{agents.filter(a=>!a.revokedAt).map(a=><option value={a.id} key={a.id}>{a.name} · MCP</option>)}</AppSelect></label>;
+  return <label className={humanSpec.agentPicker}>Исполнитель попытки<AppSelect className="min-h-[36px] w-full max-w-[300px] rounded-[var(--radius)] bg-ouro-bg p-[8px] text-[12px] text-ouro-text [.agent-assignment-vertical_&]:max-w-full" aria-label="Исполнитель попытки" value={valid?value:''} onValueChange={(value) =>onChange(value)} disabled={disabled}><option value="" disabled>Выберите исполнителя</option><option value={AGENT_ID}>Симулятор · учебный режим</option>{agents.filter(a=>!a.revokedAt).map(a=><option value={a.id} key={a.id}>{a.name} · MCP</option>)}</AppSelect></label>;
 }
 
 function DecisionForm({
@@ -1855,42 +1830,42 @@ function DecisionForm({
   };
   return (
     <article className="request-detail">
-      <div className="request-detail-meta">
-        <span className={`request-kind kind-${r.kind.toLowerCase()}`}>
+      <div className={humanDecision.metadata}>
+        <span className={twMerge(humanContext.kind,humanRequestKinds[r.kind])}>
           <RequestIcon kind={r.kind} />
           {kinds[r.kind]}
         </span>
         <Status state={r.state} />
       </div>
-      <span className="mono eyebrow">{spec?.humanId}</span>
-      <h2>{r.title}</h2>
-      <div className="request-context">
+      <span className={twMerge('mono eyebrow',humanDecision.eyebrow)}>{spec?.humanId}</span>
+      <h2 className={humanDecision.title}>{r.title}</h2>
+      <div className={humanDecision.context}>
         <span className="quiet-label">КОНТЕКСТ</span>
-        <p>{r.context}</p>
+        <p className={twMerge(humanDecision.copy,humanDecision.contextCopy)}>{r.context}</p>
       </div>
       {r.question && (
-        <section>
-          <h3>Вопрос агента</h3>
-          <p>{r.question}</p>
+        <section className={humanDecision.section}>
+          <h3 className={humanDecision.sectionTitle}>Вопрос агента</h3>
+          <p className={humanDecision.copy}>{r.question}</p>
         </section>
       )}
       {r.reason && (
-        <section>
-          <h3>Основание</h3>
-          <p>{r.reason}</p>
+        <section className={humanDecision.section}>
+          <h3 className={humanDecision.sectionTitle}>Основание</h3>
+          <p className={humanDecision.copy}>{r.reason}</p>
         </section>
       )}
       {r.kind === "Blocker" && (
-        <div className="blocker-comparison">
-          <div>
-            <span>Ожидалось</span>
-            <p>{r.expected}</p>
+        <div className={humanDecision.blocker}>
+          <div className={humanDecision.blockerFact}>
+            <span className={humanDecision.blockerLabel}>Ожидалось</span>
+            <p className={twMerge(humanDecision.copy,humanDecision.blockerCopy)}>{r.expected}</p>
           </div>
-          <div>
-            <span>Наблюдается</span>
-            <p>{r.actual}</p>
+          <div className={humanDecision.blockerFact}>
+            <span className={humanDecision.blockerLabel}>Наблюдается</span>
+            <p className={twMerge(humanDecision.copy,humanDecision.blockerCopy)}>{r.actual}</p>
           </div>
-          <p className="blocker-impact">Влияние: {r.impact}</p>
+          <p className={humanDecision.blockerImpact}>Влияние: {r.impact}</p>
         </div>
       )}
       {(r.state === 'pending'||text.length>0||option.length>0) && (
@@ -1898,11 +1873,11 @@ function DecisionForm({
           {r.state!=='pending'&&<p className="helper-note">Запрос уже закрыт. Ваш введённый текст сохранён для сравнения; повторная запись недоступна.</p>}
           {readOnly&&r.state==='pending'&&<p className="helper-note">Роль Viewer разрешает читать запрос и его источники. Ответ может записать Owner или Contributor.</p>}
           {!closed&&version!==baseVersion&&<p className="helper-note">Проект изменился после начала ответа. <button type="button" className="text-btn" onClick={()=>setBaseVersion(version)}>Обновить версию после проверки</button></p>}
-          <div className="decision-mode">
+          <div className={humanDecision.modes}>
             <button
               type="button"
               disabled={closed||busy}
-              className={mode === "decide" ? "active" : ""}
+              className={twMerge(humanDecision.mode,mode==='decide'?humanDecision.modeSelected:'')}
               onClick={() => {
                 setMode("decide");
                 setText("");
@@ -1913,7 +1888,7 @@ function DecisionForm({
             <button
               type="button"
               disabled={closed||busy}
-              className={mode === "reject" ? "active" : ""}
+              className={twMerge(humanDecision.mode,mode==='reject'?humanDecision.modeSelected:'')}
               onClick={() => {
                 setMode("reject");
                 setText("");
@@ -1924,7 +1899,7 @@ function DecisionForm({
             <button
               type="button"
               disabled={closed||busy}
-              className={mode === "defer" ? "active" : ""}
+              className={twMerge(humanDecision.mode,mode==='defer'?humanDecision.modeSelected:'')}
               onClick={() => {
                 setMode("defer");
                 setText("");
@@ -1934,16 +1909,16 @@ function DecisionForm({
             </button>
           </div>
           {mode === "decide" && r.kind !== "Question" && (
-            <fieldset className="option-list">
-              <legend>
+            <fieldset className={humanDecision.options}>
+              <legend className={humanDecision.optionsTitle}>
                 {r.kind === "Blocker" ? "План устранения" : "Варианты решения"}
               </legend>
               {r.options.map((o) => (
                 <label
-                  className={`option-card ${option === o.id ? "selected" : ""}`}
+                  className={twMerge(humanDecision.option,option===o.id?humanDecision.optionSelected:'')}
                   key={o.id}
                 >
-                  <input
+                  <input className={humanDecision.optionInput}
                     type="radio"
                     disabled={closed||busy}
                     name="decision-option"
@@ -1953,16 +1928,16 @@ function DecisionForm({
                     required
                   />
                   <div>
-                    <strong>{o.title}</strong>
-                    <p>{o.description}</p>
+                    <strong className={humanDecision.optionTitle}>{o.title}</strong>
+                    <p className={humanDecision.optionCopy}>{o.description}</p>
                     {r.recommendationOptionId === o.id && (
-                      <small>Рекомендация агента</small>
+                      <small className={humanDecision.recommendation}>Рекомендация агента</small>
                     )}
                   </div>
                 </label>
               ))}
               {r.options.length === 0 && (
-                <p className="inline-warning">
+                <p className={twMerge(humanDecision.copy,humanElements.inlineWarning)}>
                   Путь устранения пока неизвестен: {r.noPathReason}. Нужен
                   уточняющий запрос; одобрение без плана недоступно.
                 </p>
@@ -1970,13 +1945,13 @@ function DecisionForm({
             </fieldset>
           )}
           {(mode !== "decide" || r.kind === "Question") && (
-            <label className="form-label">
+            <label className={humanElements.formLabel}>
               {mode === "reject"
                 ? "Причина отклонения"
                 : mode === "defer"
                   ? "Почему откладываем на сутки"
                   : "Ваш ответ"}
-              <textarea
+              <textarea className={humanElements.field}
                 readOnly={closed}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
@@ -1991,9 +1966,9 @@ function DecisionForm({
               />
             </label>
           )}
-          <div className="decision-warning">
-            <ShieldCheck size={16} />
-            <p>
+          <div className={humanDecision.warning}>
+            <ShieldCheck className={humanDecision.warningIcon} size={16} />
+            <p className={humanDecision.warningCopy}>
               {mode === "defer"
                 ? "Отсрочка не закрывает запрос и не разрешает продолжение."
                 : r.kind === "Blocker"
@@ -2031,10 +2006,10 @@ function DecisionForm({
         </form>
       )}
       {r.state!=='pending' && (
-        <div className="recorded-decision">
+        <div className={humanDecision.recorded}>
           <div className="section-heading">
-            <h3>Решение человека</h3>
-            <ShieldCheck size={17} />
+            <h3 className={humanDecision.recordedTitle}>Решение человека</h3>
+            <ShieldCheck className={humanDecision.recordedIcon} size={17} />
           </div>
           <p>
             {outcome?.kind === "answer"
@@ -2046,11 +2021,11 @@ function DecisionForm({
                   : "Запрос закрыт без решения"}
           </p>
           {r.decision && (
-            <small>
+            <small className={humanDecision.recordedMeta}>
               {shortDate(r.decision.at)} · {r.decision.actorId}
             </small>
           )}
-          {r.decision&&<div className="application-state">
+          {r.decision&&<div className={humanDecision.application}>
             {!isCurrentDecisionRequest(state,r)?<>Историческое решение · применение не разрешено</>:r.decision.appliedAt ? (
               <>
                 <Check size={15} />
@@ -2071,10 +2046,10 @@ function DecisionForm({
                   : "Одобрение плана не снимает блокер."}
               </p>
               {r.decision?.outcome.kind === "approve" && !r.clearedEvidence && isCurrentDecisionRequest(state,r) && spec?.activeRevisionId===r.specRevisionId && !r.applicabilityEndedEvidence && (
-                <div className="agent-assignment-actions agent-assignment-vertical">
+                <div className={twMerge(humanSpec.assignment,humanSpec.verticalAssignment)}>
                 <AgentPicker agents={agents} value={remediationAgentId} onChange={setRemediationAgentId} disabled={busy}/>
                 <button
-                  className="btn"
+                  className={twMerge('btn',humanDecision.recordedAction)}
                   disabled={busy || !remediationValid}
                   onClick={() =>
                     command(
@@ -2101,9 +2076,9 @@ function DecisionForm({
         </p>
       )}
       <DecisionMaintenance request={r} state={state} busy={busy||readOnly} command={command} onOpenRequest={onOpenRequest}/>
-      <div className="request-id">
-        <span>Decision Request</span>
-        <code>{r.id}</code>
+      <div className={humanDecision.requestId}>
+        <span className={humanDecision.idLabel}>Decision Request</span>
+        <code className={humanDecision.idValue}>{r.id}</code>
       </div>
     </article>
   );
@@ -2134,20 +2109,20 @@ function DecisionMaintenance({request:r,state,busy,command,onOpenRequest}:{reque
       setMode(null);setDraft('');if(created)onOpenRequest(created);
     }
   };
-  return <section className="decision-maintenance" aria-label="История и уточнения решения">
-    {original&&<div className="decision-lineage"><strong>{r.supersedesDecisionId?'Исправляет прежнее решение':'Новый запрос плана для прежнего блокера'}</strong><span>{r.correctionReason}</span><p>Прежний ответ: {original.decision?.outcome.kind==='answer'?original.decision.outcome.answer:original.decision?.outcome.kind==='reject'?original.decision.outcome.reason:original.options.find(o=>o.id===(original.decision?.outcome as {chosenOptionId?:string})?.chosenOptionId)?.title??'Решение не было принято'}</p><button type="button" className="text-btn" onClick={()=>onOpenRequest(original)}>Открыть исходный запрос</button></div>}
-    {replacement&&<div className="decision-lineage"><strong>Для этого решения создан связанный запрос</strong><p>Прежнее решение сохранено. Его применение больше не разрешено.</p><button type="button" className="text-btn" onClick={()=>onOpenRequest(replacement)}>Открыть связанный запрос</button></div>}
-    {r.state==='withdrawn'&&<div className="decision-lineage"><strong>Запрос отозван автором</strong><p>{r.withdrawalReason}</p><p>Отзыв не является решением человека, разрешением продолжения или снятием физического блокера.</p></div>}
-    {clarifications.length>0&&<section className="decision-clarification-list" aria-label="Уточнения запроса"><h3>Уточнения запроса</h3>{clarifications.map(source=>{
+  return <section className={twMerge("decision-maintenance",humanMaintenance.decisions)} aria-label="История и уточнения решения">
+    {original&&<div className={twMerge("decision-lineage",humanMaintenance.lineage)}><strong className={humanMaintenance.lineageTitle}>{r.supersedesDecisionId?'Исправляет прежнее решение':'Новый запрос плана для прежнего блокера'}</strong><span>{r.correctionReason}</span><p>Прежний ответ: {original.decision?.outcome.kind==='answer'?original.decision.outcome.answer:original.decision?.outcome.kind==='reject'?original.decision.outcome.reason:original.options.find(o=>o.id===(original.decision?.outcome as {chosenOptionId?:string})?.chosenOptionId)?.title??'Решение не было принято'}</p><button type="button" className="text-btn" onClick={()=>onOpenRequest(original)}>Открыть исходный запрос</button></div>}
+    {replacement&&<div className={twMerge("decision-lineage",humanMaintenance.lineage)}><strong className={humanMaintenance.lineageTitle}>Для этого решения создан связанный запрос</strong><p>Прежнее решение сохранено. Его применение больше не разрешено.</p><button type="button" className="text-btn" onClick={()=>onOpenRequest(replacement)}>Открыть связанный запрос</button></div>}
+    {r.state==='withdrawn'&&<div className={twMerge("decision-lineage",humanMaintenance.lineage)}><strong className={humanMaintenance.lineageTitle}>Запрос отозван автором</strong><p>{r.withdrawalReason}</p><p>Отзыв не является решением человека, разрешением продолжения или снятием физического блокера.</p></div>}
+    {clarifications.length>0&&<section className={twMerge("decision-clarification-list",humanMaintenance.clarificationList)} aria-label="Уточнения запроса"><h3 className={humanMaintenance.heading}>Уточнения запроса</h3>{clarifications.map(source=>{
       const reply=state.events.find(event=>event.type==='DecisionClarificationSubmitted'&&event.payload.clarificationEventId===source.id);
-      return <article className="decision-clarification-item" key={source.id}><small>Запрос человека · #{source.version} · {source.actor.name??source.actor.id}</small><p>{String(source.payload.question)}</p>{reply?<><small>Ответ назначенного агента · #{reply.version}</small><p>{String(reply.payload.response)}</p></>:<small>Ожидается уточнение агента. Ответ человека по-прежнему требуется.</small>}<WorkspaceAccordion title={<>Связи с фактами</>}><code>{source.id}</code>{reply&&<p><code>{reply.id}</code> → <code>{String(reply.payload.clarificationEventId)}</code></p>}</WorkspaceAccordion></article>;
+      return <article className={twMerge("decision-clarification-item",humanMaintenance.clarification)} key={source.id}><small className={humanMaintenance.clarificationAuthor}>Запрос человека · #{source.version} · {source.actor.name??source.actor.id}</small><p className={humanMaintenance.clarificationCopy}>{String(source.payload.question)}</p>{reply?<><small className={humanMaintenance.clarificationAuthor}>Ответ назначенного агента · #{reply.version}</small><p className={humanMaintenance.clarificationCopy}>{String(reply.payload.response)}</p></>:<small className={humanMaintenance.clarificationAuthor}>Ожидается уточнение агента. Ответ человека по-прежнему требуется.</small>}<WorkspaceAccordion title={<>Связи с фактами</>}><code>{source.id}</code>{reply&&<p className={humanMaintenance.clarificationCopy}><code>{reply.id}</code> → <code>{String(reply.payload.clarificationEventId)}</code></p>}</WorkspaceAccordion></article>;
     })}</section>}
-    {r.applicabilityEndedEvidence&&<div className="decision-lineage"><strong>Применимость прежнего блокера завершена человеком</strong><p>Контекст свидетельства: {r.applicabilityEndedForRevisionId?`r${state.revisions.find(item=>item.id===r.applicabilityEndedForRevisionId)?.revision??'?'}`:'без активной ревизии'}. {openPhysicalBlocker?'В текущем контракте физическое препятствие требует отдельного пересмотра.':'Свидетельство относится к текущему контракту.'}</p><p>{r.applicabilityEndedReason}</p><p>{r.applicabilityEndedEvidence}</p><p>Это свидетельство неприменимости в новом контракте. Физическое устранение этим действием не подтверждено.</p></div>}
+    {r.applicabilityEndedEvidence&&<div className={twMerge("decision-lineage",humanMaintenance.lineage)}><strong className={humanMaintenance.lineageTitle}>Применимость прежнего блокера завершена человеком</strong><p>Контекст свидетельства: {r.applicabilityEndedForRevisionId?`r${state.revisions.find(item=>item.id===r.applicabilityEndedForRevisionId)?.revision??'?'}`:'без активной ревизии'}. {openPhysicalBlocker?'В текущем контракте физическое препятствие требует отдельного пересмотра.':'Свидетельство относится к текущему контракту.'}</p><p>{r.applicabilityEndedReason}</p><p>{r.applicabilityEndedEvidence}</p><p>Это свидетельство неприменимости в новом контракте. Физическое устранение этим действием не подтверждено.</p></div>}
     {canReopen&&<button type="button" className="btn" disabled={busy} onClick={()=>begin('reopen')}>Запросить новый план для блокера</button>}
     {canRetire&&<button type="button" className="btn" disabled={busy} onClick={()=>begin('retire')}>Завершить применимость прежнего блокера</button>}
     {r.state==='pending'&&<button type="button" className="btn" disabled={busy} onClick={()=>begin('clarify')}>Запросить уточнение</button>}
     {r.state==='resolved'&&!replacement&&(canCorrect?<button type="button" className="btn" disabled={busy} onClick={()=>begin('correct')}>Исправить отдельным запросом</button>:<p className="helper-note">Для изменения уже применённого решения или завершённой работы предложите новую ревизию или спеку. Прежнее решение и приёмка сохраняются.</p>)}
-    {mode&&<form onSubmit={submit}><label className="form-label">{mode==='clarify'?'Что нужно уточнить':mode==='retire'?'Почему прежний блокер неприменим':mode==='reopen'?'Основание нового плана':'Основание исправления'}<textarea required maxLength={20000} rows={4} value={draft} onChange={event=>setDraft(event.target.value)} readOnly={busy}/></label>{mode==='retire'&&<label className="form-label">Свидетельство неприменимости<textarea required maxLength={20000} rows={4} value={evidence} onChange={event=>setEvidence(event.target.value)} readOnly={busy}/></label>}<p className="helper-note">{mode==='clarify'?'Уточнение не закрывает запрос и не разрешает действия вне указанного уточнения.':mode==='retire'?'Завершение применимости не утверждает физическое устранение препятствия и не переносит разрешения между ревизиями.':'Новый запрос потребует отдельного решения. Исходный ответ не изменится, исполнение автоматически не продолжится.'}</p>{state.version!==baseVersion&&<p className="helper-note">Проект изменился. <button type="button" className="text-btn" onClick={()=>setBaseVersion(state.version)}>Обновить базу уточнения после проверки</button></p>}<div><button type="submit" className="btn btn-primary" disabled={busy||!draft.trim()||state.version!==baseVersion||(mode==='correct'&&!canCorrect)||(mode==='reopen'&&!canReopen)||(mode==='retire'&&(!evidence.trim()||!canRetire))}>{mode==='clarify'?'Записать запрос уточнения':mode==='retire'?'Записать неприменимость блокера':mode==='reopen'?'Создать новый запрос плана':'Создать связанный запрос'}</button><button type="button" className="text-btn" disabled={busy} onClick={()=>setMode(null)}>Отменить ввод</button></div></form>}
+    {mode&&<form className={humanMaintenance.form} onSubmit={submit}><label className={twMerge(humanElements.formLabel,humanMaintenance.label)}>{mode==='clarify'?'Что нужно уточнить':mode==='retire'?'Почему прежний блокер неприменим':mode==='reopen'?'Основание нового плана':'Основание исправления'}<textarea className={humanElements.field} required maxLength={20000} rows={4} value={draft} onChange={event=>setDraft(event.target.value)} readOnly={busy}/></label>{mode==='retire'&&<label className={twMerge(humanElements.formLabel,humanMaintenance.label)}>Свидетельство неприменимости<textarea className={humanElements.field} required maxLength={20000} rows={4} value={evidence} onChange={event=>setEvidence(event.target.value)} readOnly={busy}/></label>}<p className="helper-note">{mode==='clarify'?'Уточнение не закрывает запрос и не разрешает действия вне указанного уточнения.':mode==='retire'?'Завершение применимости не утверждает физическое устранение препятствия и не переносит разрешения между ревизиями.':'Новый запрос потребует отдельного решения. Исходный ответ не изменится, исполнение автоматически не продолжится.'}</p>{state.version!==baseVersion&&<p className="helper-note">Проект изменился. <button type="button" className="text-btn" onClick={()=>setBaseVersion(state.version)}>Обновить базу уточнения после проверки</button></p>}<div><button type="submit" className="btn btn-primary" disabled={busy||!draft.trim()||state.version!==baseVersion||(mode==='correct'&&!canCorrect)||(mode==='reopen'&&!canReopen)||(mode==='retire'&&(!evidence.trim()||!canRetire))}>{mode==='clarify'?'Записать запрос уточнения':mode==='retire'?'Записать неприменимость блокера':mode==='reopen'?'Создать новый запрос плана':'Создать связанный запрос'}</button><button type="button" className="text-btn" disabled={busy} onClick={()=>setMode(null)}>Отменить ввод</button></div></form>}
   </section>;
 }
 
@@ -2160,9 +2135,9 @@ function OperatorRecovery({execution:e,revoked,busy,version,command}:{execution:
     const payload=mode==='cancel'?{type:'forceCancelRevokedExecution',executionId:e.id,reason,evidence}:{type:'attestExternalStop',executionId:e.id,evidence};
     if(await command(payload,mode==='cancel'?'Авторизация попытки отменена. Фактическая остановка остаётся неподтверждённой.':'Свидетельство оператора о внешней остановке записано. Новая попытка разрешается отдельно.',baseVersion)){setMode(null);setReason('');setEvidence('');}
   };
-  return <section className="operator-recovery" aria-label="Операторское завершение попытки">
-    {e.stopConfirmation==='unknown'?<><p className="recovery-unconfirmed">Фактическая остановка не подтверждена</p><p>Авторизация отменена после отзыва ключа. Новая работа в этой спеке запрещена до отдельного свидетельства оператора о внешней остановке.</p>{e.operatorCancellation&&<p>Основание отмены: {e.operatorCancellation.reason}<br/>{e.operatorCancellation.evidence}</p>}{mode!=='attest'&&<button type="button" className="btn btn-small" disabled={busy} onClick={()=>{setMode('attest');setEvidence('');setBaseVersion(version);}}>Подтвердить внешнюю остановку</button>}</>:e.stopAttestation?<><p>Внешняя остановка засвидетельствована оператором</p><p>{e.stopAttestation.evidence}</p><p className="helper-note">Свидетельство: {e.stopAttestation.actorId} · {shortDate(e.stopAttestation.at)}. Это свидетельство человека, отдельное от ACK агента.</p></>:revoked&&!terminal?<><p>Ключ назначенного агента отозван. Агент не может отправить ACK остановки.</p>{mode!=='cancel'&&<button type="button" className="btn btn-small" disabled={busy} onClick={()=>{setMode('cancel');setReason('');setEvidence('');setBaseVersion(version);}}>Завершить авторизацию отозванного агента</button>}</>:<p className="helper-note">Ключ назначенного агента отозван.</p>}
-    {mode&&<form onSubmit={submit}>{mode==='cancel'&&<label className="form-label">Причина завершения авторизации<textarea required maxLength={20000} rows={3} value={reason} onChange={event=>setReason(event.target.value)} readOnly={busy}/></label>}<label className="form-label">{mode==='cancel'?'Основание оператора':'Подтверждение внешней остановки'}<textarea required maxLength={20000} rows={3} value={evidence} onChange={event=>setEvidence(event.target.value)} readOnly={busy}/></label><p>{mode==='cancel'?'Действие отменяет разрешение попытки. Оно не останавливает внешний процесс и не подтверждает ACK.':'Записывайте свидетельство после самостоятельной проверки внешней остановки. Ouro не проверяет состояние стороннего процесса.'}</p>{version!==baseVersion&&<p>Проект изменился после начала ввода. <button type="button" className="text-btn" onClick={()=>setBaseVersion(version)}>Обновить базу восстановления после проверки</button></p>}<button type="submit" className={`btn btn-small ${mode==='cancel'?'btn-danger':'btn-primary'}`} disabled={busy||version!==baseVersion||!evidence.trim()||(mode==='cancel'&&!reason.trim())}>{mode==='cancel'?'Отменить авторизацию без ACK':'Записать свидетельство оператора'}</button><button type="button" className="text-btn" disabled={busy} onClick={()=>setMode(null)}>Отменить ввод</button></form>}
+  return <section className={twMerge("operator-recovery",humanMaintenance.recovery)} aria-label="Операторское завершение попытки">
+    {e.stopConfirmation==='unknown'?<><p className={twMerge("recovery-unconfirmed",humanMaintenance.recoveryCopy,humanMaintenance.unconfirmed)}>Фактическая остановка не подтверждена</p><p className={humanMaintenance.recoveryCopy}>Авторизация отменена после отзыва ключа. Новая работа в этой спеке запрещена до отдельного свидетельства оператора о внешней остановке.</p>{e.operatorCancellation&&<p className={humanMaintenance.recoveryCopy}>Основание отмены: {e.operatorCancellation.reason}<br/>{e.operatorCancellation.evidence}</p>}{mode!=='attest'&&<button type="button" className={`btn btn-small ${humanMaintenance.recoveryAction}`} disabled={busy} onClick={()=>{setMode('attest');setEvidence('');setBaseVersion(version);}}>Подтвердить внешнюю остановку</button>}</>:e.stopAttestation?<><p className={humanMaintenance.recoveryCopy}>Внешняя остановка засвидетельствована оператором</p><p className={humanMaintenance.recoveryCopy}>{e.stopAttestation.evidence}</p><p className={twMerge("helper-note",humanMaintenance.recoveryCopy)}>Свидетельство: {e.stopAttestation.actorId} · {shortDate(e.stopAttestation.at)}. Это свидетельство человека, отдельное от ACK агента.</p></>:revoked&&!terminal?<><p className={humanMaintenance.recoveryCopy}>Ключ назначенного агента отозван. Агент не может отправить ACK остановки.</p>{mode!=='cancel'&&<button type="button" className={`btn btn-small ${humanMaintenance.recoveryAction}`} disabled={busy} onClick={()=>{setMode('cancel');setReason('');setEvidence('');setBaseVersion(version);}}>Завершить авторизацию отозванного агента</button>}</>:<p className="helper-note">Ключ назначенного агента отозван.</p>}
+    {mode&&<form className={humanMaintenance.recoveryForm} onSubmit={submit}>{mode==='cancel'&&<label className={twMerge(humanElements.formLabel,'text-[12px]')}>Причина завершения авторизации<textarea className={twMerge(humanElements.field,humanMaintenance.recoveryField)} required maxLength={20000} rows={3} value={reason} onChange={event=>setReason(event.target.value)} readOnly={busy}/></label>}<label className={twMerge(humanElements.formLabel,'text-[12px]')}>{mode==='cancel'?'Основание оператора':'Подтверждение внешней остановки'}<textarea className={twMerge(humanElements.field,humanMaintenance.recoveryField)} required maxLength={20000} rows={3} value={evidence} onChange={event=>setEvidence(event.target.value)} readOnly={busy}/></label><p className={humanMaintenance.recoveryCopy}>{mode==='cancel'?'Действие отменяет разрешение попытки. Оно не останавливает внешний процесс и не подтверждает ACK.':'Записывайте свидетельство после самостоятельной проверки внешней остановки. Ouro не проверяет состояние стороннего процесса.'}</p>{version!==baseVersion&&<p className={humanMaintenance.recoveryCopy}>Проект изменился после начала ввода. <button type="button" className="text-btn" onClick={()=>setBaseVersion(version)}>Обновить базу восстановления после проверки</button></p>}<button type="submit" className={`btn btn-small ${humanMaintenance.recoveryAction} ${mode==='cancel'?'btn-danger':'btn-primary'}`} disabled={busy||version!==baseVersion||!evidence.trim()||(mode==='cancel'&&!reason.trim())}>{mode==='cancel'?'Отменить авторизацию без ACK':'Записать свидетельство оператора'}</button><button type="button" className="text-btn" disabled={busy} onClick={()=>setMode(null)}>Отменить ввод</button></form>}
   </section>;
 }
 
@@ -2175,6 +2150,7 @@ function ExecutionPanel({
   busy,
   command,
   compact = false,
+  context = false,
   readOnly = false,
 }: {
   execution?: ProjectState["executions"][number];
@@ -2185,10 +2161,11 @@ function ExecutionPanel({
   busy: boolean;
   command: (p: Payload, n?: string, expectedVersion?:number) => Promise<boolean>;
   compact?: boolean;
+  context?: boolean;
   readOnly?: boolean;
 }) {
   if (!e)
-    return <div className="execution-empty">Исполнение ещё не начато.</div>;
+    return <div className={humanDecision.noExecution}>Исполнение ещё не начато.</div>;
   const targetRequest=e.remediatesBlockerId?state.requests.find(r=>r.id===e.remediatesBlockerId):undefined;
   const targetRoot=targetRequest?decisionRoot(targetRequest):undefined;
   const blocking = currentDecisionRequests(state).some(r=>
@@ -2196,13 +2173,13 @@ function ExecutionPanel({
     ((r.state==='pending'&&r.blockingScope==='execution')||(r.state==='resolved'&&r.blockingScope==='execution'&&r.decision?.outcome.kind==='reject'))
   )||openPhysicalBlockers(state,e.specId).some(r=>decisionRoot(r)!==targetRoot)||state.executions.some(item=>item.specId===e.specId&&item.stopConfirmation==='unknown');
   return (
-    <section className={`execution-panel ${compact ? "compact" : ""}`} aria-label="Исполнение">
-      <div className="section-heading">
-        <h3>Исполнение</h3>
-        {!compact && <span className="small-tag">{e.agentId===AGENT_ID?'SIMULATION':'MCP AGENT'}</span>}
+    <section className={twMerge(humanDecision.execution,compact?humanDecision.compactExecution:'')} aria-label="Исполнение">
+      <div className={twMerge(humanElements.sectionHeading,compact?humanDecision.compactHeading:'')}>
+        <h3 className={compact?humanDecision.compactTitle:undefined}>Исполнение</h3>
+        {!compact && <span className={humanContext.badge}>{e.agentId===AGENT_ID?'SIMULATION':'MCP AGENT'}</span>}
       </div>
       <Status state={e.state} />
-      {!compact && <code>{e.id}</code>}
+      {!compact && <code className={humanDecision.executionId}>{e.id}</code>}
       {e.resultEvidence && (
         <p className="helper-note">Результат попытки: {e.resultEvidence}</p>
       )}
@@ -2221,7 +2198,7 @@ function ExecutionPanel({
         {(e.state === "waiting_for_human" || e.state === "paused") &&
           !e.resumeAuthorized && (
             <button
-              className="btn btn-small btn-full"
+              className={twMerge('btn btn-small btn-full',humanDecision.executionAction,context?humanContext.action:'')}
               disabled={busy || blocking}
               title={
                 blocking
@@ -2241,7 +2218,7 @@ function ExecutionPanel({
           )}
         {(e.state === "queued" || e.state === "paused") && (
           <button
-            className="btn btn-small btn-full"
+            className={twMerge('btn btn-small btn-full',humanDecision.executionAction,context?humanContext.action:'')}
             disabled={busy}
             onClick={() =>
               command(
@@ -2259,7 +2236,7 @@ function ExecutionPanel({
         )}
         {(e.state === "running" || e.state === "queued") && !e.stopRequested && (
           <button
-            className="btn btn-small btn-full"
+            className={twMerge('btn btn-small btn-full',humanDecision.executionAction,context?humanContext.action:'')}
             disabled={busy}
             onClick={() =>
               command(
@@ -2288,24 +2265,24 @@ function RealitySwitch({
   onChange: (v: "history" | "graph") => void;
 }) {
   return (
-    <div className="reality-switch">
-      <div className="segmented">
+    <div className={humanSpec.realitySwitch}>
+      <div className={humanRoadmap.segmented}>
         <button
-          className={value === "history" ? "selected" : ""}
+          className={twMerge(humanRoadmap.segment,value==='history'?humanRoadmap.segmentSelected:'')}
           onClick={() => onChange("history")}
         >
           <History size={14} />
           История
         </button>
         <button
-          className={value === "graph" ? "selected" : ""}
+          className={twMerge(humanRoadmap.segment,value==='graph'?humanRoadmap.segmentSelected:'')}
           onClick={() => onChange("graph")}
         >
           <Network size={14} />
           Причинный граф
         </button>
       </div>
-      <p>
+      <p className={humanSpec.realityExplanation}>
         Связь показывает явное основание события. Последовательность сама по
         себе не означает причину.
       </p>
@@ -2317,20 +2294,22 @@ function Timeline({
   state,
   specId,
   expanded = false,
+  comparison = false,
 }: {
   state: ProjectState;
   specId: string | null;
   expanded?: boolean;
+  comparison?: boolean;
 }) {
   const events = state.events
     .filter((e) => !specId || e.specId === specId)
     .toReversed();
   return (
-    <div className={`timeline ${expanded ? "expanded" : ""}`}>
+    <div className={`${humanHistory.timeline} ${expanded?'expanded':''}`}>
       {events.length ? (
         events.map((e) => (
-          <article className="timeline-item" key={e.id}>
-            <div className={`timeline-icon actor-${e.actor.kind}`}>
+          <article className={humanHistory.item} key={e.id}>
+            <div className={twMerge(`${humanHistory.icon} actor-${e.actor.kind}`,e.actor.kind==='human'?humanHistory.humanIcon:'')}>
               {e.actor.kind === "human" ? (
                 <ShieldCheck size={15} />
               ) : e.type.includes("Decision") ? (
@@ -2339,15 +2318,15 @@ function Timeline({
                 <Code2 size={15} />
               )}
             </div>
-            <div className="timeline-body">
-              <div className="timeline-meta">
-                <strong>
+            <div className={humanHistory.body}>
+              <div className={twMerge(humanHistory.metadata,comparison?humanHistory.comparisonMetadata:'')}>
+                <strong className={twMerge(humanHistory.eventTitle,comparison?humanHistory.comparisonTitle:'')}>
                   {eventLabels[e.type] ??
                     e.type.replace(/([A-Z])/g, " $1").trim()}
                 </strong>
-                <time>{shortDate(e.occurredAt)}</time>
+                <time className={humanHistory.time}>{shortDate(e.occurredAt)}</time>
               </div>
-              <p>
+              <p className={humanHistory.copy}>
                 {String(
                   e.payload.title ??
                     e.payload.evidence ??
@@ -2358,8 +2337,8 @@ function Timeline({
                       : "Зафиксированный факт"),
                 )}
               </p>
-              <div className="timeline-tags">
-                <span className="mono">#{e.version}</span>
+              <div className={twMerge(humanHistory.tags,comparison?humanHistory.comparisonTags:'')}>
+                <span className={humanHistory.version}>#{e.version}</span>
                 {e.specRevisionId && (
                   <span>
                     r
@@ -2375,8 +2354,8 @@ function Timeline({
                 )}
               </div>
               {expanded && (
-                <WorkspaceAccordion title={<>Событие JSON</>}>
-                  <pre>{JSON.stringify(e, null, 2)}</pre>
+                <WorkspaceAccordion className={humanHistory.accordion} title={<>Событие JSON</>}>
+                  <pre className={humanHistory.source}>{JSON.stringify(e, null, 2)}</pre>
                 </WorkspaceAccordion>
               )}
             </div>
@@ -2434,20 +2413,20 @@ function ModalDialog({
   }, []);
   return (
     <div
-      className="modal-backdrop"
+      className={humanModal.backdrop}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className="modal"
+        className={humanModal.dialog}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
         ref={ref}
       >
-        <div className="modal-header">
-          <h2 id="modal-title">{title}</h2>
+        <div className={humanModal.header}>
+          <h2 className={humanModal.title} id="modal-title">{title}</h2>
           <button
             className="icon-btn"
             aria-label="Закрыть диалог"
@@ -2481,7 +2460,7 @@ function SpecForm({
     [constraints, setConstraints] = useState(revision?.constraints ?? "");
   return (
     <form
-      className="modal-form"
+      className={humanModal.form}
       onSubmit={(e) => {
         e.preventDefault();
         if(baseChanged||busy)return;
@@ -2510,9 +2489,9 @@ function SpecForm({
         },{revision,expectedVersion:baseVersion});
       }}
     >
-      <label className="form-label">
+      <label className={humanElements.formLabel}>
         Название
-        <input
+        <input className={humanElements.field}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           required
@@ -2520,9 +2499,9 @@ function SpecForm({
           placeholder="Например: показать ответы человека в истории"
         />
       </label>
-      <label className="form-label">
+      <label className={humanElements.formLabel}>
         Цель
-        <textarea
+        <textarea className={humanElements.field}
           value={goal}
           onChange={(e) => setGoal(e.target.value)}
           required
@@ -2530,10 +2509,10 @@ function SpecForm({
           placeholder="Что должно измениться для человека?"
         />
       </label>
-      <label className="form-label">
+      <label className={humanElements.formLabel}>
         Definition of Done
-        <span className="input-hint">Один проверяемый критерий на строку</span>
-        <textarea
+        <span className={humanModal.hint}>Один проверяемый критерий на строку</span>
+        <textarea className={humanElements.field}
           value={dod}
           onChange={(e) => setDod(e.target.value)}
           required
@@ -2541,22 +2520,22 @@ function SpecForm({
           placeholder="Ответ человека виден в истории спеки\nПовтор команды не создаёт второй ответ"
         />
       </label>
-      <label className="form-label">
+      <label className={humanElements.formLabel}>
         Ограничения
-        <textarea
+        <textarea className={humanElements.field}
           value={constraints}
           onChange={(e) => setConstraints(e.target.value)}
           rows={2}
         />
       </label>
-      <p className="helper-note">
+      <p className={twMerge("helper-note",humanModal.copy,humanModal.helper)}>
         Содержание сохраняется неизменяемой ревизией. Активация — отдельное
         действие человека.
       </p>
-      {baseChanged && <p role="alert">Ревизия изменилась. Текст черновика сохранён; проверьте новое ожидание перед созданием следующей ревизии.</p>}
-      {!baseChanged&&baseVersion!==version&&<p className="helper-note">Проект изменился после начала ввода. <button type="button" className="text-btn" onClick={()=>setBaseVersion(version)}>Обновить версию после проверки</button></p>}
+      {baseChanged && <p className={humanModal.copy} role="alert">Ревизия изменилась. Текст черновика сохранён; проверьте новое ожидание перед созданием следующей ревизии.</p>}
+      {!baseChanged&&baseVersion!==version&&<p className={twMerge("helper-note",humanModal.copy,humanModal.helper)}>Проект изменился после начала ввода. <button type="button" className="text-btn" onClick={()=>setBaseVersion(version)}>Обновить версию после проверки</button></p>}
       <button
-        className="btn btn-primary"
+        className={twMerge("btn btn-primary",humanModal.submit)}
         disabled={busy || baseChanged || !title.trim() || !goal.trim() || !dod.trim()}
         type="submit"
       >
@@ -2590,24 +2569,24 @@ function AcceptanceForm({
   const [evidence, setEvidence] = useState<Record<string, string>>({});
   return (
     <form
-      className="modal-form"
+      className={humanModal.form}
       onSubmit={(e) => {
         e.preventDefault();
         if(baseChanged||busy)return;
         void onSubmit(evidence,{specId:spec.id,revisionId:revision.id,expectedVersion:baseVersion});
       }}
     >
-      <p className="helper-note">
+      <p className={twMerge("helper-note",humanModal.copy,humanModal.helper)}>
         {spec.humanId} · ревизия {revision.revision}. Укажите основание проверки
         каждого обязательного критерия. Успех агента сам по себе не означает
         приёмку.
       </p>
       {revision.dod.map((c, i) => (
-        <label className="form-label" key={c.id}>
+        <label className={humanElements.formLabel} key={c.id}>
           <span>
             {i + 1}. {c.text}
           </span>
-          <textarea
+          <textarea className={humanElements.field}
             readOnly={baseChanged}
             required={c.required}
             value={evidence[c.id] ?? ""}
@@ -2619,10 +2598,10 @@ function AcceptanceForm({
           />
         </label>
       ))}
-      {baseChanged&&<p role="alert">Ревизия изменилась. Основания по r{revision.revision} сохранены для проверки и не перенесены на новое ожидание.</p>}
-      {!baseChanged&&baseVersion!==version&&<p className="helper-note">Проект изменился после открытия приёмки. <button type="button" className="text-btn" onClick={()=>setBaseVersion(version)}>Обновить версию после проверки</button></p>}
+      {baseChanged&&<p className={humanModal.copy} role="alert">Ревизия изменилась. Основания по r{revision.revision} сохранены для проверки и не перенесены на новое ожидание.</p>}
+      {!baseChanged&&baseVersion!==version&&<p className={twMerge("helper-note",humanModal.copy,humanModal.helper)}>Проект изменился после открытия приёмки. <button type="button" className="text-btn" onClick={()=>setBaseVersion(version)}>Обновить версию после проверки</button></p>}
       <button
-        className="btn btn-primary"
+        className={twMerge("btn btn-primary",humanModal.submit)}
         type="submit"
         disabled={
           busy ||
@@ -2649,19 +2628,19 @@ function DependencyForm({
     [to, setTo] = useState(specs[1]?.id ?? "");
   return (
     <form
-      className="modal-form"
+      className={humanModal.form}
       onSubmit={(e) => {
         e.preventDefault();
         void onSubmit(from, to);
       }}
     >
-      <p>
+      <p className={humanModal.copy}>
         Связь A → B означает, что B требует принятого результата A. Сервер
         отклоняет циклы с указанием пути.
       </p>
-      <label className="form-label">
+      <label className={humanElements.formLabel}>
         A · Предшествующая спека
-        <AppSelect aria-label="A · Предшествующая спека" value={from} onValueChange={(value) => setFrom(value)} required>
+        <AppSelect className="w-full text-[14px] font-normal" aria-label="A · Предшествующая спека" value={from} onValueChange={(value) => setFrom(value)} required>
           {specs.map((s) => (
             <option key={s.id} value={s.id}>
               {s.humanId} — {s.title}
@@ -2669,9 +2648,9 @@ function DependencyForm({
           ))}
         </AppSelect>
       </label>
-      <label className="form-label">
+      <label className={humanElements.formLabel}>
         B · Зависимая спека
-        <AppSelect aria-label="B · Зависимая спека" value={to} onValueChange={(value) => setTo(value)} required>
+        <AppSelect className="w-full text-[14px] font-normal" aria-label="B · Зависимая спека" value={to} onValueChange={(value) => setTo(value)} required>
           {specs.map((s) => (
             <option key={s.id} value={s.id}>
               {s.humanId} — {s.title}
@@ -2680,7 +2659,7 @@ function DependencyForm({
         </AppSelect>
       </label>
       <button
-        className="btn btn-primary"
+        className={twMerge("btn btn-primary",humanModal.submit)}
         type="submit"
         disabled={busy || !from || !to || from === to}
       >
@@ -2746,11 +2725,11 @@ function Methodology() {
           <p>Практики, которые определяют поведение прототипа.</p>
         </div>
       </div>
-      <div className="methodology-intro">
-        <BookOpen size={24} />
+      <div className={humanMethodology.intro}>
+        <BookOpen className={humanMethodology.introIcon} size={24} />
         <div>
-          <h2>От литературы — к проверяемым правилам</h2>
-          <p>
+          <h2 className={humanMethodology.introTitle}>От литературы — к проверяемым правилам</h2>
+          <p className={humanMethodology.introCopy}>
             Выбранные принципы применены к Human View. Ouro не объявляется
             BPMN-редактором или полной реализацией SCXML.
           </p>
@@ -2758,14 +2737,14 @@ function Methodology() {
       </div>
       <div className="methodology-articles">
         {sources.map((s, i) => (
-          <article key={s.title}>
-            <span className="methodology-number">0{i + 1}</span>
+          <article className={humanMethodology.article} key={s.title}>
+            <span className={humanMethodology.number}>0{i + 1}</span>
             <div>
-              <h2>{s.title}</h2>
-              <p>{s.text}</p>
-              <div className="source-links">
+              <h2 className={humanMethodology.title}>{s.title}</h2>
+              <p className={humanMethodology.copy}>{s.text}</p>
+              <div className={humanMethodology.links}>
                 {s.links.map(([title, url]) => (
-                  <a href={url} target="_blank" rel="noreferrer" key={url}>
+                  <a className={humanMethodology.link} href={url} target="_blank" rel="noreferrer" key={url}>
                     {title}
                     <ArrowUpRight size={13} />
                   </a>
@@ -2775,9 +2754,9 @@ function Methodology() {
           </article>
         ))}
       </div>
-      <div className="methodology-footnote">
-        <h3>Границы прототипа</h3>
-        <p>
+      <div className={humanMethodology.footnote}>
+        <h3 className={humanMethodology.footnoteTitle}>Границы прототипа</h3>
+        <p className={humanMethodology.footnoteCopy}>
           MCP-совместимые агенты подключаются через stdio или Streamable HTTP;
           симулятор доступен отдельно для учебных попыток. Контекст Meridian
           загружается из JSON; нативный мост и SSO остаются отдельным этапом.
@@ -2787,7 +2766,7 @@ function Methodology() {
           репозитория.
         </p>
         <a
-          className="btn"
+          className={twMerge('btn',humanMethodology.footnoteAction)}
           target="_blank"
           rel="noreferrer"
           href="https://github.com/QahNaaRlN/ouro/tree/feat/meridian-context/docs"

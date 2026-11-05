@@ -1,0 +1,6 @@
+---
+description: Локальные принятые требования Ouro и реальные области проверок
+alwaysApply: true
+---
+
+Используй [AGENTS.md](../../AGENTS.md) и локальный канон: [D01–D16](../../docs/proposals/react-vite-migration/decisions.md), [React stack](../../docs/proposals/react-vite-migration/react-stack.md), [архитектура](../../docs/proposals/react-vite-migration/target-architecture.md), [все 25 правил](../../docs/proposals/react-vite-migration/rules-portability.md). Текст требований здесь не дублируется. Команды и bootstrap/qualified статус сверяй с AGENTS и [quality story](../../docs/specs/universal-quality-gates.md); отсутствие линтера не отменяет принятую норму.

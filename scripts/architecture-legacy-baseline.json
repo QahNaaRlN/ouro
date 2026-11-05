@@ -1,0 +1,13 @@
+[
+  {"source":"app/layout.tsx","specifier":"next","kind":"type","code":"framework-boundary","owner":"P3","reason":"Existing Next metadata until Vite shell migration."},
+  {"source":"app/page.tsx","specifier":"next/link","kind":"import","code":"framework-boundary","owner":"P3","reason":"Existing root route navigation until the route migration."},
+  {"source":"app/projects/layout.tsx","specifier":"next/link","kind":"import","code":"framework-boundary","owner":"P3","reason":"Existing project shell navigation until the route migration."},
+  {"source":"app/projects/help/page.tsx","specifier":"next/link","kind":"import","code":"framework-boundary","owner":"P3","reason":"Existing help route navigation until the route migration."},
+  {"source":"components/workspace-catalog.tsx","specifier":"next/link","kind":"import","code":"framework-boundary","owner":"P3","reason":"Existing catalogue navigation until the route migration."},
+  {"source":"components/workspace-catalog.tsx","specifier":"next/navigation","kind":"import","code":"framework-boundary","owner":"P3","reason":"Existing catalogue navigation until the route migration."},
+  {"source":"components/workspace-connection.tsx","specifier":"next/link","kind":"import","code":"framework-boundary","owner":"P3","reason":"Existing connection help navigation until the route migration."},
+  {"source":"components/workspace-members.tsx","specifier":"next/link","kind":"import","code":"framework-boundary","owner":"P3","reason":"Existing members navigation until the route migration."},
+  {"source":"components/workspace-navigation.tsx","specifier":"next/link","kind":"import","code":"framework-boundary","owner":"P3","reason":"Existing shell navigation until the route migration."},
+  {"source":"components/workspace-project-view.tsx","specifier":"next/link","kind":"import","code":"framework-boundary","owner":"P3","reason":"Existing project navigation until the route migration."},
+  {"source":"components/workspace-project.tsx","specifier":"next/link","kind":"import","code":"framework-boundary","owner":"P3","reason":"Existing project entry navigation until the route migration."}
+]

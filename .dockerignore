@@ -1,5 +1,8 @@
 .git
 node_modules
+**/node_modules
+apps/web/dist
+apps/service/dist
 .next
 .ouro
 .operations

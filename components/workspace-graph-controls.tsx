@@ -3,6 +3,8 @@
 import {useCallback,useEffect,useRef,useState,type RefObject} from 'react';
 import {ControlButton,Controls,useNodesInitialized,useReactFlow,useUpdateNodeInternals,type Edge,type FitViewOptions,type Node,type NodeChange,type ReactFlowInstance,type Viewport} from '@xyflow/react';
 import {Maximize2,Minimize2} from 'lucide-react';
+import {graphPresentation,graphControlsClassName,fullscreenControlsClassName} from '@/packages/frontend/src/shared/ui/graph';
+import {useWorkspaceAppearance} from './workspace-ui';
 
 /** Controlled React Flow nodes must retain the dimensions reported by its observer. */
 export function useGraphMeasurements<NodeType extends Node>(){
@@ -61,6 +63,7 @@ export function InitialGraphViewportFit<NodeType extends Node,EdgeType extends E
 
 /** Extends the installed React Flow controls without replacing their behavior. */
 export function WorkspaceGraphControls({containerRef,fitOptions}:{containerRef:RefObject<HTMLElement|null>;fitOptions:FitViewOptions}){
+  const workspace=useWorkspaceAppearance();
   const {fitView,getViewport,setViewport}=useReactFlow();
   const [supported,setSupported]=useState(false),[fullscreen,setFullscreen]=useState(false),[error,setError]=useState('');
   const savedViewport=useRef<Viewport|null>(null);
@@ -94,10 +97,10 @@ export function WorkspaceGraphControls({containerRef,fitOptions}:{containerRef:R
     }catch{savedViewport.current=null;setError('Браузер не разрешил полноэкранный режим. Граф и текущий выбор сохранены.');}
   };
   return <>
-    <Controls className="workspace-graph-controls" showInteractive={false} fitViewOptions={fitOptions}>
+    <Controls className={`workspace-graph-controls ${graphControlsClassName(workspace?'workspace':'legacy')} ${fullscreenControlsClassName}`} showInteractive={false} fitViewOptions={fitOptions}>
       <ControlButton title={supported?(fullscreen?'Выйти из полного экрана':'На весь экран'):'Полноэкранный режим недоступен в этом браузере'} aria-label={fullscreen?'Выйти из полного экрана':'На весь экран'} aria-pressed={fullscreen} disabled={!supported} onClick={()=>void toggle()}>{fullscreen?<Minimize2 size={15}/>:<Maximize2 size={15}/>}</ControlButton>
     </Controls>
-    {error&&<div className="workspace-graph-feedback" role="alert">{error}</div>}
-    {!supported&&<span className="workspace-graph-unavailable">Полный экран недоступен</span>}
+    {error&&<div className={`workspace-graph-feedback ${graphPresentation.feedback}`} role="alert">{error}</div>}
+    {!supported&&<span className={`workspace-graph-unavailable ${graphPresentation.unavailable}`}>Полный экран недоступен</span>}
   </>;
 }

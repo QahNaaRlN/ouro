@@ -1,7 +1,0 @@
-.work-status{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:3px 7px;border-radius:5px;font-size:11px;line-height:1.5;color:var(--text-muted);background:var(--subtle);vertical-align:middle;white-space:normal}
-.work-status>svg{flex:none}.work-status>span{min-width:0}.work-status code{font-size:10px;opacity:.85;overflow-wrap:anywhere}
-.work-status-blue{color:var(--work-running,var(--text));background:var(--work-running-surface,var(--selected))}
-.work-status-amber{color:var(--attention);background:var(--attention-surface)}
-.work-status-green{color:var(--positive);background:var(--positive-surface)}
-.work-status-red{color:var(--negative);background:var(--negative-surface)}
-.work-status-purple{color:var(--text);background:var(--selected)}

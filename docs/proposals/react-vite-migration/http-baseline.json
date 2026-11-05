@@ -1,0 +1,1039 @@
+{
+  "contract": "ouro-http-baseline/v1",
+  "source": {
+    "commit": "3f8c986a8a5ddf272afc2ec8c08bc042b369d683",
+    "next": "16.4.3",
+    "fingerprint": "SHA-256 over UTF-8 source with LF line endings"
+  },
+  "scope": "Static route and method inventory; auth/headers/body/stream semantics require the referenced contract tests.",
+  "constraints": [
+    {
+      "id": "METHODS",
+      "requirement": "Preserve auto HEAD through GET, automatic OPTIONS 204 with sorted Allow, implicit 405 without Allow, and explicit MCP GET/DELETE 405 Allow: POST.",
+      "tests": [
+        "tests/protocol-mcp.test.ts",
+        "tests/workspace-mcp.test.ts"
+      ]
+    },
+    {
+      "id": "COOKIES",
+      "requirement": "Preserve three separate Set-Cookie values for account login/logout/invitation/reset successes and two for participant logout; never collapse headers into a plain object.",
+      "tests": [
+        "tests/user-auth-http.test.ts",
+        "tests/participant-http.test.ts",
+        "tests/auth-proxy-regressions.test.ts"
+      ]
+    },
+    {
+      "id": "BODIES",
+      "requirement": "Generic JSON limit is 256000 bytes; webhook and Meridian import allow up to 2 MiB; verify GitHub HMAC over original bytes before parsing.",
+      "tests": [
+        "tests/github-http.test.ts",
+        "tests/meridian-http.test.ts"
+      ]
+    },
+    {
+      "id": "STREAM",
+      "requirement": "Project streams preserve snapshot/id/cursor/heartbeat, no-store/no-transform and X-Accel-Buffering:no, authorization and disconnect cleanup.",
+      "tests": [
+        "tests/project-stream.test.ts",
+        "tests/participant-stream.test.ts"
+      ]
+    },
+    {
+      "id": "MCP",
+      "requirement": "Current MCP HTTP is per-request finite JSON with closure, not an assumed event stream.",
+      "tests": [
+        "tests/mcp-server.test.ts",
+        "tests/protocol-mcp.test.ts"
+      ]
+    },
+    {
+      "id": "JOBS",
+      "requirement": "Replace only two Next after hooks with owned durable-job scheduling; preserve recovery worker and SQL leases.",
+      "tests": [
+        "tests/github-worker.test.ts",
+        "tests/github-http.test.ts"
+      ]
+    },
+    {
+      "id": "RUNNER",
+      "requirement": "Preserve 60-second default / 120-second bounded runner and current authorization/cancellation polling; HTTP timeouts must not truncate permitted work.",
+      "tests": [
+        "tests/verification-http.test.ts",
+        "tests/verification-runtime.test.ts"
+      ]
+    },
+    {
+      "id": "UNKNOWN",
+      "requirement": "Lost or invalid response after possible commit retains original actor/project/request ID/body and UNKNOWN until authoritative recovery; no blind mutation retry.",
+      "tests": [
+        "tests/collaborative-drafts.test.ts",
+        "tests/verification-legacy-receipt.test.ts",
+        "tests/access-recovery-regressions.test.ts"
+      ]
+    },
+    {
+      "id": "HEADER_LIMITS",
+      "requirement": "Preserve existing endpoint-specific cache headers, including inbox success and events manual 422/409 exceptions, until an explicit behavior change is approved.",
+      "tests": [
+        "tests/workspace-http.test.ts",
+        "tests/auth-proxy-regressions.test.ts"
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "file": "app/api/agents/[id]/revoke/route.ts",
+      "path": "/api/agents/[id]/revoke",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "b24329585c4df7f8bd45786cf97c5a0e6cdfa4ca8bb0ceec415205273621fab9",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/agents/route.ts",
+      "path": "/api/agents",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "sha256": "b0946dea1bc6326121a90cb2c7b316f6129dce57a74204c3243c35fe52946da5",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "GET, HEAD, OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/auth/invitations/accept/route.ts",
+      "path": "/api/auth/invitations/accept",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "f32549140ab4a4350d8c63a70b684fd56690c6d437a6c5065de71bb9b26fbfde",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/auth/login/route.ts",
+      "path": "/api/auth/login",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "635c4bcb802dd57241a04ff3ed5d375f666e00d8dde122708a0bcecf22f6c82f",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/auth/logout/route.ts",
+      "path": "/api/auth/logout",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "9f140777f4bd21e3295b6f067d4bddfe7ee70e8eb97a7ec51ba35b3b8727e58f",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/auth/password-reset/confirm/route.ts",
+      "path": "/api/auth/password-reset/confirm",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "a019a5cabd6eac089869e8ad2bcb0f470e259bc6637abe011119605a1a07c390",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/auth/password-reset/request/route.ts",
+      "path": "/api/auth/password-reset/request",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "efdaec6e87f9af1075a6f891deeeedf77092392b9dab11d14f93026beb6a7d40",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/auth/session/route.ts",
+      "path": "/api/auth/session",
+      "methods": [
+        "GET"
+      ],
+      "sha256": "ca1ee8d204481560a4bc61e43bddca1713c04ee0df9b60711764f5522fa39cc6",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "GET, HEAD, OPTIONS"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/commands/route.ts",
+      "path": "/api/commands",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "1e6a7da12c5aaf592a22046fe913883df6467f2f9b346d55a5b084746d28e913",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/drafts/[id]/publish/route.ts",
+      "path": "/api/drafts/[id]/publish",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "3b3f1ac6195049f8c17e583e4fbfc8979e4627a87457068a1c96d517a3ba1765",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/drafts/[id]/route.ts",
+      "path": "/api/drafts/[id]",
+      "methods": [
+        "GET"
+      ],
+      "sha256": "0582d7a2f19a27e6109a79a7b85705a39bb24d6efe18634702b835819168a8a2",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "GET, HEAD, OPTIONS"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/drafts/[id]/updates/route.ts",
+      "path": "/api/drafts/[id]/updates",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "9a144779c16b6b55491ba199c6a90af4420d8a65a019666ddf679b746e0aef45",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/drafts/route.ts",
+      "path": "/api/drafts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "sha256": "8cd8b76c2033845f729950164c1b0bcc1567c1797603198b6b41c6c4c757cabc",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "GET, HEAD, OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/events/route.ts",
+      "path": "/api/events",
+      "methods": [
+        "GET"
+      ],
+      "sha256": "1ce9190ae890e7bc75d2eb348ffbd163fe610e703b372f70b85e812f57e7e254",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "GET, HEAD, OPTIONS"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/github/bindings/[id]/revoke/route.ts",
+      "path": "/api/github/bindings/[id]/revoke",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "c20c9cc046df7f6946028e5efc4116843dc5c48b752d85b73136fae85562f94a",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/github/bindings/route.ts",
+      "path": "/api/github/bindings",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "72425c569ef95d687df6fae5501a02124ef3858c1eabf3a00566dabae2ae4ba2",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/github/deliveries/[id]/retry/route.ts",
+      "path": "/api/github/deliveries/[id]/retry",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "5a8ce646f03cb3ab5ad1853bedd49e913373337753b8eb673cda77a45d33ca51",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/github/route.ts",
+      "path": "/api/github",
+      "methods": [
+        "GET"
+      ],
+      "sha256": "92e5c4bb55d09c862b796c73e8d77a86297822d2a40ee797abf4f0a2792896c5",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "GET, HEAD, OPTIONS"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/github/webhook/route.ts",
+      "path": "/api/github/webhook",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "b4fb51909e1121ed1673aff65a1e533323d49752c5043bb23f4bd3763e77f762",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/health/route.ts",
+      "path": "/api/health",
+      "methods": [
+        "GET"
+      ],
+      "sha256": "9c98f38997287b7c755a460ff5fc1891d4050954d9a1a3812051f67d0329bf5b",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "GET, HEAD, OPTIONS"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/inbox/route.ts",
+      "path": "/api/inbox",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "3c7f926f5ec11844c86e3fa1e64be06ef22003347fde6438ca0f648b67d1db8c",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/mcp/route.ts",
+      "path": "/api/mcp",
+      "methods": [
+        "DELETE",
+        "GET",
+        "POST"
+      ],
+      "sha256": "695da7ab03c16c30e188d9c75e61786c2f23d27eaa3ea5da94680b38dd8e6d7b",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "DELETE, GET, HEAD, OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/meridian/import/route.ts",
+      "path": "/api/meridian/import",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "43afb5fdaf2471b95683d1c5eb7e4a72e5f37291d562f7322a2a7172028af035",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/participants/[id]/revoke/route.ts",
+      "path": "/api/participants/[id]/revoke",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "651dfaa8dd9ab2ab9f006dc3b80cef274ce570acb8fdc03052477c5943e23019",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/participants/logout/route.ts",
+      "path": "/api/participants/logout",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "44f00f7d8582935614233c39768b1d5e68b3aebcc2a8cfe1c4d21ac53f8d4b13",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/participants/route.ts",
+      "path": "/api/participants",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "sha256": "8cfb98c2ae365914ef0dbc2f432d24aa8dc644531fabf3eccbd375191faff172",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "GET, HEAD, OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/participants/session/route.ts",
+      "path": "/api/participants/session",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "67e6c92ad613430e154aa93fecb973167e46a73635d9488e4fb334af5329f1f8",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/project/route.ts",
+      "path": "/api/project",
+      "methods": [
+        "GET"
+      ],
+      "sha256": "e6d3383bd9cf8108614becf0863589d85d64be094f16774fd844e2fa6728df3c",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "GET, HEAD, OPTIONS"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/projects/[projectId]/agents/[agentId]/revoke/route.ts",
+      "path": "/api/projects/[projectId]/agents/[agentId]/revoke",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "c75396bae9352a00772c769e6bcddcb2bf4b2de519ac268b288686cf233c2d8a",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/projects/[projectId]/agents/route.ts",
+      "path": "/api/projects/[projectId]/agents",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "sha256": "e13dfb1e4bfeaf640f4d574441ce854efbfdaca7b37a82f693b8836eb8a0419c",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "GET, HEAD, OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/projects/[projectId]/binding-recovery/route.ts",
+      "path": "/api/projects/[projectId]/binding-recovery",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "sha256": "f2699618ac85e5dc9104e98521ef8f228382c0854db763c875023ab293723a51",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "GET, HEAD, OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/projects/[projectId]/commands/route.ts",
+      "path": "/api/projects/[projectId]/commands",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "aee07712088b5cf33edfbf2215547a5dbda0cc8c0de2248978f49a71a7f99216",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/projects/[projectId]/invitations/[invitationId]/revoke/route.ts",
+      "path": "/api/projects/[projectId]/invitations/[invitationId]/revoke",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "1ae765b100efe07bdb661808206db41fb2ac45f56f8cdb207114dbd199d7089e",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/projects/[projectId]/invitations/route.ts",
+      "path": "/api/projects/[projectId]/invitations",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "sha256": "dc557ba52ecf9fb67baff1ec82cf42984d3d96b300f83c1457b9423bf00d103d",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "GET, HEAD, OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/projects/[projectId]/mcp/route.ts",
+      "path": "/api/projects/[projectId]/mcp",
+      "methods": [
+        "DELETE",
+        "GET",
+        "POST"
+      ],
+      "sha256": "b6e7ff1bf02759ddac38762cdc4116043dac3881a98bf752fc6d92884acc982a",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "DELETE, GET, HEAD, OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/projects/[projectId]/members/[membershipId]/route.ts",
+      "path": "/api/projects/[projectId]/members/[membershipId]",
+      "methods": [
+        "DELETE",
+        "PATCH"
+      ],
+      "sha256": "7d9f63aa0876d35621c325db567a18e76fa03110e00b00794f48b74334cf167a",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "DELETE, OPTIONS, PATCH"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/projects/[projectId]/members/route.ts",
+      "path": "/api/projects/[projectId]/members",
+      "methods": [
+        "GET"
+      ],
+      "sha256": "ecb4df91f5cf375796f9a330d0b50dc3bd32016bae475538460f29b77d7cf638",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "GET, HEAD, OPTIONS"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/projects/[projectId]/route.ts",
+      "path": "/api/projects/[projectId]",
+      "methods": [
+        "GET"
+      ],
+      "sha256": "ddb33a7eb974359247a384a77aa7b227ab26391606ed05ed33d83b46431505aa",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "GET, HEAD, OPTIONS"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/projects/[projectId]/stream/route.ts",
+      "path": "/api/projects/[projectId]/stream",
+      "methods": [
+        "GET"
+      ],
+      "sha256": "17788121cc38d3267debc30128a0a5091247086120558e672ab4a2ffe1af190c",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "GET, HEAD, OPTIONS"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/projects/[projectId]/tasks/route.ts",
+      "path": "/api/projects/[projectId]/tasks",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "3ae256f7d1b839c956d032251e5ce66cdbbbc4cbc95038674e3a391c29af9119",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/projects/[projectId]/verification/observe/route.ts",
+      "path": "/api/projects/[projectId]/verification/observe",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "9d1665ed322d8e3f684dcecccebca93eb3379ee314c82a04b17980830aed1d38",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/projects/[projectId]/verification/run/route.ts",
+      "path": "/api/projects/[projectId]/verification/run",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "cb9a384a90a97a742729d098516334ef805d8b3840c95ade159c9744c36e87df",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/projects/route.ts",
+      "path": "/api/projects",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "sha256": "676908dde4ab01fa223ce800078ac4ef876c68613571eaa60dbb2246af9b4130",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "GET, HEAD, OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/session/route.ts",
+      "path": "/api/session",
+      "methods": [
+        "GET"
+      ],
+      "sha256": "8b200619b2eb5917c499d3c371705e149cd1d145e046a83910e013904598fe4f",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "GET, HEAD, OPTIONS"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/simulator/route.ts",
+      "path": "/api/simulator",
+      "methods": [
+        "POST"
+      ],
+      "sha256": "6d9790ae2b5c6583407204349942fd0d6a68bb82f1424412ffe960522f03846d",
+      "implicit": {
+        "head": "405",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "OPTIONS, POST"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/stream/route.ts",
+      "path": "/api/stream",
+      "methods": [
+        "GET"
+      ],
+      "sha256": "8549a115637917e5339cab345411bab86000fa62de19fdc0b76cdb7276ab7e16",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "GET, HEAD, OPTIONS"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    },
+    {
+      "file": "app/api/workspace/folders/route.ts",
+      "path": "/api/workspace/folders",
+      "methods": [
+        "GET"
+      ],
+      "sha256": "b51c96932821562029eeaec2a8038932dcc1a96b779daa4c18d75fdc24c0a51c",
+      "implicit": {
+        "head": "GET",
+        "options": {
+          "kind": "automatic",
+          "status": 204,
+          "allow": "GET, HEAD, OPTIONS"
+        },
+        "unsupported": {
+          "status": 405,
+          "allowHeader": false
+        }
+      }
+    }
+  ]
+}

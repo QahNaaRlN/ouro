@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type {DomainEvent} from '../packages/core/src/types';
-import {selectWorkspaceHistory,workspaceHistoryEntry,workspaceHistoryRelations,workspaceHistoryRowLabel} from '../lib/workspace-history-view';
+import {selectWorkspaceHistory,workspaceHistoryEntry,workspaceHistoryRelations,workspaceHistoryRowLabel} from '../packages/frontend/src/entities/project-event';
 
 const projectId='history-project',actor={id:'agent-1',kind:'agent' as const,name:'Агент',projectIds:[projectId]};
 const event=(id:string,version:number,overrides:Partial<DomainEvent>={}):DomainEvent=>({id,version,type:'ActionReported',schemaVersion:1,projectId,occurredAt:'2026-11-03T10:00:00.000Z',actor,correlationId:'shared-correlation',specId:'spec-a',specRevisionId:'revision-a',executionId:'execution-a',payload:{title:'Проверка',phase:'completed'},...overrides});

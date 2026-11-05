@@ -3,10 +3,11 @@ import { PROJECT_ID } from '../packages/core/src';
 import { AccessError } from './auth';
 
 const loopback=(host:string)=>['localhost','127.0.0.1','[::1]'].includes(host);
-export function requestOrigin(request:Request): string {
+/** Определяет разрешённый origin по Host и явному public URL, сохраняя loopback-режим. */
+export function requestOrigin(request:Request,env:Record<string,string|undefined>=process.env): string {
   const url=new URL(request.url);
   const host=request.headers.get('host')??url.host;
-  const configured=process.env.OURO_PUBLIC_URL?new URL(process.env.OURO_PUBLIC_URL):null;
+  const configured=env.OURO_PUBLIC_URL?new URL(env.OURO_PUBLIC_URL):null;
   const target=new URL(`${url.protocol}//${host}`);
   if(configured&&configured.host===host) {
     if(configured.protocol!=='https:'&&!loopback(configured.hostname))throw new AccessError('CONFIGURATION_ERROR','Удалённый MCP endpoint требует HTTPS.',503);
@@ -15,8 +16,9 @@ export function requestOrigin(request:Request): string {
   if(!loopback(target.hostname))throw new AccessError('FORBIDDEN','Host не разрешён. Для внешнего HTTPS endpoint задайте OURO_PUBLIC_URL.');
   return target.origin;
 }
-export function assertMcpRequest(request:Request) {
-  const expected=requestOrigin(request);
+/** Проверяет разрешённый Origin и JSON Content-Type перед обработкой MCP-запроса. */
+export function assertMcpRequest(request:Request,env:Record<string,string|undefined>=process.env) {
+  const expected=requestOrigin(request,env);
   const origin=request.headers.get('origin');
   if(origin&&origin!==expected)throw new AccessError('FORBIDDEN','Origin не разрешён для MCP.');
   if(!request.headers.get('content-type')?.startsWith('application/json'))throw new AccessError('UNSUPPORTED_MEDIA_TYPE','MCP POST требует application/json.',415);
@@ -35,8 +37,10 @@ export function requestedProjectId(request:Request):string{
   if(!/^[A-Za-z0-9_-]{1,200}$/.test(projectId))throw new AccessError('VALIDATION_ERROR','Некорректный projectId.',422);
   return projectId;
 }
-export function connectionConfig(request:Request,projectId=PROJECT_ID) {
+/** Формирует connection; дополнительные stdio args принадлежат trusted composition, не request-параметрам. */
+export function connectionConfig(request:Request,projectId=PROJECT_ID,options:{env?:Record<string,string|undefined>;mcpPath?:string;mcpArgs?:readonly string[];nodePath?:string}={}) {
+  const env=options.env??process.env;
   const endpoint=projectId===PROJECT_ID?'/api/mcp':`/api/projects/${encodeURIComponent(projectId)}/mcp`;
-  if(process.env.OURO_DEPLOYMENT_MODE==='cloud')return {httpUrl:`${requestOrigin(request)}${endpoint}`,stdioCommand:'',stdioArgs:[] as string[],projectId,localBridgeRequired:true};
-  return {httpUrl:`${requestOrigin(request)}${endpoint}`,stdioCommand:process.execPath,stdioArgs:[path.resolve('packages/mcp/bin/ouro-mcp.mjs')],projectId};
+  if(env.OURO_DEPLOYMENT_MODE==='cloud')return {httpUrl:`${requestOrigin(request,env)}${endpoint}`,stdioCommand:'',stdioArgs:[] as string[],projectId,localBridgeRequired:true};
+  return {httpUrl:`${requestOrigin(request,env)}${endpoint}`,stdioCommand:options.nodePath??process.execPath,stdioArgs:[options.mcpPath??path.resolve('packages/mcp/bin/ouro-mcp.mjs'),...(options.mcpArgs??[])],projectId};
 }

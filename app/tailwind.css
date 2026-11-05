@@ -1,0 +1,41 @@
+@layer theme, base, ouro-legacy, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@source "./";
+@source "../components";
+@source "../packages/frontend/src";
+
+/** Точные включающие пороги объявлены по убыванию. */
+@custom-variant at-most-1250 { @media (max-width: 1250px) { @slot; } }
+@custom-variant at-most-1180 { @media (max-width: 1180px) { @slot; } }
+@custom-variant at-most-1100 { @media (max-width: 1100px) { @slot; } }
+@custom-variant at-most-1050 { @media (max-width: 1050px) { @slot; } }
+@custom-variant at-most-1000 { @media (max-width: 1000px) { @slot; } }
+@custom-variant at-most-950 { @media (max-width: 950px) { @slot; } }
+@custom-variant at-most-900 { @media (max-width: 900px) { @slot; } }
+@custom-variant at-most-800 { @media (max-width: 800px) { @slot; } }
+@custom-variant at-most-760 { @media (max-width: 760px) { @slot; } }
+@custom-variant at-most-750 { @media (max-width: 750px) { @slot; } }
+@custom-variant at-most-700 { @media (max-width: 700px) { @slot; } }
+@custom-variant at-most-680 { @media (max-width: 680px) { @slot; } }
+@custom-variant at-most-640 { @media (max-width: 640px) { @slot; } }
+@custom-variant at-most-600 { @media (max-width: 600px) { @slot; } }
+@custom-variant at-most-560 { @media (max-width: 560px) { @slot; } }
+@custom-variant at-most-520 { @media (max-width: 520px) { @slot; } }
+@custom-variant at-most-420 { @media (max-width: 420px) { @slot; } }
+
+/** Токены utilities ссылаются на существующую палитру и сохраняют локальную тему Meridian. */
+@theme inline {
+  --spacing: 4px;
+  --font-sans: Inter, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-workspace-mono: "JetBrains Mono", monospace;
+  --color-ouro-bg: var(--bg);
+  --color-ouro-subtle: var(--subtle);
+  --color-ouro-muted: var(--muted);
+  --color-ouro-control: var(--control);
+  --color-ouro-border: var(--border);
+  --color-ouro-text: var(--text);
+  --color-ouro-text-muted: var(--text-muted);
+  --color-ouro-positive: var(--positive);
+}

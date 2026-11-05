@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {parseMeridianScope,mapMeridianExpectation} from '../packages/meridian/src/context';
+import {parseMeridianScope} from '../packages/meridian/src/context';
+import {mapMeridianExpectation} from '../packages/core/src/meridian-import';
 // Synthetic DTO reconstructed from pinned Meridian work-scope.test.ts, not a live host capture.
 const raw=readFileSync(new URL('./fixtures/meridian/scope.json',import.meta.url),'utf8');
 const fixture=()=>JSON.parse(raw);

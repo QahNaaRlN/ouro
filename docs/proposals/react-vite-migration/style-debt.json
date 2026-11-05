@@ -1,0 +1,82 @@
+{
+  "contract": "ouro-style-debt/v1",
+  "technicalCss": {
+    "app/tailwind.css": {
+      "kind": "tailwind",
+      "reason": "Tailwind 4 entry, theme tokens and explicit source discovery; legacy layer remains transitional."
+    },
+    "app/theme.css": {
+      "kind": "base-theme",
+      "reason": "Existing document palette, box sizing and minimal body font/base values; no component styling."
+    }
+  },
+  "css": [
+    {
+      "file": "app/globals.css",
+      "sha256": "3b5a794f79da42683cd39a4c08c5a8e559154025ac419be2036829e62360cae5",
+      "ordinaryRules": 91,
+      "legacyLayer": true,
+      "owner": "legacy-human-view"
+    },
+    {
+      "file": "components/legacy-shared-defaults.css",
+      "sha256": "c83538e3f738ff9fb5226060bc7141c0ccfeab11b2ebbdc4185403bc913cb5dc",
+      "ordinaryRules": 21,
+      "legacyLayer": true,
+      "owner": "dependent-ui-families/final-css-gate"
+    }
+  ],
+  "inline": [
+    {
+      "file": "components/impact-panel.tsx",
+      "sha256": "75328788ebd2fe990f66225868045ce4f62b69b450ee8b90399d3ab251b40bc0",
+      "expressions": [
+        {
+          "kind": "jsx",
+          "sha256": "b6968f32df2618d39450408c4684cd1d0619fd698ad4b6b127b95ada193ac9d1",
+          "count": 1
+        }
+      ],
+      "owner": "specialized-panels"
+    },
+    {
+      "file": "components/onboarding.tsx",
+      "sha256": "6acfa1ad8f54b0c59f0279d73b718cf7b527296af36307e9c5362d60bda512d3",
+      "expressions": [
+        {
+          "kind": "jsx",
+          "sha256": "24152c7e9306e858203596dfc095244d8e6cd05ef33f60ad333109f293ed0907",
+          "count": 1
+        },
+        {
+          "kind": "jsx",
+          "sha256": "28d78d79a75a2987a217bc064fbd9485498c660dcc57983be16ab52adf610aa2",
+          "count": 1
+        },
+        {
+          "kind": "jsx",
+          "sha256": "c74421dbdec91552be946cc7fd24d22338810a7dc6a9654ad517e867c47fe7c8",
+          "count": 1
+        }
+      ],
+      "owner": "specialized-panels"
+    },
+    {
+      "file": "components/workspace-ui.tsx",
+      "sha256": "e7e3d5f3cedd2dfff1bc2c4e437ae58f7671e88791b405c00abeac9b8ac1071e",
+      "expressions": [
+        {
+          "kind": "dom",
+          "sha256": "269a4898bd79e655ce0409656952ae863505bbd756b55c0491f0b9bcc64dbc2b",
+          "count": 1
+        },
+        {
+          "kind": "dom",
+          "sha256": "5c2996664847f0709bd57d4dcb89679b1ebe29b0b7a5bfda944f59f65c132987",
+          "count": 1
+        }
+      ],
+      "owner": "workspace"
+    }
+  ]
+}

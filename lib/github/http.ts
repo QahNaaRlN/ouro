@@ -1,7 +1,7 @@
 import type { Actor, GitHubBinding } from '../../packages/core/src';
 import { AGENT_ID,PROJECT_ID } from '../../packages/core/src';
 import { z } from 'zod';
-import { AccessError,authenticatedParticipant,assertHuman,readCommandBody } from '../auth';
+import { AccessError,authenticatedParticipant,assertHuman,readCommandBody,defaultAuthService,type AuthService } from '../auth';
 import { apiError } from '../http';
 import { requestOrigin,requestedProjectId } from '../connection-config';
 import { createGitHubClient,normalizeGitHubPush,verifyGitHubSignature,type GitHubRepository,type NormalizedGitHubPush } from './verification';
@@ -15,13 +15,15 @@ export type GitHubHttpStore={
   enqueueGitHubDelivery(deliveryId:string,payload:NormalizedGitHubPush,projectId?:string):Promise<{delivery:unknown;duplicate:boolean}>;
   retryGitHubDelivery(id:string,actor:Actor,projectId?:string):Promise<unknown>;
 };
+/** Связывает HTTP-операции GitHub с авторизацией, хранилищем, API-проверкой и управляемым запуском очереди. */
 export type GitHubHttpDependencies={
+  auth?:AuthService;
   getStore?:()=>Promise<GitHubHttpStore>;
   client?:{resolveRepository(fullName:string):Promise<GitHubRepository>};
   authenticateHuman?:(request:Request)=>Actor|Promise<Actor>;
   env?:()=>{secret?:string;token?:string};
-  afterResponse?:(task:()=>Promise<void>)=>void;
-  kick?:()=>Promise<void>;
+  afterResponse?:(task:(signal?:AbortSignal)=>Promise<void>)=>void;
+  kick?:(signal?:AbortSignal)=>Promise<void>;
 };
 const id=z.string().trim().min(1).max(200),version=z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 const command={requestId:z.string().min(8).max(200),expectedVersion:version};
@@ -47,14 +49,16 @@ async function readWebhookBytes(request:Request):Promise<Uint8Array>{
   finally{reader.releaseLock();}
   const raw=new Uint8Array(length);let offset=0;for(const chunk of chunks){raw.set(chunk,offset);offset+=chunk.byteLength;}return raw;
 }
+/** Создаёт HTTP-операции привязок и доставок GitHub, проверяя webhook-подпись по исходным байтам. */
 export function createGitHubHandlers(dependencies:GitHubHttpDependencies={}){
+  const {authenticatedParticipant,readCommandBody,requestOrigin}=dependencies.auth??defaultAuthService;
   const getStore=dependencies.getStore??(async()=>(await import('../store')).getGitHubStore());
   const env=dependencies.env??(()=>({secret:process.env.OURO_GITHUB_WEBHOOK_SECRET,token:process.env.OURO_GITHUB_TOKEN}));
   const client=dependencies.client??createGitHubClient({token:env().token});
   const human=async(request:Request,projectId:string)=>{const actor=await(dependencies.authenticateHuman?dependencies.authenticateHuman(request):authenticatedParticipant(request,projectId,AGENT_ID));assertHuman(actor);return actor;};
   const kick=dependencies.kick??kickGitHubWorker;
-  const schedule=()=>dependencies.afterResponse?.(async()=>{
-    try{await kick();}catch{/* The durable queue/lease recovers on the next tick. Never pass upstream exceptions to Next's logger. */}
+  const schedule=()=>dependencies.afterResponse?.(async(signal)=>{
+    try{await kick(signal);}catch{/* The durable queue/lease recovers on the next tick. Never pass upstream exceptions to Next's logger. */}
   });
   return {
     async list(request:Request){try{
