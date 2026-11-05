@@ -9,7 +9,7 @@ export function createWorkspaceAccess(dependencies:{getStore?:()=>Promise<Store>
  const {authenticatedParticipant,requestOrigin}=dependencies.auth??defaultAuthService;
  const environment=dependencies.environment??process.env;
 
-/** The catalog is a local operator boundary, not membership in the demo project. */
+/** Проверяет полномочия доверенного локального оператора для доступа к каталогу и папкам workspace. */
 async function requireWorkspaceOperator(request:Request):Promise<Actor>{
  if(environment.OURO_DEPLOYMENT_MODE==='cloud')throw new AccessError('FORBIDDEN','Файловая система сервера недоступна из облачного проекта.');
  if(!request.headers.has('authorization')&&userSessionCookie(request)!==undefined)throw new AccessError('FORBIDDEN','Аккаунт проекта не предоставляет полномочия локального оператора и доступ к папкам сервера.');
@@ -23,7 +23,7 @@ function assertExpectedProject(request:Request,projectId:string):void{
  const expected=request.headers.get('X-Ouro-Expected-Project');
  if(expected!==null&&expected!==projectId)throw new AccessError('PROJECT_CHANGED','Операция относится к другому проекту. Повторите её по исходному адресу.',409);
 }
-/** Internal lookup: callers must authenticate their own human/agent boundary. */
+/** Ищет проект и его store в каталоге, оставляя проверку идентичности вызывающему HTTP/MCP-адаптеру. */
 async function getWorkspaceProjectContext(id:string){
  if(typeof id!=='string'||!id||id.length>200||/[\u0000-\u001f\u007f]/.test(id))throw new AccessError('VALIDATION_ERROR','Нужен корректный ID проекта.',422);
  const owner=await getWorkspaceStore(),project=await owner.getWorkspaceProject(id);
@@ -48,7 +48,7 @@ async function resolveWorkspaceRequest(request:Request,id:string){
  return {...context,project:{...context.project,role:'Owner' as const},actor:{...operator,projectIds:[id]} as Actor};
 }
 
-/** OS reads and execution remain an explicit trusted local-folder capability. */
+/** Разрешает файловые операции и локальный запуск только для folder-проекта с проверенным оператором. */
 async function resolveLocalWorkspaceRequest(request:Request,id:string){
  const operator=await requireWorkspaceOperator(request);assertExpectedProject(request,id);
  const context=await getWorkspaceProjectContext(id);

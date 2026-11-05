@@ -5,6 +5,7 @@ import {requestedProjectId} from '../connection-config';
 import {AGENT_ID,type Actor} from '../../packages/core/src';
 
 const MAX_BODY_BYTES=2*1024*1024;
+/** Задаёт проверку человеческой идентичности и операцию приёма Meridian scope для HTTP-импорта. */
 export type MeridianImportDependencies={
  auth?:AuthService;
  authenticateHuman?:(request:Request)=>Actor|Promise<Actor>;
@@ -25,6 +26,7 @@ async function readImportBody(request:Request,assertWrite:typeof assertJsonWrite
  try{return JSON.parse(new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes));}
  catch{throw new AccessError('VALIDATION_ERROR','Некорректный JSON или UTF-8 импорта.',400);}
 }
+/** Создаёт авторизованный HTTP-импорт Meridian scope со сверкой участника и ограниченным чтением UTF-8 JSON. */
 export function createMeridianImportHandler(dependencies:MeridianImportDependencies={}){
  const {authenticatedParticipant,assertJsonWrite}=dependencies.auth??defaultAuthService;
  const authenticate=dependencies.authenticateHuman??((request:Request)=>authenticatedParticipant(request,requestedProjectId(request),AGENT_ID));

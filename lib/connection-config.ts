@@ -3,6 +3,7 @@ import { PROJECT_ID } from '../packages/core/src';
 import { AccessError } from './auth';
 
 const loopback=(host:string)=>['localhost','127.0.0.1','[::1]'].includes(host);
+/** Определяет разрешённый origin по Host и явному public URL, сохраняя loopback-режим. */
 export function requestOrigin(request:Request,env:Record<string,string|undefined>=process.env): string {
   const url=new URL(request.url);
   const host=request.headers.get('host')??url.host;
@@ -15,6 +16,7 @@ export function requestOrigin(request:Request,env:Record<string,string|undefined
   if(!loopback(target.hostname))throw new AccessError('FORBIDDEN','Host не разрешён. Для внешнего HTTPS endpoint задайте OURO_PUBLIC_URL.');
   return target.origin;
 }
+/** Проверяет разрешённый Origin и JSON Content-Type перед обработкой MCP-запроса. */
 export function assertMcpRequest(request:Request,env:Record<string,string|undefined>=process.env) {
   const expected=requestOrigin(request,env);
   const origin=request.headers.get('origin');

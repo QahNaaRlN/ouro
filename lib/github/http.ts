@@ -15,6 +15,7 @@ export type GitHubHttpStore={
   enqueueGitHubDelivery(deliveryId:string,payload:NormalizedGitHubPush,projectId?:string):Promise<{delivery:unknown;duplicate:boolean}>;
   retryGitHubDelivery(id:string,actor:Actor,projectId?:string):Promise<unknown>;
 };
+/** Связывает HTTP-операции GitHub с авторизацией, хранилищем, API-проверкой и управляемым запуском очереди. */
 export type GitHubHttpDependencies={
   auth?:AuthService;
   getStore?:()=>Promise<GitHubHttpStore>;
@@ -48,6 +49,7 @@ async function readWebhookBytes(request:Request):Promise<Uint8Array>{
   finally{reader.releaseLock();}
   const raw=new Uint8Array(length);let offset=0;for(const chunk of chunks){raw.set(chunk,offset);offset+=chunk.byteLength;}return raw;
 }
+/** Создаёт HTTP-операции привязок и доставок GitHub, проверяя webhook-подпись по исходным байтам. */
 export function createGitHubHandlers(dependencies:GitHubHttpDependencies={}){
   const {authenticatedParticipant,readCommandBody,requestOrigin}=dependencies.auth??defaultAuthService;
   const getStore=dependencies.getStore??(async()=>(await import('../store')).getGitHubStore());

@@ -13,6 +13,7 @@ type AssertExactPlatform<T extends true> = T;
 type PlatformMatchesNode = AssertExactPlatform<[BindingRuntimePlatform] extends [NodeJS.Platform] ? [NodeJS.Platform] extends [BindingRuntimePlatform] ? true : false : false>;
 export type BindingRecoveryContext={actorId:string;projectId:string;binding:WorkspaceBinding};
 export type BindingRecoveryVerificationInput=BindingRecoveryContext&{ticket:string};
+/** Фиксирует наблюдение сохранённой привязки, доступность её восстановления и сопутствующие данные runtime. */
 export type BindingRecoveryInspection={
  status:BindingRecoveryStatus;eligible:boolean;savedBinding:WorkspaceBinding;observedBinding?:WorkspaceBinding;
  runtime:BindingRecoveryRuntime;reason:string;origin:'unknown';ticket?:string;expiresAt?:string;

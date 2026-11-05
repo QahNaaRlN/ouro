@@ -9,7 +9,9 @@ export type GitHubWorkerStore={
   finishGitHubDelivery(jobId:string,leaseToken:string,reason?:string,projectId?:string):Promise<void>;
   failGitHubDelivery(jobId:string,leaseToken:string,error:{code:string;retryAfterMs?:number;permanent?:boolean},projectId?:string):Promise<void>;
 };
+/** Связывает worker доставок GitHub с хранилищем, проверкой коммитов и ограничениями обработки и lease. */
 export type GitHubWorkerDependencies={getStore:()=>Promise<GitHubWorkerStore>;client:{verifyCommit(repository:{id:number;fullName:string},sha:string,signal?:AbortSignal):Promise<GitHubVerifiedCommit>};maxJobs?:number;leaseMs?:number};
+/** Создаёт обработчик очереди GitHub с проверкой коммитов и записью результатов в границах действующего lease. */
 export function createGitHubWorker(dependencies:GitHubWorkerDependencies){
   let running:Promise<{processed:number}>|null=null;
   return {run:(signal?:AbortSignal):Promise<{processed:number}>=>{
