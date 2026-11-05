@@ -1,6 +1,6 @@
 # C1 — три agent CLI до frontend build
 
-Дата: 2026-11-05. Статус: **DESIGN_ACCEPTED / IMPLEMENTATION_IN_PROGRESS / COMMITTED_ARTIFACT_QUALIFICATION_PENDING**. Ветка `codex/consumer-agent-cli`; base epic `6595e2e30e4a3f800e647404c8ac083a1d6892c0` + Conventional dependency merge CGL `88cbba1afa53e775225f7eb57fd5db280527df3c`, resulting `29989b459387836e40bae454869dede998a7ebc8`. Это frozen legacy oracle, а не SHA будущего квалифицированного candidate; actual post-merge candidate фиксируется отдельно в журнале.
+Дата: 2026-11-05. Статус: **DESIGN_ACCEPTED / IMPLEMENTED_SCOPED / LOCAL_SDK_QUALIFIED / CI_PENDING**. Ветка `codex/consumer-agent-cli`; base epic `6595e2e30e4a3f800e647404c8ac083a1d6892c0` + Conventional dependency merge CGL `88cbba1afa53e775225f7eb57fd5db280527df3c`, resulting `29989b459387836e40bae454869dede998a7ebc8`. Это frozen legacy oracle. Actual post-merge candidate `ff16750d2d7dc3839eff86a37c99d019ec82555b` квалифицирован ограниченной SDK suite12/12; source/proof lineage и ограничения записаны в журнале. Это не завершение всей C1/P5, archive/hosted/cutover или native acceptance.
 
 Владелец возобновил C0/C1 и разрешил этот ограниченный срез. Основание: D05/D06/D13–D15 и completion plan C1. [Журнал](../plans/consumer-agent-cli.md). Остальной40-command inventory остаётся в предыдущем read-only draft; это не реализация всех CLI/hosted/protocol/source-ZIP contracts.
 
