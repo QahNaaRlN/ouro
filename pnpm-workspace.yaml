@@ -10,3 +10,5 @@ allowBuilds:
   fsevents@2.3.3: false
 strictDepBuilds: true
 enablePrePostScripts: true
+# Точный manager закреплён; его необязательная latest-проверка не удерживает source launch.
+updateNotifier: false

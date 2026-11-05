@@ -57,6 +57,8 @@ npm run dev
 
 В этих исходниках и новом **source ZIP** публичная `npm run launch` сохраняет три фазы подготовки/build/start: npm запускает точный pnpm, устанавливается frozen workspace с build tools, затем выполняются свежая сборка и локальный старт. Параметры порта, `.ouro` и остановка сохраняются. Независимый **consumer envelope** имеет отдельный launcher: собственный frozen npm graph и `npm ci --include=dev` при каждом новом поколении, без developer installation как fallback. Реальный consumer ZIP и перенос старых данных ещё ожидают C5; source ZIP не является доказательством этого допуска. [Контракт workspace](docs/specs/developer-pnpm-workspace.md).
 
+Канонические команды запускаются из root: `npm run web:build`, `npm run service:typecheck`, `npm run service:build`, `npm run service:test` (или соответствующий `pnpm run`). Они явно подготавливают protocol; service:test также собирает web/service artifacts. Прямые команды внутри package и recursive workspace build являются низким уровнем: web использует общий root-owned source, поэтому весь task graph задают root-команды. CI перед leaf service tests явно выполняет именованные protocol/service/web build steps.
+
 ### Данные и повторный запуск
 
 По умолчанию история хранится в **`.ouro/postgres`** рядом с установленным приложением. При первом обращении применяются миграции PGlite/PostgreSQL; шесть учебных спек появляются только в demo-проекте. Добавленная папка получает отдельную пустую историю и неизменяемую привязку к своему пути. Не удаляйте `.ouro`, если хотите сохранить работу; один каталог PGlite обслуживает один процесс.

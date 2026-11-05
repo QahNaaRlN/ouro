@@ -172,8 +172,8 @@ jobs:
         run: npm test
       - name: Check and build the isolated service runtime
         run: |
-          npm --prefix apps/service run typecheck
-          npm --prefix apps/service run build
+          npm run service:typecheck
+          npm run service:build
       - name: Check and build the standalone React web shell
         run: |
           npm run web:typecheck
@@ -215,7 +215,7 @@ jobs:
       - name: Build standalone React web shell
         run: npm run web:build
       - name: Build service for actual same-origin UI qualification
-        run: npm --prefix apps/service run build
+        run: npm run service:build
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run production browser acceptance

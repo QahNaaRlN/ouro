@@ -67,3 +67,19 @@ Root принял следующие десять замен только в roo
 Standard lock-only inspection даёт root302→302, service189→189 и protocol2→2 reachable identities. Web136→151 получает optional Vite peers из уже существующего root graph: jiti2.7.0, tsx4.23.15, lightningcss1.32.0 со всеми его platform packages и detect-libc2.1.2. Это явная binding-консолидация, а не новые registry версии. Direct resolved versions сохраняются; @ouro/protocol0.3.0 получает workspace link notation, root непосредственно объявляет уже существующий esbuild0.28.2.
 
 Исходный npm lock-only baseline не объявляется полностью зелёным: npm фиксирует root forwarded0.3.0 как invalid против exact0.2.0 и отсутствующие optional WASI records; service fixture сообщает отсутствующие local-protocol child metadata без installation. Эти результаты сохранены отдельно от actual install и domain RED. Новый layout обязан пройти focused root SDK/auth/rate-limit проверки, strict programs, native/runtime production builds и настоящие catalog/error/i18n renderer probes. Все mandatory CI checks и независимый frozen consumer graph сохраняются. Actual ZIP/hosted/data rehearsal остаётся C5.
+
+## Явный task graph и ограниченная manager policy
+
+Канонические developer commands принадлежат root; `npm run` и `pnpm run` используют один набор scripts:
+
+| Команда | Обязательная подготовка |
+|---|---|
+| dev, build, typecheck, test | protocol build через именованный prehook |
+| web:dev, web:build, web:typecheck | protocol build через именованный prehook |
+| service:build, service:typecheck | protocol build через именованный prehook |
+| service:test | service:build → web:build → leaf service tests |
+| browser/presentation qualification | CI явно собирает соответствующие artifacts перед renderer steps |
+
+Raw workspace commands/recursive build — низкий уровень с готовыми protocol/artifact prerequisites. Web использует root-owned общий source, для которого не создаётся фиктивный package dependency. Изменений immutable service build recipe, watch orchestration или Turbo нет. CI может вызывать leaf service tests после своих явных именованных build steps, не повторяя те же builds ради wrapper.
+
+Для exact pinned manager задаётся `updateNotifier:false`: выключена только optional latest-version notification, остальные registry/native/frozen/admission проверки сохранены. Первый natural-exit gate завис после строки Done и остановлен как STALLED/OWNER_INTERRUPTED; separate unawaited update resolver и registry socket объясняют гипотезу, а не доказанную причину. Следующий один fresh run обязан завершиться естественно exit0; один printed Done не считается PASS. [Официальная настройка](https://pnpm.io/10.x/settings#updatenotifier).
