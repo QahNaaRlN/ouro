@@ -1,6 +1,6 @@
 # C1: журнал конечных проверок качества
 
-Дата: 2026-11-05. Статус: **SOURCE_A_READY_FOR_QUALIFICATION / FINAL_QUALIFICATION_PENDING**. [Спецификация](../specs/universal-quality-gates.md). Ветка `codex/universal-quality-gates`, base `b92b5f6c04dc3933881278e066e42259ed4bc690`. Ниже ранние этапы сохраняют свой исторический NOT_RUN; текущий допуск и оставшаяся работа указаны в последнем разделе.
+Дата: 2026-11-05. Статус: **LOCAL_QUALIFIED / EXACT_HEAD_CI_PENDING**. [Спецификация](../specs/universal-quality-gates.md). Ветка `codex/universal-quality-gates`, base `b92b5f6c04dc3933881278e066e42259ed4bc690`. Ниже ранние этапы сохраняют свой исторический NOT_RUN; текущий допуск и оставшаяся работа указаны в последнем разделе.
 
 ## Документационная подготовка
 
@@ -71,3 +71,31 @@ Root разрешил finite maintained-Prettier application без strict child
 Ledger содержит342 exact entries:341 legacy entries с918 доказанными историческими findings и338 formatter debts, плюс одну technical Link запись. Original inputs переиспользованы; после форматирования обновлены только current hash/diagnostic position Link и current hash существующего SSR test после добавления проверок видимого текста обеих сторон карточки. У source role checker есть точный список22 текущих root config/bootstrap entries; новый root-level source, как и новая directory role, не получает implicit исключение. Source/config peer blockers закрыты; `git diff --check` прошёл. Ни install, ни app server/browser в application этапе не запускались.
 
 Далее source A фиксируется до qualification: отдельный fresh Windows frozen install с реально отсутствующими четырьмя module dirs и неизменным local raw/canonical lock; actual quality/architecture/style/migration/conventions gates и четыре strict programs; один affected Next production build, web build; focused session/catalog renderer, существующие runtime/UNKNOWN и Meridian401/exact retry/onboarding behavior, четыре существующих SSR cases. Linux/full exact-head CI остаётся обязательной отдельной стадией. Не выполненные этапы не повышаются в PASS; push/PR пока не выполнялись.
+
+## Локальная квалификация source A2–A5
+
+Source A1 `30570d41a762a34c493f3cab538b59f6101676d7` оказался неполным: staging пропустил 19 предназначенных для story `lib/*` patches. Они сохранены отдельным A2 `cbb23b84de0927e75d3ae5083d6a3154bc5cb2b6`; до qualification полный status проверен clean агентом и root. A1 не назван квалифицированным, история не переписана.
+
+Финальный source — A5 `84e8cbbf88960ef6b1ba7596fe555ae29afd8e21`, tree `b32a4a4d968cbeb4275907b823120ae42a01b3c5`. Lock blob `0159d68a6c24f0660cd9b17e9212fc9c6df011ef`, raw/canonical SHA256 `055e0e7d51bcc31635109a99b4eda4ad1218e4cd945d4299fcd618b9ca561f84`. Дальнейший B меняет только два документа. От A2 до A5 manifest/lock/tools/ledger/runtime bindings не менялись:
+
+- A3 `14564277e6d9d3f307eb5e11d5b5eee0f1a30b38`: typed spread `process.env` и удаление GIT_ в одном owned test вместо теряющего обязательный NODE_ENV `Object.fromEntries`. Первоначальный root TS failure — ошибка типов fixture, не product RED; runtime env values сохранены, cast не добавлен.
+- A4 `3d41179fee4f0bfdc5fc2eb97f04eeb0e1c43b42`: type-only re-export `entities/work/index.ts` перенесён после runtime reexports; их порядок, имена и signatures сохранены. Это единственное нарушение, найденное actual architecture gate, без waiver.
+- A5: прежний deep/upward-import fixture имел executable declaration в public index. Новый purity gate закономерно дал дополнительный diagnostic. Fixture получил named re-export и соседний private module; обе исходные запрещённые import edges и точные ожидаемые codes сохранены. Этот первый FAIL сохранён как fixture interaction, не product RED.
+
+| Проверка | Actual результат и допустимое переиспользование |
+| --- | --- |
+| Fresh frozen Windows install | На clean A2 все четыре module roots отсутствовали; root/protocol предварительно перемещены только в own backup, web/service уже отсутствовали. Первоначальный неудачный precondition helper сохранён как setup issue. Pnpm10.34.9 install `--frozen-lockfile --prod=false --strict-peer-dependencies` завершился natural exit0, reported27.4s; оба esbuild native postinstall прошли, lock не изменился. Переиспользуется для A5 с теми же graph inputs. |
+| Focused quality fixtures | A2:93/93 PASS,0 skipped/cancelled. A3: повторён один affected temporary-Git replacement fixture,1/1 PASS; actual lint/source/format изменённого TS test — PASS. Другие92 результата переиспользованы, setup failures отдельно. |
+| Actual quality CLI | A2:665 files,919 accounted findings,338 formatter debts,342 reviewed entries,0 errors. Для A4 отдельно actual lint/source/format изменённого public index — PASS. A5 меняет только JSON fixture, обычный Prettier.check PASS; TypeScript/ESLint scope не распространяется на JSON. Не заявляется повторный full665 run на A5. |
+| Четыре strict programs | Root/web/service/protocol на A3 PASS. A4 меняет только порядок type reexport, A5 — fixture JSON; unchanged type/runtime inputs переиспользованы с root review. |
+| Architecture/style/migration/conventions | A4 PASS:925 inspected files,0 violations,11 exact legacy edges;2 ordinary CSS files и3 inline files,0 violations;47 routes/59 methods;364 commit subjects. Новые A5/B Conventional subjects не подменяют будущую exact-head CI. |
+| Production builds | A4 Next webpack PASS, compile65s и framework TypeScript35.5s; Vite PASS18.49s. Affected optional Babel binding допущен; прежний chunk warning сохранён без threshold change. Protocol:check —71 schemas verified. A5 не меняет production source. |
+| Unit/runtime/SSR и conventions | A4 run:84/86 PASS, два failed records — один architecture subcase и его parent. Остальные51 cases, включая session HTTP/UNKNOWN/receipt/lease, catalog scope/cancellation, conventions и4 SSR, прошли. A5 affected architecture suite35/35 PASS; эти результаты вместе квалифицируют выбранный объём, не выданы за единый86/86 run. |
+| Настоящий React hook renderer | A5:6/6 PASS29.0s. Same-valued scope сохраняет owner; primitive/environment replacement отбрасывает старую projection и сохраняет draft. Внедрённые semantic ports измеряют React ownership, не физический network SSE. Его существующий transport/receipt scope проверен unit/runtime cases выше. |
+| Production UI | A5:12/12 PASS51.8s на новом own profile и порту3491: Meridian lost response→UNKNOWN→401→exact import/receipt, ON01–11 focus/controls/scroll/restore. JSON report:expected12,unexpected0,skipped0,flaky0. ON04 не выдаётся за отдельное заполнение внутреннего Set; узкий Set identity capture дополнен source peer. |
+
+Логи и конечные proofs сохранены в own `.operations`: `quality-fresh-frozen-install-result.json`, `quality-source-a2-focused.log`, `quality-source-a2-repository.log`, `quality-a3-{root-types,git-fixture}.log`, `quality-a3-changed-test-gate.json`, `quality-a4-{architecture,styles,migration,conventions,next-build,vite-build,protocol-check,behavior-units}.log`, `quality-a5-{architecture-fixtures,hook-renderer,production-browser}.log`. Старые setup/FAIL artifacts не удалены и не повышены в PASS.
+
+После build проверены все74 generated schema/version paths: canonical bytes и JSON точно равны HEAD; только доказанный набор восстановлен. `quality-a5-generated-zero-diff.json` также фиксирует production stats, tree и неизменный lock. Full status A5 clean. Все owned managed sessions завершились natural exit; известные Vite/worker/Next/worker PID65008/30804/58168/25520 отсутствуют по CIM. Heavy lease освобождён; новых captures, full CGL или повторного installation/665-file audit не запускалось.
+
+Остаются root bounded publication peer, push/PR и полный обязательный CI на exact опубликованном head, включая Linux installation/checks и прежние functional/presentation jobs. Локальный PASS не равен integration/acceptance и не закрывает C2–C7.
