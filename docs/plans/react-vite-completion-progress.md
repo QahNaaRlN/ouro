@@ -6,8 +6,8 @@
 
 | Этап | Состояние | Фактический результат / следующий выход |
 |---|---|---|
-| C0 | VERIFIED; документация подготовлена к интеграции | Base, открытые ветки, результаты и dispositions проверены. Сохранённая готовая локализация интегрирована отдельным merge |
-| C1 | IN_PROGRESS | Начат конечный CLI-срез; затем independent protocol producer и pnpm workspace/quality rules |
+| C0 | CLOSED | Recovery registry и обновлённый план интегрированы PR77; исходный снимок и dispositions ниже сохранены |
+| C1 | IN_PROGRESS | CLI/generation/protocol producer приняты в epic; pnpm local A3 квалифицирован и ожидает publication CI/review; universal quality checks ещё в работе |
 | C2 | PLANNED | hFSD, semantic ports и реальный Form/RU/error/time stack после C1 |
 | C3 | PLANNED | Shared Tailwind и точные geometry policies после стабилизации C2 |
 | C4 | PLANNED | Explicit embedded composition после C2 |
@@ -60,3 +60,21 @@ Owner: producer agent, root review. **Только** `agent:config`, `agent:chec
 До source edits — tracked SDD/journal, затем positive characterization прежних команд на полностью provisioned MCP fixture и фактический consumer contract RED. Missing dependency/server не являются RED. Один локальный heavy lease принадлежит этой story; второй implementation story пока нет. Pnpm/protocol preparation и review параллельно только read-only, без конкурирующей установки.
 
 Следующие C1 результаты: independent npm protocol producer contract до удаления developer npm locks; затем один frozen pnpm developer graph и universal quality checks. Полная C1 готовность не объявляется по факту закрытия трёх CLI.
+
+## C1. Текущий результат после восстановления и delivery prerequisites
+
+Эта запись обновляет текущий execution status; разделы C0 выше остаются историческим recovery snapshot.
+
+| Принятый срез | Merge в epic | Evidence / граница |
+|---|---|---|
+| [PR76: RU pilot](https://github.com/QahNaaRlN/ouro/pull/76) | `6bf31d1a8e189bf02e0ee0b7c7bd52d0b4c4a752` | Все5 CI PASS; assign-work namespace, не весь UI |
+| [PR77: completion plan](https://github.com/QahNaaRlN/ouro/pull/77) | `22ee3f95d24c2e092a2b6cf9bac1ace73bcbbb9d` | C0 closed, C0–C7 и D01–D16 сохранены |
+| [PR74: generation launcher](https://github.com/QahNaaRlN/ouro/pull/74) | `b957bc95926543e79b4d45f3723f052eaaa04f62` | Combined run41995077028 все7 PASS; Windows/Linux source93526ae85dfe6e46ff484529b1f3d39688634b02, strict HTML672/672. Исторический local672/1161FAIL не переписан; ZIP/C5 не принят |
+| [PR78: agent CLI](https://github.com/QahNaaRlN/ouro/pull/78) | `b92b5f6c04dc3933881278e066e42259ed4bc690` | Run42013485414 все7 PASS; config/check/manual MCP до frontend build, synthetic source7ec722eb49e1a8a8efba30f7f71e34f0eb25a27e |
+| [PR79: protocol producer](https://github.com/QahNaaRlN/ouro/pull/79) | `19c1f663abb240aed9d78f330c335ba380db334d` | Все7 CI PASS; source cad5062a3daabf1dfbf1aea2fb2ba70219ae4340; отдельные committed producer inputs, developer lock не authority |
+
+Pnpm workspace story: [SDD](../specs/developer-pnpm-workspace.md), [журнал](developer-pnpm-workspace.md). Source A3 `daaddc0df2951c849b16344f8679a69e6ffcfcb6`, clean до qualification. Один developer lock/four importers, explicit root task graph, source-launch argv/env/profile/exit и independent consumer npm boundary сохранены. Первое root import обновило tuples и отклонено; один bounded aggregate-preference repair принят с0new external tuples/0changed integrity и явной таблицей десяти root substitutions. Два web-owned font imports объявлены exact прежним5.3.0; shared root-runner test scopes описаны точно.
+
+Actual A3 local results: fresh Windows frozen install13.7s/exit0/lock byte-unchanged; web production build и font resolution; focused launch/auth/SDK/config27PASS/0FAIL/2Windows platform skips; CPB01 source port1PASS; actual pnpm→npm task standalone protocol1PASS; catalog4/error4/i18n dev2/production2 =12renderer PASS; stale frozen manifest отклонён actual ERR_PNPM_OUTDATED_LOCKFILE без installation. Strict programs/service build/guards A2 переиспользуются только для неизменных relevant source/tuple inputs; final publication CI всё равно проверяет полный exact head. Первое printed-Done-but-stalled installation сохранено STALLED/OWNER_INTERRUPTED; optional notification отключена, natural exit отдельно доказан.
+
+Ни этот local result, ни publication PR не закрывают весь C1 до universal checks/25-rule enforcement и review/CI. C2 ещё не начат; C3 ждёт его стабилизации. Actual consumer ZIP, operator/hosted/data rehearsal, Next removal и epic→dev остаются C5–C7. Dev/main/исходная dirty worktree, user env/profile/DB и Meridian не изменялись.
