@@ -10,7 +10,7 @@ function legacyFiles(repository){
  const environment=Object.fromEntries(Object.entries(process.env).filter(([key])=>!key.startsWith('GIT_')));
  const git=(args,input)=>execFileSync('git',['--no-replace-objects','-C',repository,...args],{input,env:environment,windowsHide:true,shell:false,maxBuffer:32*1024*1024,timeout:30000,stdio:['pipe','pipe','pipe']});
  if(git(['rev-parse','--verify','--end-of-options',LEGACY_AGENT_CLI_COMMIT+'^{commit}']).toString('ascii').trim()!==LEGACY_AGENT_CLI_COMMIT)throw Error('Legacy CLI source unavailable');
- const exact=['package.json','package-lock.json','lib/agent-client-config.ts','scripts/agent-config.ts','scripts/check-agent.mjs','packages/mcp/bin/ouro-mcp.mjs'],prefixes=['packages/protocol/','packages/core/src/'];
+ const exact=['package.json','package-lock.json','lib/agent-client-config.ts','scripts/agent-config.ts','scripts/check-agent.mjs','packages/mcp/bin/ouro-mcp.mjs','packages/meridian/src/context.ts','packages/meridian/src/theme.ts'],prefixes=['packages/protocol/','packages/core/src/'];
  const rows=new TextDecoder('utf-8',{fatal:true}).decode(git(['ls-tree','-r','-z','--full-tree',LEGACY_AGENT_CLI_COMMIT,'--',...exact,...prefixes])).split('\0').filter(Boolean),identities=new Set();
  const entries=rows.map(row=>{
   const match=/^(100644|100755) blob ([a-f0-9]{40,64})\t(.+)$/.exec(row);if(!match)throw Error('Legacy CLI source unavailable');
