@@ -1,0 +1,214 @@
+{
+  "source": [
+    {
+      "name": "named frontend component keeps its file and export",
+      "files": {
+        "packages/frontend/src/shared/ui/TaskCard.tsx": "/** Показывает карточку задачи. */\nexport function TaskCard(){return <section/>;}"
+      },
+      "codes": []
+    },
+    {
+      "name": "component filename must use PascalCase",
+      "files": {
+        "packages/frontend/src/shared/ui/task-card.tsx": "/** Показывает карточку задачи. */\nexport function TaskCard(){return <section/>;}"
+      },
+      "codes": ["component-filename"]
+    },
+    {
+      "name": "main component export matches the file",
+      "files": {
+        "packages/frontend/src/shared/ui/TaskCard.tsx": "/** Показывает карточку задачи. */\nexport function OtherCard(){return <section/>;}"
+      },
+      "codes": ["component-export-name"]
+    },
+    {
+      "name": "actual hook matches its module",
+      "files": {
+        "packages/frontend/src/api/tasks/useTasksQuery.ts": "import {useQuery} from '@tanstack/react-query';\n/** Читает задачи текущего проекта. */\nexport function useTasksQuery(){return useQuery({queryKey:['tasks'],queryFn:async()=>[]});}"
+      },
+      "codes": []
+    },
+    {
+      "name": "pure helpers do not pretend to be hooks",
+      "files": {
+        "packages/frontend/src/shared/lib/useTotal.ts": "/** Вычисляет сумму. */\nexport function useTotal(){return 1;}"
+      },
+      "codes": ["false-hook"]
+    },
+    {
+      "name": "hook filename matches the actual exported hook",
+      "files": {
+        "packages/frontend/src/api/tasks/tasks-query.ts": "import {useQuery} from '@tanstack/react-query';\n/** Читает задачи. */\nexport function useTasksQuery(){return useQuery({queryKey:['tasks'],queryFn:async()=>[]});}"
+      },
+      "codes": ["hook-filename"]
+    },
+    {
+      "name": "query hook names expose their server state role",
+      "files": {
+        "packages/frontend/src/api/tasks/useTasks.ts": "import {useQuery} from '@tanstack/react-query';\n/** Читает задачи. */\nexport function useTasks(){return useQuery({queryKey:['tasks'],queryFn:async()=>[]});}"
+      },
+      "codes": ["query-hook-name"]
+    },
+    {
+      "name": "one query hook owns one module",
+      "files": {
+        "packages/frontend/src/api/tasks/useTasksQuery.ts": "import {useQuery} from '@tanstack/react-query';\n/** Читает задачи. */\nexport function useTasksQuery(){return useQuery({queryKey:['tasks'],queryFn:async()=>[]});}\n/** Читает счетчик. */\nexport function useCountQuery(){return useQuery({queryKey:['count'],queryFn:async()=>0});}"
+      },
+      "codes": ["multiple-query-hooks"]
+    },
+    {
+      "name": "frontend slice folders retain kebab case",
+      "files": {
+        "packages/frontend/src/features/assignWork/ui/TaskCard.tsx": "/** Показывает задачу. */\nexport function TaskCard(){return <section/>;}"
+      },
+      "codes": ["frontend-directory-name"]
+    },
+    {
+      "name": "a new legacy root file is still checked",
+      "files": {
+        "components/new_card.tsx": "/** Показывает задачу. */\nexport function NewCard(){return <section/>;}"
+      },
+      "codes": ["component-filename"]
+    },
+    {
+      "name": "owned source in a new root cannot disappear from source role checks",
+      "files": {
+        "tools/NewComponent.tsx": "/** Показывает задачу. */\nexport function NewComponent(){return <section/>;}"
+      },
+      "codes": ["unclassified-source-root"]
+    },
+    {
+      "name": "current Next route filenames are explicit framework roles",
+      "files": {
+        "app/projects/[projectId]/page.tsx": "/** Показывает проект. */\nexport default function Page(){return <section/>;}"
+      },
+      "codes": []
+    },
+    {
+      "name": "new explanatory line comments follow D11",
+      "files": {
+        "packages/frontend/src/shared/lib/calculate-total.ts": "// Вычисляет сумму.\nexport const calculateTotal=()=>1;"
+      },
+      "codes": ["line-comment"]
+    },
+    {
+      "name": "tool directives are distinct from explanations",
+      "files": {
+        "tests/typechecks/source-contract.ts": "// @ts-expect-error Проверяет отказ compiler на неверном входе.\nconst value:string=1;\nexport {};"
+      },
+      "codes": []
+    },
+    {
+      "name": "declarations and module extensions remain in source scope",
+      "files": {
+        "packages/frontend/src/shared/lib/value.types.ts": "/** Доступное значение. */\nexport type Value={ready:boolean};",
+        "scripts/source-contract.d.mts": "/** Читает значение. */\nexport function readValue():string;",
+        "tests/typechecks/source-contract.cts": "export type Value=unknown;",
+        "tests/typechecks/source-contract.mts": "export type Value=unknown;"
+      },
+      "codes": []
+    },
+    {
+      "name": "backend files do not inherit component filename rules",
+      "files": {
+        "apps/service/src/bootstrap/start-service.ts": "/** Запускает сервис. */\nexport function startService(){return 'started';}"
+      },
+      "codes": []
+    }
+  ],
+  "eslint": [
+    {
+      "name": "conditional hook",
+      "filename": "packages/frontend/src/shared/ui/TaskCard.tsx",
+      "code": "import {useState} from 'react';\n/** Показывает задачу. */\nexport function TaskCard({ready}:{ready:boolean}){if(ready){useState(0);}return null;}",
+      "ruleIds": ["react-hooks/rules-of-hooks"]
+    },
+    {
+      "name": "stale effect dependency",
+      "filename": "packages/frontend/src/shared/ui/TaskCard.tsx",
+      "code": "import {useEffect} from 'react';\n/** Показывает задачу. */\nexport function TaskCard({value}:{value:string}){useEffect(()=>{console.log(value);},[]);return null;}",
+      "ruleIds": ["react-hooks/exhaustive-deps"]
+    },
+    {
+      "name": "source explicit any",
+      "filename": "packages/core/src/source-quality.ts",
+      "code": "/** Передает значение. */\nexport function readValue(value:any){return value;}",
+      "ruleIds": ["@typescript-eslint/no-explicit-any"]
+    },
+    {
+      "name": "test explicit any",
+      "filename": "tests/source-quality-fixture.test.ts",
+      "code": "/** Передает значение. */\nexport function readValue(value:any){return value;}",
+      "ruleIds": ["@typescript-eslint/no-explicit-any"]
+    },
+    {
+      "name": "public contract needs JSDoc",
+      "filename": "packages/frontend/src/shared/lib/read-value.ts",
+      "code": "export function readValue(value:string){return value;}",
+      "ruleIds": ["jsdoc/require-jsdoc"]
+    },
+    {
+      "name": "public responsibility cannot be English only",
+      "filename": "packages/frontend/src/shared/lib/read-value.ts",
+      "code": "/** Reads the value. */\nexport function readValue(value:string){return value;}",
+      "ruleIds": ["jsdoc/match-description"]
+    },
+    {
+      "name": "public type declarations need responsibility documentation",
+      "filename": "packages/frontend/src/shared/lib/value.types.ts",
+      "code": "export type Value={ready:boolean};",
+      "ruleIds": ["jsdoc/require-jsdoc"]
+    },
+    {
+      "name": "public component Props need responsibility documentation",
+      "filename": "packages/frontend/src/shared/ui/TaskCard.tsx",
+      "code": "export interface TaskCardProps{ready:boolean}\n/** Показывает задачу. */\nexport function TaskCard({ready}:TaskCardProps){return <p>{String(ready)}</p>;}",
+      "ruleIds": ["jsdoc/require-jsdoc"]
+    },
+    {
+      "name": "TS signatures own their param types",
+      "filename": "packages/frontend/src/shared/lib/read-value.ts",
+      "code": "/** Читает значение.\n * @param {string} value - Исходное значение.\n */\nexport function readValue(value:string){return value;}",
+      "ruleIds": ["jsdoc/no-types"]
+    },
+    {
+      "name": "tags follow the accepted contract order",
+      "filename": "packages/frontend/src/shared/lib/read-value.ts",
+      "code": "/** Читает значение.\n * @returns Исходное значение.\n * @param value - Исходное значение.\n */\nexport function readValue(value:string){return value;}",
+      "ruleIds": ["jsdoc/sort-tags"]
+    }
+  ],
+  "architecture": [
+    {
+      "name": "explicit public entry preserves client directive",
+      "files": {
+        "packages/frontend/src/entities/task/index.ts": "'use client';\n/** Показывает контракт задачи. */\nexport {task} from './model';",
+        "packages/frontend/src/entities/task/model.ts": "export const task='task';"
+      },
+      "codes": []
+    },
+    {
+      "name": "public namespace export stays explicit",
+      "files": {
+        "packages/frontend/src/entities/task/index.ts": "export * as model from './model';",
+        "packages/frontend/src/entities/task/model.ts": "export const task='task';"
+      },
+      "codes": ["implicit-public-api"]
+    },
+    {
+      "name": "public index has no executable declarations",
+      "files": {
+        "packages/frontend/src/entities/task/index.ts": "export const task=new Map();"
+      },
+      "codes": ["impure-public-api"]
+    },
+    {
+      "name": "public index has no side effect imports",
+      "files": {
+        "packages/frontend/src/entities/task/index.ts": "import './model';\nexport {task} from './model';",
+        "packages/frontend/src/entities/task/model.ts": "export const task='task';"
+      },
+      "codes": ["impure-public-api"]
+    }
+  ]
+}

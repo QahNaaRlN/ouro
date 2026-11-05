@@ -1,6 +1,6 @@
 # C1: журнал конечных проверок качества
 
-Дата: 2026-11-05. Статус: **DOCUMENTATION_PREPARED / IMPLEMENTATION_NOT_STARTED / QUALIFICATION_NOT_RUN**. [Спецификация](../specs/universal-quality-gates.md). Ветка `codex/universal-quality-gates`, base `b92b5f6c04dc3933881278e066e42259ed4bc690`.
+Дата: 2026-11-05. Статус: **PURE_BOOTSTRAP_PREPARATION / GATES_NOT_ENABLED / QUALIFICATION_NOT_RUN**. [Спецификация](../specs/universal-quality-gates.md). Ветка `codex/universal-quality-gates`, base `b92b5f6c04dc3933881278e066e42259ed4bc690`.
 
 ## Документационная подготовка
 
@@ -24,9 +24,10 @@
 | Область | Состояние |
 |---|---|
 | Спецификация и all25 mapping | DOCUMENTATION_PREPARED |
-| Exact pnpm A handoff | PENDING |
+| Первый pnpm A2 handoff | f5524ab, pure preparation only; graph/heavy ownership остается pnpm |
 | Legacy violation inventory/ledger | NOT_INVENTORIED |
-| Config/checker/source/test/package implementation | NOT_STARTED |
+| Config/checker/fixtures bootstrap | IN_PREPARATION, rules not enabled, execution NOT_RUN |
+| Package/lock/CI mutations | NOT_AUTHORIZED before final graph handoff |
 | Exact candidate publication listings | PUBLICATION_LISTED, read-only npm web evidence |
 | Registry metadata/integrity и install/runtime admission | PENDING / NOT_RUN |
 | Positive/negative fixtures и actual repo gates | NOT_RUN |
@@ -37,3 +38,13 @@
 Readback: созданы только эти два документа; all25 table содержит ровно25 строк, четыре локальных canonical target существуют. `git diff --no-index --check` обоих новых файлов не вывел whitespace diagnostics; exit1 обозначает новый file diff, а не executable quality PASS. Diff AGENTS/package/lock/CI отсутствует, исходный HEAD — заданный b92b5f6. Root прочитал оба документа, принял all25 mapping/legacy closure и разрешил локальный commit только этих файлов; push/PR и implementation остаются не разрешены.
 
 После первого docs commit `f8347f02b82af9fe831a78b188fe27a27230d19d` root уточнил D11: untouched backend/core/tooling debt не получает обязательный frontend C2/C3 closure. Изменены только два существующих документа; требования к новому source/tests и frontend public API не ослаблены. Внесено уже полученное read-only publication evidence всех семи npm listings; registry tool access failure не назван HTTP404 или unpublished, dist.integrity не придуман. Новых metadata/install/test/build запусков и source/config/dependency edits в этом уточнении нет.
+
+## Pure bootstrap после frozen A2
+
+Root явно передал A2 `f5524ab610a5eceae6ea0780f5720f86e12e688a`; обычный clean merge — `735be37e00dd5c95eecc7876b12071c578489abb`. Canonical LF lock identity403ada/blob3a68635 сохранена; clean checkout raw c7f7 с4070 CRLF измерен отдельно, lock не переписывался. Будущий frozen-install audit сравнивает local raw before/after и canonical Git identity.
+
+До source/config edits прочитаны установленные Next16.4.3 guides из qualified pnpm worktree: project structure, Server/Client Components, module boundary и ESLint config. `next lint` удален, обычный ESLint CLI допускается; Next-generated AGENTS block сохраняется. Новый root ESLint config пока только parser/plugin bootstrap без enabled rules. Focused fixtures задают будущие negatives до включения gates; bootstrap source checker только собирает реальную область/AST. Все parser/plugin positive, meaningful RED, formatter и actual repository checks остаются NOT_RUN. Никаких installs, Node/test/build/browser процессов или новых package/lock/CI edits не разрешалось и не выполнялось.
+
+Подготовлены16 source fixtures,10 actual-plugin negatives и4 public-index cases для существующего architecture resolver, плюс formatter positive/negative и чтение локальных instruction adapters. Дополнительная closure fixture содержит owned `tools/NewComponent.tsx` вне прежних ownedRoots: будущий checker обязан включить файл в actual scope и сообщить unclassified-source-root, а не молча пропустить его. Это определения проверок, не результаты. Новые `eslint.config.mjs` и source-reader API намеренно не включают enforcement: сначала в следующем lease actual parser/plugin positive, затем meaningful missing-rule RED, только затем реализация соответствующих правил. Legacy inventory/ledger, включая stale/wildcard/new-entry cases, registry admission, package/lock/CI wiring и полный GREEN остаются pending. AGENTS diff только добавляет локальные ссылки после неизмененного Next block.
+
+Root прочитал bootstrap config/AST reader/tests/AGENTS, принял bounded scope и disabled rules, запросил эту одну new-root closure fixture и разрешил локальный bootstrap commit. Никакие будущие ledger checks не названы выполненными. Публикация и execution lease еще не переданы.
