@@ -1,0 +1,6 @@
+import {validateNodeVersion} from './runtime-node.mjs';
+import {runConsumerAgentTool} from './consumer-agent-cli.mjs';
+import {fileURLToPath} from 'node:url';
+/** Stable installed entry не читает ключ и не открывает profile. */
+try{validateNodeVersion(process.versions.node);process.exitCode=await runConsumerAgentTool({root:fileURLToPath(new URL('../',import.meta.url)),tool:'agent-config'});}
+catch(error){process.stderr.write(error?.code==='NODE_RUNTIME_UNSUPPORTED'?'NODE_RUNTIME_UNSUPPORTED: '+error.message+'\n':'OURO_CONSUMER_AGENT_CONFIG_FAILED\n');process.exitCode=1;}
