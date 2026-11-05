@@ -4,6 +4,7 @@ import { createAgentService,type AgentStore,type AgentWorkspace } from './agent-
 import packageInfo from '../../../package.json';
 import {getToolOutputSchema,protocolManifest,createSchemaBundle} from '@ouro/protocol';
 
+/** Задаёт store, агентский контекст проекта и workspace-возможности для создания MCP-сервера. */
 export type McpDependencies = {
   store: AgentStore;
   actor: Actor;

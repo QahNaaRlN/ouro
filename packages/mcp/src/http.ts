@@ -10,7 +10,7 @@ import type {AgentStore} from './agent-service';
 type ProjectMcpStore=AgentStore&WorkspaceMetadataStore&{authenticateAgentToken(token:string):Promise<Actor|null>};
 export type ProjectMcpContext={store:ProjectMcpStore};
 
-/** Same finite, stateless HTTP handler for the Next route and SDK integration checks. */
+/** Создаёт stateless MCP HTTP-обработчик проекта с агентской авторизацией и закрытием своего сервера после запроса. */
 export function createProjectMcpHandler(getContext:(id:string)=>Promise<ProjectMcpContext>,options:{auth?:AuthService;environment?:Record<string,string|undefined>}={}){
  const {authenticatedAgent}=options.auth??defaultAuthService;
  return async(request:Request,projectId:string)=>{

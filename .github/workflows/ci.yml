@@ -168,6 +168,8 @@ jobs:
           OURO_CONVENTIONS_BRANCH: ${{ github.ref_name }}
       - name: Install the pinned developer workspace
         run: npm exec --yes --package=pnpm@10.34.9 -- pnpm install --frozen-lockfile --prod=false
+      - name: Check source quality and finite historical debt
+        run: npm run check:quality
       - name: Run unit and integration tests
         run: npm test
       - name: Check and build the isolated service runtime

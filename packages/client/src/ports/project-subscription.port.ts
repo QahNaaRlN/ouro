@@ -1,4 +1,8 @@
-import type { ProjectClientScope, ProjectConnectionStatus, ProjectSnapshotDTO } from './project.types';
+import type {
+  ProjectClientScope,
+  ProjectConnectionStatus,
+  ProjectSnapshotDTO,
+} from './project.types';
 
 /** Тип, описывающий синхронное принятие снимка и состояние проектного соединения. */
 export interface ProjectSnapshotObserver {
@@ -14,5 +18,9 @@ export interface ProjectSubscription {
 
 /** Порт, который подписывается на подтверждённую историю одного проекта. */
 export interface ProjectSubscriptionPort {
-  subscribe(scope: ProjectClientScope, afterCursor: number, observer: ProjectSnapshotObserver): ProjectSubscription;
+  subscribe(
+    scope: ProjectClientScope,
+    afterCursor: number,
+    observer: ProjectSnapshotObserver,
+  ): ProjectSubscription;
 }

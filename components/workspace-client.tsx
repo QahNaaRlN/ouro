@@ -6,7 +6,7 @@ import {WorkspaceAccordion} from './workspace-ui';
 import {createContext,useContext,useEffect,useState,useSyncExternalStore,useCallback,type ReactNode} from 'react';
 import type {Actor} from '@/packages/core/src';
 import {createIdentityReadController} from '@/packages/client/src/lifecycle/create-identity-read-controller';
-import {useIdentitySessionRead} from '@/packages/frontend/src/api/catalog-reads';
+import {useIdentitySessionQuery} from '@/packages/frontend/src/api/catalog-reads';
 import type {CatalogReadScope} from '@/packages/client/src/ports';
 import {readWorkspaceJSON,sendWorkspaceIntent,getWorkspaceIntents,getWorkspaceIntentsVersion,hasPendingWorkspaceIntents,subscribeWorkspaceIntents,forgetRejectedWorkspaceIntent} from '@/packages/client/src/http/workspace-intents';
 export {freezeWorkspaceIntent,readWorkspaceJSON,sendWorkspaceIntent,forgetRejectedWorkspaceIntent,reviewUnknownWorkspaceIntent,restoreUnknownWorkspaceIntent} from '@/packages/client/src/http/workspace-intents';
@@ -25,16 +25,18 @@ export function useWorkspaceIntents(projectId:string|null,actorId:string|undefin
 }
 type WorkspaceSession={actor:Actor|null;localOperator:boolean;hasAccount:boolean;accessEpoch:number;readScope:CatalogReadScope;unavailable:boolean;loading:boolean;error:string;refresh:()=>Promise<void>};
 const SessionContext=createContext<WorkspaceSession|null>(null);
+/** Предоставляет состояние сессии и область чтения и предупреждает о незавершённых RAM-намерениях при закрытии страницы. */
 export function WorkspaceProvider({children}:{children:ReactNode}){
   const [actor,setActor]=useState<Actor|null>(null),[localOperator,setLocalOperator]=useState(false),[accessEpoch,setAccessEpoch]=useState(0),[loading,setLoading]=useState(true),[error,setError]=useState('');
   const [identityReads]=useState(createIdentityReadController);
-  const [hasAccount,setHasAccount]=useState(false),[unavailable,setUnavailable]=useState(false),{read,scope}=useIdentitySessionRead();
+  const [hasAccount,setHasAccount]=useState(false),[unavailable,setUnavailable]=useState(false),{read,scope}=useIdentitySessionQuery();
   const refresh=useCallback(async()=>{const ticket=identityReads.begin();if(!ticket)return;setAccessEpoch(ticket.accessEpoch);setActor(null);setLocalOperator(false);setHasAccount(false);setUnavailable(false);setLoading(true);setError('');const outcome=await ticket.run(async signal=>{const result=await read({accessEpoch:ticket.accessEpoch,projectId:null},signal);if(result.status==='unsupported')return result;if(!result.value.hasAccount&&!result.value.canManageParticipants)throw new Error('Откройте проект через свой аккаунт Ouro.');return result;});if(outcome.status==='superseded')return;if(outcome.status==='accepted'){if(outcome.value.status==='unsupported'){setUnavailable(true);setError('Чтение сессии недоступно в этом окружении.');}else{setActor(outcome.value.value.actor);setLocalOperator(outcome.value.value.canManageParticipants);setHasAccount(outcome.value.value.hasAccount);}}else setError(outcome.error instanceof Error?outcome.error.message:'Не удалось проверить сессию.');setLoading(false);},[identityReads,read]);
   useEffect(()=>{identityReads.mount();void refresh();if(!unloadInstalled){window.addEventListener('beforeunload',event=>{if(hasPendingWorkspaceIntents()){event.preventDefault();event.returnValue='';}});unloadInstalled=true;}return()=>identityReads.unmount();},[identityReads,refresh]);
   return <SessionContext.Provider value={{actor,localOperator,hasAccount,accessEpoch,readScope:scope({accessEpoch,actorId:actor?.id??null,projectId:null}),unavailable,loading,error,refresh}}>{children}</SessionContext.Provider>;
 }
 export function useWorkspaceSession(){const session=useContext(SessionContext);if(!session)throw new Error('Workspace provider required');return session;}
 
+/** Связывает список неподтверждённых действий проекта с автором текущей сессии. */
 export function WorkspacePending(props:{projectId:string|null;onRecovered:()=>Promise<unknown>;onReceipt?:(value:unknown)=>void}){
   const {actor}=useWorkspaceSession();return <WorkspacePendingList {...props} actorId={actor?.id}/>;
 }

@@ -19,6 +19,7 @@ type ClientConfig = 'stdio'|'cursor-http'|'claude-http';
 const starter = 'Вызови ouro.get_context и найди назначенную тебе попытку. Прочитай назначенную ей ревизию, цель и DoD. Подтверди разрешённый запуск через ouro.confirm_started. Сообщай Action с evidence, а неоднозначности — через Question/Fork/Blocker. При блокировке жди решения человека, читая ouro.get_context или ouro.get_updates. Применение решения, возобновление и результат подтверждай отдельными tools. Человеческую приёмку DoD не подменяй своим успехом.';
 function date(value:string){return new Date(value).toLocaleString('ru-RU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});}
 
+/** Показывает регистрации агентов, выдачу одноразового ключа и настройки подключения MCP-клиента. */
 export default function AgentsPanel({onAgentsChange,readOnly=false}:{onAgentsChange:(agents:AgentRegistration[])=>void;readOnly?:boolean}) {
   const [agents,setAgents]=useState<AgentRegistration[]>([]),[name,setName]=useState('');
   const [issued,setIssued]=useState<IssuedConnection|null>(null),[client,setClient]=useState<ClientConfig>('stdio');

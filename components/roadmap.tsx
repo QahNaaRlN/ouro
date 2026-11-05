@@ -81,6 +81,7 @@ function SpecNode({ data }: NodeProps<SpecFlowNode>) {
 }
 const nodeTypes = { spec: SpecNode };
 
+/** Показывает карту спецификаций, их зависимостей и текущих состояний с переходом к подробностям. */
 export default function Roadmap({
   state,
   selected,

@@ -59,6 +59,7 @@ async function stopOwnedTree(child,signal){
  }
 }
 
+/** Готовит frozen workspace, выполняет свежую сборку и запускает локальный сервер с управлением своими дочерними процессами. */
 export async function launch(argv=process.argv.slice(2),environment=process.env){
  const options=parseArguments(argv);
  if(options.help){process.stdout.write(help);return 0;}

@@ -42,6 +42,7 @@ const positions:Record<StateAxis,Record<string,{x:number;y:number}>>={
   roadmap:{draft:{x:24,y:24},active:{x:310,y:24},frozen:{x:610,y:160},archived:{x:930,y:24}},
 };
 
+/** Сопоставляет модель состояний с зарегистрированными переходами и отображает их графом или списком. */
 export function StateTransitions({state,specId,executionId}:{state:ProjectState;specId?:string|null;executionId?:string}) {
   const workspace=useWorkspaceAppearance();
   const executions=useMemo(()=>state.executions.filter(e=>!specId||e.specId===specId),[state.executions,specId]);

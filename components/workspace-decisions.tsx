@@ -25,6 +25,7 @@ const viewHuman=(state:ProjectState):Actor=>({id:'workspace-view-human',kind:'hu
 const message=(error:unknown)=>error instanceof Error?error.message:'Не удалось выполнить действие.';
 const terminal=new Set<Execution['state']>(['succeeded','failed','cancelled','skipped']);
 
+/** Задаёт состояние, список агентов и команду для формы назначения попытки по ревизии. */
 type StartAttemptProps={spec:Spec;revision:SpecRevision;state:ProjectState;agents:AgentRegistration[];command:WorkspaceCommand;disabled:boolean;actor?:Actor;className?:string};
 export function WorkspaceStartAttempt(props:StartAttemptProps){return <StartAttemptForm key={props.revision.id} {...props}/>;}
 function StartAttemptForm({spec,revision,state,agents,command,disabled,actor,className=''}:StartAttemptProps){
@@ -58,6 +59,7 @@ function StartAttemptForm({spec,revision,state,agents,command,disabled,actor,cla
 type DecisionsProps={state:ProjectState;specId?:string;revisionId?:string;executionId?:string;requestId?:string;onOpenRequest?:(requestId:string)=>void;agents:AgentRegistration[];command:WorkspaceCommand;disabled:boolean;actor?:Actor};
 const requestKinds=[['Question','Вопросы'],['Fork','Развилки'],['Blocker','Блокеры']] as const;
 const requestStates=['pending','resolved','withdrawn','superseded'] as const;
+/** Показывает запросы к человеку в заданной области и формы ответа и дальнейших решений. */
 export function WorkspaceDecisions({state,specId,revisionId,executionId,requestId,onOpenRequest,agents,command,disabled,actor}:DecisionsProps){
   const inScope=(request:DecisionRequest)=>(!specId||request.specId===specId)&&(!revisionId||request.specRevisionId===revisionId)&&(!executionId||request.executionId===executionId);
   const selected=requestId?state.requests.find(request=>request.id===requestId&&inScope(request)):undefined;

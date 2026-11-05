@@ -42,6 +42,7 @@ export function WorkspaceSpecProposals({state,scope,onOpenProposal}:{state:Proje
   </section>;
 }
 
+/** Показывает предложения агентов и связывает их рассмотрение с карточкой предложения и спекой. */
 export function WorkspaceProposals({state,command,disabled,onOpenSpec,proposalId,onOpenProposal}:Props){
   return <section className={twMerge("ws-panel",presentationSlots.proposalPanel,"border-none border-current")} aria-label="Предложения агентов">
     <div className={twMerge("ws-section-top",ui.sectionHeading)}><h2 className={twMerge(ui.h2,"mb-0","leading-[1.4]")}>Предложения агентов</h2><span className={twMerge("ws-muted",ui.muted)}>{state.agentProposals.filter(proposal=>proposal.state==='pending').length} ожидают</span></div>

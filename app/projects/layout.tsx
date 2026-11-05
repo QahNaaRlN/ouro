@@ -15,6 +15,7 @@ const presentationSlots={
   main:"mx-auto min-w-0 max-w-[1360px] px-[40px] pt-[42px] pb-[70px] at-most-900:px-[24px] at-most-900:pt-[30px] at-most-900:pb-[55px] at-most-520:px-[16px] at-most-520:pt-[28px] at-most-520:pb-[45px]",
 } as const;
 
+/** Собирает оболочку проектов с общими providers, навигацией и workspace оформлением. */
 export default function ProjectsLayout({children}:{children:React.ReactNode}){
   return <WorkspaceProvider><WorkspaceUIAppearanceProvider><AppSelectAppearanceProvider triggerClassName="w-full rounded-[6px] border-ouro-border px-[12px] py-[11px] font-sans text-[13px] leading-[1.6] font-normal"><div className={twMerge("ws-shell","min-h-screen bg-ouro-bg text-ouro-text [--primary:#93dfbf] [--primary-text:#12231c]")}><header className={twMerge("ws-topbar",presentationSlots.topbar)}><Link className={twMerge(ui.link,"ws-brand",presentationSlots.brand)} href="/projects" aria-label="Ouro — проекты"><OuroLogo size={32}/>ouro</Link><WorkspaceNavigation/></header><main className={twMerge("ws-main",presentationSlots.main)}>{children}</main></div></AppSelectAppearanceProvider></WorkspaceUIAppearanceProvider></WorkspaceProvider>;
 }

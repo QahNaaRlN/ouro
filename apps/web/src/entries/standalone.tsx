@@ -12,4 +12,8 @@ import '@/app/globals.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Ouro root element is missing.');
-createRoot(root).render(<StrictMode><RouterProvider router={createWebRouter()} /></StrictMode>);
+createRoot(root).render(
+  <StrictMode>
+    <RouterProvider router={createWebRouter()} />
+  </StrictMode>,
+);

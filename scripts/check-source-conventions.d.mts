@@ -8,6 +8,7 @@ export type SourceConventionsOptions = Readonly<{
 export type SourceConventionViolation = Readonly<{
   file: string;
   line: number;
+  column: number;
   code: string;
   message: string;
 }>;
@@ -19,5 +20,13 @@ export type SourceConventionsReport = Readonly<{
   violations: readonly SourceConventionViolation[];
 }>;
 
-/** Собирает actual source scope/AST; naming/comment rules bootstrap пока не включены. */
-export function inspectSourceConventions(options: SourceConventionsOptions): SourceConventionsReport;
+/** Проверяет actual owned source scope и конечные naming/comment contracts по AST. */
+export function inspectSourceConventions(
+  options: SourceConventionsOptions,
+): SourceConventionsReport;
+
+/** Проверяет immutable текст тем же AST reader для доказательства происхождения старого нарушения. */
+export function inspectSourceConventionText(
+  file: string,
+  text: string,
+): readonly SourceConventionViolation[];

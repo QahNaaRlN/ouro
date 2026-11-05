@@ -39,6 +39,7 @@ function stepsFor(scope:Scope,hasFlow:boolean):Step[]{
   ];
 }
 
+/** Показывает пошаговые подсказки для каталога или проекта с подсветкой целевых элементов. */
 export default function WorkspaceOnboarding({scope,hasFlow=false,steps:customSteps}:{scope:Scope;hasFlow?:boolean;steps?:readonly Step[]}){
   const key=`ouro:onboarding:${scope}:v1`,launcher=useRef<HTMLButtonElement>(null),returnFocus=useRef<HTMLElement|null>(null);
   const [ready,setReady]=useState(false),[preference,setPreference]=useState<Preference|null>(null),[active,setActive]=useState<{steps:Step[];index:number}|null>(null);
@@ -69,12 +70,13 @@ function GuidedTour({steps,index,onStep,onExit,restoreFocus}:{steps:Step[];index
   const [geometry,setGeometry]=useState<Geometry|null>(null),step=steps[index];
   useLayoutEffect(()=>{
     const element=dialog.current;if(!element)return;
+    const openedDetails=opened.current;
     const scroll={x:window.scrollX,y:window.scrollY};
     element.showModal();const releaseScrollLock=acquireTourScrollLock(document.body);
     return()=>{
       if(element.open)element.close();
       releaseScrollLock();
-      for(const details of opened.current)if(details.isConnected)details.open=false;
+      for(const details of openedDetails)if(details.isConnected)details.open=false;
       window.scrollTo({left:scroll.x,top:scroll.y,behavior:'instant'});
       restoreFocus();
     };

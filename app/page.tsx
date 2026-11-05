@@ -83,7 +83,7 @@ import { StateTransitions } from "@/components/state-transitions";
 import HistoricalPanel from "@/components/historical-panel";
 import {useProjectSession} from '@/components/project-session-provider';
 import {createIdentityReadController} from '@/packages/client/src/lifecycle/create-identity-read-controller';
-import {useIdentitySessionRead} from '@/packages/frontend/src/api/catalog-reads';
+import {useIdentitySessionQuery} from '@/packages/frontend/src/api/catalog-reads';
 import {WorkspacePendingList,readWorkspaceJSON} from '@/components/workspace-client';
 import {freezeProjectCommandIntent} from '@/packages/client/src/ports';
 import {planProjectCommandDispatch} from '@/packages/client/src/http/project-command-dispatch';
@@ -179,11 +179,12 @@ function Empty({ children }: { children: ReactNode }) {
   );
 }
 
+/** Показывает текущий Human View и координирует его действия через существующих владельцев проекта. */
 export default function Home() {
   const [agents, setAgents] = useState<AgentRegistration[]>([]);
   const [identity,setIdentity]=useState<Actor|null>(null),[sharedPending,setSharedPending]=useState(false);
   const [identityReads]=useState(createIdentityReadController),[accessEpoch,setAccessEpoch]=useState(0);
-  const {read:readIdentity,scope:identityScope,readAccountProjects}=useIdentitySessionRead();
+  const {read:readIdentity,scope:identityScope,readAccountProjects}=useIdentitySessionQuery();
   const [hasAccount,setHasAccount]=useState(false),[identityUnavailable,setIdentityUnavailable]=useState(false);
   const readScope=identityScope({accessEpoch,actorId:identity?.id??null,projectId:selectedProjectId()});
   const owner=useProjectSession(identity?{projectId:selectedProjectId(),actorId:identity.id,accessEpoch}:undefined,'legacy');
@@ -232,12 +233,13 @@ export default function Home() {
   useEffect(()=>{setBusy(false);pendingRef.current=false;},[owner.session]);
   // An uncertain import belongs to the authenticated human and project. The raw
   // source remains in this page's RAM across panel/history navigation only.
-  const meridianParticipantKey=identity?.id??'unauthenticated';
+  const meridianIdentityId=identity?.id,meridianProjectId=state?.projectId;
+  const meridianParticipantKey=meridianIdentityId??'unauthenticated';
   const meridianPendingIntent=useRef<MeridianPendingIntent|null>(null);
   useEffect(()=>{
     const saved=meridianPendingIntent.current;
-    if(saved&&identity&&state&&(saved.participantKey!==identity.id||saved.projectId!==state.projectId))meridianPendingIntent.current=null;
-  },[identity?.id,state?.projectId]);
+    if(saved&&meridianIdentityId!==undefined&&meridianProjectId!==undefined&&(saved.participantKey!==meridianIdentityId||saved.projectId!==meridianProjectId))meridianPendingIntent.current=null;
+  },[meridianIdentityId,meridianProjectId]);
   useEffect(()=>{
     const guard=(event:BeforeUnloadEvent)=>{
       if(!meridianPendingIntent.current)return;

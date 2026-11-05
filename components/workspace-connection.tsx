@@ -24,6 +24,7 @@ function registrationName(client:AgentClientId,project:string,agents:AgentRegist
   const base=`${profiles.find(profile=>profile.id===client)!.name} · ${project}`.slice(0,104).replace(/[\uD800-\uDBFF]$/,''),taken=new Set(agents.map(agent=>agent.name));
   if(!taken.has(base))return base;let suffix=2;while(taken.has(`${base} · ${suffix}`))suffix++;return `${base} · ${suffix}`;
 }
+/** Собирает регистрацию и отзыв агентов и настройку MCP-клиента для выбранного проекта. */
 export default function WorkspaceConnectionPanel({projectId,agents,connection,onRefresh,mode='all',projectName,onCreated,canManage=true}:ConnectionProps){
   const {actor}=useWorkspaceSession(),[client,setClient]=useState<AgentClientId>('cursor'),[issued,setIssued]=useState<{agent:AgentRegistration;token:string;connection:WorkspaceConnection}|null>(null),[keyFile,setKeyFile]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[copied,setCopied]=useState('');
   const live=useRef(true);useEffect(()=>{live.current=true;return()=>{live.current=false;};},[]);

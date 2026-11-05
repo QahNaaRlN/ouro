@@ -7,6 +7,7 @@ const presentationSlots={
   helpTitle:"m-[10px_0_14px] text-[36px] leading-[1.2] font-medium tracking-[-1.3px] at-most-900:text-[30px] at-most-520:text-[28px] at-most-520:[overflow-wrap:break-word]",
 } as const;
 
+/** Показывает справку по подключению MCP-клиентов и обращению с ключами агента. */
 export default function ProjectHelp(){return <article className={twMerge("ws-help","mx-auto max-w-[800px] leading-[1.9]")}>
   <Link className={twMerge(ui.link,"text-[12px] underline")} href="/projects">← Проекты</Link><p className={twMerge(ui.paragraph,"ws-eyebrow","m-[0_0_12px] text-[10px] font-medium tracking-[1.8px] text-ouro-text-muted","text-[10px]","text-[14px]","mt-[30px]",ui.paragraph)}>ОБЩИЙ MCP-КОНТРАКТ · ПОДКЛЮЧЕНИЕ</p><h1 className={twMerge(presentationSlots.helpTitle,"at-most-900:text-[36px] at-most-520:text-[28px]","leading-[1.2]")}>Подключить агента к Ouro</h1>
   <p className={twMerge(ui.paragraph,"text-[14px]",ui.paragraph)}>Cursor, Claude Code и Claude Desktop подключаются к локальному Ouro через stdio bridge. Выберите нужный клиент в проекте: Ouro подготовит JSON с точным адресом проекта и путём к файлу ключа. ChatGPT подключается отдельно через Secure MCP Tunnel.</p>

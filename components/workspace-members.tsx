@@ -6,6 +6,7 @@ import Link from 'next/link';
 import {ProjectMembersPanel} from './project-account';
 import {useWorkspaceSession} from './workspace-client';
 
+/** Открывает управление участниками выбранного проекта после проверки доступности сессии аккаунта. */
 export default function WorkspaceMembers({projectId}:{projectId:string}){
  const {actor,localOperator,loading,readScope,unavailable,error}=useWorkspaceSession();
  if(loading)return <p className={twMerge(ui.paragraph,ui.paragraph)}>Проверяем сессию…</p>;

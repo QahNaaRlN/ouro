@@ -1,20 +1,31 @@
 /** Общие явные слоты старой поверхности панелей; не зависят от селекторов предков. */
-export const panelElements={
-  button:'cursor-pointer border-0 border-none border-current bg-transparent font-[family-name:inherit] leading-[inherit] text-inherit disabled:cursor-not-allowed disabled:opacity-[.42] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-ouro-text focus-visible:outline-offset-[3px] motion-reduce:transition-none [-webkit-tap-highlight-color:transparent]',
-  action:'inline-flex min-h-[34px] cursor-pointer items-center justify-center gap-[8px] rounded-[var(--radius)] border border-solid border-ouro-control bg-ouro-bg px-[12px] py-[8px] font-[family-name:inherit] text-[13px] leading-[18px] font-medium text-inherit whitespace-nowrap transition-[background] duration-[120ms] ease-[ease] hover:bg-ouro-muted disabled:cursor-not-allowed disabled:opacity-[.42] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-ouro-text focus-visible:outline-offset-[3px] motion-reduce:transition-none [-webkit-tap-highlight-color:transparent]',
-  primary:'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-text)] hover:bg-[color-mix(in_srgb,var(--primary),var(--primary-text)_12%)]',
-  small:'min-h-[28px] px-[8px] py-[5px]',
-  textAction:'inline-flex cursor-pointer items-center gap-[8px] border-0 border-none border-current bg-transparent px-0 py-[6px] font-[family-name:inherit] text-[12px] leading-[inherit] text-ouro-text-muted hover:text-ouro-text disabled:cursor-not-allowed disabled:opacity-[.42] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-ouro-text focus-visible:outline-offset-[3px] motion-reduce:transition-none [-webkit-tap-highlight-color:transparent]',
-  iconAction:'inline-flex size-[30px] shrink-0 cursor-pointer items-center justify-center rounded-[5px] border-0 border-none border-current bg-transparent font-[family-name:inherit] leading-[inherit] text-ouro-text-muted hover:bg-ouro-muted hover:text-ouro-text disabled:cursor-not-allowed disabled:opacity-[.42] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-ouro-text focus-visible:outline-offset-[3px] motion-reduce:transition-none [-webkit-tap-highlight-color:transparent]',
-  field:'min-w-0 rounded-[var(--radius)] border border-solid border-ouro-control bg-ouro-bg px-[11px] py-[9px] font-[family-name:inherit] text-[length:inherit] leading-[inherit] font-[number:inherit] text-ouro-text focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-ouro-text focus-visible:outline-offset-[3px] [-webkit-tap-highlight-color:transparent]',
-  checkbox:'font-[family-name:inherit] text-[length:inherit] leading-[inherit] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-ouro-text focus-visible:outline-offset-[3px] [-webkit-tap-highlight-color:transparent]',
-  pageHeading:'page-heading mb-[27px] flex items-center justify-between gap-[24px] at-most-1050:items-start at-most-1050:gap-[14px] at-most-680:mb-[22px] at-most-680:flex-wrap',
-  pageTitle:'m-0 text-[27px] leading-[1.3] font-semibold tracking-[-.8px] at-most-1050:text-[24px] at-most-680:text-[23px]',
-  pageDescription:'m-0 mt-[10px] max-w-[600px] text-[14px] leading-[1.7] text-ouro-text-muted at-most-680:mt-[8px] at-most-680:text-[12px]',
-  pageAction:'at-most-1050:gap-[5px] at-most-1050:px-[9px] at-most-1050:py-[7px] at-most-1050:text-[12px] at-most-680:mt-0 at-most-680:max-w-[130px] at-most-680:min-h-[30px] at-most-680:shrink-0 at-most-680:gap-[4px] at-most-680:px-[8px] at-most-680:py-[6px] at-most-680:whitespace-normal',
-  sectionHeading:'section-heading mb-[14px] flex items-center justify-between gap-[12px]',
-  eyebrow:'eyebrow mb-[9px] text-[12px] tracking-[1.15px] text-[var(--text-faint)]',
-  quiet:'quiet-label text-[12px] tracking-[.7px] text-[var(--text-faint)]',
-  helper:'helper-note m-0 mt-[14px] text-[12px] leading-[1.8] text-[var(--text-faint)]',
-  code:'font-mono text-[12px]',
+export const panelElements = {
+  button:
+    'cursor-pointer border-0 border-none border-current bg-transparent font-[family-name:inherit] leading-[inherit] text-inherit disabled:cursor-not-allowed disabled:opacity-[.42] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-ouro-text focus-visible:outline-offset-[3px] motion-reduce:transition-none [-webkit-tap-highlight-color:transparent]',
+  action:
+    'inline-flex min-h-[34px] cursor-pointer items-center justify-center gap-[8px] rounded-[var(--radius)] border border-solid border-ouro-control bg-ouro-bg px-[12px] py-[8px] font-[family-name:inherit] text-[13px] leading-[18px] font-medium text-inherit whitespace-nowrap transition-[background] duration-[120ms] ease-[ease] hover:bg-ouro-muted disabled:cursor-not-allowed disabled:opacity-[.42] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-ouro-text focus-visible:outline-offset-[3px] motion-reduce:transition-none [-webkit-tap-highlight-color:transparent]',
+  primary:
+    'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-text)] hover:bg-[color-mix(in_srgb,var(--primary),var(--primary-text)_12%)]',
+  small: 'min-h-[28px] px-[8px] py-[5px]',
+  textAction:
+    'inline-flex cursor-pointer items-center gap-[8px] border-0 border-none border-current bg-transparent px-0 py-[6px] font-[family-name:inherit] text-[12px] leading-[inherit] text-ouro-text-muted hover:text-ouro-text disabled:cursor-not-allowed disabled:opacity-[.42] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-ouro-text focus-visible:outline-offset-[3px] motion-reduce:transition-none [-webkit-tap-highlight-color:transparent]',
+  iconAction:
+    'inline-flex size-[30px] shrink-0 cursor-pointer items-center justify-center rounded-[5px] border-0 border-none border-current bg-transparent font-[family-name:inherit] leading-[inherit] text-ouro-text-muted hover:bg-ouro-muted hover:text-ouro-text disabled:cursor-not-allowed disabled:opacity-[.42] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-ouro-text focus-visible:outline-offset-[3px] motion-reduce:transition-none [-webkit-tap-highlight-color:transparent]',
+  field:
+    'min-w-0 rounded-[var(--radius)] border border-solid border-ouro-control bg-ouro-bg px-[11px] py-[9px] font-[family-name:inherit] text-[length:inherit] leading-[inherit] font-[number:inherit] text-ouro-text focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-ouro-text focus-visible:outline-offset-[3px] [-webkit-tap-highlight-color:transparent]',
+  checkbox:
+    'font-[family-name:inherit] text-[length:inherit] leading-[inherit] focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-ouro-text focus-visible:outline-offset-[3px] [-webkit-tap-highlight-color:transparent]',
+  pageHeading:
+    'page-heading mb-[27px] flex items-center justify-between gap-[24px] at-most-1050:items-start at-most-1050:gap-[14px] at-most-680:mb-[22px] at-most-680:flex-wrap',
+  pageTitle:
+    'm-0 text-[27px] leading-[1.3] font-semibold tracking-[-.8px] at-most-1050:text-[24px] at-most-680:text-[23px]',
+  pageDescription:
+    'm-0 mt-[10px] max-w-[600px] text-[14px] leading-[1.7] text-ouro-text-muted at-most-680:mt-[8px] at-most-680:text-[12px]',
+  pageAction:
+    'at-most-1050:gap-[5px] at-most-1050:px-[9px] at-most-1050:py-[7px] at-most-1050:text-[12px] at-most-680:mt-0 at-most-680:max-w-[130px] at-most-680:min-h-[30px] at-most-680:shrink-0 at-most-680:gap-[4px] at-most-680:px-[8px] at-most-680:py-[6px] at-most-680:whitespace-normal',
+  sectionHeading: 'section-heading mb-[14px] flex items-center justify-between gap-[12px]',
+  eyebrow: 'eyebrow mb-[9px] text-[12px] tracking-[1.15px] text-[var(--text-faint)]',
+  quiet: 'quiet-label text-[12px] tracking-[.7px] text-[var(--text-faint)]',
+  helper: 'helper-note m-0 mt-[14px] text-[12px] leading-[1.8] text-[var(--text-faint)]',
+  code: 'font-mono text-[12px]',
 } as const;

@@ -21,6 +21,7 @@ const presentationSlots={
 type TaskDraft={title:string;titleEdited:boolean;goal:string;dod:string;agentId:string};
 const drafts=new Map<string,TaskDraft>();
 
+/** Собирает назначение работы выбранному агенту, сохраняя черновик автора и блокируя новую отправку при неподтверждённом исходе. */
 export default function WorkspaceTaskForm({projectId,agents,onStart,disabledReason}:{projectId:string;agents:AgentRegistration[];onStart:(agentId:string,content:RevisionContent)=>Promise<boolean>;disabledReason?:string}){
   const {t}=useTranslation('assignWork');
   const {actor}=useWorkspaceSession(),pending=useWorkspaceIntents(projectId,actor?.id);

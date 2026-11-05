@@ -9,7 +9,7 @@ import {FolderOpen,Plus,ArrowUp,ChevronRight} from 'lucide-react';
 import WorkspaceOnboarding from './onboarding';
 import {EmailLogin} from './project-account';
 import {WorkspacePending,freezeWorkspaceIntent,readWorkspaceJSON,sendWorkspaceIntent,useWorkspaceIntents,useWorkspaceSession,type WorkspaceProject} from './workspace-client';
-import {useCatalogProjects} from '@/packages/frontend/src/api/catalog-reads';
+import {useCatalogProjectsQuery} from '@/packages/frontend/src/api/catalog-reads';
 import {ClientError} from '@/packages/client/src/ports';
 
 /** Оформление элементов этого модуля; общие элементы используют workspacePresentation. */
@@ -20,9 +20,10 @@ const presentationSlots={
 } as const;
 
 type FolderListing={path:string;parentPath:string|null;entries:{name:string;path:string}[];truncated:boolean};
+/** Показывает каталог проектов текущей сессии и формы добавления проекта или выбора его папки. */
 export default function WorkspaceCatalog(){
   const {actor,localOperator,hasAccount,readScope,unavailable,loading,error:sessionError}=useWorkspaceSession(),router=useRouter();
-  const catalog=useCatalogProjects(readScope,hasAccount?'account':'workspace',!!actor),reading=hasAccount?catalog.account:catalog.workspace;
+  const catalog=useCatalogProjectsQuery(readScope,hasAccount?'account':'workspace',!!actor),reading=hasAccount?catalog.account:catalog.workspace;
   const projects=hasAccount?(catalog.account.data??[]).map(project=>({...project,kind:'hosted' as const,rootPath:null})):(catalog.workspace.data??[]),ready=reading.status==='ready';
   const catalogError=reading.status==='unavailable'?'Чтение каталога недоступно в этом окружении.':reading.error?.message??'';
   const [rootPath,setRootPath]=useState(''),[name,setName]=useState(''),[actionError,setError]=useState(''),[busy,setBusy]=useState(false);

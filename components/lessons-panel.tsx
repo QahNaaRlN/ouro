@@ -27,6 +27,7 @@ function Sources({state,ids,onOpenSpec}:{state:ProjectState;ids:string[];onOpenS
   })}</div>;
 }
 
+/** Показывает уроки и их источники, формы редакций и создание черновика спеки на основе опубликованного урока. */
 export default function LessonsPanel({state,onSnapshot,onOpenSpec,readOnly=false}:{state:ProjectState;onSnapshot:(data:unknown)=>void|Promise<void>;onOpenSpec?:(specId:string)=>void;readOnly?:boolean}){
   const [query,setQuery]=useState(''),[publication,setPublication]=useState('all'),[sourceSpec,setSourceSpec]=useState('');
   const [selectedLesson,setSelectedLesson]=useState<string|null>(null),[selectedRevision,setSelectedRevision]=useState<string|null>(null);

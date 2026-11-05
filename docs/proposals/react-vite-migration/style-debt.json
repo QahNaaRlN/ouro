@@ -29,7 +29,7 @@
   "inline": [
     {
       "file": "components/impact-panel.tsx",
-      "sha256": "e831a519c8b36e300f07dd771806e24cce6c86d04590641dce0ab8503017ba5d",
+      "sha256": "75328788ebd2fe990f66225868045ce4f62b69b450ee8b90399d3ab251b40bc0",
       "expressions": [
         {
           "kind": "jsx",
@@ -41,7 +41,7 @@
     },
     {
       "file": "components/onboarding.tsx",
-      "sha256": "c7c1ee0839e68b2b0265a442df5a97990072191f9a56db7a59ff6eb3044968d4",
+      "sha256": "6acfa1ad8f54b0c59f0279d73b718cf7b527296af36307e9c5362d60bda512d3",
       "expressions": [
         {
           "kind": "jsx",
@@ -63,7 +63,7 @@
     },
     {
       "file": "components/workspace-ui.tsx",
-      "sha256": "f3f4e90b81da96dd5c3dfa5274f0b6c1b76751fb6261aba4196ac2c1326e8bbe",
+      "sha256": "e7e3d5f3cedd2dfff1bc2c4e437ae58f7671e88791b405c00abeac9b8ac1071e",
       "expressions": [
         {
           "kind": "dom",

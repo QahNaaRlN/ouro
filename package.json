@@ -52,6 +52,8 @@
     "consumer:qualify-envelope:npm": "node scripts/qualify-consumer-envelope.mjs",
     "check:conventions": "node scripts/check-conventions.mjs",
     "check:architecture": "node scripts/check-architecture.mjs",
+    "check:quality": "node scripts/check-quality.mjs",
+    "test:quality": "node --test tests/source-quality.test.ts",
     "migration:check": "node scripts/check-migration-baseline.mjs",
     "styles:check": "node scripts/check-ui-styles.mjs",
     "styles:final": "node scripts/check-ui-styles.mjs --final",
@@ -87,6 +89,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
     "@playwright/test": "^1.56.1",
     "@tailwindcss/postcss": "4.3.3",
     "@types/dagre": "^0.7.53",
@@ -97,9 +100,15 @@
     "@types/react-dom": "^19.2.2",
     "ajv": "^8.20.0",
     "esbuild": "0.28.2",
+    "eslint": "10.13.0",
+    "eslint-plugin-jsdoc": "65.4.2",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
     "postcss": "8.5.32",
+    "prettier": "3.9.10",
     "tailwindcss": "4.3.3",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "8.72.1"
   }
 }

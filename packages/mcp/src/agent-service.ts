@@ -20,6 +20,7 @@ export type AgentWorkspace={
   listFiles(path?:string,cursor?:number):Promise<WorkspaceFileList>;
   readFile(path:string):Promise<WorkspaceFile>;
 };
+/** Задаёт store, контекст агента и проекта, а также доступные workspace-возможности MCP-инструментов. */
 export type AgentServiceDependencies={store:AgentStore;actor:Actor;projectId?:string;workspace?:AgentWorkspace;deploymentMode?:string};
 
 // Validate the constant when the module loads, before a store can commit work.
@@ -46,7 +47,7 @@ function result(name:string,body:Record<string,unknown>,isError=false):AgentTool
 const fail=(code:string,message:string):never=>{throw new DomainError(code,message);};
 const terminal=new Set(['succeeded','failed','cancelled','skipped']);
 
-/** Read/write facade for an already authenticated identity. It grants no human capabilities. */
+/** Предоставляет MCP-фасад чтения и записи проверенному агенту в границах его проекта и назначенных исполнений. */
 export function createAgentService({ store, actor, projectId=PROJECT_ID, workspace,deploymentMode }: AgentServiceDependencies) {
   const assertActor=()=>{
     if(actor.kind!=='agent'||!actor.id||!actor.projectIds.includes(projectId))fail('FORBIDDEN','Требуется назначенная агентская идентичность этого проекта.');

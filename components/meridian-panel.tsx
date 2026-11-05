@@ -14,10 +14,12 @@ type ImportBody={requestId:string;expectedVersion:number;rawDocument:string;cont
 export type MeridianPendingIntent={projectId:string;participantKey:string;filename:string;body:ImportBody};
 export type MeridianIntentCache={current:MeridianPendingIntent|null};
 const fields=[['goal','Цель черновика'],['constraints','Ограничения черновика'],['inputs','Входные данные черновика'],['assumptions','Допущения черновика'],['risks','Риски черновика'],['comment','Комментарий к черновику']] as const;
+/** Показывает подпись, идентификатор, ревизию и SHA-256 переданной записи Meridian. */
 export function MeridianPin({label,pin}:{label:string;pin:Pin}){
   return <div className={m.pin}><span className={m.pinLabel}>{label}</span><strong className={m.pinValue}>{pin.key.id} · r{pin.revision}</strong><code className={m.pinHash}>{pin.sha256}</code></div>;
 }
 
+/** Даёт прочитать документ Meridian, отредактировать черновик ожидания и отправить импорт в проект. */
 export default function MeridianPanel({state,onSnapshot,onOpenSpec,theme,pendingIntent,participantKey,readOnly=false}:{state:ProjectState;onSnapshot:(data:unknown)=>void|Promise<void>;onOpenSpec?:(id:string)=>void;theme:'light'|'dark';pendingIntent:MeridianIntentCache;participantKey:string;readOnly?:boolean}){
   const [recovered]=useState(()=>{
     const saved=pendingIntent.current;

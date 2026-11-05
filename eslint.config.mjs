@@ -4,7 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import jsdoc from 'eslint-plugin-jsdoc';
 import globals from 'globals';
 
-/** Начальная область owned source; правила включаются после actual positive и meaningful RED. */
+/** Полная область owned source, включая tests и новые source roots. */
 const sourceFiles = ['**/*.{js,mjs,cjs,jsx,ts,tsx,mts,cts}'];
 
 /** Только технические outputs и внешняя installation, без исключения owned source directories. */
@@ -23,7 +23,19 @@ const technicalIgnores = [
   'packages/protocol/src/version.ts',
 ];
 
-/** Bootstrap parser/plugins; это еще не действующий lint gate и не recommended preset. */
+/** Конечные декларации контракта; callbacks и barrel reexports не становятся public functions. */
+const declarations = [
+  'ClassDeclaration',
+  'FunctionDeclaration',
+  'ArrowFunctionExpression',
+  'FunctionExpression',
+  'TSDeclareFunction',
+  'TSInterfaceDeclaration',
+  'TSTypeAliasDeclaration',
+  'ExportNamedDeclaration[declaration.type="VariableDeclaration"]',
+];
+
+/** Проверяет принятые semantic rules без stylistic/recommended расширения исторического долга. */
 export default [
   { ignores: technicalIgnores },
   {
@@ -40,8 +52,69 @@ export default [
       'react-hooks': reactHooks,
       jsdoc,
     },
-    linterOptions: { reportUnusedDisableDirectives: 'error' },
-    rules: {},
+    settings: { jsdoc: { mode: 'typescript' } },
+    linterOptions: { noInlineConfig: true, reportUnusedDisableDirectives: 'error' },
+    rules: {
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'error',
+      'jsdoc/require-jsdoc': [
+        'error',
+        {
+          publicOnly: { esm: true, cjs: true, window: false, ancestorsOnly: false },
+          require: {
+            ClassDeclaration: true,
+            FunctionDeclaration: true,
+            ArrowFunctionExpression: true,
+            FunctionExpression: true,
+          },
+          contexts: ['TSDeclareFunction', 'TSInterfaceDeclaration', 'TSTypeAliasDeclaration'],
+          enableFixer: false,
+        },
+      ],
+      'jsdoc/require-description': ['error', { descriptionStyle: 'body', contexts: declarations }],
+      'jsdoc/match-description': [
+        'error',
+        {
+          contexts: declarations,
+          matchDescription: '^(?=[\\s\\S]*[А-Яа-яЁё])[\\s\\S]+$',
+          tags: {
+            param: true,
+            arg: true,
+            argument: true,
+            returns: true,
+            return: true,
+            throws: true,
+            exception: true,
+          },
+        },
+      ],
+      'jsdoc/require-throws-type': 'error',
+      'jsdoc/require-throws-description': 'error',
+      'jsdoc/sort-tags': [
+        'error',
+        {
+          tagSequence: [
+            {
+              tags: [
+                'template',
+                'param',
+                'arg',
+                'argument',
+                'returns',
+                'return',
+                'throws',
+                'exception',
+                'example',
+                'see',
+                '-other',
+              ],
+            },
+          ],
+          reportTagGroupSpacing: false,
+          reportIntraTagGroupSpacing: false,
+        },
+      ],
+    },
   },
   {
     files: ['**/*.{ts,tsx,mts,cts}'],
@@ -49,6 +122,7 @@ export default [
       parser: tseslint.parser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: { '@typescript-eslint/no-explicit-any': 'error', 'jsdoc/no-types': 'error' },
   },
   {
     files: ['scripts/**', 'lib/**', 'tests/**', 'e2e/**', 'apps/service/**', '**/*.config.*'],
