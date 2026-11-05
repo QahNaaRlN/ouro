@@ -1,5 +1,13 @@
 # React/Vite эпик · интеграционный снимок
 
+## Остановка и пересобранный план, 2026-11-05
+
+Реализация **PAUSED_BY_OWNER**, epic `6595e2e30e4a3f800e647404c8ac083a1d6892c0`. После ретроспективы по отдельному поручению подготовлен [план завершения C0–C7](react-vite-completion.md): зависимости, exit criteria, конечная visual coverage и профили достаточных проверок. Принятые D01–D16 и полная Tailwind4-конверсия сохраняются. Подготовка документа не запускает код, установку, CI, merge или deployment.
+
+Снимок остановки: PR76/head `6afa3160` имеет5 CI PASS, но не слит; PR74/head `88cbba1` имеет отменённый последний run, предыдущий `f99ca177` — Linux6PASS и Windows13 functionalPASS при отдельном strictHTML672/1161FAIL. Shared-style story не переписала общие112 rules: v2G1 имеет24 before frames PASS, остальные before/after slices не объявлены завершёнными. Есть непроверенные незакоммиченные harness/MethodologyPage изменения и Form SDD; pnpm пока только SDD. Все они остаются отдельно от принятого epic.
+
+Ниже сохранены прежние датированные checkpoints. Их IN_PROGRESS/PENDING и промежуточные failures описывают тот состав и момент; они не означают возобновлённую работу и не заменяют текущий снимок остановки.
+
 ## Последний квалифицированный checkpoint
 
 Состояние на `4e826240bde2cce64c6ca4d10a39c3682bf14da4`, 2026-11-05: **IN_PROGRESS**, PR36 остаётся draft в dev. После первого снимка ниже интегрированы PR68–72. Пользовательские profiles/env/DB, исходная dirty main и Meridian не изменялись; эпик ещё не вливался в dev/main.
@@ -8,10 +16,10 @@
 |---|---|
 | Entity public APIs | Work, agent-proposal и specification content интегрированы. Полная physical hFSD ещё не завершена; project-event projection отдельно в PR73. |
 | Client error policy | PR70: safe occurrence/reporting, Query ownership и renderer boundary. Четыре browser cases включают UNKNOWN после render failure. Формы размонтируются в fallback; сохранность всех local drafts и global framework-console redaction не заявлены. |
-| Explicit project runtime | PR72: обязательные source/ports/reporter/connectivity, web composition adapter отдельно. Failing observers не прерывают revoke/accepted read; failed cleanup не сохраняет активный logical owner. Физическое закрытие неисправного транспорта не подтверждено. Локально97/97, types/guards и все5CI jobs PASS. |
+| Explicit project runtime | PR72: обязательные source/ports/reporter/connectivity, web composition adapter отдельно. Failing observers не прерывают revoke/accepted read; failed cleanup не сохраняет активный logical owner. Физическое закрытие неисправного транспорта не подтверждено. Локально97/97, types/guards и все5 CI jobs PASS. |
 | Independent source | [Job126890641684/run41920279439](https://github.com/QahNaaRlN/ouro/actions/runs/41920279439/job/126890641684): Node24.19/Linux,249source files, no source dependency install. Все phases PASS, включая browser installation, runner3/navigation6, SQL restart/exact receipt, MCP/SSE/assets и graceful stop. HTML672/672. Это source-build qualification, не full end-user release. |
 | Generation launcher | Draft PR74 на отдельной feature-ветке: focused PORT/TCP/lifecycle/materialization checks PASS, шестой consumer-generation CI job добавлен в этой ветке. Combined full proof, Windows npm/shell teardown и final checks ещё PENDING. |
-| Tailwind остаток | 112ordinary rules/2CSS files. Шесть geometry expressions в3files уже используют custom properties, но production technical policies ещё0: нужна отдельная qualification, а не blanket approval. Shared-native conversion не завершён. |
+| Tailwind остаток | 112 ordinary rules/2 CSS files. Шесть geometry expressions в3 files уже используют custom properties, но production technical policies ещё0: нужна отдельная qualification, а не blanket approval. Shared-native conversion не завершён. |
 
 Первый PR72 consumer run завершился FAIL в общем runner/browser phase при PASS всех предыдущих phases. Причина не установлена по старому отчёту; новый qualifier разделяет browser installation и сохраняет только safe finite tool diagnostics. Новый exact head прошёл все5jobs; старый FAIL не переписан как PASS. Windows strict HTML injection FAIL также сохраняется отдельно.
 
@@ -31,12 +39,12 @@ Shared-native baseline сейчас собирается новым opt-in measu
 | Project client | Один ProjectSession/snapshot adopter/SSE owner, scoped Query, frozen intents и durable receipt recovery | Смена scope/access, response loss/corruption, stale callbacks и exact retry квалифицированы; cache не является серверной истиной |
 | Read catalogs | Identity/workspace/account reads с полными source/actor/project/access/host scope keys | Typed ports/DTO и cancellation/lease ownership; это не полный набор semantic операций для native host |
 | Physical architecture | Pure ports/DTO, snapshot/subscription boundaries, public `entities/work` и guard против reverse legacy/deep imports | Физическое разбиение остальных UI/features/pages не завершено; selector `entities/agent-proposal` отдельно на CI |
-| Tailwind | Семейства Human View/workspace/graphs/process/runtime/participants/integrations/proposals/agents/history/Impact/Lessons/verification и последние4static preview expressions | Каждый срез имеет собственные before/after/functional evidence и ограничения; общие112rules ещё ordinary debt |
+| Tailwind | Семейства Human View/workspace/graphs/process/runtime/participants/integrations/proposals/agents/history/Impact/Lessons/verification и последние4static preview expressions | Каждый срез имеет собственные before/after/functional evidence и ограничения; общие112 rules ещё ordinary debt |
 | Profile ownership | Committed no-overwrite marker, same-process inode protection, claim-before-validation и bounded native contention | Actual Linux RED→GREEN,200pairs, Windows/Linux cases и mandatory CI; не power-loss/adversarial/noncooperating-old-binary гарантия |
 | Runtime environment | Node24.19 admission, explicit-root/phase env adapter с exact parser versions | Actual differential/rejection witnesses; Next internal cache/HMR не портируется, env files владельца не читались |
 | Independent source build | Один immutable committed tree, same-commit protocol, один frozen npm graph без Next и ancestor dependencies | Отдельный mandatory Linux SOURCE_BUILD job PASS; end-user generation launcher/ZIP ещё не квалифицированы |
 
-Результат последней style inventory: **2ordinary CSS files/112rules,3inline files/6expressions**, production technicalInline exceptions0. Оставшиеся expressions — Impact meter, три onboarding geometry и две textarea height. Они не объявляются допустимыми автоматически. Общие native/shared defaults переписываются отдельной историей; перенос этих правил и review expressions нужны до styles:final PASS.
+Результат последней style inventory: **2ordinary CSS files/112 rules,3inline files/6expressions**, production technicalInline exceptions0. Оставшиеся expressions — Impact meter, три onboarding geometry и две textarea height. Они не объявляются допустимыми автоматически. Общие native/shared defaults переписываются отдельной историей; перенос этих правил и review expressions нужны до styles:final PASS.
 
 ## Точные последние integration gates
 
@@ -60,7 +68,7 @@ Windows strict HTML transport evidence остаётся отдельным **FAI
 
 ## Открытый остаток
 
-1. Закончить112ordinary shared/native rules и квалифицировать шесть geometry expressions точными policies; общий final style gate ещё не пройден.
+1. Закончить112 ordinary shared/native rules и квалифицировать шесть geometry expressions точными policies; общий final style gate ещё не пройден.
 2. Завершить physical hFSD по ответственности; не переносить целый Home в один widget. Оставшиеся semantic операции и coherent host composition не подменять generic ambient HTTP fallback.
 3. Интегрировать frontend error-policy/boundary/capture с текущими authority/UNKNOWN guarantees. Backend и первые capture points уже существуют; глобальная framework-console очистка, внешний monitoring и все legacy async handlers пока не объявлены готовыми.
 4. Подключить typed Russian i18next/react-i18next и реальный TanStack Form/Zod boundary. Temporal adapter для новой calendar logic требует отдельной compatibility проверки; существующие timestamps не переписывать автоматически.
