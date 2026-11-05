@@ -8,6 +8,7 @@ import {useProjectSession} from './project-session-provider';
 import WorkspaceProjectView from './workspace-project-view';
 import {WorkspacePending,useWorkspaceIntents,useWorkspaceSession} from './workspace-client';
 
+/** Открывает область выбранного проекта с текущим автором и эпохой доступа после проверки сессии. */
 export default function WorkspaceProjectPage({projectId}:{projectId:string}){
  const {actor,accessEpoch,loading,error,unavailable}=useWorkspaceSession();
  if(loading)return <p className={twMerge(ui.paragraph,"ws-loading",ui.paragraph)}>Проверяем сессию…</p>;

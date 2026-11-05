@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { freezeProjectCommandIntent, InvalidProjectCommandIntentError } from '../packages/client/src/ports';
+import {
+  freezeProjectCommandIntent,
+  InvalidProjectCommandIntentError,
+} from '../packages/client/src/ports';
 import type { FrozenProjectCommandIntent } from '../packages/client/src/ports';
 
 const intent = (): FrozenProjectCommandIntent => ({
@@ -32,7 +35,8 @@ test('portable command intent rejects identity or version mismatches before a tr
     { ...original, scope: { ...original.scope, accessEpoch: -1 } },
     { ...original, body: 'not-json' },
     { ...original, body: 'null' },
-  ]) assert.throws(() => freezeProjectCommandIntent(changed), InvalidProjectCommandIntentError);
+  ])
+    assert.throws(() => freezeProjectCommandIntent(changed), InvalidProjectCommandIntentError);
 });
 
 test('task assignment intent preserves its existing endpoint body without inventing a command type', () => {
@@ -42,5 +46,12 @@ test('task assignment intent preserves its existing endpoint body without invent
     body: '{"requestId":"request-original","expectedVersion":2,"agentId":"agent-a","content":{"title":"Работа"}}',
   };
   assert.equal(freezeProjectCommandIntent(input).body, input.body);
-  assert.throws(() => freezeProjectCommandIntent({ ...input, body: input.body.replace('"agentId":"agent-a",', '"type":"startProjectWork",') }), InvalidProjectCommandIntentError);
+  assert.throws(
+    () =>
+      freezeProjectCommandIntent({
+        ...input,
+        body: input.body.replace('"agentId":"agent-a",', '"type":"startProjectWork",'),
+      }),
+    InvalidProjectCommandIntentError,
+  );
 });

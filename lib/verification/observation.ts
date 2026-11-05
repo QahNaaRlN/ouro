@@ -9,7 +9,9 @@ export type WorkspaceObservation=ArtifactManifest&{slice:{productRevision:string
 export const observationHash=(value:unknown):string=>createHash('sha256').update(JSON.stringify(value,(_key,item)=>item&&typeof item==='object'&&!Array.isArray(item)?Object.fromEntries(Object.entries(item).sort(([a],[b])=>a.localeCompare(b,'en'))):item)).digest('hex');
 // Keep native resolution: Webpack rewrites a direct createRequire(dynamicPath) to undefined.
 const appRequire=(packageRoot?:string):NodeRequire=>Reflect.apply(Reflect.get(nodeModule,'createRequire'),undefined,[path.resolve(packageRoot??process.cwd(),'package.json')]) as NodeRequire;
+/** Находит CLI Playwright штатным Node-разрешением из пакета приложения. */
 export const resolvePlaywrightCli=(packageRoot?:string):string=>appRequire(packageRoot).resolve('@playwright/test/cli');
+/** Фиксирует версии Node и Playwright, платформу и отпечатки путей окружения для наблюдения. */
 export function runnerCapabilities(packageRoot?:string):Record<string,string>{
  const playwright=appRequire(packageRoot)('@playwright/test/package.json') as {version:string};
  return {node:process.version,platform:process.platform,architecture:process.arch,playwright:playwright.version,adapter:'ouro-playwright-local/v1',playwrightResolution:'ouro-owned-preload/v1',runnerNodeEnv:'test',pathDigest:observationHash(process.env.PATH??''),browserPathDigest:observationHash(process.env.PLAYWRIGHT_BROWSERS_PATH??'default')};

@@ -5,6 +5,7 @@ import {commandReceiptResponse} from '@/lib/http-command-receipt';
 import { PROJECT_ID, AGENT_ID } from '@/packages/core/src';
 import { requestedProjectId } from '@/lib/connection-config';
 export const runtime = 'nodejs';
+/** Обрабатывает человеческую команду выбранного проекта и возвращает сохраняемую HTTP-квитанцию исполнения. */
 export async function POST(request: Request) {
   try {
     const projectId=requestedProjectId(request);

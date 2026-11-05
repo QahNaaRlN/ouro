@@ -43,6 +43,7 @@ async function runFixedPlaywright(binding:WorkspaceBinding,config:ObservationCon
   child.on('close',exitCode=>{finished=true;clearTimeout(timer);clearInterval(cancellation);signal?.removeEventListener('abort',onAbort);resolve({stdout,stderr,exitCode,...(failure?{failure}:{})});});
  });
 }
+/** Наблюдает входы, запускает фиксированный Playwright на их копии и формирует отчёт с проверкой стабильности входов. */
 export async function runLocalVerification(input:{binding:WorkspaceBinding;config:ObservationConfig;contract:VerificationContract;scopeCaseIds:string[];submittedBy:string;shouldStop:()=>Promise<boolean>;timeoutMs?:number;flowStepRunId?:string;signal?:AbortSignal;runtimeDirectory?:string;packageRoot?:string;preloadPath?:string}):Promise<{proof:LocalRunnerProof;before:WorkspaceObservation;after:WorkspaceObservation}>{
  if(input.signal?.aborted)throw Object.assign(new Error('Локальный runtime останавливается.'),{code:'RUNNER_STOPPED'});
  const capabilities=()=>runnerCapabilities(input.packageRoot);

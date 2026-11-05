@@ -22,6 +22,7 @@ const date=(value:string)=>new Date(value).toLocaleString('ru-RU',{day:'2-digit'
 const repositoryPattern='[A-Za-z0-9][A-Za-z0-9\\-]*/[A-Za-z0-9_.\\-]+';
 const commitUrl=(source:GitHubCommitSource)=>`https://github.com/${source.repositoryFullName.split('/').map(encodeURIComponent).join('/')}/commit/${encodeURIComponent(source.fullSha)}`;
 
+/** Показывает привязки GitHub, сохранённые коммиты и состояние доставки webhook. */
 export default function GitHubPanel({state,onSnapshot,readOnly=false}:{state:ProjectState;onSnapshot?:(data:unknown)=>void|Promise<void>;readOnly?:boolean}){
   const [info,setInfo]=useState<GitHubInfo|null>(null),[loading,setLoading]=useState(true),[loadError,setLoadError]=useState('');
   const [error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[copied,setCopied]=useState(false);

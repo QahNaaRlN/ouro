@@ -18,11 +18,13 @@ export function flowTrackingUnavailable(flow:FlowDefinition|undefined):string{
  if(!flow)return 'Для строгого учёта сначала опишите схему активной ревизии.';
  try{validateFlowTrackingProfile(flow);return '';}catch(error){return error instanceof Error?error.message:'Эта схема не поддерживает последовательный учёт проходов.';}
 }
+/** Показывает выбор строгого учёта проходов и причину его недоступности для новой попытки. */
 export function FlowTrackingChoice({checked,reason,disabled,onChange}:{checked:boolean;reason:string;disabled:boolean;onChange:(checked:boolean)=>void}){
  const surface=runtimeSurfacePresentation[useWorkspaceAppearance()?'workspace':'legacy'];
  return <div className={twMerge("flow-tracking-choice",ui.tracking)}><label className={twMerge(ui.trackingLabel,surface.trackingLabel)}><input className={ui.checkbox} type="checkbox" aria-label="Строгий учёт проходов" checked={checked&&!reason} disabled={disabled||!!reason} onChange={event=>onChange(event.target.checked)}/><span>Строгий учёт проходов</span></label><small className={ui.trackingHint}>{reason||'Для этой новой попытки: один текущий шаг, явные переходы и история повторов. Агент подтверждает запуск отдельно.'}</small></div>;
 }
 
+/** Сводит состояние учёта проходов и даёт открыть текущий шаг или сохранённое неподтверждённое действие. */
 export function FlowRuntimeSummary({execution,flow,onOpenCurrent,pending,onOpenPending}:{execution:Execution|undefined;flow:FlowDefinition;onOpenCurrent:(run:FlowStepRun)=>void;pending?:RuntimeIntent;onOpenPending?:(intent:RuntimeIntent)=>void}){
  const surface=runtimeSurfacePresentation[useWorkspaceAppearance()?'workspace':'legacy'];
  const runtime=execution?.flowRuntime,current=runtime?.runs.find(run=>run.id===runtime.currentRunId);
@@ -52,6 +54,7 @@ function sourceEvents(state:ProjectState,execution:Execution,run:FlowStepRun):Do
  });
 }
 
+/** Показывает историю выбранного прохода, связанные запросы, доступность перехода и формы действий. */
 export function FlowRuntimeInspector({state,execution,node,edge,run,view,onRunChange,busy,readOnly,actorId,intents,onCommand,onSimulateFlow}:{state:ProjectState;execution:Execution;node:FlowNode;edge?:FlowEdge;run:FlowStepRun|null;view:FlowRuntimeView;onRunChange:(id:string)=>void;busy:boolean;readOnly:boolean;actorId:string;intents:RuntimeIntentRegistry;onCommand?:FlowRuntimeCommand;onSimulateFlow?:FlowRuntimeCommand}){
  const surface=runtimeSurfacePresentation[useWorkspaceAppearance()?'workspace':'legacy'];
  const runs=execution.flowRuntime?.runs.filter(candidate=>candidate.nodeId===node.id)??[],selectedEdge=edge&&view.edges.find(candidate=>candidate.id===edge.id),history=run?sourceEvents(state,execution,run):[];

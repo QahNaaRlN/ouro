@@ -114,7 +114,8 @@
     "files": {
       "packages/frontend/src/entities/spec/model/spec.types.ts": "import type {Project} from '../../project/model/project.types'; import {run} from '../../../features/run'; export type Spec=Project; export const execute=run;",
       "packages/frontend/src/entities/project/model/project.types.ts": "export type Project={id:string}",
-      "packages/frontend/src/features/run/index.ts": "export const run=()=>true;"
+      "packages/frontend/src/features/run/index.ts": "export {run} from './run';",
+      "packages/frontend/src/features/run/run.ts": "export const run=()=>true;"
     },
     "codes": ["deep-slice-import", "hfsd-direction"]
   },

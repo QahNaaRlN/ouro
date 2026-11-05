@@ -24,6 +24,7 @@ function HistoryProvenance({provenance,className=''}:{provenance:WorkspaceEventP
   return <span className={twMerge(`ws-history-provenance ws-history-provenance-${provenance.tone}`,presentationSlots.historyProvenance,provenance.tone==='positive'?'bg-[color-mix(in_srgb,var(--positive)_10%,var(--bg))] text-ouro-positive':provenance.tone==='attention'?'bg-[color-mix(in_srgb,var(--attention)_10%,var(--bg))] text-[color:var(--attention)]':undefined,className)} data-provenance={provenance.kind}><Icon  size={13} aria-hidden="true"/>{provenance.label}</span>;
 }
 
+/** Показывает события в заданной области и позволяет выбрать запись для просмотра подробностей. */
 export function WorkspaceHistory({state,specId,revisionId,executionId,onOpenEvent,selectedEventId}:HistoryProps){
   const scopeKey=JSON.stringify([state.projectId,specId,revisionId,executionId]),[expandedScope,setExpandedScope]=useState<string|null>(null),all=expandedScope===scopeKey;
   const events=selectWorkspaceHistory(state,{specId,revisionId,executionId}),visible=all?events:events.slice(0,40);
@@ -35,6 +36,7 @@ export function WorkspaceHistory({state,specId,revisionId,executionId,onOpenEven
   </section>;
 }
 
+/** Показывает подробности выбранного события и переходы по его явным причинным связям. */
 export function WorkspaceEventDetail({state,eventId,onClose,onOpenEvent}:{state:ProjectState;eventId:string;onClose?:()=>void;onOpenEvent?:(eventId:string)=>void}){
   const event=state.events.find(candidate=>candidate.projectId===state.projectId&&candidate.id===eventId);
   if(!event)return <section className="ws-event-detail"><p className={twMerge(ui.paragraph,"ws-muted",ui.muted,ui.paragraph)}>Событие не найдено в истории этого проекта.</p>{onClose&&<button className={twMerge(ui.button,"leading-[1.6]")} type="button" onClick={onClose}>Закрыть</button>}</section>;

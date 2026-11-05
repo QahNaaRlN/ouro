@@ -12,6 +12,7 @@ export type ProjectStreamClock = {
   now(): number;
   schedule(callback: () => void, milliseconds: number): () => void;
 };
+/** Задаёт хранилище, человеческую авторизацию и расписание ограниченного по времени SSE-потока проекта. */
 export type ProjectStreamOptions = {
   requestOrigin?:(request:Request)=>string;
   store: ProjectStreamStore;

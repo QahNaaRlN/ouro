@@ -5,7 +5,7 @@ import {workspacePresentation as ui} from './workspace-presentation';
 
 import Link from 'next/link';
 import {useEffect,useState} from 'react';
-import {useProjectLocation} from './project-location';
+import {useProjectLocation} from './ProjectLocationProvider';
 import {ArrowLeft,ArrowUpRight,Bot,CircleAlert,FolderOpen,GitBranch,History,List,Network,Plus,RefreshCw,Search,Wifi,WifiOff} from 'lucide-react';
 import type {Execution,ProjectState,RevisionContent} from '@/packages/core/src';
 import {currentDecisionRequests} from '@/packages/core/src/decision-lineage';
@@ -57,6 +57,7 @@ const tabs:Tab[]=['overview','process','questions','proposals','history'];
 const date=(value:string)=>new Date(value).toLocaleString('ru-RU');
 export const promptFor=(projectId:string,execution:Execution,withFolder=true)=>'Работай в Ouro с проектом '+projectId+' и назначенной попыткой '+execution.id+'. Вызови ouro.get_context с executionId «'+execution.id+'», прочитай назначенную ревизию, цель и DoD.'+(withFolder?' Для контекста папки используй read-only tools ouro.list_workspace_files и ouro.read_workspace_file с этим executionId; пути только относительные.':' Файлы проекта доступны в разрешённой среде твоего клиента; облачный Ouro не читает локальную папку и не запускает тесты. Продолжай сохранять факты в единую облачную историю.')+' Перед работой подтверди разрешённое начало через ouro.confirm_started. Сообщай реальные Action с evidence, а вопросы, развилки и блокеры — через соответствующие tools. Ожидай человеческого решения; применение, разрешение продолжения и ACK — отдельные действия. Предъяви результат через ouro.complete_execution. Не принимай DoD за человека.';
 
+/** Компонует представления, навигацию и диалоги проекта из переданного состояния и команд. */
 export default function WorkspaceProjectView({metadata,state,cursor,subscriptionStatus,error,disabled:requestDisabled,command,onAssign,onRefresh,pending}:{metadata:WorkspaceSnapshot;state:ProjectState;cursor:number;subscriptionStatus:ProjectConnectionStatus;error:string;disabled:boolean;command:WorkspaceCommand;onAssign:(agentId:string,content:RevisionContent)=>Promise<Execution|null>;onRefresh:()=>Promise<unknown>;pending:React.ReactNode}){
  const navigation=useProjectLocation();
  const canWrite=metadata.project.role!=='Viewer',canManageAgents=!metadata.project.role||metadata.project.role==='Owner',disabled=requestDisabled||!canWrite;

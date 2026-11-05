@@ -12,6 +12,7 @@ import {twMerge} from 'tailwind-merge';
 import {historicalPresentation as ui} from './historical-presentation';
 import {WorkspaceVerification} from './verification-panel';
 
+/** Показывает историческую проекцию проекта на заданном курсоре с возвратом к текущему состоянию. */
 export default function HistoricalPanel({latest,cursor,onReturn}:{latest:ProjectState;cursor:number;onReturn:()=>void}){
   const [selected,setSelected]=useState(''),[selectedRevisionId,setSelectedRevisionId]=useState(''),[tab,setTab]=useState<'expectation'|'states'|'events'>('expectation');
   const result=useMemo(()=>{

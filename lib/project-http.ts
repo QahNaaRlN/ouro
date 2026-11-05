@@ -7,6 +7,7 @@ import type { UserAuth } from './user-auth';
 import { sessionCookie } from './user-auth-http';
 
 type ControlStore = ProjectService & UserAuth;
+/** Задаёт хранилище проектного управления и правила проверки его HTTP-запросов. */
 export type ProjectHttpDependencies = { getStore?: () => Promise<ControlStore>;auth?:AuthService };
 const id = z.string().regex(/^[A-Za-z0-9_-]{1,200}$/);
 const role = z.enum(['Owner', 'Contributor', 'Viewer']);
@@ -27,6 +28,7 @@ const valid = <T>(schema: z.ZodType<T>, value: unknown): T => {
   return result.data;
 };
 
+/** Создаёт HTTP-операции проектов, членства и приглашений с проверкой пользовательских сессий и доменных прав. */
 export function createProjectHandlers(dependencies: ProjectHttpDependencies = {}) {
   const {readCommandBody,requestOrigin}=dependencies.auth??defaultAuthService;
   const getStore = dependencies.getStore ?? (async () => (await import('./store')).getUserAuth());

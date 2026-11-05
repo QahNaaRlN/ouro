@@ -9,12 +9,14 @@ import type { ParticipantRegistration } from '@ouro/protocol/http';
 import {participantUi} from './participant-presentation';
 import {twMerge} from 'tailwind-merge';
 
+/** Задаёт реакцию на смену сессии участника и локальное оформление полей входа. */
 type ParticipantLoginProps={onSignedIn?:()=>void;
   /** Добавляет оформление поля в конкретном редакторе, сохраняя стандартную поверхность. */
   inputClassName?:string;
   /** Оформляет подпись без зависимости от селектора внешнего контейнера. */
   captionClassName?:string;
 };
+/** Показывает вход по ключу участника и сброс его сессии. */
 export function ParticipantLogin({onSignedIn,inputClassName,captionClassName}:ParticipantLoginProps){
   const [credential,setCredential]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const login=async(event:FormEvent)=>{
@@ -37,6 +39,7 @@ export function ParticipantLogin({onSignedIn,inputClassName,captionClassName}:Pa
 }
 
 type Directory={participants:ParticipantRegistration[];actor:Actor;canManageParticipants:boolean};
+/** Показывает реестр участников и действия выдачи и отзыва их ключей. */
 export default function ParticipantsPanel({onIdentityChange}:{onIdentityChange?:()=>void}){
   const [directory,setDirectory]=useState<Directory|null>(null),[name,setName]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
   const [created,setCreated]=useState<{participant:ParticipantRegistration;credential:string}|null>(null),[copied,setCopied]=useState(false);

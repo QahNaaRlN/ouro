@@ -6,6 +6,7 @@ import { requestedProjectId } from './connection-config';
 import type { createStore } from './store';
 
 type DraftStore=Pick<Awaited<ReturnType<typeof createStore>>,'createCollaborativeDraft'|'listCollaborativeDrafts'|'getCollaborativeDraft'|'updateCollaborativeDraft'|'publishCollaborativeDraft'>;
+/** Создаёт HTTP-операции совместных черновиков с проверкой человеческой идентичности и выбранного проекта. */
 export function createCollaborativeHandlers(deps:{getStore?:()=>Promise<DraftStore>;authenticateHuman?:(request:Request)=>Actor|Promise<Actor>;auth?:AuthService}={}){
   const {authenticatedParticipant,readCommandBody}=deps.auth??defaultAuthService;
   const getStore=deps.getStore??(async()=>(await import('./store')).getCollaborativeDraftStore());

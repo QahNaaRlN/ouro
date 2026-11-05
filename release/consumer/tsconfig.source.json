@@ -13,8 +13,8 @@
     "isolatedModules": true,
     "paths": {
       "@/*": ["./*"],
-      "next/link": ["./apps/web/src/app/legacy-navigation-link.tsx"],
-      "next/navigation": ["./apps/web/src/app/legacy-navigation.ts"]
+      "next/link": ["./apps/web/src/app/LegacyNavigationLink.tsx"],
+      "next/navigation": ["./apps/web/src/app/useRouter.ts"]
     }
   },
   "include": ["apps/web/src", "apps/service/src", "app/**/*.tsx", "components", "lib", "packages/**/src", "scripts/**/*.d.mts"],

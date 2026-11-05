@@ -6,6 +6,7 @@ import type {ProjectState,Spec} from '@/packages/core/src';
 import {MeridianPin} from './meridian-panel';
 import {meridianPresentation as m} from './meridian-presentation';
 
+/** Показывает сохранённое происхождение импорта Meridian и позволяет скачать исходный документ. */
 export default function MeridianOrigin({spec,state}:{spec:Spec;state:ProjectState}){
   const origin=spec.origin;
   if(origin?.kind!=='meridian_import')return null;

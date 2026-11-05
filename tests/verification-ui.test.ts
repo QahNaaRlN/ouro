@@ -30,6 +30,10 @@ test('pair and details use identical result/applicability; rendering historical 
     const old = renderToStaticMarkup(React.createElement(VerificationPairCard, { state: historical, group: getWorkPairGroups(historical)[0], onOpen: () => { } }));
     assert(old.includes('Не запускалось'));
     assert(!old.includes('Ожидаемое падение подтверждено'));
+    for (const markup of [card, old]) {
+        assert.match(markup, /<small>[^<]+ · r\d+ · Работа<\/small>/);
+        assert.match(markup, /<small>[^<]+ · r\d+ · Проверка<\/small>/);
+    }
 });
 test('read-only advanced projection shows cycle links and observed manifests without forms or live requests',async()=>{
  const {WorkspaceVerification}=await import('../components/verification-panel');

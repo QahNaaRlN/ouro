@@ -10,11 +10,17 @@ const script = path.resolve('scripts/check-migration-baseline.mjs');
 
 /** Утилита, которая проверяет настоящий CLI на изолированных исходниках маршрутов. */
 function run(root: string, ...args: string[]) {
-  return spawnSync(process.execPath, [script, '--root', root, ...args], { encoding: 'utf8', timeout: 15_000 });
+  return spawnSync(process.execPath, [script, '--root', root, ...args], {
+    encoding: 'utf8',
+    timeout: 15_000,
+  });
 }
 
 /** Утилита, которая создаёт изолированный пример с управляемым исходным контрактом. */
-async function fixture(source = 'export async function GET() { return Response.json({ value: 1 }); }', file = 'app/api/sample/route.ts') {
+async function fixture(
+  source = 'export async function GET() { return Response.json({ value: 1 }); }',
+  file = 'app/api/sample/route.ts',
+) {
   const root = await mkdtemp(path.join(tmpdir(), 'ouro-route-contract-'));
   const route = path.join(root, file);
   const baseline = path.join(root, 'baseline.json');
@@ -24,29 +30,57 @@ async function fixture(source = 'export async function GET() { return Response.j
   assert.equal(result.status, 0, result.stderr);
   const document = { contract: 'ouro-http-baseline/v1', routes: JSON.parse(result.stdout) };
   await writeFile(baseline, JSON.stringify(document));
-  return { root, route, baseline, document, close: () => rm(root, { recursive: true, force: true }) };
+  return {
+    root,
+    route,
+    baseline,
+    document,
+    close: () => rm(root, { recursive: true, force: true }),
+  };
 }
 
 test('RVF03 inventories declarations and preserves Next implicit methods without executing handlers', async () => {
-  const f = await fixture("throw new Error('must not execute'); export const GET = () => new Response(); export function POST() {} export { handler as DELETE }; const handler = () => {}; export type { HEAD } from './types';");
+  const f = await fixture(
+    "throw new Error('must not execute'); export const GET = () => new Response(); export function POST() {} export { handler as DELETE }; const handler = () => {}; export type { HEAD } from './types';",
+  );
   try {
     assert.deepEqual(f.document.routes[0].methods, ['DELETE', 'GET', 'POST']);
     assert.equal(f.document.routes[0].path, '/api/sample');
-    assert.deepEqual(f.document.routes[0].implicit, { head: 'GET', options: { kind: 'automatic', status: 204, allow: 'DELETE, GET, HEAD, OPTIONS, POST' }, unsupported: { status: 405, allowHeader: false } });
-    const check = run(f.root, '--baseline', f.baseline); assert.equal(check.status, 0, check.stderr);
-  } finally { await f.close(); }
+    assert.deepEqual(f.document.routes[0].implicit, {
+      head: 'GET',
+      options: { kind: 'automatic', status: 204, allow: 'DELETE, GET, HEAD, OPTIONS, POST' },
+      unsupported: { status: 405, allowHeader: false },
+    });
+    const check = run(f.root, '--baseline', f.baseline);
+    assert.equal(check.status, 0, check.stderr);
+  } finally {
+    await f.close();
+  }
 });
 
 test('RVF03 rejects a changed method or handler even when its URL stays the same', async () => {
   const f = await fixture();
   try {
-    await writeFile(f.route, 'export async function POST() { return Response.json({ value: 2 }); }');
+    await writeFile(
+      f.route,
+      'export async function POST() { return Response.json({ value: 2 }); }',
+    );
     const result = run(f.root, '--baseline', f.baseline);
-    assert.notEqual(result.status, 0, 'changed HTTP contract must require reviewed baseline update');
+    assert.notEqual(
+      result.status,
+      0,
+      'changed HTTP contract must require reviewed baseline update',
+    );
     assert.match(result.stderr, /app\/api\/sample\/route\.ts/);
     await writeFile(f.route, 'export async function GET() { return Response.json({ value: 2 }); }');
-    assert.notEqual(run(f.root, '--baseline', f.baseline).status, 0, 'handler changes with the same methods must be reviewed');
-  } finally { await f.close(); }
+    assert.notEqual(
+      run(f.root, '--baseline', f.baseline).status,
+      0,
+      'handler changes with the same methods must be reviewed',
+    );
+  } finally {
+    await f.close();
+  }
 });
 
 test('RVF03 source fingerprints tolerate Git newline conversion across Windows and Linux', async () => {
@@ -54,29 +88,54 @@ test('RVF03 source fingerprints tolerate Git newline conversion across Windows a
   const f = await fixture(source);
   try {
     await writeFile(f.route, source.replaceAll('\n', '\r\n'));
-    const result = run(f.root, '--baseline', f.baseline); assert.equal(result.status, 0, result.stderr);
-  } finally { await f.close(); }
+    const result = run(f.root, '--baseline', f.baseline);
+    assert.equal(result.status, 0, result.stderr);
+  } finally {
+    await f.close();
+  }
 });
 
 test('RVF03 rejects added and removed routes instead of silently accepting a partial inventory', async () => {
   const f = await fixture();
   try {
-    const added = path.join(f.root, 'app/api/new/route.ts'); await mkdir(path.dirname(added), { recursive: true }); await writeFile(added, 'export const POST = () => new Response();');
+    const added = path.join(f.root, 'app/api/new/route.ts');
+    await mkdir(path.dirname(added), { recursive: true });
+    await writeFile(added, 'export const POST = () => new Response();');
     assert.notEqual(run(f.root, '--baseline', f.baseline).status, 0, 'new route must be reviewed');
-    await rm(path.dirname(added), { recursive: true }); await rm(f.route);
-    assert.notEqual(run(f.root, '--baseline', f.baseline).status, 0, 'missing route must be reviewed');
-  } finally { await f.close(); }
+    await rm(path.dirname(added), { recursive: true });
+    await rm(f.route);
+    assert.notEqual(
+      run(f.root, '--baseline', f.baseline).status,
+      0,
+      'missing route must be reviewed',
+    );
+  } finally {
+    await f.close();
+  }
 });
 
 test('RVF03 rejects duplicate baseline paths and corrupted implicit method policy', async () => {
   const f = await fixture();
   try {
     const document = JSON.parse(await readFile(f.baseline, 'utf8'));
-    document.routes.push({ ...document.routes[0] }); await writeFile(f.baseline, JSON.stringify(document));
-    assert.notEqual(run(f.root, '--baseline', f.baseline).status, 0, 'duplicates cannot conceal missing coverage');
-    document.routes.pop(); document.routes[0].implicit.options.allow = 'POST'; await writeFile(f.baseline, JSON.stringify(document));
-    assert.notEqual(run(f.root, '--baseline', f.baseline).status, 0, 'implicit method behavior is part of the baseline');
-  } finally { await f.close(); }
+    document.routes.push({ ...document.routes[0] });
+    await writeFile(f.baseline, JSON.stringify(document));
+    assert.notEqual(
+      run(f.root, '--baseline', f.baseline).status,
+      0,
+      'duplicates cannot conceal missing coverage',
+    );
+    document.routes.pop();
+    document.routes[0].implicit.options.allow = 'POST';
+    await writeFile(f.baseline, JSON.stringify(document));
+    assert.notEqual(
+      run(f.root, '--baseline', f.baseline).status,
+      0,
+      'implicit method behavior is part of the baseline',
+    );
+  } finally {
+    await f.close();
+  }
 });
 
 test('RVF03 rejects newly added JavaScript route handlers supported by Next default page extensions', async () => {
@@ -86,27 +145,86 @@ test('RVF03 rejects newly added JavaScript route handlers supported by Next defa
     await mkdir(path.dirname(added), { recursive: true });
     await writeFile(added, 'export async function GET() { return Response.json({ value: 2 }); }');
     const result = run(f.root, '--baseline', f.baseline);
-    assert.notEqual(result.status, 0, 'JavaScript route files must not silently escape the inventory');
+    assert.notEqual(
+      result.status,
+      0,
+      'JavaScript route files must not silently escape the inventory',
+    );
     assert.match(result.stderr, /app\/api\/javascript\/route\.js/);
-  } finally { await f.close(); }
+  } finally {
+    await f.close();
+  }
 });
 
 test('HRP09 accepts only an exact reviewed source adaptation while preserving the historical baseline', async () => {
-  const f = await fixture('export const POST = () => Response.json({value:1});', 'app/api/commands/route.ts');
+  const f = await fixture(
+    'export const POST = () => Response.json({value:1});',
+    'app/api/commands/route.ts',
+  );
   try {
-    const original = await readFile(f.baseline, 'utf8'), source = 'export const POST = () => Response.json({value:1}, {headers:{"X-Ouro-Command-Receipt":"fixture"}});';
-    const adaptation = {file:'app/api/commands/route.ts',originalSha256:f.document.routes[0].sha256,acceptedSha256:createHash('sha256').update(source).digest('hex'),owner:'HRP',spec:'docs/specs/http-receipt-proof.md',rationale:'Add post-COMMIT HTTP proof without changing JSON or method semantics.'};
-    const adaptations = path.join(f.root, 'docs/proposals/react-vite-migration/http-source-adaptations.json');
-    await mkdir(path.dirname(adaptations), {recursive:true});
-    const write = (entries:unknown[]) => writeFile(adaptations, JSON.stringify({contract:'ouro-http-source-adaptations/v1',phase:'http-receipt-proof/v1',entries}));
-    await write([adaptation]);await writeFile(f.route, source);
-    const accepted = run(f.root, '--baseline', f.baseline);assert.equal(accepted.status,0,accepted.stderr);
-    assert.equal(await readFile(f.baseline,'utf8'),original,'Historical source evidence must never be regenerated for header additions.');
-    await writeFile(f.route,source+'\nexport const GET = () => new Response();');assert.notEqual(run(f.root,'--baseline',f.baseline).status,0,'An accepted hash does not authorize another method.');
-    await writeFile(f.route,source+'\n');assert.notEqual(run(f.root,'--baseline',f.baseline).status,0,'A later unreviewed source change still fails.');
-    await writeFile(f.route,source);
-    for(const entries of [[{...adaptation,originalSha256:'0'.repeat(64)}],[{...adaptation,file:'app/api/sample/route.ts'}],[adaptation,adaptation],[{...adaptation,owner:'unknown'}],[{...adaptation,acceptedSha256:adaptation.originalSha256}],[{...adaptation,wildcard:true}]]){
-      await write(entries);assert.notEqual(run(f.root,'--baseline',f.baseline).status,0,'A foreign, duplicate, malformed or stale authorization must fail closed.');
+    const original = await readFile(f.baseline, 'utf8'),
+      source =
+        'export const POST = () => Response.json({value:1}, {headers:{"X-Ouro-Command-Receipt":"fixture"}});';
+    const adaptation = {
+      file: 'app/api/commands/route.ts',
+      originalSha256: f.document.routes[0].sha256,
+      acceptedSha256: createHash('sha256').update(source).digest('hex'),
+      owner: 'HRP',
+      spec: 'docs/specs/http-receipt-proof.md',
+      rationale: 'Add post-COMMIT HTTP proof without changing JSON or method semantics.',
+    };
+    const adaptations = path.join(
+      f.root,
+      'docs/proposals/react-vite-migration/http-source-adaptations.json',
+    );
+    await mkdir(path.dirname(adaptations), { recursive: true });
+    const write = (entries: unknown[]) =>
+      writeFile(
+        adaptations,
+        JSON.stringify({
+          contract: 'ouro-http-source-adaptations/v1',
+          phase: 'http-receipt-proof/v1',
+          entries,
+        }),
+      );
+    await write([adaptation]);
+    await writeFile(f.route, source);
+    const accepted = run(f.root, '--baseline', f.baseline);
+    assert.equal(accepted.status, 0, accepted.stderr);
+    assert.equal(
+      await readFile(f.baseline, 'utf8'),
+      original,
+      'Historical source evidence must never be regenerated for header additions.',
+    );
+    await writeFile(f.route, source + '\nexport const GET = () => new Response();');
+    assert.notEqual(
+      run(f.root, '--baseline', f.baseline).status,
+      0,
+      'An accepted hash does not authorize another method.',
+    );
+    await writeFile(f.route, source + '\n');
+    assert.notEqual(
+      run(f.root, '--baseline', f.baseline).status,
+      0,
+      'A later unreviewed source change still fails.',
+    );
+    await writeFile(f.route, source);
+    for (const entries of [
+      [{ ...adaptation, originalSha256: '0'.repeat(64) }],
+      [{ ...adaptation, file: 'app/api/sample/route.ts' }],
+      [adaptation, adaptation],
+      [{ ...adaptation, owner: 'unknown' }],
+      [{ ...adaptation, acceptedSha256: adaptation.originalSha256 }],
+      [{ ...adaptation, wildcard: true }],
+    ]) {
+      await write(entries);
+      assert.notEqual(
+        run(f.root, '--baseline', f.baseline).status,
+        0,
+        'A foreign, duplicate, malformed or stale authorization must fail closed.',
+      );
     }
-  } finally { await f.close(); }
+  } finally {
+    await f.close();
+  }
 });

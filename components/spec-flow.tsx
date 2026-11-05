@@ -43,6 +43,7 @@ function ProcessNode({data,selected}:NodeProps<ProcessFlowNode>){
 const nodeTypes={process:ProcessNode};
 const processFitOptions={padding:0.15,minZoom:0.15,maxZoom:0.95};
 
+/** Предоставляет просмотр схемы процесса и фактов проходов, а также локальное редактирование черновика. */
 export default function SpecFlow({revision,state,busy,onSave,readOnly=false,onCommand,onSimulateFlow,actorId='readonly',intents:providedIntents,active=true,factsTriggerClassName=''}:{revision:SpecRevision;state:ProjectState;busy:boolean;onSave:(flow:FlowDefinition,base:Base)=>Promise<boolean>;readOnly?:boolean;onCommand?:FlowRuntimeCommand;onSimulateFlow?:FlowRuntimeCommand;actorId?:string;intents?:RuntimeIntentRegistry;active?:boolean;/** Оформление кнопки фактов задаёт потребитель вложенной схемы. */factsTriggerClassName?:string}){
   const workspace=useWorkspaceAppearance();
   const tableHintId=useId();

@@ -201,6 +201,7 @@ async function assertCatalogOperator(tx:Connection,actor:Actor):Promise<void>{
   await assertHumanActor(tx,actor,PROJECT_ID);
 }
 
+/** Открывает SQL-хранилище, применяет миграции и предоставляет проектные чтения и транзакционные команды. */
 export async function createStore(options:StoreOptions={}):Promise<Store>{
   const selectedProjectId=projectIdValue(options.projectId??PROJECT_ID),db=await openDatabase(options);
   try{

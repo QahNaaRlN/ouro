@@ -66,6 +66,7 @@ function readOptions(children:ReactNode,inheritedDisabled=false):Option[]{
   });
 }
 
+/** Показывает доступные варианты с поиском, сохраняя controlled value, ref, клавиатуру и причины недоступности. */
 export const AppSelect=forwardRef<HTMLButtonElement,AppSelectProps>(function AppSelect({children,value,defaultValue,onValueChange,required,disabled,name,form,autoComplete,searchable,emptyReason,id,className='',...props},forwardedRef){
   const appearance=useContext(AppearanceContext);
   const options=useMemo(()=>readOptions(children),[children]);

@@ -27,6 +27,7 @@ function download(content:RevisionContent,draft:CollaborativeDraft){
   const blob=new Blob([JSON.stringify({format:'ouro-collaborative-draft',draftId:draft.id,specId:draft.specId,baseRevisionId:draft.baseRevisionId,content},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`ouro-draft-${draft.id}.json`;link.click();URL.revokeObjectURL(url);
 }
 
+/** Показывает совместные черновики и редактор с синхронизацией текста и публикацией ревизии. */
 export default function CollaborativeDraftsPanel({state,actorId,onSnapshot,onOpenSpec,onPendingChange,readOnly=false}:{state:ProjectState;actorId:string;onSnapshot:(value:unknown)=>void|Promise<void>;onOpenSpec?:(id:string)=>void;onPendingChange?:(pending:boolean)=>void;readOnly?:boolean}){
   const [drafts,setDrafts]=useState<CollaborativeDraftSummary[]>([]),[selected,setSelected]=useState<CollaborativeDraft|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[dirty,setDirty]=useState(false),[denied,setDenied]=useState(false);
   const [createIntent,setCreateIntent]=useState(()=>readCollabIntent(state.projectId,'create'));

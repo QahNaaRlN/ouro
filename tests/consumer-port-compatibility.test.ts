@@ -1,65 +1,429 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {spawn,spawnSync} from 'node:child_process';
-import {mkdtemp,mkdir,writeFile,readFile,rm,lstat} from 'node:fs/promises';
-import {createServer} from 'node:http';
-import {tmpdir} from 'node:os';
-import {createRequire} from 'node:module';
-import {fileURLToPath,pathToFileURL} from 'node:url';
+import { spawn, spawnSync } from 'node:child_process';
+import { mkdtemp, mkdir, writeFile, readFile, rm, lstat } from 'node:fs/promises';
+import { createServer } from 'node:http';
+import { tmpdir } from 'node:os';
+import { createRequire } from 'node:module';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
-import {createPortProbe} from './fixtures/consumer-delivery/port-project.mjs';
-import {parseConsumerArguments,forceOwnedChild} from '../scripts/consumer-delivery/consumer-owner.mjs';
-import {selectConsumerPort,parseStartPort,assertBrowserPort} from '../scripts/consumer-delivery/consumer-port.mjs';
+import { createPortProbe } from './fixtures/consumer-delivery/port-project.mjs';
+import {
+  parseConsumerArguments,
+  forceOwnedChild,
+} from '../scripts/consumer-delivery/consumer-owner.mjs';
+import {
+  selectConsumerPort,
+  parseStartPort,
+  assertBrowserPort,
+} from '../scripts/consumer-delivery/consumer-port.mjs';
 
-const repository=fileURLToPath(new URL('../',import.meta.url)),require=createRequire(import.meta.url),keys=['SystemRoot','WINDIR','ComSpec','TEMP','TMP','PATH','HOME','USERPROFILE','APPDATA','LOCALAPPDATA'];const environment:NodeJS.ProcessEnv={...Object.fromEntries(keys.filter(key=>process.env[key]!==undefined).map(key=>[key,process.env[key]])),NODE_ENV:'production',NEXT_TELEMETRY_DISABLED:'1'};
+const runtimeLoaderSignature = /export async function loadRuntimeEnvironment\(options\)\s*\{/;
+
+const repository = fileURLToPath(new URL('../', import.meta.url)),
+  require = createRequire(import.meta.url),
+  keys = [
+    'SystemRoot',
+    'WINDIR',
+    'ComSpec',
+    'TEMP',
+    'TMP',
+    'PATH',
+    'HOME',
+    'USERPROFILE',
+    'APPDATA',
+    'LOCALAPPDATA',
+  ];
+const environment: NodeJS.ProcessEnv = {
+  ...Object.fromEntries(
+    keys.filter((key) => process.env[key] !== undefined).map((key) => [key, process.env[key]]),
+  ),
+  NODE_ENV: 'production',
+  NEXT_TELEMETRY_DISABLED: '1',
+};
 /** Ограничивает baseline новым synthetic root, никогда не открывает пользовательский profile/port3000. */
-async function fixture(){const directory=await mkdtemp(path.join(tmpdir(),'ouro-port-characterization-')),root=path.join(directory,'installed root');await mkdir(root);return {directory,root,close:async()=>{assert.equal(path.dirname(path.resolve(directory)),path.resolve(tmpdir()));assert(path.basename(directory).startsWith('ouro-port-characterization-'));await rm(directory,{recursive:true,force:true});}};}
+async function fixture() {
+  const directory = await mkdtemp(path.join(tmpdir(), 'ouro-port-characterization-')),
+    root = path.join(directory, 'installed root');
+  await mkdir(root);
+  return {
+    directory,
+    root,
+    close: async () => {
+      assert.equal(path.dirname(path.resolve(directory)), path.resolve(tmpdir()));
+      assert(path.basename(directory).startsWith('ouro-port-characterization-'));
+      await rm(directory, { recursive: true, force: true });
+    },
+  };
+}
 
-test('CPB01 source launch ignores inherited PORT and rejects launch0 before preparation',async()=>{
- const f=await fixture();try{const recorder=path.join(f.root,'npm-recorder.mjs');await writeFile(recorder,"import{appendFileSync}from'node:fs';appendFileSync(process.env.OWN_CAPTURE,JSON.stringify(process.argv.slice(2))+'\\n');");
-  for(const[inherited,args,expected]of [[undefined,[],3000],['',[],3000],['0',[],3000],['4318',[],3000],['invalid',[],3000],['9999',['--port','4319'],4319]]as const){const capture=path.join(f.root,'capture-'+String(expected)+'-'+String(inherited)+'.jsonl'),result=spawnSync(process.execPath,[path.join(repository,'scripts/launch.mjs'),...args],{cwd:f.root,env:{...environment,...(inherited===undefined?{}:{PORT:inherited}),npm_execpath:recorder,OWN_CAPTURE:capture},encoding:'utf8',windowsHide:true,shell:false,timeout:15000});assert.equal(result.status,0);const phases=(await readFile(capture,'utf8')).trim().split('\n').map(line=>JSON.parse(line));assert.deepEqual(phases.at(-1),['start','--','--port',String(expected)]);}
-  const denied=path.join(f.root,'denied.jsonl'),zero=spawnSync(process.execPath,[path.join(repository,'scripts/launch.mjs'),'--port','0'],{cwd:f.root,env:{...environment,npm_execpath:recorder,OWN_CAPTURE:denied},encoding:'utf8',windowsHide:true,shell:false,timeout:10000});assert.equal(zero.status,1);await assert.rejects(()=>readFile(denied));
- }finally{await f.close();}
+test('CPB01 source launch ignores inherited PORT and rejects launch0 before preparation', async () => {
+  const f = await fixture();
+  try {
+    const recorder = path.join(f.root, 'npm-recorder.mjs');
+    await writeFile(
+      recorder,
+      "import{appendFileSync}from'node:fs';appendFileSync(process.env.OWN_CAPTURE,JSON.stringify(process.argv.slice(2))+'\\n');",
+    );
+    for (const [inherited, args, expected] of [
+      [undefined, [], 3000],
+      ['', [], 3000],
+      ['0', [], 3000],
+      ['4318', [], 3000],
+      ['invalid', [], 3000],
+      ['9999', ['--port', '4319'], 4319],
+    ] as const) {
+      const capture = path.join(
+          f.root,
+          'capture-' + String(expected) + '-' + String(inherited) + '.jsonl',
+        ),
+        result = spawnSync(
+          process.execPath,
+          [path.join(repository, 'scripts/launch.mjs'), ...args],
+          {
+            cwd: f.root,
+            env: {
+              ...environment,
+              ...(inherited === undefined ? {} : { PORT: inherited }),
+              npm_execpath: recorder,
+              OWN_CAPTURE: capture,
+            },
+            encoding: 'utf8',
+            windowsHide: true,
+            shell: false,
+            timeout: 15000,
+          },
+        );
+      assert.equal(result.status, 0);
+      const phases = (await readFile(capture, 'utf8'))
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line));
+      assert.deepEqual(phases.at(-1), ['start', '--', '--port', String(expected)]);
+    }
+    const denied = path.join(f.root, 'denied.jsonl'),
+      zero = spawnSync(
+        process.execPath,
+        [path.join(repository, 'scripts/launch.mjs'), '--port', '0'],
+        {
+          cwd: f.root,
+          env: { ...environment, npm_execpath: recorder, OWN_CAPTURE: denied },
+          encoding: 'utf8',
+          windowsHide: true,
+          shell: false,
+          timeout: 10000,
+        },
+      );
+    assert.equal(zero.status, 1);
+    await assert.rejects(() => readFile(denied));
+  } finally {
+    await f.close();
+  }
 });
 
-test('CPB02 unmodified old start CLI parses defaults, empty, suffix, explicit0 and aliases before application',async()=>{
- const f=await fixture();try{const target=pathToFileURL(require.resolve('next/dist/cli/next-start')).href,hook=path.join(f.root,'capture-start.mjs');await writeFile(hook,`import{registerHooks}from'node:module';registerHooks({load(url,context,next){if(url!==${JSON.stringify(target)})return next(url,context);return {format:'module',shortCircuit:true,source:"import{writeFileSync}from'node:fs';export async function nextStart(options){writeFileSync(process.env.OWN_CAPTURE,JSON.stringify({port:options.port}));}"};}});`);
-  for(const[inherited,args,expected]of [[undefined,[],3000],['4319',[],4319],['4319suffix',[],4319],['4319.9',[],4319],['0',[],0],['bad',['--port','4320'],4320],['bad',['-p','0'],0]]as const){const capture=path.join(f.root,'start-'+String(expected)+'-'+String(inherited)+'.json'),result=spawnSync(process.execPath,['--import',pathToFileURL(hook).href,path.join(repository,'scripts/local-next.mjs'),'start',...args],{cwd:f.root,env:{...environment,...(inherited===undefined?{}:{PORT:inherited}),OWN_CAPTURE:capture},encoding:'utf8',windowsHide:true,shell:false,timeout:15000});assert.equal(result.status,0,'Actual old CLI options witness must run');assert.equal(JSON.parse(await readFile(capture,'utf8')).port,expected);}
-  for(const inherited of ['', '-1','not-a-port']){const capture=path.join(f.root,'invalid-'+inherited+'.json'),result=spawnSync(process.execPath,['--import',pathToFileURL(hook).href,path.join(repository,'scripts/local-next.mjs'),'start'],{cwd:f.root,env:{...environment,PORT:inherited,OWN_CAPTURE:capture},encoding:'utf8',windowsHide:true,shell:false,timeout:15000});assert.equal(result.status,1);await assert.rejects(()=>readFile(capture));}
- }finally{await f.close();}
+test('CPB02 unmodified old start CLI parses defaults, empty, suffix, explicit0 and aliases before application', async () => {
+  const f = await fixture();
+  try {
+    const target = pathToFileURL(require.resolve('next/dist/cli/next-start')).href,
+      hook = path.join(f.root, 'capture-start.mjs');
+    await writeFile(
+      hook,
+      `import{registerHooks}from'node:module';registerHooks({load(url,context,next){if(url!==${JSON.stringify(target)})return next(url,context);return {format:'module',shortCircuit:true,source:"import{writeFileSync}from'node:fs';export async function nextStart(options){writeFileSync(process.env.OWN_CAPTURE,JSON.stringify({port:options.port}));}"};}});`,
+    );
+    for (const [inherited, args, expected] of [
+      [undefined, [], 3000],
+      ['4319', [], 4319],
+      ['4319suffix', [], 4319],
+      ['4319.9', [], 4319],
+      ['0', [], 0],
+      ['bad', ['--port', '4320'], 4320],
+      ['bad', ['-p', '0'], 0],
+    ] as const) {
+      const capture = path.join(
+          f.root,
+          'start-' + String(expected) + '-' + String(inherited) + '.json',
+        ),
+        result = spawnSync(
+          process.execPath,
+          [
+            '--import',
+            pathToFileURL(hook).href,
+            path.join(repository, 'scripts/local-next.mjs'),
+            'start',
+            ...args,
+          ],
+          {
+            cwd: f.root,
+            env: {
+              ...environment,
+              ...(inherited === undefined ? {} : { PORT: inherited }),
+              OWN_CAPTURE: capture,
+            },
+            encoding: 'utf8',
+            windowsHide: true,
+            shell: false,
+            timeout: 15000,
+          },
+        );
+      assert.equal(result.status, 0, 'Actual old CLI options witness must run');
+      assert.equal(JSON.parse(await readFile(capture, 'utf8')).port, expected);
+    }
+    for (const inherited of ['', '-1', 'not-a-port']) {
+      const capture = path.join(f.root, 'invalid-' + inherited + '.json'),
+        result = spawnSync(
+          process.execPath,
+          [
+            '--import',
+            pathToFileURL(hook).href,
+            path.join(repository, 'scripts/local-next.mjs'),
+            'start',
+          ],
+          {
+            cwd: f.root,
+            env: { ...environment, PORT: inherited, OWN_CAPTURE: capture },
+            encoding: 'utf8',
+            windowsHide: true,
+            shell: false,
+            timeout: 15000,
+          },
+        );
+      assert.equal(result.status, 1);
+      await assert.rejects(() => readFile(capture));
+    }
+  } finally {
+    await f.close();
+  }
 });
 
-test('CPB03 actual old start0 freezes OS-selected PORT before synthetic env expansion',async()=>{
- const f=await fixture();try{const capture=path.join(f.root,'bound.json');await writeFile(path.join(f.root,'package.json'),'{"private":true,"type":"module"}');await writeFile(path.join(f.root,'.env.production'),'PORT=49999\nFIXTURE_ENDPOINT=http://127.0.0.1:${PORT}\n');await writeFile(path.join(f.root,'next.config.mjs'),"import{writeFileSync}from'node:fs';writeFileSync(process.env.OWN_CAPTURE,JSON.stringify({port:process.env.PORT,endpoint:process.env.FIXTURE_ENDPOINT}));process.exit(0);export default {};");const result=spawnSync(process.execPath,[path.join(repository,'scripts/local-next.mjs'),'start'],{cwd:f.root,env:{...environment,PORT:'0',OWN_CAPTURE:capture},encoding:'utf8',windowsHide:true,shell:false,timeout:15000});assert.equal(result.status,0);const witness=JSON.parse(await readFile(capture,'utf8'));assert(Number(witness.port)>0);assert.notEqual(witness.port,'49999');assert.equal(witness.endpoint,'http://127.0.0.1:'+witness.port);
- }finally{await f.close();}
+test('CPB03 actual old start0 freezes OS-selected PORT before synthetic env expansion', async () => {
+  const f = await fixture();
+  try {
+    const capture = path.join(f.root, 'bound.json');
+    await writeFile(path.join(f.root, 'package.json'), '{"private":true,"type":"module"}');
+    await writeFile(
+      path.join(f.root, '.env.production'),
+      'PORT=49999\nFIXTURE_ENDPOINT=http://127.0.0.1:${PORT}\n',
+    );
+    await writeFile(
+      path.join(f.root, 'next.config.mjs'),
+      "import{writeFileSync}from'node:fs';writeFileSync(process.env.OWN_CAPTURE,JSON.stringify({port:process.env.PORT,endpoint:process.env.FIXTURE_ENDPOINT}));process.exit(0);export default {};",
+    );
+    const result = spawnSync(
+      process.execPath,
+      [path.join(repository, 'scripts/local-next.mjs'), 'start'],
+      {
+        cwd: f.root,
+        env: { ...environment, PORT: '0', OWN_CAPTURE: capture },
+        encoding: 'utf8',
+        windowsHide: true,
+        shell: false,
+        timeout: 15000,
+      },
+    );
+    assert.equal(result.status, 0);
+    const witness = JSON.parse(await readFile(capture, 'utf8'));
+    assert(Number(witness.port) > 0);
+    assert.notEqual(witness.port, '49999');
+    assert.equal(witness.endpoint, 'http://127.0.0.1:' + witness.port);
+  } finally {
+    await f.close();
+  }
 });
 
-test('CPB04 candidate keeps mode-specific default, empty and parseInt authority without binding3000',()=>{
- for(const value of [undefined,'','0','bad','49999'])assert.equal(selectConsumerPort('launch',undefined,value),3000);assert.equal(selectConsumerPort('start',undefined,undefined),3000);assert.throws(()=>selectConsumerPort('start',undefined,''));assert.equal(parseStartPort('4319suffix'),4319);assert.equal(parseStartPort('4319.9'),4319);assert.equal(parseStartPort('0'),0);assert.equal(parseConsumerArguments(['start','--port','0']).port,0);assert.equal(parseConsumerArguments(['start','-p','4319']).port,4319);assert.throws(()=>parseConsumerArguments(['launch','--port','0']));
+test('CPB04 candidate keeps mode-specific default, empty and parseInt authority without binding3000', () => {
+  for (const value of [undefined, '', '0', 'bad', '49999'])
+    assert.equal(selectConsumerPort('launch', undefined, value), 3000);
+  assert.equal(selectConsumerPort('start', undefined, undefined), 3000);
+  assert.throws(() => selectConsumerPort('start', undefined, ''));
+  assert.equal(parseStartPort('4319suffix'), 4319);
+  assert.equal(parseStartPort('4319.9'), 4319);
+  assert.equal(parseStartPort('0'), 0);
+  assert.equal(parseConsumerArguments(['start', '--port', '0']).port, 0);
+  assert.equal(parseConsumerArguments(['start', '-p', '4319']).port, 4319);
+  assert.throws(() => parseConsumerArguments(['launch', '--port', '0']));
 });
 
-test('CPB05 actual consumer start0 holds the selected listener before real REC and application imports',{timeout:15000},async()=>{
- const f=await createPortProbe();let complete=false,child:ReturnType<typeof spawn>|undefined;
- try{await writeFile(path.join(f.root,'.env.production'),'PORT=49999\nFIXTURE_ENDPOINT=http://127.0.0.1:${PORT}\n');const capture=path.join(f.directory,'candidate.json'),target=pathToFileURL(path.join(f.generation.directory,'scripts/runtime-environment.mjs')).href,hook=path.join(f.directory,'capture-env.mjs');await writeFile(hook,`import{registerHooks}from'node:module';registerHooks({load(url,context,next){const result=next(url,context);if(url!==${JSON.stringify(target)})return result;const source=Buffer.from(result.source).toString('utf8'),marker='export async function loadRuntimeEnvironment(options){';if(!source.includes(marker))throw Error('Wrong owned REC fixture');return {...result,shortCircuit:true,source:source.replace(marker,'async function originalLoader(options){')+"\\nexport async function loadRuntimeEnvironment(options){const result=await originalLoader(options);const port=Number(process.env.PORT);let busy=false;if(port>0){const probe=(await import('node:http')).createServer();await new Promise(resolve=>{probe.once('error',error=>{busy=error.code==='EADDRINUSE';resolve();});probe.listen(port,'127.0.0.1',()=>probe.close(resolve));});}(await import('node:fs')).writeFileSync(process.env.OWN_CAPTURE,JSON.stringify({port,busy,endpoint:process.env.FIXTURE_ENDPOINT}));process.exit(0);return result;}"};}});`);
-  child=spawn(process.execPath,['--import',pathToFileURL(hook).href,path.join(f.root,'scripts/consumer-worker.mjs'),'service',f.generation.id,'0'],{cwd:f.foreign,env:{...environment,PORT:'0',OWN_CAPTURE:capture},stdio:['ignore','pipe','pipe','ipc'],windowsHide:true,shell:false});child.stdout!.on('data',()=>{});child.stderr!.on('data',()=>{});const result=await new Promise<{code:number|null;signal:NodeJS.Signals|null}>(resolve=>child!.once('close',(code,signal)=>resolve({code,signal})));assert.deepEqual(result,{code:0,signal:null},'Actual worker must reach real REC witness before fake application import');const witness=JSON.parse(await readFile(capture,'utf8'));assert(witness.port>0,'Consumer start0 must expose actual bound port before env expansion');assert.equal(witness.busy,true);assert.equal(witness.endpoint,'http://127.0.0.1:'+witness.port);complete=true;
- }finally{if(child?.exitCode===null&&child.signalCode===null)forceOwnedChild(child);if(complete)await f.close();else process.stderr.write('Retained own failed port bootstrap witness.\n');}
+test(
+  'CPB05 actual consumer start0 holds the selected listener before real REC and application imports',
+  { timeout: 15000 },
+  async () => {
+    const f = await createPortProbe();
+    let complete = false,
+      child: ReturnType<typeof spawn> | undefined;
+    try {
+      await writeFile(
+        path.join(f.root, '.env.production'),
+        'PORT=49999\nFIXTURE_ENDPOINT=http://127.0.0.1:${PORT}\n',
+      );
+      const capture = path.join(f.directory, 'candidate.json'),
+        target = pathToFileURL(
+          path.join(f.generation.directory, 'scripts/runtime-environment.mjs'),
+        ).href,
+        hook = path.join(f.directory, 'capture-env.mjs');
+      await writeFile(
+        hook,
+        `import{registerHooks}from'node:module';registerHooks({load(url,context,next){const result=next(url,context);if(url!==${JSON.stringify(target)})return result;const source=Buffer.from(result.source).toString('utf8'),marker=${runtimeLoaderSignature};if(!marker.test(source))throw Error('Wrong owned REC fixture');return {...result,shortCircuit:true,source:source.replace(marker,'async function originalLoader(options){')+"\\nexport async function loadRuntimeEnvironment(options){const result=await originalLoader(options);const port=Number(process.env.PORT);let busy=false;if(port>0){const probe=(await import('node:http')).createServer();await new Promise(resolve=>{probe.once('error',error=>{busy=error.code==='EADDRINUSE';resolve();});probe.listen(port,'127.0.0.1',()=>probe.close(resolve));});}(await import('node:fs')).writeFileSync(process.env.OWN_CAPTURE,JSON.stringify({port,busy,endpoint:process.env.FIXTURE_ENDPOINT}));process.exit(0);return result;}"};}});`,
+      );
+      child = spawn(
+        process.execPath,
+        [
+          '--import',
+          pathToFileURL(hook).href,
+          path.join(f.root, 'scripts/consumer-worker.mjs'),
+          'service',
+          f.generation.id,
+          '0',
+        ],
+        {
+          cwd: f.foreign,
+          env: { ...environment, PORT: '0', OWN_CAPTURE: capture },
+          stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+          windowsHide: true,
+          shell: false,
+        },
+      );
+      child.stdout!.on('data', () => {});
+      child.stderr!.on('data', () => {});
+      const result = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
+        (resolve) => child!.once('close', (code, signal) => resolve({ code, signal })),
+      );
+      assert.deepEqual(
+        result,
+        { code: 0, signal: null },
+        'Actual worker must reach real REC witness before fake application import',
+      );
+      const witness = JSON.parse(await readFile(capture, 'utf8'));
+      assert(
+        witness.port > 0,
+        'Consumer start0 must expose actual bound port before env expansion',
+      );
+      assert.equal(witness.busy, true);
+      assert.equal(witness.endpoint, 'http://127.0.0.1:' + witness.port);
+      complete = true;
+    } finally {
+      if (child?.exitCode === null && child.signalCode === null) forceOwnedChild(child);
+      if (complete) await f.close();
+      else process.stderr.write('Retained own failed port bootstrap witness.\n');
+    }
+  },
+);
+
+test('CPB07 legacy browser reserved port refusal stays finite without Next runtime dependency', () => {
+  const baseline = require('next/dist/lib/helpers/get-reserved-port') as {
+    isPortIsReserved: (port: number) => boolean;
+  };
+  for (let port = 0; port <= 65535; port++) {
+    if (baseline.isPortIsReserved(port)) assert.throws(() => assertBrowserPort(port));
+    else assert.doesNotThrow(() => assertBrowserPort(port));
+  }
 });
 
-test('CPB07 legacy browser reserved port refusal stays finite without Next runtime dependency',()=>{
- const baseline=require('next/dist/lib/helpers/get-reserved-port')as {isPortIsReserved:(port:number)=>boolean};for(let port=0;port<=65535;port++){if(baseline.isPortIsReserved(port))assert.throws(()=>assertBrowserPort(port));else assert.doesNotThrow(()=>assertBrowserPort(port));}
-});
+test(
+  'CPB06 stop during the env module import releases its port and never invokes the env loader',
+  { timeout: 15000 },
+  async () => {
+    const f = await createPortProbe();
+    let complete = false,
+      child: ReturnType<typeof spawn> | undefined,
+      closed: Promise<{ code: number | null; signal: NodeJS.Signals | null }> | undefined;
+    try {
+      const reached = path.join(f.directory, 'before-env.json'),
+        called = path.join(f.directory, 'loader-called'),
+        target = pathToFileURL(
+          path.join(f.generation.directory, 'scripts/runtime-environment.mjs'),
+        ).href,
+        hook = path.join(f.directory, 'stop-before-env.mjs');
+      const suffix = `\nexport async function loadRuntimeEnvironment(options){(await import('node:fs')).writeFileSync(${JSON.stringify(called)},'called');return originalLoader(options);}await(await import('node:fs/promises')).writeFile(${JSON.stringify(reached)},JSON.stringify({port:process.env.PORT}));await new Promise(resolve=>{const release=message=>{if(message==='fixture:continue'){process.off('message',release);resolve();}};process.on('message',release);});`;
+      await writeFile(
+        hook,
+        `import{registerHooks}from'node:module';registerHooks({load(url,context,next){const result=next(url,context);if(url!==${JSON.stringify(target)})return result;const source=Buffer.from(result.source).toString('utf8'),marker=${runtimeLoaderSignature};if(!marker.test(source))throw Error('Wrong owned REC fixture');return {...result,shortCircuit:true,source:source.replace(marker,'async function originalLoader(options){')+${JSON.stringify(suffix)}};}});`,
+      );
+      child = spawn(
+        process.execPath,
+        [
+          '--import',
+          pathToFileURL(hook).href,
+          path.join(f.root, 'scripts/consumer-worker.mjs'),
+          'service',
+          f.generation.id,
+          '0',
+        ],
+        {
+          cwd: f.foreign,
+          env: environment,
+          stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+          windowsHide: true,
+          shell: false,
+        },
+      );
+      child.stdout!.on('data', () => {});
+      child.stderr!.on('data', () => {});
+      closed = new Promise((resolve) =>
+        child!.once('close', (code, signal) => resolve({ code, signal })),
+      );
+      let port = 0;
+      const until = Date.now() + 5000;
+      while (!port && Date.now() < until) {
+        try {
+          port = Number(JSON.parse(await readFile(reached, 'utf8')).port);
+        } catch {}
+        if (!port) await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      assert(port > 0);
+      child.send('ouro:shutdown');
+      let released = false;
+      const deadline = Date.now() + 3000;
+      while (!released && Date.now() < deadline) {
+        const probe = createServer();
+        released = await new Promise<boolean>((resolve, reject) => {
+          probe.once('error', (error) => {
+            if ('code' in error && error.code === 'EADDRINUSE') resolve(false);
+            else reject(error);
+          });
+          probe.listen(port, '127.0.0.1', () => probe.close(() => resolve(true)));
+        });
+        if (!released) await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      assert(released);
+      child.send('fixture:continue');
+      assert.deepEqual(await closed, { code: 0, signal: null });
+      await assert.rejects(() => readFile(called));
+      await assert.rejects(() => lstat(path.join(f.root, '.ouro/postgres')));
+      complete = true;
+    } finally {
+      if (child?.exitCode === null && child.signalCode === null) forceOwnedChild(child);
+      if (closed) await closed;
+      if (complete) await f.close();
+      else process.stderr.write('Retained own failed startup-stop witness.\n');
+    }
+  },
+);
 
-test('CPB06 stop during the env module import releases its port and never invokes the env loader',{timeout:15000},async()=>{
- const f=await createPortProbe();let complete=false,child:ReturnType<typeof spawn>|undefined,closed:Promise<{code:number|null;signal:NodeJS.Signals|null}>|undefined;
- try{const reached=path.join(f.directory,'before-env.json'),called=path.join(f.directory,'loader-called'),target=pathToFileURL(path.join(f.generation.directory,'scripts/runtime-environment.mjs')).href,hook=path.join(f.directory,'stop-before-env.mjs');
-  const suffix=`\nexport async function loadRuntimeEnvironment(options){(await import('node:fs')).writeFileSync(${JSON.stringify(called)},'called');return originalLoader(options);}await(await import('node:fs/promises')).writeFile(${JSON.stringify(reached)},JSON.stringify({port:process.env.PORT}));await new Promise(resolve=>{const release=message=>{if(message==='fixture:continue'){process.off('message',release);resolve();}};process.on('message',release);});`;
-  await writeFile(hook,`import{registerHooks}from'node:module';registerHooks({load(url,context,next){const result=next(url,context);if(url!==${JSON.stringify(target)})return result;return {...result,shortCircuit:true,source:Buffer.from(result.source).toString('utf8').replace('export async function loadRuntimeEnvironment(options){','async function originalLoader(options){')+${JSON.stringify(suffix)}};}});`);
-  child=spawn(process.execPath,['--import',pathToFileURL(hook).href,path.join(f.root,'scripts/consumer-worker.mjs'),'service',f.generation.id,'0'],{cwd:f.foreign,env:environment,stdio:['ignore','pipe','pipe','ipc'],windowsHide:true,shell:false});child.stdout!.on('data',()=>{});child.stderr!.on('data',()=>{});closed=new Promise(resolve=>child!.once('close',(code,signal)=>resolve({code,signal})));let port=0;const until=Date.now()+5000;while(!port&&Date.now()<until){try{port=Number(JSON.parse(await readFile(reached,'utf8')).port);}catch{}if(!port)await new Promise(resolve=>setTimeout(resolve,10));}assert(port>0);child.send('ouro:shutdown');
-  let released=false;const deadline=Date.now()+3000;while(!released&&Date.now()<deadline){const probe=createServer();released=await new Promise<boolean>((resolve,reject)=>{probe.once('error',error=>{if('code'in error&&error.code==='EADDRINUSE')resolve(false);else reject(error);});probe.listen(port,'127.0.0.1',()=>probe.close(()=>resolve(true)));});if(!released)await new Promise(resolve=>setTimeout(resolve,10));}assert(released);child.send('fixture:continue');assert.deepEqual(await closed,{code:0,signal:null});await assert.rejects(()=>readFile(called));await assert.rejects(()=>lstat(path.join(f.root,'.ouro/postgres')));complete=true;
- }finally{if(child?.exitCode===null&&child.signalCode===null)forceOwnedChild(child);if(closed)await closed;if(complete)await f.close();else process.stderr.write('Retained own failed startup-stop witness.\n');}
-});
-
-test('CPB08 failed application startup retains the primary phase and releases owner signal listeners',async()=>{
- const f=await createPortProbe();let complete=false;
- try{const owner=pathToFileURL(path.join(repository,'scripts/consumer-delivery/consumer-owner.mjs')).href,source=`const{runConsumer}=await import(${JSON.stringify(owner)});const before=[process.listenerCount('SIGINT'),process.listenerCount('SIGTERM')];let phase,cleanupIncomplete;try{await runConsumer({root:process.argv[1],argv:['start'],environment:process.env});}catch(error){phase=error.phase;cleanupIncomplete=error.cleanupIncomplete;}process.stdout.write(JSON.stringify({phase,cleanupIncomplete,before,after:[process.listenerCount('SIGINT'),process.listenerCount('SIGTERM')]})+'\\n');`,result=spawnSync(process.execPath,['--input-type=module','-e',source,f.root],{cwd:f.foreign,env:{...environment,PORT:'0'},encoding:'utf8',windowsHide:true,shell:false,timeout:15000});assert.equal(result.status,0);const witness=JSON.parse(result.stdout);assert.equal(witness.phase,'START');assert.equal(witness.cleanupIncomplete,true);assert.deepEqual(witness.after,witness.before);await assert.rejects(()=>lstat(path.join(f.root,'.ouro/postgres')));complete=true;}finally{if(complete)await f.close();else process.stderr.write('Retained own failed owner-startup witness.\n');}
+test('CPB08 failed application startup retains the primary phase and releases owner signal listeners', async () => {
+  const f = await createPortProbe();
+  let complete = false;
+  try {
+    const owner = pathToFileURL(
+        path.join(repository, 'scripts/consumer-delivery/consumer-owner.mjs'),
+      ).href,
+      source = `const{runConsumer}=await import(${JSON.stringify(owner)});const before=[process.listenerCount('SIGINT'),process.listenerCount('SIGTERM')];let phase,cleanupIncomplete;try{await runConsumer({root:process.argv[1],argv:['start'],environment:process.env});}catch(error){phase=error.phase;cleanupIncomplete=error.cleanupIncomplete;}process.stdout.write(JSON.stringify({phase,cleanupIncomplete,before,after:[process.listenerCount('SIGINT'),process.listenerCount('SIGTERM')]})+'\\n');`,
+      result = spawnSync(process.execPath, ['--input-type=module', '-e', source, f.root], {
+        cwd: f.foreign,
+        env: { ...environment, PORT: '0' },
+        encoding: 'utf8',
+        windowsHide: true,
+        shell: false,
+        timeout: 15000,
+      });
+    assert.equal(result.status, 0);
+    const witness = JSON.parse(result.stdout);
+    assert.equal(witness.phase, 'START');
+    assert.equal(witness.cleanupIncomplete, true);
+    assert.deepEqual(witness.after, witness.before);
+    await assert.rejects(() => lstat(path.join(f.root, '.ouro/postgres')));
+    complete = true;
+  } finally {
+    if (complete) await f.close();
+    else process.stderr.write('Retained own failed owner-startup witness.\n');
+  }
 });

@@ -67,6 +67,7 @@ function RunReview({ state, run, command, disabled, readOnly }: {
         setBusy(false);
     } }}><label className={ui.label}>Заключение<WorkspaceSelect aria-label="Заключение" value={assessment} onValueChange={value => setAssessment(value as VerificationAssessment)}>{Object.entries(assessments).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</WorkspaceSelect></label><label className={ui.label}>Основание классификации<WorkspaceTextarea className={ui.field} required value={reason} onChange={event => setReason(event.target.value)}/></label><label className={ui.label}>Подтверждение работоспособности условий стенда<WorkspaceTextarea className={ui.field} required value={prerequisitesEvidence} onChange={event => setPrerequisites(event.target.value)}/></label>{error && <p role="alert">{error}</p>}<button disabled={disabled||busy}>Записать заключение</button></form>}</WorkspaceAccordion>;
 }
+/** Собирает представление проверки, её прогонов, заключений и доступных действий для выбранной ревизии. */
 export function WorkspaceVerification({ state, revision, command, disabled, onOpen, readOnly=false, localWorkspace=true }: {
     state: ProjectState;
     revision: SpecRevision;

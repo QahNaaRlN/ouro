@@ -4,6 +4,7 @@ import { requestOrigin } from './connection-config';
 import { apiError } from './http';
 import type { UserAuth } from './user-auth';
 
+/** Задаёт auth-хранилище и HTTP-проверки для входа, выхода и разрешения пользовательской сессии. */
 export type UserAuthHttpDependencies = { getAuth?: () => Promise<UserAuth>;auth?:AuthService };
 const loginInput = z.strictObject({ email: z.string().max(254), password: z.string().max(128) });
 const empty = z.strictObject({});
@@ -14,10 +15,12 @@ const json = (data: unknown, status = 200, headers?: HeadersInit) => {
 };
 export const userSessionCookieName = 'ouro_user_session';
 
+/** Формирует пользовательскую HttpOnly/SameSite cookie, добавляя Secure для разрешённого HTTPS origin. */
 export function sessionCookie(request: Request, value: string, maxAge = 43_200,origin:typeof requestOrigin=requestOrigin) {
   return `${userSessionCookieName}=${value}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${origin(request).startsWith('https:') ? '; Secure' : ''}`;
 }
 
+/** Создаёт HTTP-обработчики входа, выхода и текущей пользовательской сессии через выбранное auth-хранилище. */
 export function createUserAuthHandlers(dependencies: UserAuthHttpDependencies = {}) {
   const {readCommandBody,requestOrigin}=dependencies.auth??defaultAuthService;
   const auth = dependencies.getAuth ?? (async () => (await import('./store')).getUserAuth());

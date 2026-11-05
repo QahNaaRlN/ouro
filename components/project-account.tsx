@@ -8,7 +8,7 @@ import { selectedProjectId } from '@/lib/client-project';
 export { selectedProjectId } from '@/lib/client-project';
 import type { ProjectMembership, ProjectRole } from '@ouro/protocol/http';
 import {participantPresentation,type ParticipantSurface} from './participant-presentation';
-import {useCatalogProjects} from '@/packages/frontend/src/api/catalog-reads';
+import {useCatalogProjectsQuery} from '@/packages/frontend/src/api/catalog-reads';
 import {ClientError,type CatalogReadScope} from '@/packages/client/src/ports';
 
 async function request(url: string, options?: RequestInit) {
@@ -37,6 +37,7 @@ export function AccountLogout({ identity }: { identity: Actor | null }) {
   return <><button className="icon-btn" type="button" aria-label="Выйти из аккаунта" title="Выйти из аккаунта" disabled={busy} onClick={() => void logout()}><LogOut size={15}/></button>{error&&<span role="alert">{error}</span>}</>;
 }
 
+/** Показывает вход по почте, принятие приглашения и восстановление пароля аккаунта. */
 export function EmailLogin({surface='legacy'}:{surface?:ParticipantSurface}) {
   const ui=participantPresentation(surface);
   const [mode, setMode] = useState<'login' | 'invitation' | 'reset'>('login');
@@ -78,8 +79,9 @@ export function EmailLogin({surface='legacy'}:{surface?:ParticipantSurface}) {
   </section>;
 }
 
+/** Показывает доступные проекты и позволяет переключить выбранный проект или создать новый. */
 export function ProjectSwitcher({ identity,hasAccount,readScope }: { identity: Actor | null;hasAccount:boolean;readScope:CatalogReadScope }) {
-  const catalog=useCatalogProjects(readScope,hasAccount?'account':'workspace',!!identity),reading=hasAccount?catalog.account:catalog.workspace;
+  const catalog=useCatalogProjectsQuery(readScope,hasAccount?'account':'workspace',!!identity),reading=hasAccount?catalog.account:catalog.workspace;
   const projects=hasAccount?catalog.account.data??[]:catalog.workspace.data??[],[current]=useState(selectedProjectId);
   const [creating, setCreating] = useState(false), [name, setName] = useState(''), [actionError, setError] = useState('');
   const error=actionError||(reading.status==='unavailable'?'Чтение каталога недоступно в этом окружении.':reading.error?.message??'');
@@ -103,19 +105,21 @@ export function ProjectSwitcher({ identity,hasAccount,readScope }: { identity: A
   </div>;
 }
 
+/** Показывает участников проекта и формы приглашения, изменения роли и отзыва доступа. */
 export function ProjectMembersPanel({ projectId, identity,readScope,surface='legacy' }: { projectId: string; identity: Actor;readScope:CatalogReadScope;surface?:ParticipantSurface }) {
   const ui=participantPresentation(surface);
-  const [members, setMembers] = useState<ProjectMembership[]>([]),catalog=useCatalogProjects(readScope,'account',true),projects=catalog.account.data??[];
+  const [members, setMembers] = useState<ProjectMembership[]>([]),catalog=useCatalogProjectsQuery(readScope,'account',true),projects=catalog.account.data??[];
+  const refreshCatalog=catalog.refresh;
   const [email, setEmail] = useState(''), [role, setRole] = useState<ProjectRole>('Contributor'), [code, setCode] = useState('');
   const [actionError, setError] = useState(''), [notice, setNotice] = useState(''), [busy, setBusy] = useState(false);
   const error=actionError||(catalog.account.status==='unavailable'?'Чтение каталога недоступно в этом окружении.':catalog.account.error?.message??'');
   const currentRole = projects.find(project => project.id === projectId)?.role;
   const reload = useCallback(async () => {
     try {
-      const [memberData] = await Promise.all([request(`/api/projects/${encodeURIComponent(projectId)}/members`), catalog.refresh()]);
+      const [memberData] = await Promise.all([request(`/api/projects/${encodeURIComponent(projectId)}/members`), refreshCatalog()]);
       setMembers(memberData.members); setError('');
     } catch (cause) { if(!(cause instanceof ClientError&&cause.kind==='cancelled'))setError(cause instanceof Error ? cause.message : 'Не удалось прочитать участников.'); }
-  }, [projectId,catalog.refresh]);
+  }, [projectId,refreshCatalog]);
   useEffect(() => { void reload(); }, [reload]);
   const invite = async (event: FormEvent) => {
     event.preventDefault(); if (busy) return; setBusy(true); setError(''); setNotice('');

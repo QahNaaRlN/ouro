@@ -59,6 +59,7 @@ export function WorkspaceDialog({open,onClose,title,children,footer,className=''
 
 export {AppSelect as WorkspaceSelect} from './app-select';
 
+/** Показывает textarea с ростом высоты по содержимому, сохраняя ref, controlled value и обработчик ввода. */
 export const WorkspaceTextarea=forwardRef<HTMLTextAreaElement,TextareaHTMLAttributes<HTMLTextAreaElement>>(function WorkspaceTextarea({className='',onInput,value,defaultValue,rows=3,...props},forwardedRef){
   const workspace=useContext(AppearanceContext);
   const textarea=useRef<HTMLTextAreaElement|null>(null);
@@ -69,12 +70,14 @@ export const WorkspaceTextarea=forwardRef<HTMLTextAreaElement,TextareaHTMLAttrib
   return <textarea {...props} ref={attach} rows={rows} value={value} defaultValue={defaultValue} className={twMerge('ws-textarea [height:var(--ouro-textarea-height,auto)]',workspace&&ui.textarea,workspace&&'resize-none overflow-hidden max-h-none',className)} onInput={event=>{resize();onInput?.(event);}}/>;
 });
 
+/** Задаёт содержимое, управляемое или начальное раскрытие и локальное оформление секции. */
 type AccordionProps={title:ReactNode;children:ReactNode;open?:boolean;defaultOpen?:boolean;onOpenChange?:(open:boolean)=>void;className?:string;
   /** Локальное оформление кнопки раскрытия имеет приоритет над общими defaults. */
   triggerClassName?:string;
   /** Сохраняет локальные отступы контейнера раскрытия, включая его закрытое состояние. */
   readonly gridClassName?:string;
 };
+/** Раскрывает секцию в управляемом или локальном режиме, сохраняя смонтированное содержимое при закрытии. */
 export function WorkspaceAccordion({title,children,open,defaultOpen=false,onOpenChange,className='',triggerClassName='',gridClassName=''}:AccordionProps){
   const workspace=useContext(AppearanceContext);
   const [localOpen,setLocalOpen]=useState(defaultOpen),expanded=open??localOpen,id=useId();
@@ -84,6 +87,7 @@ export function WorkspaceAccordion({title,children,open,defaultOpen=false,onOpen
   </section>;
 }
 
+/** Копирует полное значение и при отказе буфера обмена оставляет его доступным для ручного выделения. */
 export function WorkspaceCopyValue({value,label,displayValue,className=''}:{value:string;label?:string;displayValue?:string;className?:string}){
   const workspace=useContext(AppearanceContext);
   const [copied,setCopied]=useState<string|null>(null),[failed,setFailed]=useState<string|null>(null);

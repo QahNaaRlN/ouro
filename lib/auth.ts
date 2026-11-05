@@ -15,6 +15,7 @@ const eq = (a: string, b: string) => {
   const left=Buffer.from(a), right=Buffer.from(b);
   return left.length === right.length && timingSafeEqual(left,right);
 };
+/** Проверяет явное включение демо-режима и loopback-адреса одновременно в URL и Host запроса. */
 export function isLocalDemo(request: Request,dependencies:AuthDependencies={}): boolean {
   const url = new URL(request.url);
   let host: string;
@@ -23,12 +24,14 @@ export function isLocalDemo(request: Request,dependencies:AuthDependencies={}): 
   const loopbacks=['localhost','127.0.0.1','[::1]'];
   return (dependencies.env??process.env).OURO_LOCAL_DEMO === '1' && loopbacks.includes(url.hostname) && loopbacks.includes(host);
 }
+/** Выдаёт подписанное значение демо-сессии только для разрешённого loopback-запроса. */
 export function issueLocalSession(request: Request,dependencies:AuthDependencies={}): string {
   if (!isLocalDemo(request,dependencies)) throw new AccessError('UNAUTHENTICATED', 'Демо-сессия доступна только на loopback. Настройте адаптер идентичности.', 401);
   const expires = String(Date.now() + 12 * 60 * 60 * 1000);
   const signature = createHmac('sha256', dependencies.sessionSecret??secret).update(expires).digest('hex');
   return `${expires}.${signature}`;
 }
+/** Сопоставляет доверенные серверные ключи или подписанную демо-сессию с legacy-идентичностью. */
 export function authenticatedActor(request: Request, projectId: string, agentId: string,dependencies:AuthDependencies={}): Actor {
   const bearer = request.headers.get('authorization')?.replace(/^Bearer /, '');
   const humanToken = (dependencies.env??process.env).OURO_HUMAN_TOKEN;
@@ -67,13 +70,17 @@ export function userSessionCookie(request:Request):string|undefined{
   if(values.length>1)throw new AccessError('UNAUTHENTICATED','Сессия пользователя недействительна. Войдите повторно.',401);
   return values[0]?.slice('ouro_user_session='.length);
 }
+/** Подписывает ограниченную сроком сессию человека после проверки его принадлежности выбранному проекту. */
 export function issueParticipantSession(actor:Actor,projectId:string,expires=Date.now()+12*60*60*1000,dependencies:AuthDependencies={}):string{
   assertHuman(actor);
   if(!actor.id||!actor.projectIds.includes(projectId)||!Number.isSafeInteger(expires)||expires<=Date.now())throw new AccessError('FORBIDDEN','Нельзя выдать сессию для этого проекта.');
   const claims=Buffer.from(JSON.stringify({participantId:actor.id,projectId,expires})).toString('base64url');
   return `${claims}.${createHmac('sha256',dependencies.sessionSecret??secret).update(`participant:${claims}`).digest('hex')}`;
 }
-/** A supplied participant cookie never falls back to the shared local demo. */
+/**
+ * Разрешает участника по явной авторизации или выбранной пользовательской либо участнической сессии.
+ * Недействительная выбранная cookie-сессия завершается отказом без перехода к общей демо-сессии.
+ */
 export async function authenticatedParticipant(request:Request,projectId:string,agentId:string,resolveIdentity?:ParticipantIdentityResolver,dependencies:AuthDependencies={}):Promise<Actor>{
   if(request.headers.has('authorization')){
     if(!request.headers.get('authorization')?.startsWith('Bearer '))throw new AccessError('UNAUTHENTICATED','Недействительный Authorization.',401);
@@ -104,7 +111,7 @@ export async function authenticatedParticipant(request:Request,projectId:string,
   assertExpectedParticipant(request,actor);return actor;
 }
 
-/** MCP uses an explicit agent credential; browser cookies never grant this role. */
+/** Проверяет явный Bearer-ключ агента и его доступ к проекту; браузерные cookie не дают агентскую роль. */
 export async function authenticatedAgent(request: Request, projectId: string, legacyAgentId: string,resolveToken:(token:string)=>Promise<Actor|null>=authenticateAgentToken,dependencies:AuthDependencies={}): Promise<Actor> {
   const authorization=request.headers.get('authorization');
   if(!authorization?.startsWith('Bearer ')) throw new AccessError('UNAUTHENTICATED','Нужен отдельный ключ агента в Authorization: Bearer.',401);
@@ -123,6 +130,7 @@ export async function authenticatedAgent(request: Request, projectId: string, le
   if(!actor||actor.kind!=='agent'||!actor.projectIds.includes(projectId))throw new AccessError('UNAUTHENTICATED','Ключ агента недействителен или отозван.',401);
   return actor;
 }
+/** Проверяет JSON Content-Type, разрешённый Origin и заявленный размер тела перед записью. */
 export function assertJsonWrite(request: Request,maxBytes=256_000,dependencies:AuthDependencies={}) {
   if (!request.headers.get('content-type')?.startsWith('application/json')) throw new AccessError('UNSUPPORTED_MEDIA_TYPE', 'Используйте application/json.', 415);
   const origin = request.headers.get('origin');
@@ -133,6 +141,7 @@ export function assertJsonWrite(request: Request,maxBytes=256_000,dependencies:A
   const length = Number(request.headers.get('content-length') ?? 0);
   if (length > maxBytes) throw new AccessError('PAYLOAD_TOO_LARGE', `Команда превышает ${maxBytes} байт.`, 413);
 }
+/** Проверяет HTTP-запрос и фактический размер прочитанного тела перед разбором JSON-команды. */
 export async function readCommandBody(request: Request,dependencies:AuthDependencies={}): Promise<unknown> {
   assertJsonWrite(request,256_000,dependencies);
   const body = await request.text();

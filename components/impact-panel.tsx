@@ -65,6 +65,7 @@ function download(report:ExpectationImpactReport){
   document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),0);
 }
 
+/** Показывает отчёт об изменениях ожиданий между выбранными курсорами и его исходные события. */
 export default function ImpactPanel({state}:{state:ProjectState}){
   const scopeId=useId();
   const [baselineDraft,setBaselineDraft]=useState('0'),[endMode,setEndMode]=useState<'current'|'historical'>('current'),[endDraft,setEndDraft]=useState(String(state.version));

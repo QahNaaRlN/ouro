@@ -26,6 +26,7 @@ const titles: Record<string,string> = {
 };
 type RealityNode=Node<{label:ReactNode;eventId:string}>;
 const realityFitOptions={padding:0.14,minZoom:0.01,maxZoom:0.95};
+/** Показывает граф сохранённых событий и позволяет выбрать событие для подробностей. */
 export function RealityGraph({events,onSelectEvent,selectedEventId,scopeLabel,active=true,fitKey=''}: {events:DomainEvent[];onSelectEvent?:(eventId:string)=>void;selectedEventId?:string;scopeLabel?:string;active?:boolean;fitKey?:string}) {
   const containerRef=useRef<HTMLElement>(null);
   const [flowInstance,setFlowInstance]=useState<ReactFlowInstance<RealityNode,Edge>|null>(null);

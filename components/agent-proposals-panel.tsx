@@ -21,6 +21,7 @@ type Pending={actorId:string;body:Record<string,unknown>};
 export type ProposalReviewIntentRegistry=Map<string,Pending>;
 type Props={state:ProjectState;actorId:string;onSnapshot:(data:unknown)=>void|Promise<void>;onOpenSpec?:(id:string)=>void;intents:ProposalReviewIntentRegistry;initialSelection?:{proposalId:string;proposalRevisionId:string};readOnly?:boolean};
 
+/** Показывает предложения агента, их версии и источники для рассмотрения человеком и создания черновика. */
 export default function AgentProposalsPanel({state,actorId,onSnapshot,onOpenSpec,intents,initialSelection,readOnly=false}:Props){
  const [selectedId,setSelectedId]=useState<string|null>(initialSelection?.proposalId??null),[query,setQuery]=useState('');
  const proposals=state.agentProposals??[],selected=proposals.find(proposal=>proposal.id===selectedId)??proposals.at(-1);
