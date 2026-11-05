@@ -99,3 +99,9 @@ Source A1 `30570d41a762a34c493f3cab538b59f6101676d7` оказался непол
 После build проверены все74 generated schema/version paths: canonical bytes и JSON точно равны HEAD; только доказанный набор восстановлен. `quality-a5-generated-zero-diff.json` также фиксирует production stats, tree и неизменный lock. Full status A5 clean. Все owned managed sessions завершились natural exit; известные Vite/worker/Next/worker PID65008/30804/58168/25520 отсутствуют по CIM. Heavy lease освобождён; новых captures, full CGL или повторного installation/665-file audit не запускалось.
 
 Остаются root bounded publication peer, push/PR и полный обязательный CI на exact опубликованном head, включая Linux installation/checks и прежние functional/presentation jobs. Локальный PASS не равен integration/acceptance и не закрывает C2–C7.
+
+## Первая попытка CI и исправление consumer aliases
+
+PR #81, head `6b67ea149f71285011517212424fdfef41ca730a`, CI `42065922056`, synthetic source `f58c68ad8858d0ecc2bdb4841029bb575a2c7d7f`. Linux consumer source прошёл материализацию и независимый npm ci, затем завершился с кодом 1 в FRESH_BUILD. Linux и Windows generation завершились в NPM_LAUNCH. При проверке committed tree оба пути alias из отдельного consumer tsconfig отсутствовали после переименования Vite-адаптеров.
+
+Исправление согласует два пути в `release/consumer/tsconfig.source.json` с web tsconfig и регистром имён в Git. Закреплённые consumer dependencies, closure, проверки и лимиты сохраняются. Первый отказ CI сохраняется как самостоятельная попытка.
