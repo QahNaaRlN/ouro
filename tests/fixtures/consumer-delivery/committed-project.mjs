@@ -13,7 +13,7 @@ ownedEnvelopeFiles.push('scripts/consumer-agent-cli.mjs','scripts/consumer-deliv
 export async function createCommittedProjectFixture(origin){
  const source=readCommittedConsumerSource({repository:origin,ref:'HEAD'}),directory=await mkdtemp(path.join(tmpdir(),'ouro-consumer-project-')),repository=path.join(directory,'committed source & данные');await mkdir(repository);
  const put=async(relative,bytes)=>{const file=path.join(repository,relative);await mkdir(path.dirname(file),{recursive:true});await writeFile(file,bytes);};
- const files=[...source.consumerFiles,...source.protocolFiles,...source.qualificationFiles];for(const file of files)await put(file.path,file.bytes);
+ const files=[...source.consumerFiles,...source.protocolFiles,...source.protocolProducerFiles,...source.qualificationFiles];for(const file of files)await put(file.path,file.bytes);
  await put('package.json',execFileSync('git',['--no-replace-objects','-C',origin,'show',`${source.commit}:package.json`]));
  for(const file of ownedDeliveryFiles)await put('release/consumer/'+file,await readFile(path.join(origin,'release/consumer',file)));
  for(const file of ownedEnvelopeFiles)await put(file,await readFile(path.join(origin,file)));
