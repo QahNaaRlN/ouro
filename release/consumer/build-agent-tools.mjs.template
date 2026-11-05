@@ -1,0 +1,12 @@
+import {readFile,writeFile,realpath} from 'node:fs/promises';
+import {createRequire,isBuiltin} from 'node:module';
+import {fileURLToPath,pathToFileURL} from 'node:url';
+import path from 'node:path';
+const root=await realpath(fileURLToPath(new URL('../',import.meta.url)));
+const inside=filename=>{const relative=path.relative(root,filename);return relative!== '..'&&!relative.startsWith('..'+path.sep)&&!path.isAbsolute(relative);};
+const compiler=await realpath(createRequire(path.join(root,'package.json')).resolve('esbuild'));if(!inside(compiler))throw Error('Compiler escaped the own producer stage.');
+const loaded=await import(pathToFileURL(compiler).href),build=loaded.build??loaded.default?.build;if(typeof build!=='function')throw Error('Expected the qualified local compiler.');
+const built=await build({absWorkingDir:root,entryPoints:{'agent-config':'scripts/agent-config.ts','agent-check':'scripts/check-agent.mjs','mcp-bridge':'packages/mcp/bin/ouro-mcp.mjs'},outdir:path.join(root,'tool-dist'),outExtension:{'.js':'.mjs'},bundle:true,platform:'node',target:'node24',format:'esm',metafile:true,banner:{js:"import {createRequire as __ouroCreateRequire} from 'node:module';const require=__ouroCreateRequire(import.meta.url);"}});
+for(const output of Object.values(built.metafile.outputs))for(const entry of output.imports)if(entry.external&&!isBuiltin(entry.path))throw Error('Tool has a nonbuiltin external import.');
+const inputs=[];for(const relative of Object.keys(built.metafile.inputs)){const filename=path.resolve(root,relative),back=path.relative(root,filename);if(!inside(filename)||!inside(await realpath(filename)))throw Error('Tool source escaped the own producer stage.');inputs.push({path:back.split(path.sep).join('/'),bytes:(await readFile(filename)).length});}
+await writeFile(path.join(root,'tool-dist/inputs.json'),JSON.stringify(inputs.sort((a,b)=>a.path.localeCompare(b.path)))+'\n',{flag:'wx'});
