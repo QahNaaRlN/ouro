@@ -366,9 +366,10 @@ test('quality original Git blob ignores replacement refs in an owned temporary r
   const sourceRoot = process.cwd(),
     ref = '3f8c986a8a5ddf272afc2ec8c08bc042b369d683',
     file = 'lib/client-project.ts';
-  const environment = Object.fromEntries(
-    Object.entries(process.env).filter(([key]) => !key.toUpperCase().startsWith('GIT_')),
-  );
+  const environment = { ...process.env };
+  for (const key of Object.keys(environment)) {
+    if (key.toUpperCase().startsWith('GIT_')) delete environment[key];
+  }
   const git = (directory: string, args: readonly string[], input?: string) =>
     execFileSync('git', ['--no-replace-objects', '-C', directory, ...args], {
       env: environment,
