@@ -143,3 +143,13 @@ Root проверил новый PR74 run **41928063352** на f99: **все6 jo
 Для unresolved local Windows strict-byte gate root запросил один named **consumer-generation-windows** CI job: windows-latest, Node24.19 через прежнюю `.nvmrc`, source node_modules отсутствует, ordinary `--browser --install-browser`, прежний30min job budget. Six existing jobs/steps остаются; новый job седьмой. Только report artifact, без raw child output/profile/env/credentials. Runtime, expected bytes, timeout/retry/host settings не меняются. В этом checkpoint выполнены только YAML/SDD/journal source edits и static diff check; **новый Windows CI NOT_RUN** до root review/publication. No local heavy повтор.
 
 Текущий scope: **LINUX_COMBINED_PASS / WINDOWS_FUNCTIONAL13_PASS / WINDOWS_LOCAL_STRICT_HTML_FAIL / WINDOWS_CI_PENDING / CLI_REMAINDER_PENDING / ARCHIVE_NOT_IMPLEMENTED / PRODUCTION_NOT_QUALIFIED**.
+
+## Возобновление C0/C1 и чистая Windows qualification
+
+После прямого возобновления владельцем root продолжил ранее отменённые jobs run41935397441 на frozen `88cbba1afa53e775225f7eb57fd5db280527df3c`. Все7mandatory jobs SUCCESS: consumer-source, consumer-generation, consumer-generation-windows, postgres, checks, browser, presentation. Повторного локального полного qualifier не было.
+
+Windows job **127118087488** зафиксировал Node24.19/win32, `sourceRepositoryInstallAbsent:true`, все14phases PASS, включая actual npm launch/fresh build, browser installation, runner3/navigation6, issued MCP A при last-built B, restart/exact receipt и штатный drain. Strict HTML **672/672PASS**. Synthetic source — `1b32bff34463102a9311fc81160e98e2c1e9c809`. Это чистая Windows artifact/platform qualification; прежний local672/1161FAIL остаётся отдельным машинным результатом с неустановленной здесь причиной. Archive и production cutover по-прежнему NOT_QUALIFIED.
+
+Root принял PR76 и PR77 в epic, затем Conventional merge **`efd8738dbea830b72a17fc0e3536ee583be3d8d2`** включил актуальный epic `22ee3f95d24c2e092a2b6cf9bac1ace73bcbbb9d` в эту ветку. Появились реальные RU source/dependency inputs и текущий план C0–C7. Старые7PASS не приписываются новому объединённому составу: обязательный CI exact updated head должен пройти перед merge PR74. Локальный web dependency junction от старого graph не использован для build/types нового graph.
+
+Три manual agent CLI до frontend build выполняются отдельной bounded story C1; исправление их compatibility не объявляется реализованным в этом PR. Ни новый общий launcher, ни GC, ни самостоятельный instrumentation project не добавлены.
