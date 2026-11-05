@@ -103,8 +103,8 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: '.nvmrc'
-          cache: npm
-      - run: npm ci
+      - name: Install the pinned developer workspace
+        run: npm exec --yes --package=pnpm@10.34.9 -- pnpm install --frozen-lockfile --prod=false
       - name: Check operational shell scripts
         run: sh -n deploy/postgres-init.sh && sh -n scripts/backup-hosted.sh && sh -n scripts/restore-hosted-drill.sh
       - name: Create least-privileged application role and separate disposable databases
@@ -153,7 +153,6 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: '.nvmrc'
-          cache: npm
       - name: Check pull request conventions
         if: github.event_name == 'pull_request'
         run: npm run check:conventions
@@ -167,12 +166,8 @@ jobs:
         run: npm run check:conventions -- --all
         env:
           OURO_CONVENTIONS_BRANCH: ${{ github.ref_name }}
-      - name: Install dependencies
-        run: npm ci
-      - name: Install isolated web shell dependencies
-        run: npm --prefix apps/web ci
-      - name: Install isolated service qualification dependencies
-        run: npm --prefix apps/service ci
+      - name: Install the pinned developer workspace
+        run: npm exec --yes --package=pnpm@10.34.9 -- pnpm install --frozen-lockfile --prod=false
       - name: Run unit and integration tests
         run: npm test
       - name: Check and build the isolated service runtime
@@ -213,13 +208,8 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: '.nvmrc'
-          cache: npm
-      - name: Install dependencies
-        run: npm ci
-      - name: Install isolated web shell dependencies
-        run: npm --prefix apps/web ci
-      - name: Install isolated service dependencies
-        run: npm --prefix apps/service ci
+      - name: Install the pinned developer workspace
+        run: npm exec --yes --package=pnpm@10.34.9 -- pnpm install --frozen-lockfile --prod=false
       - name: Build production application
         run: npm run build
       - name: Build standalone React web shell
@@ -270,11 +260,8 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: '.nvmrc'
-          cache: npm
-      - name: Install dependencies
-        run: npm ci
-      - name: Install isolated renderer dependencies
-        run: npm --prefix apps/web ci
+      - name: Install the pinned developer workspace
+        run: npm exec --yes --package=pnpm@10.34.9 -- pnpm install --frozen-lockfile --prod=false
       - name: Build production application
         run: npm run build
       - name: Install Chromium

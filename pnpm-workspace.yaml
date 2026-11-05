@@ -1,0 +1,12 @@
+packages:
+  - apps/web
+  - apps/service
+  - packages/protocol
+
+# Обе версии уже присутствуют в импортируемых npm locks; новые scripts требуют ревью.
+allowBuilds:
+  esbuild@0.28.2: true
+  esbuild@0.25.12: true
+  fsevents@2.3.3: false
+strictDepBuilds: true
+enablePrePostScripts: true

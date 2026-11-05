@@ -1,6 +1,6 @@
 # D13: единый pnpm workspace разработки
 
-Статус: **IMPLEMENTATION_PREPARATION / QUALIFICATION_PENDING**. Основание — принятое [D13](../proposals/react-vite-migration/decisions.md) и [операционный C1](../plans/react-vite-completion.md). Ветка `codex/pnpm-workspace` начата от epic `6595e2e30e4a3f800e647404c8ac083a1d6892c0`; квалифицированные delivery prerequisites включены обычным merge `fdc3f4dd15bb16b00f135265c623236d34633886` от epic `b92b5f6c04dc3933881278e066e42259ed4bc690`. Независимый generation launcher и три agent CLI приняты в epic; реальный consumer ZIP остаётся C5, а не результатом этой подготовки.
+Статус: **SOURCE_IMPLEMENTED / QUALIFICATION_PENDING**. Основание — принятое [D13](../proposals/react-vite-migration/decisions.md) и [операционный C1](../plans/react-vite-completion.md). Ветка `codex/pnpm-workspace` начата от epic `6595e2e30e4a3f800e647404c8ac083a1d6892c0`; квалифицированные delivery prerequisites включены обычным merge `fdc3f4dd15bb16b00f135265c623236d34633886` от epic `b92b5f6c04dc3933881278e066e42259ed4bc690`. Независимый generation launcher и три agent CLI приняты в epic; реальный consumer ZIP остаётся C5, а не результатом этой подготовки.
 
 ## Проблема и результат
 
@@ -29,7 +29,7 @@ Docker получает тот же четырёх-importer frozen pnpm graph в
 ## Критерии реализации
 
 1. `packageManager` фиксирует exact pnpm; `pnpm-workspace.yaml` перечисляет три дочерних workspace. Один root lockfile содержит все четыре importers, без nested development npm locks. `workspace:*` не может разрешиться в registry package.
-2. До конверсии сохраняется inventory resolved version/integrity для всех четырёх графов. Первоначальный lock строится импортом существующих locks, без общего обновления ranges. Изменения peer layout и реальные несовместимости объясняются отдельно; blanket overrides/hoisting для сокрытия undeclared dependencies не допускаются.
+2. До конверсии сохраняется inventory resolved version/integrity для всех четырёх графов. Первоначальный lock строится импортом существующих locks, без общего обновления ranges. Допускается только конечная согласованная консолидация ниже; буквальная идентичность четырёх разных layouts не заявляется. Изменения peer layout и реальные несовместимости объясняются отдельно; blanket overrides/hoisting для сокрытия undeclared dependencies не допускаются.
 3. Direct dependency принадлежит manifest своего фактического importer. Общие legacy source пока принадлежат root; workspace package не получает фиктивное владение ими. `scripts/build-hosted-operations.mjs` непосредственно импортирует esbuild: root получает exact devDependency `esbuild: 0.28.2` из уже разрешённого root tuple, без обновления версии. Разные копии React/i18n не создают разные Context в production bundle; существующие renderer probes сохраняются.
 4. Fresh Windows/Linux `pnpm install --frozen-lockfile` при пустом installation tree проходит и не изменяет lock. Native/optional dependencies и необходимые build scripts допускаются явно и проверяются; блокирование scripts не объявляется успешной проверкой native runtime. В исходных locks install scripts имеют esbuild0.28.2, service tsx/esbuild0.25.12 и optional fsevents2.3.3. Workspace задаёт конечный versioned allowBuilds для обеих esbuild versions и strictDepBuilds; fsevents явно запрещён для Windows/Linux qualification, macOS qualification не присваивается.
 5. Граф задач явный: protocol build перед typecheck, root tests, service/web builds; runtime/browser tests используют готовые соответствующие artifacts. Turbo не добавляется без потребности и отдельно проверенных cache inputs/outputs/env. CI не теряет существующие обязательные jobs и не продолжает делать три независимые development npm installs.
@@ -41,6 +41,29 @@ Docker получает тот же четырёх-importer frozen pnpm graph в
 
 Перед поведением installer/producer должны существовать наблюдаемые failing cases: отсутствие/изменение workspace link, stale lock admission, недекларированная зависимость, отсутствие developer installation у consumer producer. Ошибка скачивания pnpm или отсутствие зависимости — setup failure, а не продуктовый RED.
 
-Документационный этап не требует искусственного failing test. На момент записи: pnpm не установлен в этой ветке, lockfile не конвертирован, production scripts не изменены; все implementation gates **NOT_RUN**.
+Документационный этап не требует искусственного failing test. Исторический первый checkpoint: pnpm не был установлен, lockfile не конвертирован, production scripts не изменены. Текущие результаты перечислены в журнале; fresh install/build/browser gates не присваиваются по одному только import.
 
 Primary references: [pnpm installation](https://pnpm.io/installation), [workspace protocol](https://pnpm.io/10.x/workspaces), [lockfile import](https://pnpm.io/10.x/cli/import). Для import workspace требуется заранее объявленный `pnpm-workspace.yaml`; импорт сам по себе не доказывает сохранение всего графа.
+
+## Согласованная конечная консолидация графов
+
+Exact pnpm10.34.9 import берёт preferred versions только из npm lock текущего каталога. Первый import обновил36 внешних identities и отклонён. Единственный разрешённый repair использует временный preference-only aggregate635 исходных registry records с version/resolved/integrity и original lock/path/hash, затем штатный import. Aggregate не устанавливается и не коммитится как npm graph. Результат: **425→415 unique identities,0new external tuples,0changed integrity**, без product overrides или нового resolver. Источники остаются frozen locks commit `db6bcb5bfb14d4dfec32c673c4d6927bfe1db336`.
+
+Root принял следующие десять замен только в root reachable graph как D13 peer/layout resolution. Каждая выбранная версия уже находилась в старом web/service lock; service и protocol reachable graphs не меняются.
+
+| Root dependency | Раньше | В pnpm | Исходный frozen importer |
+|---|---|---|---|
+| @hono/node-server | 2.1.5 | 2.1.6 | service |
+| baseline-browser-mapping | 2.11.34 | 2.11.35 | web |
+| caniuse-lite | 1.0.30001819 | 1.0.30001820 | web |
+| encodeurl | 2.0.0 | 2.0.1 | service |
+| express-rate-limit | 8.7.1 | 8.7.3 | service |
+| forwarded | 0.3.0 | 0.2.0 | service; proxy-addr требует exact0.2.0 |
+| hono | 4.13.14 | 4.13.16 | service |
+| ip-address | 10.7.5 | 10.7.6 | service |
+| jose | 6.2.13 | 6.2.15 | service |
+| qs | 6.17.0 | 6.17.1 | service |
+
+Standard lock-only inspection даёт root302→302, service189→189 и protocol2→2 reachable identities. Web136→151 получает optional Vite peers из уже существующего root graph: jiti2.7.0, tsx4.23.15, lightningcss1.32.0 со всеми его platform packages и detect-libc2.1.2. Это явная binding-консолидация, а не новые registry версии. Direct resolved versions сохраняются; @ouro/protocol0.3.0 получает workspace link notation, root непосредственно объявляет уже существующий esbuild0.28.2.
+
+Исходный npm lock-only baseline не объявляется полностью зелёным: npm фиксирует root forwarded0.3.0 как invalid против exact0.2.0 и отсутствующие optional WASI records; service fixture сообщает отсутствующие local-protocol child metadata без installation. Эти результаты сохранены отдельно от actual install и domain RED. Новый layout обязан пройти focused root SDK/auth/rate-limit проверки, strict programs, native/runtime production builds и настоящие catalog/error/i18n renderer probes. Все mandatory CI checks и независимый frozen consumer graph сохраняются. Actual ZIP/hosted/data rehearsal остаётся C5.

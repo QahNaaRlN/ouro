@@ -11,8 +11,9 @@ const help=`Ouro local launch
   npm run launch -- --port 3001
 
 Use stable Node.js 24 LTS (minimum 24.19.0, major 24). This launcher uses only Node's standard
-library and works before dependencies are installed. On every launch it runs
-npm ci --include=dev, a fresh production build, then the local server. Build
+library and works before dependencies are installed. On every launch this source
+tree uses exact pnpm 10.34.9 through npm, installs the frozen workspace, runs a fresh
+production build, then starts the local server. No global pnpm is required. Build
 tools are included even with NODE_ENV=production. Existing .ouro data
 is preserved. Keep the terminal open; Ctrl+C stops the owned server processes.
 Localhost is this computer, not a published website.
@@ -65,8 +66,8 @@ export async function launch(argv=process.argv.slice(2),environment=process.env)
  const npm=environment.npm_execpath;
  if(typeof npm!=='string'||!path.isAbsolute(npm)||/[\u0000-\u001f\u007f]/.test(npm))throw new Error('Run npm run launch from the extracted Ouro folder; a working Node/npm installation is required.');
  const repository=path.resolve(fileURLToPath(new URL('../',import.meta.url)));
- try{await Promise.all(['package.json','package-lock.json'].map(name=>access(path.join(repository,name))));}
- catch{throw new Error('The Ouro release is incomplete. Extract the complete archive before running npm run launch.');}
+ try{await Promise.all(['package.json','pnpm-workspace.yaml','pnpm-lock.yaml'].map(name=>access(path.join(repository,name))));}
+ catch{throw new Error('The Ouro source archive is incomplete. Extract the complete archive before running npm run launch.');}
 
  let current,interrupted,stopping=Promise.resolve();
  const cancel=signal=>{
@@ -77,7 +78,7 @@ export async function launch(argv=process.argv.slice(2),environment=process.env)
  process.on('SIGINT',onInterrupt);process.on('SIGTERM',onTerminate);
  process.stdout.write('Ouro: preparing dependencies and a fresh production build.\nPreparation repeats on every launch; existing .ouro data is preserved.\n');
  try{
-  const phases=[{label:'1/3 · Install dependencies and build tools',args:['ci','--include=dev']},{label:'2/3 · Build the application',args:['run','build']},{label:'3/3 · Start the local server',args:['start','--','--port',String(options.port)]}];
+  const phases=[{label:'1/3 · Install the frozen source workspace and build tools',args:['exec','--yes','--package=pnpm@10.34.9','--','pnpm','install','--frozen-lockfile','--prod=false']},{label:'2/3 · Build the application',args:['run','build']},{label:'3/3 · Start the local server',args:['start','--','--port',String(options.port)]}];
   for(const phase of phases){
    if(interrupted)break;
    process.stdout.write(`\n${phase.label}\n`);
