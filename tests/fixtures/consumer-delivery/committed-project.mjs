@@ -5,7 +5,9 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 
 export const ownedDeliveryFiles=['dependencies.json','package-lock.template.json','registry-provenance.json','build-consumer.mjs.template','tsconfig.source.json','mcp-entry.mjs.template'];
+ownedDeliveryFiles.push('agent-config-entry.mjs.template','agent-check-entry.mjs.template','build-agent-tools.mjs.template');
 export const ownedEnvelopeFiles=['scripts/consumer-launch.mjs','scripts/consumer-worker.mjs','scripts/consumer-mcp.mjs','scripts/consumer-delivery/consumer-owner.mjs','scripts/consumer-delivery/generation-state.mjs','scripts/consumer-delivery/consumer-port.mjs','scripts/consumer-delivery/owned-http-listener.mjs','lib/connection-config.ts','apps/service/src/backend/create-backend.ts','apps/service/src/backend/routes.ts','apps/service/src/bootstrap/start-http-server.ts','apps/service/src/bootstrap/prebound-listener.types.ts','apps/service/src/runtime/configuration.ts','apps/service/src/runtime/start-service.ts'];
+ownedEnvelopeFiles.push('scripts/consumer-agent-cli.mjs','scripts/consumer-delivery/agent-tool-contract.mjs','scripts/agent-config.ts','scripts/check-agent.mjs','packages/mcp/bin/ouro-mcp.mjs','lib/agent-client-config.ts','packages/core/src/project-identity/index.ts','packages/core/src/project-identity/project-id.ts','packages/core/src/engine.ts','apps/service/scripts/build.mjs');
 
 /** Создаёт отдельную committed fixture из canonical app blobs и конечных текущих owner templates. */
 export async function createCommittedProjectFixture(origin){
