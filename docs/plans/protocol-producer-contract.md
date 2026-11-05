@@ -8,7 +8,8 @@
 | SDD/journal | PREPARED_FIRST |
 | Один новый PPC01 test | PREPARED, builtin-only .mjs |
 | Pure/Git-blob RED | ACTUAL_RED:1FAIL, CONSUMER_SOURCE_INVALID,2.68s |
-| Shared production source / release inputs | NOT_STARTED |
+| Pure helper / два release inputs | IMPLEMENTED_LOCAL,9/9pure validation PASS |
+| Shared collector/materializer/fixture helper | NOT_STARTED, ожидается CCLI handoff |
 | Install/build/SQL/browser | NOT_RUN / не входят в разрешённый текущий этап |
 
 ## Порядок
@@ -39,3 +40,33 @@ Root выдал отдельное короткое окно только builti
 Actual failure: `ConsumerSourceError`, code`CONSUMER_SOURCE_INVALID`, existing `scripts/consumer-delivery/committed-source.mjs:79`, caller PPC01 reader invocation. Все preceding setup/precondition assertions прошли; missing-module/setup failure не выдаётся за RED. Логи/exit JSON сохранены в ignored `.operations/ppc01-old-reader-red-with-inputs.*`; временный fixture удалён только после проверки его resolved temp-root/prefix. Дополнительных фоновых процессов нет.
 
 После RED production source по-прежнему NOT_STARTED. Два новых release input существуют только в test fixture, реальные pins/locks/shared fixture helper не изменены. Source harvest/materializer/negative validation tests ждут CCLI collector handoff и root peer. Никаких commit/push/PR из этого этапа нет.
+
+## Разрешение следующего изолированного pure этапа
+
+Root принял actual RED и разрешил commit трёх SPEC/RED files: **b8412250b9fd16862bdfecd226cebd58d6410e35**. Затем разрешены только новые pure contract/.d.mts, два release input и focused builtin validation tests; этот scope внесён в SDD до исходников. Shared files остаются у CCLI owner. Новые pure runs допустимы, но ci/build/store/npm/real pack/materialization запрещены до отдельного окна.
+
+План этого этапа: exact Git lock bytes → metadata hashes, pure semantic/scalar/registry admission → focused positives/negatives (включая recomputed hashes), затем root peer/source freeze. PPC01 integration GREEN намеренно не объявляется до handoff. Других историй/переключения pnpm/Form здесь нет.
+
+## Pure source и проверки
+
+SDD расширен до исходников. Добавлены только protocol-producer-contract.mjs/.d.mts, новый PPV builtin test и два release input. Lock скопирован из exact b957 Git blob без resolver; отдельная byte comparison PASS,1281bytes. Metadata hashes совпадают с PPC01 real fixture: manifest9dbd3113…, lock51bb76e4…, tuples7fb06965…,2registry entries. TS5.9.3/Zod4.6.7 и portable package manifest не менялись.
+
+Pure helper проверяет конечные metadata scalars/hashes, manifest/root literal contracts, direct package presence, безопасные package paths, canonical registry tarball identity, version/scalar/full sha512, отсутствие links/non-registry declarations и выбранные boolean flags. Единственная path normalization — один ведущий ./ у bin. Возвращается проверенный LF lock text; FS/process/env operations и npm/PATH resolver отсутствуют.
+
+`node --test tests/protocol-producer-validation.test.mjs`: **7PASS,0FAIL,233.8ms**. Группы: real exact graph, CRLF, bin normalization/escape negatives, malformed scalars/hash inputs, rehashed identity/declaration mismatch, rehashed registry URL/integrity/link attacks, malformed/escaping/missing direct entries. Neutral diagnostic остаётся фиксированным даже при SECRET markers. Negative semantic cases повторно вычисляют hashes и доходят до structural admission; это не только hash mismatch tests. Тесты нового API написаны в данном pure этапе; missing-module failure не объявлялся RED-first evidence.
+
+PPC01 последний actual result остаётся прежним RED2.68s; shared reader не изменён. Install/build/compiler/store/SDK/SQL/browser/real pack не запускались. `.d.mts` ещё не прошёл compiler, source-global guards не запускались в heavy lease. Git diff check PASS; package files/shared collector/types/materializer/fixture helper diff отсутствует. Передано root на bounded peer; дальнейший commit/integration ждёт указания/handoff.
+
+## Peer fix: Windows aliases и обязательное test wiring
+
+Root/F приняли остальной pure helper и нашли material gap Windows aliases. Сначала добавлены два focused rehashed negative axes: PPV08 bin/CON и PPV09 node_modules/con оба дали **Missing expected exception,2FAIL172.5ms**. Это actual semantic RED, не mismatch hashes. Затем добавлен только private finite segment predicate reserved devices/trailing dot/space, совпадающий с existing committed-source.unsafePath; общий audit не менялся, framework/resolver не создавался.
+
+После fix **PPV01–09,9PASS0FAIL202.5ms**. Покрываются также trailing-dot/space внутри bin path, reserved bin command и scoped package segments. Старые tuple/input positives сохраняются, release lock остаётся теми же1281bytes. Evidence: `.operations/ppv-windows-alias-{red,green}.log`.
+
+Root отдельно передал только package.json:test script этому срезу. Добавлены ровно tests/protocol-producer-contract.test.mjs и tests/protocol-producer-validation.test.mjs к existing tests/*.test.ts, без broad *.test.mjs, нового runner или dependency/lock edits. SDD scope записан до script change. Полный npm test не запускался: сейчас он намеренно увидит PPC01 RED, пока shared integration не реализована. Conventions и diff check PASS; общая compiler/integration остаётся до collector handoff. Push/PR запрещены до полной integration qualification.
+
+## Изолированная declaration проверка и pure freeze
+
+Root отдельно разрешил только tiny declaration check. Фактически выполнен TypeScript5.9.3 на собственном Node24.19.0: **0diagnostics,0unexpected files**, types:[], strict/noEmit, standard ES2022 libraries. Non-library graph содержит ровно новый protocol-producer-contract.d.mts и виртуальный caller; Node/UI/project ambient files не загружались. Четыре @ts-expect-error проверили обязательный metadata input, textual lockfile, отсутствие неподдерживаемого output.manifest и readonly diagnostic code. Caller существовал только в памяти. Evidence: `.operations/protocol-producer-declaration-check.json`.
+
+Этот gate завершён после actual Windows2RED→9pureGREEN и не является project/integration typecheck. Root разрешил pure commit после него; dependency tuples/release lock1281bytes и shared source не менялись. Повторных pure/full checks не запускалось. PPC01 integration всё ещё RED до handoff, реальные scratch/npm/pack и общая CI qualification остаются pending.
