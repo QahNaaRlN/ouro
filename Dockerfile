@@ -1,9 +1,11 @@
 FROM node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df AS build
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-COPY package.json package-lock.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json ./apps/web/package.json
+COPY apps/service/package.json ./apps/service/package.json
 COPY packages/protocol ./packages/protocol
-RUN npm ci --include=dev --no-audit --no-fund
+RUN npm exec --yes --package=pnpm@10.34.9 -- pnpm install --frozen-lockfile --prod=false
 COPY . .
 RUN npm run build && node scripts/build-hosted-operations.mjs
 
@@ -12,9 +14,11 @@ CMD ["npm", "run", "test:external-pg"]
 
 FROM node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df AS production-deps
 WORKDIR /app
-COPY package.json package-lock.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json ./apps/web/package.json
+COPY apps/service/package.json ./apps/service/package.json
 COPY --from=build /app/packages/protocol ./packages/protocol
-RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
+RUN npm exec --yes --package=pnpm@10.34.9 -- pnpm install --frozen-lockfile --prod
 
 FROM node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df AS runner
 WORKDIR /app

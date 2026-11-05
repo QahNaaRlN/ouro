@@ -16,7 +16,7 @@
 
 Подготовка `ouroapp.ru` и работы через аккаунты: [облачный runbook](docs/hosting-guide.md) и [журнал фактических gates](docs/plans/cloud-deployment.md). Локальные проекты остаются автономными; запуск сервиса, доставка почты и синхронизация имеют отдельные результаты проверки.
 
-## Первый запуск релиза
+## Первый запуск опубликованного релиза
 
 Нужен стабильный [Node.js 24 LTS](https://nodejs.org/) с npm, минимум **24.19.0** в пределах major24; точная проверенная версия закреплена в `.nvmrc`. Launcher проверяет её до установки зависимостей. Git, Docker, отдельный PostgreSQL и API-ключи для открытия интерфейса не требуются.
 
@@ -44,7 +44,20 @@ cd ouro
 npm run launch
 ```
 
-Чтобы работать с исходниками в dev-режиме: `npm ci`, затем `npm run dev`. Перед dev/build/test/typecheck переносимый контракт собирается автоматически. Не запускайте dev и build в одной папке одновременно; перед обновлением остановите прежний сервер.
+### Текущий workspace разработки
+
+Инструкции выше относятся к опубликованному beta.3 и его собственному launcher. В текущей ветке миграции разработка использует **pnpm10.34.9**, один `pnpm-lock.yaml` и четыре package units: root, web, service и protocol. Из папки текущих исходников выполните:
+
+```sh
+npm exec --yes --package=pnpm@10.34.9 -- pnpm install --frozen-lockfile --prod=false
+npm run dev
+```
+
+Если точный pnpm уже установлен, первая команда сокращается до `pnpm install --frozen-lockfile --prod=false`. Глобальная установка pnpm не обязательна. Не выполняйте отдельные `npm ci` в root/web/service/protocol: их development npm locks заменены единым workspace lock. Перед dev/build/test/typecheck переносимый контракт собирается автоматически. Не запускайте dev и build в одной папке одновременно; перед обновлением остановите прежний сервер.
+
+В этих исходниках и новом **source ZIP** публичная `npm run launch` сохраняет три фазы подготовки/build/start: npm запускает точный pnpm, устанавливается frozen workspace с build tools, затем выполняются свежая сборка и локальный старт. Параметры порта, `.ouro` и остановка сохраняются. Независимый **consumer envelope** имеет отдельный launcher: собственный frozen npm graph и `npm ci --include=dev` при каждом новом поколении, без developer installation как fallback. Реальный consumer ZIP и перенос старых данных ещё ожидают C5; source ZIP не является доказательством этого допуска. [Контракт workspace](docs/specs/developer-pnpm-workspace.md).
+
+Канонические команды запускаются из root: `npm run web:build`, `npm run service:typecheck`, `npm run service:build`, `npm run service:test` (или соответствующий `pnpm run`). Они явно подготавливают protocol; service:test также собирает web/service artifacts. Прямые команды внутри package и recursive workspace build являются низким уровнем: web использует общий root-owned source, поэтому весь task graph задают root-команды. CI перед leaf service tests явно выполняет именованные protocol/service/web build steps.
 
 ### Данные и повторный запуск
 
