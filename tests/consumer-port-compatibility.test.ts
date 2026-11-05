@@ -18,6 +18,8 @@ import {
   assertBrowserPort,
 } from '../scripts/consumer-delivery/consumer-port.mjs';
 
+const runtimeLoaderSignature = /export async function loadRuntimeEnvironment\(options\)\s*\{/;
+
 const repository = fileURLToPath(new URL('../', import.meta.url)),
   require = createRequire(import.meta.url),
   keys = [
@@ -260,7 +262,7 @@ test(
         hook = path.join(f.directory, 'capture-env.mjs');
       await writeFile(
         hook,
-        `import{registerHooks}from'node:module';registerHooks({load(url,context,next){const result=next(url,context);if(url!==${JSON.stringify(target)})return result;const source=Buffer.from(result.source).toString('utf8'),marker='export async function loadRuntimeEnvironment(options){';if(!source.includes(marker))throw Error('Wrong owned REC fixture');return {...result,shortCircuit:true,source:source.replace(marker,'async function originalLoader(options){')+"\\nexport async function loadRuntimeEnvironment(options){const result=await originalLoader(options);const port=Number(process.env.PORT);let busy=false;if(port>0){const probe=(await import('node:http')).createServer();await new Promise(resolve=>{probe.once('error',error=>{busy=error.code==='EADDRINUSE';resolve();});probe.listen(port,'127.0.0.1',()=>probe.close(resolve));});}(await import('node:fs')).writeFileSync(process.env.OWN_CAPTURE,JSON.stringify({port,busy,endpoint:process.env.FIXTURE_ENDPOINT}));process.exit(0);return result;}"};}});`,
+        `import{registerHooks}from'node:module';registerHooks({load(url,context,next){const result=next(url,context);if(url!==${JSON.stringify(target)})return result;const source=Buffer.from(result.source).toString('utf8'),marker=${runtimeLoaderSignature};if(!marker.test(source))throw Error('Wrong owned REC fixture');return {...result,shortCircuit:true,source:source.replace(marker,'async function originalLoader(options){')+"\\nexport async function loadRuntimeEnvironment(options){const result=await originalLoader(options);const port=Number(process.env.PORT);let busy=false;if(port>0){const probe=(await import('node:http')).createServer();await new Promise(resolve=>{probe.once('error',error=>{busy=error.code==='EADDRINUSE';resolve();});probe.listen(port,'127.0.0.1',()=>probe.close(resolve));});}(await import('node:fs')).writeFileSync(process.env.OWN_CAPTURE,JSON.stringify({port,busy,endpoint:process.env.FIXTURE_ENDPOINT}));process.exit(0);return result;}"};}});`,
       );
       child = spawn(
         process.execPath,
@@ -334,7 +336,7 @@ test(
       const suffix = `\nexport async function loadRuntimeEnvironment(options){(await import('node:fs')).writeFileSync(${JSON.stringify(called)},'called');return originalLoader(options);}await(await import('node:fs/promises')).writeFile(${JSON.stringify(reached)},JSON.stringify({port:process.env.PORT}));await new Promise(resolve=>{const release=message=>{if(message==='fixture:continue'){process.off('message',release);resolve();}};process.on('message',release);});`;
       await writeFile(
         hook,
-        `import{registerHooks}from'node:module';registerHooks({load(url,context,next){const result=next(url,context);if(url!==${JSON.stringify(target)})return result;return {...result,shortCircuit:true,source:Buffer.from(result.source).toString('utf8').replace('export async function loadRuntimeEnvironment(options){','async function originalLoader(options){')+${JSON.stringify(suffix)}};}});`,
+        `import{registerHooks}from'node:module';registerHooks({load(url,context,next){const result=next(url,context);if(url!==${JSON.stringify(target)})return result;const source=Buffer.from(result.source).toString('utf8'),marker=${runtimeLoaderSignature};if(!marker.test(source))throw Error('Wrong owned REC fixture');return {...result,shortCircuit:true,source:source.replace(marker,'async function originalLoader(options){')+${JSON.stringify(suffix)}};}});`,
       );
       child = spawn(
         process.execPath,

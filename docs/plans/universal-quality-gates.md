@@ -105,3 +105,13 @@ Source A1 `30570d41a762a34c493f3cab538b59f6101676d7` оказался непол
 PR #81, head `6b67ea149f71285011517212424fdfef41ca730a`, CI `42065922056`, synthetic source `f58c68ad8858d0ecc2bdb4841029bb575a2c7d7f`. Linux consumer source прошёл материализацию и независимый npm ci, затем завершился с кодом 1 в FRESH_BUILD. Linux и Windows generation завершились в NPM_LAUNCH. При проверке committed tree оба пути alias из отдельного consumer tsconfig отсутствовали после переименования Vite-адаптеров.
 
 Исправление согласует два пути в `release/consumer/tsconfig.source.json` с web tsconfig и регистром имён в Git. Закреплённые consumer dependencies, closure, проверки и лимиты сохраняются. Первый отказ CI сохраняется как самостоятельная попытка.
+
+## Вторая попытка CI и исправление интеграции тестов
+
+Head `71db15e43fe4ce3779ca3efb4bd7711352a5d370`, CI `42066859697`. Все три consumer jobs, PostgreSQL, browser и presentation прошли. Checks завершился с 893 PASS, 3 FAIL, 11 SKIP. Два CPB теста зависели от точного пробела перед скобкой в форматированной сигнатуре REC. Новый тест quality запускался как CommonJS внутри полного tsx runner и не мог импортировать ESM CLI с top-level await.
+
+Тест качества теперь имеет явное расширение `.mts` и включён в тот же полный test:unit, root TypeScript и отдельную команду test:quality. CPB05 и CPB06 распознают пробелы в той же сигнатуре и сохраняют наблюдаемые assertions и таймауты. Runtime, lock и consumer graph в этом исправлении не меняются.
+
+Отдельный локальный Windows source-прогон на Node 24.19.0 прошёл чистую npm-установку, независимую сборку и runtime phases, затем повторил ранее сохранённый HTML FAIL (672 ожидаемых байта, 1161 получено). Он не выдаётся за чистую CI Windows квалификацию.
+
+Отчёт предыдущего чистого Windows CI подтвердил HTML 672/672 на synthetic source `1d4626c0f3dd516c47a564105ebf05518f88a065` без установки в исходном checkout. В локальном целевом прогоне три CPB fixtures остановились при создании directory symlink с EPERM, до проверок поведения. Точное подтверждение CPB05/06 ожидается в Linux CI.
