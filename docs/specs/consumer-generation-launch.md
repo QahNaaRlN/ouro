@@ -1,0 +1,81 @@
+# CGL — запуск независимой поставки через поколения установки
+
+Дата: 2026-11-05. Ветка `codex/consumer-generation-launch`, base `f79bdc0d079ae516f4d28fafc442a18a7db28c96`. Статус: **IMPLEMENTED_PARTIAL / FROZEN_88_ALL7_CI_PASS / WINDOWS_CI_HTML_PASS / WINDOWS_LOCAL_HTML_FAIL / UPDATED_EPIC_QUALIFICATION_PENDING**. Root возобновил C0/C1 после ретроспективы. [Журнал](../plans/consumer-generation-launch.md). Основание: принятые D13/P5, [SWD2](consumer-source-delivery.md), REC и scoped evidence. Первый Linux FAIL и прежний local Windows HTML FAIL сохранены; чистый Windows CI не устанавливает их причину задним числом. [Early-listener DI](consumer-prebound-startup.md) и frozen `f99ca177` имеют прежнюю область доказательства. Новый состав с RU/планом требует собственного обязательного CI.
+
+## Цель и полномочия
+
+Создать отдельно материализуемый consumer envelope без dependencies: прежние `npm run launch`, `npm run build`, `npm start` и стабильный MCP entry вызывают standard-library owner. Единственный consumer dependency graph находится в поставленном `source/package.json` + `source/package-lock.json`; каждый install выполняется в новом независимом generation, никогда поверх готового или работающего дерева. `launch` действительно делает `npm ci --include=dev` и свежие typechecks/Vite/service build перед запуском. Source blueprint не становится install tree, а outer package не имеет dependency lock.
+
+Это отдельная поставка и qualification API. Старые repository launch/packer/source ZIP/Docker не переключаются, Next не удаляется, hosted deployment/native не принимаются. Producer по-прежнему берёт один committed Git tree и same-commit protocol. Реальные env/profiles/keys не читаются и не пакуются. Общая система управления произвольными процессами, package sandbox и автоматический GC не создаются.
+
+## Дополнительная Windows CI qualification
+
+После actual local combined functional13 PASS и strict HTML672/1161 FAIL root запросил отдельный named `consumer-generation-windows` job. Он выполняет **тот же ordinary qualifier**, `--browser --install-browser`, Node из `.nvmrc`24.19.0, на windows-latest без source dependency install. Preflight отказывает при source node_modules. Каждый producer/consumer install по-прежнему свой; никакой local dependency junction не используется в job. Existing6 Linux/other jobs сохраняются, новый job является седьмым.
+
+Ожидаемые bytes берутся из actual built index.html, сравнение не фильтруется и не пропускается на Windows. Timeouts/retries/HTML headers/runtime/host settings не меняются. Это отдельное исполнение для установления платформенного evidence, а не доказанная причина local host transformation и не обход локального FAIL. Публикуется только bounded qualification-report.json, без env/token/profile/runner stdout. До actual job result статус **PENDING**, до root review/publish новый job не считается запущенным. Directory/runtime qualification не объявляет старый source ZIP, installed CLI remainder или production cutover завершёнными.
+
+## Конкретное дерево и task graph
+
+```text
+envelope/                         # новый output, создаётся без overwrite
+  package.json                   # scripts only, no dependencies/lock
+  scripts/consumer-*.mjs          # stdlib owner/workers + Node admission
+  scripts/runtime-node.mjs
+  packages/mcp/bin/ouro-mcp.mjs   # stable stdlib forwarding wrapper
+  source/                        # finite source-build materialization
+    package.json + package-lock.json + vendor/exact-protocol.tgz
+    delivery-manifest.json + scripts/build-consumer.mjs + source inputs
+  .ouro/postgres/                # stable runtime profile, absent from producer output
+  .ouro-runtime/generations/g-UUID/
+    package.json + package-lock.json + source snapshot + node_modules + dist
+  .ouro-runtime/records/g-UUID.json
+  .ouro-runtime/last-built.json
+```
+
+`Node gate → argv/root admission → allocate unique generation → finite snapshot → independent npm ci(includeDev) → fresh build worker(outer env root) → validate required artifacts/input hashes → publish immutable BUILT record → atomic last-built pointer → optional service worker(IPC) → READY + health + UI → graceful drain`. `start` enters at validated BUILT admission and never runs ci/build. `build` prepares a new generation and publishes it, without opening a database. `launch` starts exactly its own completed generation, even if a concurrent preparation later publishes another pointer. MCP resolves a validated completed generation from the stable outer wrapper and keeps caller cwd/token-file semantics.
+
+Nested web/service metadata are module/resource anchors, not second install roots; their locks are absent. The outer package exposes build/start/launch/mcp scripts but has no dependencies, install script or package-lock. Source input snapshots have one exact root graph. Fresh preparation cost/disk growth remain explicit.
+
+## Generation state and filesystem ownership
+
+Generation ID is a bounded fixed-prefix UUID. `mkdir` without recursive mode allocates that final directory exclusively. Each snapshot target is a regular file written with `wx` under this directory. Copy only finite inputs in delivery manifest plus reviewed generated metadata/build/tsconfig/lock/vendor files; never scan for additional env/user/source files. Reject traversal, absolute paths, case-prefix ambiguity, file/directory aliases and symlinks in source/runtime metadata paths. No profile search, marker reclaim, foreign overwrite or cleanup is permitted.
+
+Known shipped source file edits may be preserved as exact bytes of the listed regular files. Record original shipped hashes separately from effective snapshot hashes. Generated manifest/lock/tgz/build metadata retain the producer hashes; dependency graph changes require a newly produced delivery, not silent lock repair. Unknown additional source files are not discovered or copied. This is a finite source-build contract, not arbitrary application extensibility. User env/key/project files remain in the outer installed root and are never source-copy inputs.
+
+There is no persistent RUNNING marker whose absence proves process death. Interrupted preparation leaves an uncompleted generation; absence of a BUILT record makes it unavailable to `start`/MCP. A killed parent may leave npm/shell/build descendants alive, and they can continue mutating only their old generation. A new preparation always uses a new directory and neither reuses nor deletes the old one. No PID/age reclaim, parent-only SQLite mutex, global NODE_OPTIONS hook or native Job lifetime guarantee is used. The finite qualified tooling can access the filesystem as the user; generation isolation is an output ownership contract, not an OS sandbox for malicious scripts.
+
+Completion records live outside writable generations, are written with `wx`, and include source commit/product/protocol identity, generation, effective input digest and required artifact hashes. Publish only after the owned build child exits successfully and all checks pass. Last-built is a bounded complete pointer to a verified immutable record, published by completing/closing an owned unique temporary file then atomic replacement; no copy/overwrite-in-place fallback. Qualify the exact Windows/Linux primitive. A failed publication preserves the previous complete pointer and reports failure. Concurrent successful builds may publish in completion order; neither is an active-server authority. Do not auto-fallback to another generation when a selected record/artifact is missing, corrupt or foreign.
+
+Actual Windows concurrency exposed transient `EPERM` in the atomic rename syscall. Only Windows `EPERM`/`EBUSY` may retry that same closed temporary inode and exact pointer bytes, with an approximately1s metadata budget and maximum41 attempts. Recheck identity/bytes before every attempt and after a failure. Missing/transformed/replaced temp fails as unknown publication without retry or recreation; cleanup never removes changed/foreign bytes. Permanent failure does not restore a saved pointer over another completed writer. No destination unlink, permission change, copy fallback, rebuild, business-command retry or stale reclaim is permitted. This is a native metadata-operation budget, not a total wall-time SLA.
+
+No automatic cleanup of generations/records is implemented, including failures and UNKNOWN. Own test cleanup uses only canonical unique fixture roots after all known children have closed; failed/ambiguous evidence is retained. Operator cleanup/GC is a future explicit task.
+
+Producer staging is not part of the deliverable envelope. The source materializer retains its existing default sibling stage, with an optional explicit absolute `producerScratchRoot` for a composition that nests the source output. Envelope composition selects its own parent outside both envelope and source outputs. The producer still creates a unique stage and retains it on success/failure; it does not delete, move, copy an existing install tree, or change the consumer dependency graph. Reject a supplied scratch root within an output, and never discover a profile or user directory to obtain scratch space. CGL09 reproduced the nested producer-stage leak before implementation, then passed with the explicit root; CMT01 preserves the old default and CMT02 covers rejected root inputs. This is producer-placement proof, not a new complete consumer runtime proof.
+
+## Node, environment, resources and runtime lifecycle
+
+Every outer CLI and MCP entry checks Node major24/minimum24.19.0 before reading source/config/environment files, resolving dependencies, spawning npm or opening a profile. Unsupported actual Node23 must fail with the established safe code before those effects. Npm CLI is a literal validated absolute path from npm's own environment; no shell command construction. Paths/cwd containing spaces, Cyrillic and shell metacharacters are ordinary argv values. Diagnostics contain bounded safe phase codes, never raw env, requests, npm stderr or credentials.
+
+Build worker imports REC from the chosen generation only after Node/path admission, loads only outer-root env filenames, then calls the existing consumer build with explicit `sourceRoot` and `environmentRoot`. No env values are logged or copied to source/another generation. Startup freezes the mode-specific CLI/process/default port **before** file loading; files cannot select the listener. For start0, the actual bound port is available to env expansion through the same early listener later adopted by the service. [The prebound design](consumer-prebound-startup.md) passed the focused parser/actual-worker/TCP checkpoint; a fresh full consumer proof on this implementation remains pending. Local mode preserves `OURO_LOCAL_DEMO=1`; hosted mode is a separate unchanged deployment contract. Build/start are independent processes; Next internal processed/cache controls remain unsupported.
+
+Service worker cwd is the outer installed root. It uses existing built `runtimeConfiguration` + `startService`, without copied routes/domain lifecycle: static/SQL/preload/package roots come from the selected generation artifact; resourceRoot/workspace defaults, stable default `.ouro/postgres` and stable MCP wrapper come from outer root. Relative operator OURO_DATA_DIR resolves from outer root, absolute dataDir/DATABASE_URL retain authority. Verification scratch is explicit/stable outside generation. The service itself holds the existing OS-backed profile mutex until confirmed HTTP/SQL/worker drain and PGlite.close. A surviving old service keeps exclusion; the launcher does not remove its mutex or kill a discovered port owner.
+
+Service READY must originate from the owned IPC child and contain its listener URL. Confirm health plus UI navigation response before announcing readiness. Foreign occupied port is failure. Shutdown sends `ouro:shutdown`, awaits confirmed service drain/exit, then only on bounded deadline permits termination of its own still-known child/tree. A forced/deadline outcome never becomes graceful success. Signals, IPC disconnect, preparation errors and repeated stop have explicit outcomes. This is not a guarantee that arbitrary grandchildren die after a parent crash.
+
+For a parent that launches through real npm on Windows, optional `--control-stdin` enables an explicit owned non-TTY pipe. It accepts only a bounded exact `ouro:shutdown` line, then invokes the same idempotent drain, detaches and releases the pipe's event-loop reference. EOF, unfinished/unknown/oversize input does not imply shutdown; input is never echoed. Without this operational flag, no stdin reader is installed. Build/MCP workers never interpret this control. The flag does not skip ci, build, resource or readiness checks. Actual npm-with-flag and ordinary no-flag direct owner/IPC qualification are reported separately. Successful stop must not require caller EOF or forced process.exit.
+
+Stable MCP wrapper checks Node and validates BUILT admission before importing the unchanged canonical generation bridge. It does not read env files, change caller cwd, add credentials or print to stdout. Issued service configs use the stable outer wrapper plus an exact `--generation g-UUID` selector injected by the serving service composition. This selector resolves the corresponding immutable BUILT record, regardless of last-built. A serving generationA continues issuing/using A after a separate build publishes B. The existing config builder already preserves the complete stdioArgs array; optional trusted `mcpArgs` defaults to empty for existing callers. The selector is not request data, a credential or an active-process lookup.
+
+Manual legacy invocation without a selector remains available and selects last-built; this chooses a completed version and does not establish which generation serves an unrelated URL. Unknown/duplicate/malformed selector arguments fail explicitly; user arguments are not silently dropped. Missing BUILT gives fixed stderr failure. The wrapped bridge retains token-file, URL/project and stdio contracts.
+
+## TDD and qualification plan
+
+Write spec/journal first; before production state changes obtain behavioral RED for the old shared-tree model and missing generation admission. Synthetic fixture workers permit deterministic barriers without substituting fake success for actual npm/build/runtime qualification.
+
+- Concurrent preparations allocate different directories; old shared tree is a causal counterexample. Parent-kill while a real child writer is blocked/running leaves old generation UNKNOWN; fresh preparation proceeds in a different tree, old sentinel remains, old bytes are never selected/deleted. Do not infer arbitrary tree death.
+- Incomplete/stale/traversal/symlink/foreign record, changed required artifact, invalid Node and malformed argv fail before npm/profile. Existing valid pointer survives failed build/publication. Duplicate output/source files are never overwritten. Concurrent complete publication admits only fully closed records.
+- Real consumer envelope generated from immutable committed producer source: independent npm launch with ci(includeDev under NODE_ENV=production), fresh web/service build, foreign cwd, literal argv, stable profile/env sentinel; no source dependency fallback.
+- `build` then `start`, second launch with new generation, persisted project/command exact receipt after restart, progressive SSE and actual MCP via stable issued wrapper. Real verification runner CJS/ESM/TS outside install root. Health/negative assets/API/HEAD and existing navigation/cookie6 remain qualified; strict HTML Windows known FAIL stays explicit, Linux exact gate mandatory.
+- Actual graceful IPC shutdown, interrupted preparation, occupied foreign port, parent-disconnect/drain, unsupported Node23 and own failure cleanup. Existing root launch/pack/REC tests and architecture/types/style/inventory gates must remain green.
+
+Source/build/runtime proof, end-user directory launch proof and future ZIP archive proof are reported separately. No full P5/cutover/Next removal/native/production acceptance is claimed from a local fixture. Windows and Linux results remain distinct; parent storage contention patch/CI integration remain separate.

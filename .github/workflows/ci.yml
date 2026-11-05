@@ -36,6 +36,52 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  consumer-generation:
+    name: consumer-generation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: '.nvmrc'
+      - name: Prove no source dependency fallback is installed
+        run: test ! -e node_modules
+      - name: Qualify generation launch, concurrent build, bound MCP and persisted restart
+        run: npm run consumer:qualify-envelope -- --work "$RUNNER_TEMP/ouro-consumer-generation" --browser --install-browser
+      - name: Preserve bounded generation qualification report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: consumer-generation-qualification
+          path: ${{ runner.temp }}/ouro-consumer-generation/qualification-report.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  consumer-generation-windows:
+    name: consumer-generation-windows
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: '.nvmrc'
+      - name: Prove no source dependency fallback is installed
+        shell: pwsh
+        run: if (Test-Path -LiteralPath 'node_modules') { throw 'Source dependency install must be absent.' }
+      - name: Qualify ordinary generation launch and strict HTML bytes on Windows
+        shell: pwsh
+        run: npm run consumer:qualify-envelope -- --work "${{ runner.temp }}/ouro-consumer-generation-windows" --browser --install-browser
+      - name: Preserve bounded Windows generation qualification report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: consumer-generation-windows-qualification
+          path: ${{ runner.temp }}/ouro-consumer-generation-windows/qualification-report.json
+          if-no-files-found: ignore
+          retention-days: 7
+
   postgres:
     name: postgres
     runs-on: ubuntu-latest

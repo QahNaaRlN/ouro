@@ -1,0 +1,8 @@
+#!/usr/bin/env node
+import {validateNodeVersion} from '../../../scripts/runtime-node.mjs';
+import {runConsumerMcp} from '../../../scripts/consumer-mcp.mjs';
+import {fileURLToPath} from 'node:url';
+
+/** Стабильный dependency-free entry выданной stdio конфигурации. */
+try{validateNodeVersion(process.versions.node);await runConsumerMcp({root:fileURLToPath(new URL('../../../',import.meta.url))});}
+catch(error){process.stderr.write(error?.code==='NODE_RUNTIME_UNSUPPORTED'?'NODE_RUNTIME_UNSUPPORTED: '+error.message+'\n':'OURO_CONSUMER_MCP_FAILED\n');process.exitCode=1;}
