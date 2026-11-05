@@ -73,7 +73,7 @@ export default defineConfig(() => {
     publicDir: local('../../public'),
     plugins: [browserBoundary(), routeFallbackBoundary(target), react()],
     resolve: {
-      dedupe: ['react', 'react-dom'],
+      dedupe: ['react', 'react-dom', 'i18next', 'react-i18next'],
       alias: [
         { find: 'next/link', replacement: local('./src/app/legacy-navigation-link.tsx') },
         { find: 'next/navigation', replacement: local('./src/app/legacy-navigation.ts') },
