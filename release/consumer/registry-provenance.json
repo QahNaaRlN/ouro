@@ -1,17 +1,16 @@
 {
   "schemaVersion": 1,
-  "status": "WINDOWS_INDEPENDENT_SOURCE_BUILD_PROTOTYPE",
-  "sourceCommit": "a10cc386c8f71142448383d8bf379cb721f0ae5c",
+  "status": "WINDOWS_TYPED_RU_LOCAL_QUALIFICATION",
+  "sourceCommit": "fcea298c705bf6a8fbedc4264491ed34280d284c",
   "qualifiedLocks": {
-    "package-lock.json": "e7a72a4e060bbbb12d3726e6aceb7c2e7af9baa9",
-    "apps/web/package-lock.json": "0f3f828dd0eba60d8f648f71aa40e25d2c525ca1",
-    "apps/service/package-lock.json": "cdec2ee4d2688cead4da875f8cf738963e0c6a29"
+    "package-lock.json": "31be8a08cb14c69d8a263099dc88b04f1b538483",
+    "apps/web/package-lock.json": "9a3257a722572cdf4275e4c6a27df56bc255cb12"
   },
   "protocolTree": "1ee2e38c3e06fc5ca6f13cca622f2223cac71476",
-  "registryTupleSha256": "1ec0acef254a2c001953123ac14af3d305f5de522b54ea60322a33c036901c20",
-  "templateSha256": "73fcc3cba7cb716651712426b09b22c4e8910be063b191086619414ab329f913",
-  "blueprintSha256": "adc24d8749d326f14ab63c207650e0a6de0805302f09eb8bee551096309d40cd",
-  "registryPackageEntries": 343,
+  "registryTupleSha256": "a4872ad6f960a14b4d9964bda8ec4be3d015690acef72f5de5e378c552d09ab3",
+  "templateSha256": "075b676a297f235107f7929442194ae22c3a250f0366db1af8a06efccd3cfb5d",
+  "blueprintSha256": "a15b1e6691fee2233265206ee6e82adb4df0e9694182ac72633dc0c457665224",
+  "registryPackageEntries": 347,
   "inBundleMetadataEntries": 6,
   "slots": {
     "__OURO_PRODUCT_VERSION__": 2,
@@ -20,13 +19,32 @@
     "__OURO_PROTOCOL_INTEGRITY__": 1
   },
   "qualification": {
-    "independentCi": "PASS",
-    "combinedTypecheck": "PASS",
-    "freshBuildForeignCwd": "PASS",
-    "actualServiceRestartSseMcp": "PASS",
-    "ownedRunnerCjsEsmTs": "PASS",
+    "independentCi": "NOT_RUN_NEW_DEPENDENCY_GRAPH",
+    "combinedTypecheck": "NOT_RUN_NEW_DEPENDENCY_GRAPH",
+    "freshBuildForeignCwd": "NOT_RUN_NEW_DEPENDENCY_GRAPH",
+    "actualServiceRestartSseMcp": "NOT_RUN_NEW_DEPENDENCY_GRAPH",
+    "ownedRunnerCjsEsmTs": "NOT_RUN_NEW_DEPENDENCY_GRAPH",
     "linuxCi": "PENDING",
     "publicLauncher": "NOT_IMPLEMENTED",
     "fullP5": "NOT_QUALIFIED"
+  },
+  "localQualification": {
+    "platform": "win32-x64",
+    "node": "24.19.0",
+    "npm": "11.17.0",
+    "rootCi": "PASS_IGNORE_SCRIPTS",
+    "webCi": "PASS_IGNORE_SCRIPTS",
+    "consumerPackageGraphCi": "PASS_IGNORE_SCRIPTS",
+    "rootStrictTypes": "PASS",
+    "webStrictTypes": "PASS",
+    "i18nPure": "PASS_5",
+    "existingErrorQueryRegressions": "PASS_32",
+    "consumerDependencyContract": "PASS_5",
+    "devRenderer": "PASS_2",
+    "productionRenderer": "PASS_2",
+    "existingBoundaryAsyncUnknown": "PASS_4",
+    "nextProductionBuild": "PASS",
+    "viteProductionBuild": "PASS",
+    "canonicalCommittedConsumerPipeline": "PENDING"
   }
 }

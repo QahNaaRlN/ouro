@@ -238,6 +238,14 @@ jobs:
         run: npx playwright test --config=apps/web/playwright.catalog.config.ts
       - name: Qualify client error capture and renderer boundary
         run: npx playwright test --config=apps/web/playwright.error-policy.config.ts
+      - name: Qualify typed Russian i18n with both development installation trees
+        run: npx playwright test --config=apps/web/playwright.i18n.config.ts
+      - name: Build the same isolated i18n renderer with production resolution
+        run: node apps/web/node_modules/vite/bin/vite.js build --config apps/web/vite.i18n.config.ts
+      - name: Qualify the production i18n context and assignment form retention
+        run: npx playwright test --config=apps/web/playwright.i18n.config.ts
+        env:
+          OURO_I18N_PRODUCTION: '1'
       - name: Qualify durable HTTP receipt recovery with actual browser loss and exact retry
         run: npx playwright test --config=playwright.receipt-proof.config.ts
       - name: Preserve browser diagnostics on failure
