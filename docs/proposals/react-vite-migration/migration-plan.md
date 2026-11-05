@@ -1,17 +1,19 @@
 # План миграции Ouro с сохранением поведения
 
-Статус: **архитектурная последовательность принята владельцем 2026-11-04**. Реализация разрешена следующим поручением и начата в `codex/react-vite-epic`. Решения D01–D16 приняты; повторный выбор перед этапами не требуется.
+Статус: **архитектурные области P0–P7 и решения D01–D16 приняты владельцем 2026-11-04**. Реализация была разрешена и начата в `codex/react-vite-epic`, затем **остановлена владельцем 2026-11-05**. Пересобранный [план завершения C0–C7](../../plans/react-vite-completion.md) задаёт дальнейшие зависимости, критерии выхода и достаточные проверки. После отдельного поручения «Продолжить работу по обновленному плану» реализация возобновлена с C0; исходный снимок остановки сохраняется отдельно. D01–D16 не переоткрываются.
 
 Цель — заменить Next клиентским React/Vite-приложением и отдельным Node/TypeScript сервисом, сохранив предметное поведение, данные, доступ и способы подключения. Основания: [целевая архитектура](target-architecture.md), [стек](react-stack.md), [решения D01–D16](decisions.md).
 
-Работа ведётся атомарными фича-ветками от эпика с проверками и последующим merge в эпик. Полный переход поступает в `dev` после его итоговых gates; выпуск в `main` остаётся отдельным этапом Gitflow. Первый срез фиксируется в [журнале foundation](../../plans/react-vite-foundation.md). Принятие архитектуры не заменяет техническую квалификацию, проверку паритета, native acceptance или выпуск.
+После разрешённого владельцем возобновления работа продолжается атомарными фича-ветками от эпика с проверками и последующим merge в эпик. Полный переход поступает в `dev` после его итоговых gates; выпуск в `main` остаётся отдельным этапом Gitflow. Первый срез фиксируется в [журнале foundation](../../plans/react-vite-foundation.md). Принятие архитектуры не заменяет техническую квалификацию, проверку паритета, native acceptance или выпуск.
+
+P0–P7 ниже сохраняют содержание принятых архитектурных областей и состояние реализации перед остановкой. Это не прежнее предписание последовательного выполнения после ретроспективы. Текущий порядок: C0 восстановление → C1 workspace/CLI/protocol → C2 архитектура и реальный стек → C3 Tailwind; C4 embedded после C2; затем C5 поставка/данные → C6 удаление Next → C7 общий допуск.
 
 | Этап | Состояние |
 |---|---|
 | P0 Фиксация поведения и подготовка | IN_PROGRESS |
 | P1 Контракты и архитектурный контроль | IN_PROGRESS; pure ports/DTO, import guard, project session/Query, scoped catalog reads, snapshot/subscription boundaries и entities/work в эпике; остальные physical UI slices и semantic host operations ещё открыты |
 | P2 Backend и storage ownership | IN_PROGRESS; все47/59 bindings, URI parity, built lifecycle/resources/runner и cooperative profile mutex квалифицированы; окончательный cutover/old-profile rehearsal ещё впереди |
-| P3 Самостоятельный React/Vite клиент | IN_PROGRESS; shell/router и family Tailwind stories квалифицированы; остаток2ordinary CSS/112rules и6computed geometry expressions, общий final style gate и удаление temporary Next aliases ещё открыты |
+| P3 Самостоятельный React/Vite клиент | IN_PROGRESS; shell/router и family Tailwind stories квалифицированы; остаток2ordinary CSS/112 rules и6computed geometry expressions, общий final style gate и удаление temporary Next aliases ещё открыты |
 | P4 Живые данные и восстановление | IN_PROGRESS; один session/SSE owner, scoped Query и frozen intents с durable HTTP receipt recovery в эпике; итоговый общий паритет остаётся открытым |
 | P5 Поставка и consumer compatibility | IN_PROGRESS; Node24, built resources, same-origin Vite/service и independent SOURCE_BUILD квалифицированы; generation launch/installed CLI/ZIP, old-profile rehearsal и dev pnpm ещё не завершены |
 | P6 Основа Meridian | IN_PROGRESS; переносимые порты и явные capability/error/lifecycle contracts подготовлены; coherent embedded composition и реальный host adapter ещё не реализованы |

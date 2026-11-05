@@ -8,6 +8,10 @@ const privateDirectories=new Set(['.git','.operations','.ouro','.ouro-runtime','
 const privateNames=new Set(['.npmrc','.pypirc','.netrc','.git-credentials','.credentials.json','.claude.json','credentials','credentials.json','credential.json','auth.json','secrets.json']);
 const prefixes=['apps/web/src/','apps/service/src/','apps/service/resources/','apps/service/scripts/','app/human-view/','components/','lib/','packages/client/src/','packages/frontend/src/','packages/core/src/','packages/collaboration/src/','packages/mcp/src/','public/','db/migrations/'];
 const exactFiles=new Set(['app/page.tsx','app/projects/layout.tsx','app/projects/help/page.tsx','postcss.config.mjs','apps/web/index.html','apps/web/vite.config.ts','apps/web/tsconfig.json','apps/web/package.json','apps/service/tsconfig.json','apps/service/package.json','packages/client/package.json','packages/frontend/package.json','packages/core/package.json','packages/collaboration/package.json','packages/meridian/src/context.ts','packages/meridian/src/theme.ts','packages/mcp/bin/ouro-mcp.mjs','scripts/runtime-node.mjs','scripts/runtime-node.d.mts','scripts/runtime-environment.mjs','scripts/runtime-environment.d.mts']);
+const envelopeFiles=new Set(['scripts/runtime-node.mjs','scripts/consumer-launch.mjs','scripts/consumer-worker.mjs','scripts/consumer-mcp.mjs','scripts/consumer-delivery/consumer-owner.mjs','scripts/consumer-delivery/generation-state.mjs','scripts/consumer-delivery/consumer-port.mjs','scripts/consumer-delivery/owned-http-listener.mjs']);
+const agentToolFiles=new Set(['scripts/agent-config.ts','scripts/check-agent.mjs']);
+for(const file of agentToolFiles)exactFiles.add(file);
+for(const file of ['scripts/consumer-agent-cli.mjs','scripts/consumer-delivery/agent-tool-contract.mjs'])envelopeFiles.add(file);
 
 /** Фиксированный producer diagnostic не раскрывает Git stderr, file bytes или исходные arguments. */
 export class ConsumerSourceError extends Error{
@@ -72,9 +76,9 @@ export function readCommittedConsumerSource(options){
   }
   entries.push({path:file,mode:match[1],blob:match[2]});
  }
- const selected=entries.filter(entry=>consumerFile(entry.path)||entry.path.startsWith('packages/protocol/')||entry.path.startsWith('release/consumer/')||entry.path==='apps/web/tests/navigation.spec.ts'||entry.path==='package.json');
+ const selected=entries.filter(entry=>consumerFile(entry.path)||envelopeFiles.has(entry.path)||agentToolFiles.has(entry.path)||entry.path.startsWith('packages/protocol/')||entry.path.startsWith('release/consumer/')||entry.path==='apps/web/tests/navigation.spec.ts'||entry.path==='package.json');
  const files=readBlobs(repository,selected);
  const productVersion=packageVersion(files,'package.json','ouro'),protocolVersion=packageVersion(files,'packages/protocol/package.json','@ouro/protocol');
  if(!files.some(file=>file.path==='packages/protocol/package-lock.json'))throw new ConsumerSourceError('CONSUMER_SOURCE_INVALID');
- return {commit,productVersion,protocolVersion,consumerFiles:files.filter(entry=>consumerFile(entry.path)),protocolFiles:files.filter(entry=>entry.path.startsWith('packages/protocol/')),deliveryFiles:files.filter(entry=>entry.path.startsWith('release/consumer/')),qualificationFiles:files.filter(entry=>entry.path==='apps/web/tests/navigation.spec.ts')};
+ return {commit,productVersion,protocolVersion,consumerFiles:files.filter(entry=>consumerFile(entry.path)),protocolFiles:files.filter(entry=>entry.path.startsWith('packages/protocol/')),deliveryFiles:files.filter(entry=>entry.path.startsWith('release/consumer/')),qualificationFiles:files.filter(entry=>entry.path==='apps/web/tests/navigation.spec.ts'),envelopeFiles:files.filter(entry=>envelopeFiles.has(entry.path)),agentToolFiles:files.filter(entry=>agentToolFiles.has(entry.path))};
 }

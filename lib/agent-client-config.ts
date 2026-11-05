@@ -1,4 +1,4 @@
-import {PROJECT_ID} from '../packages/core/src/engine';
+import {PROJECT_ID} from '../packages/core/src/project-identity';
 import {isWellFormedUnicode} from '../packages/core/src/unicode';
 
 export type AgentClientId='cursor'|'claude-code'|'claude-desktop'|'chatgpt';
