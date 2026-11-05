@@ -14,6 +14,7 @@ async function fixture(){
  git(['init','-q']);git(['config','user.name','Qualification Fixture']);git(['config','user.email','fixture@example.invalid']);git(['config','core.autocrlf','false']);
  const put=async(file:string,body:string)=>{await mkdir(path.dirname(path.join(repository,file)),{recursive:true});await writeFile(path.join(repository,file),body);};
  await put('package.json',JSON.stringify({name:'ouro',version:'0.1.0-beta.4'}));await put('packages/protocol/package.json',JSON.stringify({name:'@ouro/protocol',version:'0.3.0'}));await put('packages/protocol/package-lock.json','{}');await put('packages/protocol/src/index.ts','export const protocol = 1;\n');await put('apps/web/src/entry.tsx','export const web = 1;\n');await put('apps/service/src/main.ts','export const service = 1;\n');await put('components/Project.tsx','export const Project = () => null;\n');await put('app/page.tsx','export default function Page(){return null;}\n');await put('app/human-view/shell-presentation.ts','export const shell = {};\n');await put('packages/mcp/src/server.ts','export const server = {};\n');await put('packages/meridian/src/theme.ts','export const theme = {};\n');await put('app/api/fixture/route.ts','export function GET(){return Response.json({legacy:true});}\n');await put('docs/fixture.md','NOT_CONSUMER_INPUT');await put('scripts/runtime-node.mjs','export const engine = 24;\n');
+ await put('release/protocol-producer/package-lock.json','READER_ONLY_LOCK');await put('release/protocol-producer/metadata.json','READER_ONLY_METADATA');await put('release/protocol-producer/not-an-input.txt','NOT_PRODUCER_INPUT');
  const commit=()=>{git(['add','--all']);git(['commit','-qm','test: seed immutable source fixture']);return git(['rev-parse','HEAD']).trim();};
  const first=commit();return {directory,repository,git,put,commit,first,close:async()=>{if(path.dirname(path.resolve(directory))!==path.resolve(tmpdir())||!path.basename(directory).startsWith('ouro-consumer-source-'))throw Error('Refused foreign fixture cleanup');await rm(directory,{recursive:true,force:true});}};
 }
@@ -24,6 +25,9 @@ test('CSD01 reads immutable source bytes, scopes inventories and ignores dirty/u
   const result=readCommittedConsumerSource({repository:f.repository,ref:f.first});assert.equal(result.commit,f.first);assert.equal(result.productVersion,'0.1.0-beta.4');assert.equal(result.protocolVersion,'0.3.0');
   const web=result.consumerFiles.find(file=>file.path==='apps/web/src/entry.tsx');assert(web);assert.equal(web.bytes.toString(),'export const web = 1;\n');assert.equal(web.sha256,createHash('sha256').update(web.bytes).digest('hex'));assert.match(web.blob,/^[a-f0-9]{40}$/);assert.equal(web.mode,'100644');
   assert(result.consumerFiles.some(file=>file.path==='components/Project.tsx'));assert(!result.consumerFiles.some(file=>file.path.includes('app/api/')||file.path.startsWith('docs/')||file.path.includes('Untracked')||file.path.startsWith('packages/protocol/')));assert(result.protocolFiles.some(file=>file.path==='packages/protocol/src/index.ts'));assert(result.protocolFiles.every(file=>file.path.startsWith('packages/protocol/')));
+  assert(!result.protocolFiles.some(file=>file.path==='packages/protocol/package-lock.json'),'Development lock is audited but is not a producer input');
+  assert.deepEqual(result.protocolProducerFiles.map(file=>file.path),['release/protocol-producer/metadata.json','release/protocol-producer/package-lock.json']);
+  for(const file of result.protocolProducerFiles){assert.equal(file.sha256,createHash('sha256').update(file.bytes).digest('hex'));assert.equal(file.blob,f.git(['rev-parse',f.first+':'+file.path]).trim());assert.equal(file.mode,'100644');}
   for(const file of ['app/human-view/shell-presentation.ts','packages/mcp/src/server.ts','packages/meridian/src/theme.ts'])assert(result.consumerFiles.some(entry=>entry.path===file),`Existing actual build dependency must be present: ${file}`);
  }finally{await f.close();}
 });
@@ -66,4 +70,15 @@ for(const [label,files]of [['directory spelling',['A/first.ts','a/second.ts']],[
 
 test('CSD09 preserves ordinary Unicode source paths instead of rejecting their alphabet',async()=>{
  const f=await fixture();try{await f.put('app/human-view/Данные.ts','export const данные = true;\n');const commit=f.commit();assert(readCommittedConsumerSource({repository:f.repository,ref:commit}).consumerFiles.some(file=>file.path==='app/human-view/Данные.ts'));}finally{await f.close();}
+});
+
+test('CSD10 requires both committed producer inputs despite a development lock and dirty replacement',async()=>{
+ for(const omitted of ['release/protocol-producer/package-lock.json','release/protocol-producer/metadata.json']){
+  const f=await fixture();try{
+   f.git(['rm','--cached','--',omitted]);f.git(['commit','-qm','test: omit one committed protocol producer input']);const commit=f.git(['rev-parse','HEAD']).trim();
+   assert.equal(f.git(['show',commit+':packages/protocol/package-lock.json']).trim(),'{}');
+   await f.put(omitted,'DIRTY_REPLACEMENT_NOT_AN_INPUT');
+   assert.throws(()=>readCommittedConsumerSource({repository:f.repository,ref:commit}),{code:'CONSUMER_SOURCE_INVALID'});
+  }finally{await f.close();}
+ }
 });

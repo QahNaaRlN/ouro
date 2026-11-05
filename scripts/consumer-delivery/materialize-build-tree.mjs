@@ -1,6 +1,7 @@
 import {validateNodeVersion} from '../runtime-node.mjs';
 import {readCommittedConsumerSource} from './committed-source.mjs';
 import {materializeConsumerDependencies} from './dependency-contract.mjs';
+import {materializeProtocolProducerDependencies} from './protocol-producer-contract.mjs';
 import {protocolMetadata} from '../pack-release.mjs';
 import {mkdir,mkdtemp,writeFile,readFile,chmod,lstat} from 'node:fs/promises';
 import {spawnSync} from 'node:child_process';
@@ -41,12 +42,15 @@ export async function materializeConsumerBuildTree(options){
   if(relativeScratch===''||!relativeScratch.startsWith('..'+path.sep)&&relativeScratch!=='..'&&!path.isAbsolute(relativeScratch))throw new Error();
   const delivery=file=>{const entry=source.deliveryFiles.find(value=>value.path==='release/consumer/'+file);if(!entry)throw new Error();return entry;};
   const protocolPackage=source.protocolFiles.find(file=>file.path==='packages/protocol/package.json');if(!protocolPackage)throw new Error();
+  const protocolProducer=file=>{const entry=source.protocolProducerFiles.find(value=>value.path==='release/protocol-producer/'+file);if(!entry)throw new Error();return entry;};
+  const protocolDependencies=materializeProtocolProducerDependencies({manifest:protocolPackage.bytes.toString('utf8'),lockfile:protocolProducer('package-lock.json').bytes.toString('utf8'),metadata:protocolProducer('metadata.json').bytes.toString('utf8')});
   const contract={blueprint:delivery('dependencies.json').bytes.toString('utf8'),template:delivery('package-lock.template.json').bytes.toString('utf8'),provenance:delivery('registry-provenance.json').bytes.toString('utf8'),productVersion:source.productVersion};
   const filename=`ouro-protocol-${source.protocolVersion}.tgz`;
   materializeConsumerDependencies({...contract,protocol:{manifest:protocolPackage.bytes.toString('utf8'),filename,bytes:Buffer.from('preflight')}});
   await mkdir(path.dirname(output),{recursive:true});try{await mkdir(output);}catch(error){if(error?.code==='EEXIST')throw new ConsumerMaterializationError('CONSUMER_OUTPUT_EXISTS');throw error;}
   await mkdir(scratch,{recursive:true});const stage=await mkdtemp(path.join(scratch,'.ouro-protocol-stage-')),protocolRoot=path.join(stage,'source'),packed=path.join(stage,'packed');await mkdir(protocolRoot);await mkdir(packed);
   for(const file of source.protocolFiles)await put(protocolRoot,file.path.slice('packages/protocol/'.length),file.bytes,file.mode);
+  await put(protocolRoot,'package-lock.json',protocolDependencies.lockfile);
   const environment=producerEnvironment(options.npmCli);
   runNode(protocolRoot,[options.npmCli,'ci','--include=dev','--ignore-scripts','--no-audit','--no-fund'],environment);
   const metadata=JSON.parse(runNode(protocolRoot,[path.join(protocolRoot,'scripts/pack.mjs'),'--json','--pack-destination',packed],environment));
@@ -60,7 +64,7 @@ export async function materializeConsumerBuildTree(options){
   await put(output,'tsconfig.json',delivery('tsconfig.source.json').bytes);
   const manifest={...dependency.manifest,scripts:{build:'node scripts/build-consumer.mjs'}};
   await put(output,'package.json',JSON.stringify(manifest,null,2)+'\n');await put(output,'package-lock.json',JSON.stringify(dependency.lockfile,null,2)+'\n');await put(output,'vendor/'+filename,bytes);
-  const sourceManifest={schemaVersion:1,stage:'SOURCE_BUILD_MATERIALIZED',endUserRelease:'NOT_QUALIFIED',sourceCommit:source.commit,productVersion:source.productVersion,protocolVersion:source.protocolVersion,protocol:{filename,integrity,sha256:createHash('sha256').update(bytes).digest('hex'),sourceFiles:source.protocolFiles.map(({path,blob,mode,sha256})=>({path,blob,mode,sha256}))},inputs:source.consumerFiles.map(({path,blob,mode,sha256})=>({path,blob,mode,sha256})),deliveryInputs:source.deliveryFiles.map(({path,blob,mode,sha256})=>({path,blob,mode,sha256})),producerScratch:options.producerScratchRoot===undefined?'UNIQUE_SIBLING_RETAINED':'EXPLICIT_ROOT_RETAINED',launcher:'NOT_IMPLEMENTED'};
+  const sourceManifest={schemaVersion:1,stage:'SOURCE_BUILD_MATERIALIZED',endUserRelease:'NOT_QUALIFIED',sourceCommit:source.commit,productVersion:source.productVersion,protocolVersion:source.protocolVersion,protocol:{filename,integrity,sha256:createHash('sha256').update(bytes).digest('hex'),sourceFiles:source.protocolFiles.map(({path,blob,mode,sha256})=>({path,blob,mode,sha256})),producerInputs:source.protocolProducerFiles.map(({path,blob,mode,sha256})=>({path,blob,mode,sha256}))},inputs:source.consumerFiles.map(({path,blob,mode,sha256})=>({path,blob,mode,sha256})),deliveryInputs:source.deliveryFiles.map(({path,blob,mode,sha256})=>({path,blob,mode,sha256})),producerScratch:options.producerScratchRoot===undefined?'UNIQUE_SIBLING_RETAINED':'EXPLICIT_ROOT_RETAINED',launcher:'NOT_IMPLEMENTED'};
   await put(output,'delivery-manifest.json',JSON.stringify(sourceManifest,null,2)+'\n');
   return {directory:output,commit:source.commit,productVersion:source.productVersion,protocolVersion:source.protocolVersion,manifest:sourceManifest};
  }catch(error){if(error instanceof ConsumerMaterializationError)throw error;throw new ConsumerMaterializationError();}

@@ -9,7 +9,9 @@
 | Один новый PPC01 test | PREPARED, builtin-only .mjs |
 | Pure/Git-blob RED | ACTUAL_RED:1FAIL, CONSUMER_SOURCE_INVALID,2.68s |
 | Pure helper / два release inputs | IMPLEMENTED_LOCAL,9/9pure validation PASS |
-| Shared collector/materializer/fixture helper | NOT_STARTED, ожидается CCLI handoff |
+| Shared collector/materializer/fixture helper | IMPLEMENTED_LOCAL, bounded peer pending |
+| Reader + pure integration | ACTUAL_GREEN,22/22PASS25.87s |
+| Invalid metadata без FS/npm effects | CMT03,1/1PASS4.79s |
 | Install/build/SQL/browser | NOT_RUN / не входят в разрешённый текущий этап |
 
 ## Порядок
@@ -70,3 +72,23 @@ Root отдельно передал только package.json:test script эт�
 Root отдельно разрешил только tiny declaration check. Фактически выполнен TypeScript5.9.3 на собственном Node24.19.0: **0diagnostics,0unexpected files**, types:[], strict/noEmit, standard ES2022 libraries. Non-library graph содержит ровно новый protocol-producer-contract.d.mts и виртуальный caller; Node/UI/project ambient files не загружались. Четыре @ts-expect-error проверили обязательный metadata input, textual lockfile, отсутствие неподдерживаемого output.manifest и readonly diagnostic code. Caller существовал только в памяти. Evidence: `.operations/protocol-producer-declaration-check.json`.
 
 Этот gate завершён после actual Windows2RED→9pureGREEN и не является project/integration typecheck. Root разрешил pure commit после него; dependency tuples/release lock1281bytes и shared source не менялись. Повторных pure/full checks не запускалось. PPC01 integration всё ещё RED до handoff, реальные scratch/npm/pack и общая CI qualification остаются pending.
+
+## Shared handoff и план интеграции
+
+Pure unit commit `068a96e8f18e668a07a3a5a1f7ffb5a1669ca247`. Root передал frozen CCLI A `ff16750d2d7dc3839eff86a37c99d019ec82555b`; clean Conventional merge — `cbcc5fef40979ec3dcbcb6ea1ca308f6a70e333c`. Envelope уже pinning source.commit; его не переписываем. API agentToolFiles exact2 и CCLI supplement сохранены. Ни npm, ни SDK/build/pack с этой ветки не запускались.
+
+До shared edits записаны конечные изменения: обязательные protocolProducerFiles в collector/type; exclusion development lock при полном audit; pure preflight до output/scratch FS; проверенный scratch lock и manifest protocol.producerInputs. Shared fixture и existing reader/package/materialization tests получают только эти inputs/assertions. Test-only frozen29989 oracle использует конечный безопасный Git batch вместо нового reader, API и actual commands остаются прежними. Root/CCLI owner согласовали эту адаптацию; production compatibility branch не допускается.
+
+Следующая проверка — PPC01 actual reader GREEN и finite missing-input/dirty-fallback negatives, PPV regression, reader-only tests; разрешены только builtins/Git. Real npm ci, protocol pack, adapted legacy SDK helper, CMT01 и project types остаются NOT_RUN до отдельного окна. Исторический old-reader RED и CCLI A12PASS не переименовываются в qualification нового integration head.
+
+## Actual лёгкая integration qualification
+
+Shared implementation выполнена после scope/handoff записи. Новое required поле protocolProducerFiles exact2; protocolFiles больше не включает development lock, полный tree audit не ослаблен. Materializer вызывает pure admission до mkdir и передаёт checked lock только own scratch; delivery-manifest.protocol.producerInputs содержит исходные blob/mode/SHA256. Tests фиксируют finite namespace, immutable provenance и отсутствие fallback к old lock/dirty replacement. Shared committed fixture и fake typed source literal обновлены; standalone pack test получает validated independent lock. Frozen oracle копирует только29989 через один ls-tree/batched cat-file; API/SDK commands сохранены.
+
+Первый обычный запуск pure/reader suite получил9purePASS и13setupFAIL: Git не смог создать .git/config в managed temp из-за разрешений. Этот вывод сохранён в `.operations/protocol-integration-pure-reader.log`, не объявлен product RED. После разрешённого запуска с Git metadata доступом **22PASS0FAIL25.87s**: CSD12cases, PPC01 и PPV9. PPC01 **2.17s GREEN**, fixture canonicalProtocolFiles100, development lock absent, те же1281lockbytes/tuples/hashes, что originalRED. Missing-input case проверяет оба обязательных paths при старом lock и dirty replacement. Evidence: `.operations/protocol-integration-pure-reader-authorized.log`.
+
+Отдельный builtin/Git `--test-name-pattern CMT03` — **1PASS0FAIL4.79s**. Commit содержит invalid metadata; output и отдельный scratch не созданы, own npm-witness не запущен. Npm/install/real pack/SDK/compiler/browser не выполнялись; skipped-name cases не считаются qualification CMT01/02. Evidence: `.operations/protocol-preflight-no-effects.log`. Прежний CCLI A12PASS относится к frozen A/old helper; новый oracle требует своего следующего run.
+
+Source передан root на bounded peer до commit. Heavy processes отсутствуют. Следующее окно: actual CMT01/02 и standalone pack, adapted SDK fixture, affected source/type/guard checks; full consumer/CI ownership остаётся у root. Dependency tuples и portable manifest не менялись.
+
+Root/F bounded source peer: **PASS, material blockers отсутствуют**. Root выдал exclusive local heavy lease и разрешил source commit A до квалификации, затем evidence-only B. Граница no-effects доказана только для `materializeConsumerBuildTree`: внешний envelope по прежнему создаёт свой root и в этот claim не входит. План окна — CMT01/02/03, standalone protocol package, root strict types и affected guards, ровно три source/oracle CLI scenarios; один install/build process за раз. Source A не получает заранее artifact/SDK PASS, package tuples/deadlines не меняются.

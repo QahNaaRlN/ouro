@@ -5,10 +5,12 @@ import {spawnSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {gunzipSync} from 'node:zlib';
+import {materializeProtocolProducerDependencies} from '../scripts/consumer-delivery/protocol-producer-contract.mjs';
 
 test('protocol builds independently and its tarball supports JS, types, schemas and CLI without Ouro', {timeout:180000},async()=>{
  const origin=path.resolve('packages/protocol');
  const pkg=JSON.parse(await readFile(path.join(origin,'package.json'),'utf8'));
+ const producer=materializeProtocolProducerDependencies({manifest:await readFile(path.join(origin,'package.json'),'utf8'),lockfile:await readFile('release/protocol-producer/package-lock.json','utf8'),metadata:await readFile('release/protocol-producer/metadata.json','utf8')});
  assert.equal(pkg.name,'@ouro/protocol');
  assert(process.env.npm_execpath,'Run through npm run protocol:test-package');
  const directory=await mkdtemp(path.join(tmpdir(),'ouro protocol independent '));
@@ -19,7 +21,8 @@ test('protocol builds independently and its tarball supports JS, types, schemas 
  const npm=(cwd,...args)=>run(cwd,[process.env.npm_execpath,...args]);
  try{
   const source=path.join(directory,'standalone source'),consumer=path.join(directory,'consumer');
-  await cp(origin,source,{recursive:true,filter:file=>!path.relative(origin,file).split(path.sep).some(part=>['node_modules','dist'].includes(part))});
+  await cp(origin,source,{recursive:true,filter:file=>path.relative(origin,file)!=='package-lock.json'&&!path.relative(origin,file).split(path.sep).some(part=>['node_modules','dist'].includes(part))});
+  await writeFile(path.join(source,'package-lock.json'),producer.lockfile,{flag:'wx'});
   npm(source,'ci','--no-audit','--no-fund');
   const output=npm(source,'run','pack:portable','--','--json','--pack-destination',directory);
   const packed=JSON.parse(output.slice(output.indexOf('[\n')))[0];
