@@ -1,6 +1,6 @@
 # D13: журнал developer workspace
 
-Статус: **IMPLEMENTATION_PREPARATION / QUALIFICATION_PENDING**. [Спецификация](../specs/developer-pnpm-workspace.md). Atomic branch `codex/pnpm-workspace`, base epic `6595e2e30e4a3f800e647404c8ac083a1d6892c0`. Порядок задаёт C1 обновлённого плана; Form относится к следующему C2 и не блокирует этот срез.
+Статус: **LOCAL_QUALIFIED / CI_REVIEW_PENDING**. [Спецификация](../specs/developer-pnpm-workspace.md). Atomic branch `codex/pnpm-workspace`, base epic `6595e2e30e4a3f800e647404c8ac083a1d6892c0`. Порядок задаёт C1 обновлённого плана; Form относится к следующему C2 и не блокирует этот срез.
 
 ## Подготовка 2026-11-05
 
@@ -71,3 +71,27 @@ Source A2 `f5524ab610a5eceae6ea0780f5720f86e12e688a` чистый до qualifica
 Read-only child import inventory завершён один раз: web21files/10packages, service43/8 и protocol20/2. Service/protocol полностью declared. Root принял exact root-runner-owned test scopes из спецификации; `playwright.config.ts` использует web/tests, а не общий root testDir. Найдено ровно два настоящих application ownership gaps: Fontsource imports в standalone web entry. Root разрешил direct web declarations exact5.3.0, без нового tuple. Offline lock-only update exit0/3.4s добавил ровно6lines importer bindings, packages/snapshots неизменны; audit415identities/0new/0changed integrity, прежняя согласованная таблица10root substitutions неизменна. Новый lock SHA256 `ef5b86a7654f98b034f0d53aecf588913e1751d52461610f860ea16f108392b2`.
 
 Это новый importer input, поэтому A3 freeze предшествует одной заключительной fresh Windows frozen installation с пустыми четырьмя module roots и сохранёнными store/cache. На A3 повторяются web build/font resolution и focused launch/auth/SDK/context proofs; A2 root/protocol/service types, service build и прежние guards переиспользуются только при неизменных соответствующих source/tuple inputs. Полный mandatory CI остаётся обязательным exact publication head. Runtime tests и финальный A3 install пока **NOT_RUN**.
+
+## A3. Заключительный local qualification
+
+Source A3 **`daaddc0df2951c849b16344f8679a69e6ffcfcb6`**. До fresh install native PowerShell проверил четыре resolved module roots внутри exact worktree и удалил только эти installation directories, сначала unlink reparse leaves без обхода targets. Source/profile/env/store/cache не менялись. Actual pinned Node24.19/npm11.17/pnpm10.34.9 frozen install завершился естественно **exit0/13.7s**, все четыре module roots отсутствовали до запуска; lock SHA `ef5b86a7654f98b034f0d53aecf588913e1751d52461610f860ea16f108392b2` byte-unchanged. Web font package links оба5.3.0 и realpath равен соответствующему root package. Session47933 закрыта.
+
+Последовательные actual A3 results:
+
+| Проверка | Результат |
+|---|---|
+| Canonical web:build с protocol prerequisite | PASS; production bundle/font assets |
+| Source launch/relative env/config + auth/rate limits + real HTTP/stdio SDK | 29tests:27PASS0FAIL,2existing Windows platform skips;69.49s |
+| CPB01 actual source port compatibility | 1PASS0FAIL; не весь CPB/CGL suite |
+| Pnpm entry → explicit npm task → standalone protocol | 1PASS0FAIL62.35s: own npm ci/tarball/ESM/CJS/types/CLI |
+| Catalog renderer | 4PASS20.9s |
+| Error-policy renderer | 4PASS12.1s |
+| I18n actual dev composition | 2PASS9.4s |
+| Actual production i18n build/module graph + renderer | 2PASS7.2s; independent Providers/context identity и raw input retention |
+| Stale frozen manifest в собственном metadata-only workspace | Actual manager exit1/ERR_PNPM_OUTDATED_LOCKFILE; no node_modules; expected refusal PASS |
+
+Sessions58253 и80446 завершились exit0; owned HTTP/stdio/browser qualifiers закрылись, активной своей exec session нет. Heavy lease передан quality owner до документационных edits. Scope process proof не означает глобальную проверку всех неизвестных процессов Windows.
+
+A2 strict programs/protocol/service build и architecture/style/migration/conventions сохраняют qualification для unchanged source и415exact tuple/SRI inputs. A3 к A2 меняет только две web font declarations/importer links и документацию; оба fonts до и после — тот же physical package5.3.0. Web production build и все affected runtime/context cases выполнены на A3. Полные root/service/PostgreSQL/browser/presentation/consumer Linux/Windows checks не дублировались локально; все семь mandatory CI jobs на publication head обязательны перед merge. POSIX cancellation/signal tests не названы Windows PASS.
+
+Publication B после source A3 изменяет только evidence/текущий progress; A3→B diff обязан быть documentation-only. Actual ZIP/source install fallback/hosted/data migration, C1 quality completion, C2 architecture/Form и дальнейшие C3–C7 не присваиваются этим результатом. Исходный main/dev и их dirty state не затрагивались. [Текущий completion status](react-vite-completion-progress.md).

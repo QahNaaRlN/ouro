@@ -1,6 +1,6 @@
 # D13: единый pnpm workspace разработки
 
-Статус: **SOURCE_IMPLEMENTED / QUALIFICATION_PENDING**. Основание — принятое [D13](../proposals/react-vite-migration/decisions.md) и [операционный C1](../plans/react-vite-completion.md). Ветка `codex/pnpm-workspace` начата от epic `6595e2e30e4a3f800e647404c8ac083a1d6892c0`; квалифицированные delivery prerequisites включены обычным merge `fdc3f4dd15bb16b00f135265c623236d34633886` от epic `b92b5f6c04dc3933881278e066e42259ed4bc690`. Независимый generation launcher и три agent CLI приняты в epic; реальный consumer ZIP остаётся C5, а не результатом этой подготовки.
+Статус: **LOCAL_QUALIFIED / CI_REVIEW_PENDING**. Основание — принятое [D13](../proposals/react-vite-migration/decisions.md) и [операционный C1](../plans/react-vite-completion.md). Ветка `codex/pnpm-workspace` начата от epic `6595e2e30e4a3f800e647404c8ac083a1d6892c0`; квалифицированные delivery prerequisites включены обычным merge `fdc3f4dd15bb16b00f135265c623236d34633886` от epic `b92b5f6c04dc3933881278e066e42259ed4bc690`. Независимый generation launcher и три agent CLI приняты в epic; реальный consumer ZIP остаётся C5, а не результатом этой подготовки.
 
 ## Проблема и результат
 
