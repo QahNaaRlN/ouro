@@ -9,10 +9,14 @@
 | Один новый PPC01 test | PREPARED, builtin-only .mjs |
 | Pure/Git-blob RED | ACTUAL_RED:1FAIL, CONSUMER_SOURCE_INVALID,2.68s |
 | Pure helper / два release inputs | IMPLEMENTED_LOCAL,9/9pure validation PASS |
-| Shared collector/materializer/fixture helper | IMPLEMENTED_LOCAL, bounded peer pending |
+| Shared collector/materializer/fixture helper | COMMITTED, bounded root/F peer PASS; A3 test-only closure repair |
 | Reader + pure integration | ACTUAL_GREEN,22/22PASS25.87s |
-| Invalid metadata без FS/npm effects | CMT03,1/1PASS4.79s |
-| Install/build/SQL/browser | NOT_RUN / не входят в разрешённый текущий этап |
+| Actual materialization CMT01/02/03 | 3/3PASS на14da; CMT03 repeat1/1PASS на471e |
+| Standalone protocol package | 1/1PASS на14da, JS/types/schema/CLI/tar modes |
+| Root strict / affected guards | PASS на471e, scoped evidence ниже |
+| Adapted oracle | CCA01PASS наA3; CCA02/03PASS на471e, прежний fixture failure сохранён |
+| Published-head combined CI | PENDING; root monitoring |
+| SQL/browser/full app/full CGL | NOT_RUN в этом срезе |
 
 ## Порядок
 
@@ -102,3 +106,23 @@ Source A — `14da267` (finite11files). Exact root npm ci завершён бе�
 На471e existing selected CCA01–03 с обычным beforehook дали **2PASS1FAIL320.97s**. Current committed envelope setup завершён, CCA02 original checker и CCA03 original MCP bridge прошли настоящий SDK transport. CCA01 original config завершился MODULE_NOT_FOUND ../../meridian/src/context из frozen29989 core/engine. Это **test fixture closure defect**, не product/domain RED и не успешная qualification всех трёх. Evidence `.operations/protocol-legacy-cli-three-scenarios.log`; own fixture сохранён как C:/Users/krmif/AppData/Local/Temp/ouro-agent-cli-deAKWd. Afterhook закрыл HTTP/SDK; исходные test/npm/esbuild PIDs42604/55112/58472 затем подтверждены отсутствующими.
 
 Root принял один bounded repair cycle. До source A3 сверены frozen imports: engine/meridian-import/types выходят из core только к Meridian context; context импортирует @ouro/protocol, theme импортирует context. В copier добавляются ровно original context.ts/theme.ts, исходный collector выбирал те же exact paths. Команды/API/дедлайны и production files не меняются. Следующий проверяемый сценарий только CCA01 через existing setup; CCA02/03 PASS остаются приписанными471e. На время static fix/commit heavy lease передан pnpm owner; новых own install/build/type/test процессов нет. Новый CCA01 ожидает его прямого handback.
+
+## Итоговая локальная qualification и evidence-only B
+
+A3 `a82f29a67354bea7db2e24ad8d6b9e90af220d64` — чистый immutable test-only repair: две original exact Meridian paths в copier плюс scope/failure docs. После явного handback heavy lease выполнен **только CCA01**, прежний setup/SDK assertions/deadlines сохранены. Actual result **1PASS0FAIL161.73s**, candidate committed input точно A3. CCA01 проверяет четыре client profiles, Claude entry JSON/format/argv/key-path/privacy и отсутствие app build до/после. Current own envelope setup также завершён наA3. Evidence `.operations/protocol-legacy-config-corrected.log`, retained own fixture C:/Users/krmif/AppData/Local/Temp/ouro-agent-cli-hX8Qb3. Никаких новых production code/dependency/tuple changes после471e; A3 добавляет только тестовый frozen closure.
+
+| Проверка | Фактические inputs / результат |
+|---|---|
+| Meaningful initial PPC01 | Old reader навалидном own committed fixture: CONSUMER_SOURCE_INVALID,1FAIL; сохранён |
+| PPC01 + CSD12 + PPV9 | Local integration bytes затем зафиксированы вA14da:22/22PASS25.87s |
+| CMT01/02/03, actual npm/pack/provenance/scratch | A14da:3/3PASS33.99s |
+| Standalone protocol package | A14da:1/1PASS31.25s; ESM/CJS/types/schemas/CLI/modes/runtime deps |
+| Root strict | 471e послеtest-env A2:PASS; earlier TS2769 сохранён как test typing failure |
+| Conventions/architecture/migration/style | 471e:PASS;931/0/11,47routes/59methods,2CSS/3inline/0violations |
+| CMT03 repeat послеtest-env fix | 471e:1/1PASS6.35s; no-effects только build-tree boundary |
+| CCA01–03 initial adapted oracle | 471e:2PASS1fixtureFAIL320.97s; CCA02/03 actual SDK PASS, MODULE_NOT_FOUND не product RED |
+| CCA01 corrected oracle | A3:1/1PASS161.73s, only selected affected scenario |
+
+Результаты не выдаются за один новый exact-head full suite: CMT/pack остались наA, strict/guards/CCA02/03 на471e, correctedCCA01 наA3; содержание production code между ними сохранено. Полный local npm test/full SDK12/full CGL/app builds/SQL/browser здесь не повторялись. Root/web exact dependency installs служили необходимой подготовкой, lock/manifests tuples не менялись. Исходный portable Node>=20.9.0 contract и producer Node24 разделены как прежде.
+
+Run48342 завершён exit0, afterhook закрыл собственные HTTP/SDK servers; нового own install/build/type/test процесса не осталось. Heavy lease возвращён root до записи B. Этот итоговый коммит B меняет только два documentation files, source A3 остаётся reference для corrected oracle. Разрешены push и PR в codex/react-vite-epic отbaseb92; combined exact published-head CI остаётся PENDING и отслеживается root. Owner acceptance/native/production release не заявляются.
