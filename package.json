@@ -36,6 +36,7 @@
     "launch": "node scripts/launch.mjs",
     "release:pack": "node scripts/pack-release.mjs",
     "consumer:qualify": "node scripts/qualify-consumer-source.mjs",
+    "consumer:qualify-envelope": "node scripts/qualify-consumer-envelope.mjs",
     "check:conventions": "node scripts/check-conventions.mjs",
     "check:architecture": "node scripts/check-architecture.mjs",
     "migration:check": "node scripts/check-migration-baseline.mjs",

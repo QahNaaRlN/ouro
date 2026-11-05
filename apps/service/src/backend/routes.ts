@@ -57,7 +57,7 @@ function createBackendFacets(options: BackendOptions) {
     const { store, environment } = options;
     const auth = createAuth();
     const workspace = workspaceModule.createWorkspaceAccess({ getStore: async () => store, auth, environment });
-    const connection = (request: Request, projectId?: string) => connectionModule.connectionConfig(request, projectId, { env: environment, mcpPath: options.mcpPath ?? path.join(options.resourceRoot, 'packages/mcp/bin/ouro-mcp.mjs') });
+    const connection = (request: Request, projectId?: string) => connectionModule.connectionConfig(request, projectId, { env: environment, mcpPath: options.mcpPath ?? path.join(options.resourceRoot, 'packages/mcp/bin/ouro-mcp.mjs'),mcpArgs:options.mcpArgs });
     function createAuth() { return authModule.createAuthService({ env: environment, sessionSecret: randomBytes(32).toString('hex'), resolveUserSession: token => store.resolveSession(token), resolveParticipantIdentity: id => store.resolveParticipantIdentity(id), resolveAgentToken: token => store.authenticateAgentToken(token) }); }
     return {
         auth: { ...authModule, ...auth },

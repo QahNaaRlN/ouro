@@ -35,9 +35,10 @@ export function requestedProjectId(request:Request):string{
   if(!/^[A-Za-z0-9_-]{1,200}$/.test(projectId))throw new AccessError('VALIDATION_ERROR','Некорректный projectId.',422);
   return projectId;
 }
-export function connectionConfig(request:Request,projectId=PROJECT_ID,options:{env?:Record<string,string|undefined>;mcpPath?:string;nodePath?:string}={}) {
+/** Формирует connection; дополнительные stdio args принадлежат trusted composition, не request-параметрам. */
+export function connectionConfig(request:Request,projectId=PROJECT_ID,options:{env?:Record<string,string|undefined>;mcpPath?:string;mcpArgs?:readonly string[];nodePath?:string}={}) {
   const env=options.env??process.env;
   const endpoint=projectId===PROJECT_ID?'/api/mcp':`/api/projects/${encodeURIComponent(projectId)}/mcp`;
   if(env.OURO_DEPLOYMENT_MODE==='cloud')return {httpUrl:`${requestOrigin(request,env)}${endpoint}`,stdioCommand:'',stdioArgs:[] as string[],projectId,localBridgeRequired:true};
-  return {httpUrl:`${requestOrigin(request,env)}${endpoint}`,stdioCommand:options.nodePath??process.execPath,stdioArgs:[options.mcpPath??path.resolve('packages/mcp/bin/ouro-mcp.mjs')],projectId};
+  return {httpUrl:`${requestOrigin(request,env)}${endpoint}`,stdioCommand:options.nodePath??process.execPath,stdioArgs:[options.mcpPath??path.resolve('packages/mcp/bin/ouro-mcp.mjs'),...(options.mcpArgs??[])],projectId};
 }

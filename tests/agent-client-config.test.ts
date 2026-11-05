@@ -5,10 +5,16 @@ import {spawnSync} from 'node:child_process';
 import path from 'node:path';
 import {tmpdir} from 'node:os';
 import {buildAgentClientConfig,type AgentClientId,type AgentConnection} from '../lib/agent-client-config';
+import {connectionConfig} from '../lib/connection-config';
 
 const projectId='a4b82f1d-6bcd-4fb4-899c-b0a7b01a34f1',legacyProjectId='6c7c62dc-694c-4c7b-9cb1-d9e605164001';
 const connection:AgentConnection={projectId,httpUrl:`http://127.0.0.1:3000/api/projects/${projectId}/mcp`,stdioCommand:'/usr/bin/node',stdioArgs:['/home/operator/Ouro setup/packages/mcp/bin/ouro-mcp.mjs']};
 const input=(client:AgentClientId='cursor')=>({client,connection:structuredClone(connection),keyFile:'/home/operator/private/ouro-agent.key'});
+
+test('CGL15 trusted generation arguments survive issuance/client JSON while default connection remains unchanged',()=>{
+ const selector=['--generation','g-12345678-1234-1234-1234-123456789abc'],request=new Request(`http://127.0.0.1:3000/api/projects/${projectId}/agents?mcpArgs=UNTRUSTED`),mcpPath='/home/operator/Ouro/packages/mcp/bin/ouro-mcp.mjs';
+ const selected=connectionConfig(request,projectId,{env:{},mcpPath,nodePath:'/usr/bin/node',mcpArgs:selector}),client=buildAgentClientConfig({client:'cursor',connection:selected,keyFile:'/private/agent.key'});assert.deepEqual(selected.stdioArgs,[mcpPath,...selector]);assert.deepEqual(client.entry.args,[mcpPath,...selector]);assert.equal(JSON.stringify(client).includes('UNTRUSTED'),false);assert.notEqual(selected.stdioArgs,selector);assert.deepEqual(connectionConfig(request,projectId,{env:{},mcpPath,nodePath:'/usr/bin/node'}).stdioArgs,[mcpPath]);
+});
 
 test('CO01 client profiles produce the documented Cursor/Claude Code/Desktop stdio shapes',()=>{
  for(const client of ['cursor','claude-code','claude-desktop','chatgpt'] as const){
