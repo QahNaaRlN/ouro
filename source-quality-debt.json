@@ -1465,7 +1465,7 @@
     {
       "kind": "legacy",
       "file": "app/page.tsx",
-      "contentHash": "601fa5b72f804041832cfd905a60fb29ec77e490c538164f9f785de8d95685bc",
+      "contentHash": "9f5e4458e5cecc4988510d71c26a2ea9d7845295330bdd7710fa55e25c3d2854",
       "owner": "frontend-migration",
       "reason": "Точное отклонение существовало в исходном Git blob до миграции; новые нарушения не разрешены.",
       "disposition": "close-in-c2-c3",
@@ -1477,12 +1477,12 @@
           "finding": {
             "tool": "source",
             "code": "line-comment",
-            "line": 196,
+            "line": 197,
             "column": 3,
             "message": "Use a responsibility JSDoc or a precise documented technical directive."
           },
           "proof": {
-            "currentOffset": 8413,
+            "currentOffset": 8471,
             "legacyOffset": 6731,
             "length": 365,
             "legacyLine": 176,
@@ -1494,12 +1494,12 @@
           "finding": {
             "tool": "source",
             "code": "line-comment",
-            "line": 197,
+            "line": 198,
             "column": 3,
             "message": "Use a responsibility JSDoc or a precise documented technical directive."
           },
           "proof": {
-            "currentOffset": 8484,
+            "currentOffset": 8542,
             "legacyOffset": 6802,
             "length": 312,
             "legacyLine": 177,
@@ -1511,12 +1511,12 @@
           "finding": {
             "tool": "source",
             "code": "line-comment",
-            "line": 234,
+            "line": 235,
             "column": 3,
             "message": "Use a responsibility JSDoc or a precise documented technical directive."
           },
           "proof": {
-            "currentOffset": 10981,
+            "currentOffset": 11039,
             "legacyOffset": 9273,
             "length": 80,
             "legacyLine": 214,
@@ -1528,12 +1528,12 @@
           "finding": {
             "tool": "source",
             "code": "line-comment",
-            "line": 235,
+            "line": 236,
             "column": 3,
             "message": "Use a responsibility JSDoc or a precise documented technical directive."
           },
           "proof": {
-            "currentOffset": 11062,
+            "currentOffset": 11120,
             "legacyOffset": 9354,
             "length": 76,
             "legacyLine": 215,
