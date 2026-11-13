@@ -1,6 +1,6 @@
 # C2-S1: журнал pages pilot (Methodology)
 
-Дата: 2026-11-13. Статус: **LOCAL_QUALIFIED / CI_PENDING**. Контракт story: [c2-client-architecture.md](../specs/c2-client-architecture.md) (PR83, до своего слияния остаётся кандидатом) и исходный SDD `codex/methodology-page`. Этот журнал самостоятелен и не дублирует общий журнал C2; после интеграции PR83 записи переносятся туда по решению review.
+Дата: 2026-11-13. Статус: **QUALIFIED / REVIEW_PENDING**. Контракт story: [c2-client-architecture.md](../specs/c2-client-architecture.md) (PR83, до своего слияния остаётся кандидатом) и исходный SDD `codex/methodology-page`. Этот журнал самостоятелен и не дублирует общий журнал C2; после интеграции PR83 записи переносятся туда по решению review.
 
 ## C2-S1. Pages pilot: перенос экрана Methodology
 
@@ -33,3 +33,7 @@
 | Production browser: prototype (включая навигацию «Методология и источники») + tailwind-human-view TWH01 (capture экрана methodology, классы .methodology-intro/.methodology-articles) | 5/5 PASS, 30.7s |
 
 Ограничение harness: dev-конфигурация Playwright в этом управляемом окружении не поднялась — Turbopack не может породить pooled node process («program not found»), GET / отвечает 500 без исполнения кода приложения. Это среда исполнения, а не дефект переноса; браузерная проверка выполняется production-путём (webpack build + start), как в прежних beta-приёмках. Первый webServer timeout 120s и занятый порт 3100 при повторе сохранены как история настройки, не как product FAIL.
+
+### Exact-head CI
+
+PR84, head `f974b13c7741d9cd681b7a7e25764139dbea8e9d`: обязательная CI дала **7/7 PASS** — checks, browser, postgres, presentation, consumer-source, consumer-generation, consumer-generation-windows. Остаются review и merge в epic; закрытие C2 этим не объявляется.
