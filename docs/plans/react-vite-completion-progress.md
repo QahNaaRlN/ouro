@@ -8,7 +8,7 @@
 |---|---|---|
 | C0 | CLOSED | Recovery registry и обновлённый план интегрированы PR77; исходный снимок и dispositions ниже сохранены |
 | C1 | CLOSED | PR74/76–81 интегрированы в epic; exact merge head `2905788e4d158793f7ae1b54823d663492409f9b` прошёл обязательную CI `42071335772` 7/7 PASS; доказательства и границы — в разделе закрытия C1 ниже |
-| C2 | READY | hFSD, semantic ports и реальный Form/RU/error/time stack. Первая story получает конечный контракт SDD до source edits; применимые C0 dispositions — methodology-page и assign-work-form |
+| C2 | SPECIFIED | Карта stories C2-S1…C2-S8 и контракты первых двух stories зафиксированы в [SDD](../specs/c2-client-architecture.md) с учётом C0 dispositions methodology-page и assign-work-form; implementation NOT_STARTED, ALL_RUNS_NOT_RUN |
 | C3 | PLANNED | Shared Tailwind и точные geometry policies после стабилизации C2 |
 | C4 | PLANNED | Explicit embedded composition после C2 |
 | C5 | PLANNED | Actual artifact/CLI/hosted/data qualification после C3/C4 |
