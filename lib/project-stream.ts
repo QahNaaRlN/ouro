@@ -12,7 +12,9 @@ export type ProjectStreamClock = {
   now(): number;
   schedule(callback: () => void, milliseconds: number): () => void;
 };
+/** Задаёт хранилище, человеческую авторизацию и расписание ограниченного по времени SSE-потока проекта. */
 export type ProjectStreamOptions = {
+  requestOrigin?:(request:Request)=>string;
   store: ProjectStreamStore;
   storage?: string;
   clock?: ProjectStreamClock;
@@ -44,9 +46,9 @@ function cursorFrom(request: Request) {
   return after;
 }
 
-async function authorize(request: Request,authenticateHuman?:(request:Request)=>Actor|Promise<Actor>) {
+async function authorize(request: Request,authenticateHuman?:((request:Request)=>Actor|Promise<Actor>),originFor:(request:Request)=>string=requestOrigin) {
   let origin: string;
-  try { origin = requestOrigin(request); }
+  try { origin = originFor(request); }
   catch (error) {
     if (error instanceof AccessError) throw error;
     throw new AccessError('FORBIDDEN', 'Host не разрешён для потока проекта.');
@@ -58,6 +60,7 @@ async function authorize(request: Request,authenticateHuman?:(request:Request)=>
 
 /** SQL remains authoritative; a demand-driven subscription holds at most one frame. */
 export function createProjectStreamHandler(options: ProjectStreamOptions) {
+  const authorizeRequest=(request:Request)=>authorize(request,options.authenticateHuman,options.requestOrigin);
   const timing = options.clock ?? clock;
   const pollInterval = Math.max(1, options.pollIntervalMs ?? 500);
   const heartbeat = Math.max(1, options.heartbeatMs ?? 15_000);
@@ -66,10 +69,10 @@ export function createProjectStreamHandler(options: ProjectStreamOptions) {
 
   return async (request: Request): Promise<Response> => {
     try {
-      await authorize(request,options.authenticateHuman);
+      await authorizeRequest(request);
       const after = cursorFrom(request);
       const initial = await options.store.getProject();
-      await authorize(request,options.authenticateHuman);
+      await authorizeRequest(request);
       if (after > initial.version) throw new AccessError('CURSOR_AHEAD', 'Курсор клиента опережает историю проекта. Перезагрузите снимок.', 409);
 
       let closed = false;
@@ -117,16 +120,16 @@ export function createProjectStreamHandler(options: ProjectStreamOptions) {
             while (!closed) {
               await pause(Math.min(pollInterval, Math.max(1, heartbeat - (timing.now() - lastFrameAt))));
               if (closed) return;
-              await authorize(request,options.authenticateHuman);
+              await authorizeRequest(request);
               if (closed) return;
               const committed = await options.store.getEvents(lastVersion);
               if (closed) return;
-              await authorize(request,options.authenticateHuman);
+              await authorizeRequest(request);
               if (closed) return;
               if (committed.cursor > lastVersion) {
                 const state = await options.store.getProject();
                 if (closed) return;
-                await authorize(request,options.authenticateHuman);
+                await authorizeRequest(request);
                 if (closed) return;
                 if (state.version < committed.cursor) throw new Error('Snapshot does not include its committed cursor');
                 // The snapshot can include commits newer than the change check.

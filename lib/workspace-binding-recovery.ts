@@ -6,11 +6,16 @@ import {z} from 'zod';
 import {isWellFormedUnicode} from '../packages/core/src/unicode';
 import {assertWorkspaceFolder,resolveWorkspaceFolder,type WorkspaceBinding,type WorkspaceIdentity} from './workspace-files';
 
-export type BindingRecoveryRuntime={platform:NodeJS.Platform;node:string;uv:string;architecture:string};
+import type { BindingRecoveryRuntime, BindingRuntimePlatform, BindingRecoveryStatus } from '@ouro/protocol/http';
+export type { BindingRecoveryRuntime } from '@ouro/protocol/http';
+/** Компиляция отклоняет изменение pure platform union относительно установленного Node API. */
+type AssertExactPlatform<T extends true> = T;
+type PlatformMatchesNode = AssertExactPlatform<[BindingRuntimePlatform] extends [NodeJS.Platform] ? [NodeJS.Platform] extends [BindingRuntimePlatform] ? true : false : false>;
 export type BindingRecoveryContext={actorId:string;projectId:string;binding:WorkspaceBinding};
 export type BindingRecoveryVerificationInput=BindingRecoveryContext&{ticket:string};
+/** Фиксирует наблюдение сохранённой привязки, доступность её восстановления и сопутствующие данные runtime. */
 export type BindingRecoveryInspection={
- status:'healthy'|'candidate'|'conflict'|'unavailable';eligible:boolean;savedBinding:WorkspaceBinding;observedBinding?:WorkspaceBinding;
+ status:BindingRecoveryStatus;eligible:boolean;savedBinding:WorkspaceBinding;observedBinding?:WorkspaceBinding;
  runtime:BindingRecoveryRuntime;reason:string;origin:'unknown';ticket?:string;expiresAt?:string;
 };
 export type VerifiedBindingRecovery={savedBinding:WorkspaceBinding;observedBinding:WorkspaceBinding;runtime:BindingRecoveryRuntime;issuedAt:string;expiresAt:string;origin:'unknown'};

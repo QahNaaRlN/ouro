@@ -8,11 +8,13 @@ export type ArtifactManifest={files:{path:string;role:'product'|'test'|'fixture'
 export type WorkspaceObservation=ArtifactManifest&{slice:{productRevision:string;testRevision:string;fixtureRevision:string;environmentDigest:string};status:'observed'|'unavailable';reason?:string};
 export const observationHash=(value:unknown):string=>createHash('sha256').update(JSON.stringify(value,(_key,item)=>item&&typeof item==='object'&&!Array.isArray(item)?Object.fromEntries(Object.entries(item).sort(([a],[b])=>a.localeCompare(b,'en'))):item)).digest('hex');
 // Keep native resolution: Webpack rewrites a direct createRequire(dynamicPath) to undefined.
-const appRequire=():NodeRequire=>Reflect.apply(Reflect.get(nodeModule,'createRequire'),undefined,[path.resolve(process.cwd(),'package.json')]) as NodeRequire;
-export const resolvePlaywrightCli=():string=>appRequire().resolve('@playwright/test/cli');
-export function runnerCapabilities():Record<string,string>{
- const playwright=appRequire()('@playwright/test/package.json') as {version:string};
- return {node:process.version,platform:process.platform,architecture:process.arch,playwright:playwright.version,adapter:'ouro-playwright-local/v1',runnerNodeEnv:'test',pathDigest:observationHash(process.env.PATH??''),browserPathDigest:observationHash(process.env.PLAYWRIGHT_BROWSERS_PATH??'default')};
+const appRequire=(packageRoot?:string):NodeRequire=>Reflect.apply(Reflect.get(nodeModule,'createRequire'),undefined,[path.resolve(packageRoot??process.cwd(),'package.json')]) as NodeRequire;
+/** Находит CLI Playwright штатным Node-разрешением из пакета приложения. */
+export const resolvePlaywrightCli=(packageRoot?:string):string=>appRequire(packageRoot).resolve('@playwright/test/cli');
+/** Фиксирует версии Node и Playwright, платформу и отпечатки путей окружения для наблюдения. */
+export function runnerCapabilities(packageRoot?:string):Record<string,string>{
+ const playwright=appRequire(packageRoot)('@playwright/test/package.json') as {version:string};
+ return {node:process.version,platform:process.platform,architecture:process.arch,playwright:playwright.version,adapter:'ouro-playwright-local/v1',playwrightResolution:'ouro-owned-preload/v1',runnerNodeEnv:'test',pathDigest:observationHash(process.env.PATH??''),browserPathDigest:observationHash(process.env.PLAYWRIGHT_BROWSERS_PATH??'default')};
 }
 /** Exact, bounded reads through the same anchored workspace guards as MCP file context. */
 export async function observeVerificationWorkspace(binding:WorkspaceBinding,config:ObservationConfig,capabilitySource:Record<string,string>|(()=>Record<string,string>)=runnerCapabilities):Promise<WorkspaceObservation>{

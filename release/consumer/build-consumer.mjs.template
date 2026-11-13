@@ -1,0 +1,40 @@
+import {validateNodeVersion} from './runtime-node.mjs';
+import {createRequire} from 'node:module';
+import {spawnSync} from 'node:child_process';
+import {readFile,writeFile,stat} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+import path from 'node:path';
+
+/** Собирает один явно выделенный source tree; env root задаётся composition owner, без поиска по cwd. */
+export async function buildConsumer({sourceRoot,environmentRoot}={}){
+ validateNodeVersion(process.versions.node);
+ const root=sourceRoot??fileURLToPath(new URL('../',import.meta.url)),envRoot=environmentRoot??root;
+ if(!path.isAbsolute(root)||!path.isAbsolute(envRoot))throw Error('Invalid consumer build roots.');
+ await(await import('./runtime-environment.mjs')).loadRuntimeEnvironment({root:envRoot,phase:'production'});
+ const require=createRequire(path.join(root,'package.json')),compiler=require.resolve('typescript/bin/tsc');
+ for(const config of ['tsconfig.json','apps/web/tsconfig.json','apps/service/tsconfig.json']){
+  const checked=spawnSync(process.execPath,[compiler,'--noEmit','-p',path.join(root,config)],{cwd:root,env:process.env,encoding:'utf8',shell:false,windowsHide:true,maxBuffer:4*1024*1024});
+  if(checked.status!==0)throw Error('Consumer typecheck failed.');
+ }
+ const browserInputs=new Set();
+ const inputs={name:'ouro-consumer-source-inputs',async generateBundle(){
+  for(const id of this.getModuleIds()){
+   if(id.startsWith('\0'))continue;
+   const filename=id.split('?')[0];if(!path.isAbsolute(filename))continue;
+   const relative=path.relative(root,filename);if(relative==='..'||relative.startsWith('..'+path.sep)||path.isAbsolute(relative))throw Error('Browser source escaped the consumer tree.');
+   if(relative.split(path.sep).includes('node_modules'))continue;
+   try{if((await stat(filename)).isFile())browserInputs.add(relative.split(path.sep).join('/'));}catch{}
+  }
+ }};
+ await(await import('vite')).build({configFile:path.join(root,'apps/web/vite.config.ts'),envDir:false,logLevel:'silent',clearScreen:false,build:{rollupOptions:{plugins:[inputs]}}});
+ const built=spawnSync(process.execPath,[path.join(root,'apps/service/scripts/build.mjs')],{cwd:root,env:process.env,encoding:'utf8',shell:false,windowsHide:true,maxBuffer:4*1024*1024});
+ if(built.status!==0)throw Error('Consumer service build failed.');
+ const service=JSON.parse(await readFile(path.join(root,'apps/service/dist/build-manifest.json'),'utf8'));
+ if(!Array.isArray(service.inputs)||service.inputs.some(file=>typeof file!=='string'||file.includes('\\')||file.split('/').some(part=>!part||part==='..'||part==='.')||path.isAbsolute(file)))throw Error('Invalid service source input manifest.');
+ await writeFile(path.join(root,'build-source-manifest.json'),JSON.stringify({schemaVersion:1,browserInputs:[...browserInputs].sort(),serviceInputs:service.inputs,node:process.versions.node},null,2)+'\n');
+}
+
+if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
+ try{validateNodeVersion(process.versions.node);if(process.argv.length!==2)throw Error();await buildConsumer();process.stdout.write('Ouro: consumer source typechecks and fresh web/service build completed.\n');}
+ catch(error){process.stderr.write(error?.code==='NODE_RUNTIME_UNSUPPORTED'?'NODE_RUNTIME_UNSUPPORTED: '+error.message+'\n':'OURO_CONSUMER_BUILD_FAILED\n');process.exitCode=1;}
+}

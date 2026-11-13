@@ -3,7 +3,8 @@ import { getLessonSourceSpecIds, validateLessonContent as assertLessonContent } 
 import { validateFlowDefinition as assertFlowDefinition } from './flow';
 import {currentDecisionRequests,decisionRoot,isCurrentDecisionRequest,openPhysicalBlockers} from './decision-lineage';
 import {submitProposalCommandSchema,reviewProposalCommandSchema,adoptProposalCommandSchema,deriveProposalSources} from './agent-proposals';
-import {parseMeridianScope,mapMeridianExpectation} from '../../meridian/src/context';
+import {parseMeridianScope} from '../../meridian/src/context';
+import {mapMeridianExpectation} from './meridian-import';
 import {isWellFormedUnicode} from './unicode';
 import {createFlowRuntime,createFlowRun,currentFlowRun,requireFlowRuntime,flowForExecution,flowNode,assertFlowStepActor,selectFlowEdge,assertFlowHumanFacts,assertFlowInterruptFacts,currentFlowRequest,projectFlowRuntimeEvent} from './flow-runtime';
 import {verificationRunSchema,verificationSliceSchema,verificationAssessmentSchema,verificationPhaseSchema,verificationImportSchema,verificationCommandSchema} from '@ouro/protocol';
@@ -11,7 +12,8 @@ import {validateVerificationContract,verificationChanges,getVerificationReadines
 import type {VerificationRun,VerificationReview,VerificationSliceRecord,VerificationPhaseRecord,VerificationPhase,VerificationImport,VerificationCycle,VerificationRefactorAdmission,VerificationObservationConfigRecord,VerificationObservationRecord,VerificationArtifactManifest} from './types';
 import type { Actor, Command, DecisionRequest, DomainEvent, Execution, FlowDefinition, FlowNodeKind, FlowStepRun, GitHubBinding, GitHubCommitSource, Lesson, LessonContent, LessonRevision, ProjectState, RevisionContent, Spec, SpecRevision, AgentProposal, AgentProposalRevision, AgentProposalContent } from './types';
 
-export const PROJECT_ID = '6c7c62dc-694c-4c7b-9cb1-d9e605164001';
+import {PROJECT_ID} from './project-identity';
+export {PROJECT_ID} from './project-identity';
 export const AGENT_ID = 'a8f5f167-6e7a-4d18-8d2e-88466c165001';
 export const GITHUB_SERVICE_ID = 'ouro-github-webhook';
 export class DomainError extends Error {

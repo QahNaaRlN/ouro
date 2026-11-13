@@ -1,11 +1,13 @@
-import {AccessError,assertHuman,assertJsonWrite,authenticatedParticipant,assertExpectedParticipant} from '../auth';
+import {AccessError,assertHuman,assertJsonWrite,authenticatedParticipant,assertExpectedParticipant,defaultAuthService,type AuthService} from '../auth';
 import {apiError} from '../http';
 import {importMeridianScope,type CommandResult} from '../store';
 import {requestedProjectId} from '../connection-config';
 import {AGENT_ID,type Actor} from '../../packages/core/src';
 
 const MAX_BODY_BYTES=2*1024*1024;
+/** Задаёт проверку человеческой идентичности и операцию приёма Meridian scope для HTTP-импорта. */
 export type MeridianImportDependencies={
+ auth?:AuthService;
  authenticateHuman?:(request:Request)=>Actor|Promise<Actor>;
  importScope?:(body:unknown,actor:Actor,projectId?:string)=>Promise<CommandResult>;
 };
@@ -13,8 +15,8 @@ export type MeridianImportDependencies={
  * Bytes are bounded while reading, including requests without Content-Length.
  * Generic command routes retain their existing, smaller limit.
  */
-async function readImportBody(request:Request):Promise<unknown>{
- assertJsonWrite(request,MAX_BODY_BYTES);
+async function readImportBody(request:Request,assertWrite:typeof assertJsonWrite=assertJsonWrite):Promise<unknown>{
+ assertWrite(request,MAX_BODY_BYTES);
  const reader=request.body?.getReader();if(!reader)throw new AccessError('VALIDATION_ERROR','Не передано тело импорта.',400);
  const chunks:Uint8Array[]=[];let size=0;
  try{
@@ -24,7 +26,9 @@ async function readImportBody(request:Request):Promise<unknown>{
  try{return JSON.parse(new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes));}
  catch{throw new AccessError('VALIDATION_ERROR','Некорректный JSON или UTF-8 импорта.',400);}
 }
+/** Создаёт авторизованный HTTP-импорт Meridian scope со сверкой участника и ограниченным чтением UTF-8 JSON. */
 export function createMeridianImportHandler(dependencies:MeridianImportDependencies={}){
+ const {authenticatedParticipant,assertJsonWrite}=dependencies.auth??defaultAuthService;
  const authenticate=dependencies.authenticateHuman??((request:Request)=>authenticatedParticipant(request,requestedProjectId(request),AGENT_ID));
  const ingest=dependencies.importScope??importMeridianScope;
  return async(request:Request)=>{
@@ -32,7 +36,7 @@ export function createMeridianImportHandler(dependencies:MeridianImportDependenc
    const projectId=requestedProjectId(request),actor=await authenticate(request);assertHuman(actor);
    // Keep this check for injected authentication adapters as well.
    assertExpectedParticipant(request,actor);
-   const result=await ingest(await readImportBody(request),actor,projectId);
+   const result=await ingest(await readImportBody(request,assertJsonWrite),actor,projectId);
    return Response.json(result,{status:201,headers:{'Cache-Control':'no-store'}});
   }catch(error){
    if(error instanceof AccessError)return apiError(error);

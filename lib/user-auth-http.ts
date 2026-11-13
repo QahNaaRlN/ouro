@@ -1,10 +1,11 @@
 import { z } from 'zod';
-import { AccessError, readCommandBody, userSessionCookie } from './auth';
+import { AccessError, readCommandBody, userSessionCookie,defaultAuthService,type AuthService } from './auth';
 import { requestOrigin } from './connection-config';
 import { apiError } from './http';
 import type { UserAuth } from './user-auth';
 
-export type UserAuthHttpDependencies = { getAuth?: () => Promise<UserAuth> };
+/** Задаёт auth-хранилище и HTTP-проверки для входа, выхода и разрешения пользовательской сессии. */
+export type UserAuthHttpDependencies = { getAuth?: () => Promise<UserAuth>;auth?:AuthService };
 const loginInput = z.strictObject({ email: z.string().max(254), password: z.string().max(128) });
 const empty = z.strictObject({});
 const json = (data: unknown, status = 200, headers?: HeadersInit) => {
@@ -14,11 +15,14 @@ const json = (data: unknown, status = 200, headers?: HeadersInit) => {
 };
 export const userSessionCookieName = 'ouro_user_session';
 
-export function sessionCookie(request: Request, value: string, maxAge = 43_200) {
-  return `${userSessionCookieName}=${value}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${requestOrigin(request).startsWith('https:') ? '; Secure' : ''}`;
+/** Формирует пользовательскую HttpOnly/SameSite cookie, добавляя Secure для разрешённого HTTPS origin. */
+export function sessionCookie(request: Request, value: string, maxAge = 43_200,origin:typeof requestOrigin=requestOrigin) {
+  return `${userSessionCookieName}=${value}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${origin(request).startsWith('https:') ? '; Secure' : ''}`;
 }
 
+/** Создаёт HTTP-обработчики входа, выхода и текущей пользовательской сессии через выбранное auth-хранилище. */
 export function createUserAuthHandlers(dependencies: UserAuthHttpDependencies = {}) {
+  const {readCommandBody,requestOrigin}=dependencies.auth??defaultAuthService;
   const auth = dependencies.getAuth ?? (async () => (await import('./store')).getUserAuth());
   return {
     async login(request: Request) {
@@ -29,7 +33,7 @@ export function createUserAuthHandlers(dependencies: UserAuthHttpDependencies = 
         const login = await (await auth()).authenticate(input.data.email, input.data.password);
         if (!login) throw new AccessError('UNAUTHENTICATED', 'Email или пароль неверны.', 401);
         const headers = new Headers();
-        headers.append('Set-Cookie', sessionCookie(request, login.token));
+        headers.append('Set-Cookie', sessionCookie(request, login.token,43_200,requestOrigin));
         headers.append('Set-Cookie', 'ouro_participant=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
         headers.append('Set-Cookie', 'ouro_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
         return json({ account: login.account, actor: login.actor, expiresAt: login.expiresAt }, 200, headers);
@@ -42,7 +46,7 @@ export function createUserAuthHandlers(dependencies: UserAuthHttpDependencies = 
         const token = userSessionCookie(request);
         if (token) await (await auth()).revokeSession(token);
         const headers = new Headers();
-        headers.append('Set-Cookie', sessionCookie(request, '', 0));
+        headers.append('Set-Cookie', sessionCookie(request, '', 0,requestOrigin));
         headers.append('Set-Cookie', 'ouro_participant=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
         headers.append('Set-Cookie', 'ouro_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
         return json({ ok: true }, 200, headers);

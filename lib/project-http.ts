@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AccessError, readCommandBody, userSessionCookie } from './auth';
+import { AccessError, readCommandBody, userSessionCookie,defaultAuthService,type AuthService } from './auth';
 import { requestOrigin } from './connection-config';
 import { apiError } from './http';
 import type { ProjectService } from './projects';
@@ -7,7 +7,8 @@ import type { UserAuth } from './user-auth';
 import { sessionCookie } from './user-auth-http';
 
 type ControlStore = ProjectService & UserAuth;
-export type ProjectHttpDependencies = { getStore?: () => Promise<ControlStore> };
+/** Задаёт хранилище проектного управления и правила проверки его HTTP-запросов. */
+export type ProjectHttpDependencies = { getStore?: () => Promise<ControlStore>;auth?:AuthService };
 const id = z.string().regex(/^[A-Za-z0-9_-]{1,200}$/);
 const role = z.enum(['Owner', 'Contributor', 'Viewer']);
 const createProjectInput = z.strictObject({ name: z.string().min(1).max(120) });
@@ -27,7 +28,9 @@ const valid = <T>(schema: z.ZodType<T>, value: unknown): T => {
   return result.data;
 };
 
+/** Создаёт HTTP-операции проектов, членства и приглашений с проверкой пользовательских сессий и доменных прав. */
 export function createProjectHandlers(dependencies: ProjectHttpDependencies = {}) {
+  const {readCommandBody,requestOrigin}=dependencies.auth??defaultAuthService;
   const getStore = dependencies.getStore ?? (async () => (await import('./store')).getUserAuth());
   const authenticate = async (request: Request, store: ControlStore, optional = false) => {
     const token = userSessionCookie(request);
@@ -37,7 +40,7 @@ export function createProjectHandlers(dependencies: ProjectHttpDependencies = {}
     return session.actor;
   };
   const mutationHeaders = (request: Request, token: string) => {
-    const headers = new Headers({ 'Set-Cookie': sessionCookie(request, token) });
+    const headers = new Headers({ 'Set-Cookie': sessionCookie(request, token,43_200,requestOrigin) });
     headers.append('Set-Cookie', 'ouro_participant=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
     headers.append('Set-Cookie', 'ouro_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');
     return headers;

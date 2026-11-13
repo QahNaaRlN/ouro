@@ -5,7 +5,9 @@ import type { DomainEvent } from '@/packages/core/src/types';
 import {runtimeEventNames} from './flow-runtime-ui';
 import {buildRealityGraph} from '@/lib/workspace-graph';
 import {InitialGraphViewportFit,useGraphMeasurements,WorkspaceGraphControls} from './workspace-graph-controls';
-import './workspace-graphs.css';
+import {twMerge} from 'tailwind-merge';
+import {graphPresentation,graphHandlePresentation} from '@/packages/frontend/src/shared/ui/graph';
+import {realityPresentation as ui} from './reality-presentation';
 
 const titles: Record<string,string> = {
   ...runtimeEventNames,
@@ -24,6 +26,7 @@ const titles: Record<string,string> = {
 };
 type RealityNode=Node<{label:ReactNode;eventId:string}>;
 const realityFitOptions={padding:0.14,minZoom:0.01,maxZoom:0.95};
+/** Показывает граф сохранённых событий и позволяет выбрать событие для подробностей. */
 export function RealityGraph({events,onSelectEvent,selectedEventId,scopeLabel,active=true,fitKey=''}: {events:DomainEvent[];onSelectEvent?:(eventId:string)=>void;selectedEventId?:string;scopeLabel?:string;active?:boolean;fitKey?:string}) {
   const containerRef=useRef<HTMLElement>(null);
   const [flowInstance,setFlowInstance]=useState<ReactFlowInstance<RealityNode,Edge>|null>(null);
@@ -32,17 +35,17 @@ export function RealityGraph({events,onSelectEvent,selectedEventId,scopeLabel,ac
     const graph=buildRealityGraph(events);
     const nodes: RealityNode[]=graph.nodes.map(({event,position})=>{
       const title=titles[event.type]??event.type;
-      return {id:event.id,position,measured:measurements.measured[event.id],selected:event.id===selectedEventId,data:{eventId:event.id,label:<div style={{textAlign:'left',padding:4}}><span style={{fontSize:12,color:'var(--text-muted)'}}>#{event.version} · {event.actor.kind==='human'?'Человек':event.actor.kind==='agent'?'Агент':'Система'}</span><strong style={{display:'block',margin:'7px 0',fontSize:14}}>{title}</strong><span style={{fontSize:12,color:'var(--text-muted)'}}>{new Date(event.occurredAt).toLocaleTimeString('ru-RU')}</span></div>},
-        ariaLabel:`Событие ${event.version}: ${title}`,style:{width:230,height:98,background:'var(--subtle)',color:'var(--text)',border:'1px solid var(--border)',borderRadius:6}};
+      return {id:event.id,position,measured:measurements.measured[event.id],selected:event.id===selectedEventId,data:{eventId:event.id,label:<div className={ui.label}><span className={ui.caption}>#{event.version} · {event.actor.kind==='human'?'Человек':event.actor.kind==='agent'?'Агент':'Система'}</span><strong className={ui.title}>{title}</strong><span className={ui.caption}>{new Date(event.occurredAt).toLocaleTimeString('ru-RU')}</span></div>},
+        ariaLabel:`Событие ${event.version}: ${title}`,className:ui.node};
     });
-    const edges: Edge[]=graph.edges.map(edge=>({...edge,type:'smoothstep',label:'основание',markerEnd:{type:MarkerType.ArrowClosed},style:{stroke:'var(--graph-edge)'},labelStyle:{fontSize:10,fill:'var(--text-muted)'},labelBgStyle:{fill:'var(--bg)'}}));
+    const edges: Edge[]=graph.edges.map(edge=>({...edge,type:'smoothstep',label:'основание',markerEnd:{type:MarkerType.ArrowClosed},className:ui.edge}));
     return {nodes,edges};
   },[events,selectedEventId,measurements.measured]);
-  return <section ref={containerRef} aria-label={scopeLabel??'Причинный граф событий'} className="workspace-graph workspace-reality" onKeyDownCapture={event=>{
+  return <section ref={containerRef} aria-label={scopeLabel??'Причинный граф событий'} className={twMerge('workspace-graph workspace-reality',ui.frame,graphPresentation.fullscreen)} onKeyDownCapture={event=>{
     if(!onSelectEvent||(event.key!=='Enter'&&event.key!==' ')||event.repeat)return;
     const target=event.target;if(!(target instanceof HTMLElement)||!target.classList.contains('react-flow__node'))return;
     const id=target.getAttribute('data-id');if(!id)return;event.preventDefault();event.stopPropagation();onSelectEvent(id);
   }}>
-    {events.length ? <ReactFlow<RealityNode,Edge> nodes={nodes} edges={edges} onInit={setFlowInstance} onNodesChange={measurements.onChanges} onNodeClick={(_,node)=>onSelectEvent?.(node.data.eventId)} nodesFocusable={!!onSelectEvent} fitViewOptions={realityFitOptions} minZoom={0.01} maxZoom={1.5} nodesDraggable={false} nodesConnectable={false} deleteKeyCode={null} ariaLabelConfig={{'controls.zoomIn.ariaLabel':'Приблизить события','controls.zoomOut.ariaLabel':'Отдалить события','controls.fitView.ariaLabel':'Вписать события','node.a11yDescription.default':onSelectEvent?'Нажмите Enter или пробел, чтобы открыть исходное событие.':'Сохранённое событие проекта.'}}><Background gap={24} color="var(--graph-dot)"/><InitialGraphViewportFit active={active} containerRef={containerRef} instance={flowInstance} fitOptions={realityFitOptions} fitKey={fitKey}/><WorkspaceGraphControls containerRef={containerRef} fitOptions={realityFitOptions}/><MiniMap nodeColor="var(--selected)" maskColor="var(--minimap-mask)" pannable zoomable/></ReactFlow> : <p className="workspace-reality-empty">Событий пока нет.</p>}
+    {events.length ? <ReactFlow<RealityNode,Edge> className={`${graphPresentation.attribution} ${graphHandlePresentation.defaultNodes}`} nodes={nodes} edges={edges} onInit={setFlowInstance} onNodesChange={measurements.onChanges} onNodeClick={(_,node)=>onSelectEvent?.(node.data.eventId)} nodesFocusable={!!onSelectEvent} fitViewOptions={realityFitOptions} minZoom={0.01} maxZoom={1.5} nodesDraggable={false} nodesConnectable={false} deleteKeyCode={null} ariaLabelConfig={{'controls.zoomIn.ariaLabel':'Приблизить события','controls.zoomOut.ariaLabel':'Отдалить события','controls.fitView.ariaLabel':'Вписать события','node.a11yDescription.default':onSelectEvent?'Нажмите Enter или пробел, чтобы открыть исходное событие.':'Сохранённое событие проекта.'}}><Background gap={24} color="var(--graph-dot)"/><InitialGraphViewportFit active={active} containerRef={containerRef} instance={flowInstance} fitOptions={realityFitOptions} fitKey={fitKey}/><WorkspaceGraphControls containerRef={containerRef} fitOptions={realityFitOptions}/><MiniMap className={graphPresentation.minimap} nodeColor="var(--selected)" maskColor="var(--minimap-mask)" pannable zoomable/></ReactFlow> : <p className={twMerge('workspace-reality-empty',ui.empty)}>Событий пока нет.</p>}
   </section>;
 }

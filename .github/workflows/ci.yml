@@ -14,6 +14,74 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  consumer-source:
+    name: consumer-source
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: '.nvmrc'
+      - name: Prove no source dependency install is available as a fallback
+        run: test ! -e node_modules
+      - name: Qualify independent source install, build, protocol, runtime and browser
+        run: npm run consumer:qualify -- --work "$RUNNER_TEMP/ouro-consumer-source" --browser --install-browser
+      - name: Preserve bounded consumer qualification report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: consumer-source-qualification
+          path: ${{ runner.temp }}/ouro-consumer-source/qualification-report.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  consumer-generation:
+    name: consumer-generation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: '.nvmrc'
+      - name: Prove no source dependency fallback is installed
+        run: test ! -e node_modules
+      - name: Qualify generation launch, concurrent build, bound MCP and persisted restart
+        run: npm run consumer:qualify-envelope -- --work "$RUNNER_TEMP/ouro-consumer-generation" --browser --install-browser
+      - name: Preserve bounded generation qualification report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: consumer-generation-qualification
+          path: ${{ runner.temp }}/ouro-consumer-generation/qualification-report.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  consumer-generation-windows:
+    name: consumer-generation-windows
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: '.nvmrc'
+      - name: Prove no source dependency fallback is installed
+        shell: pwsh
+        run: if (Test-Path -LiteralPath 'node_modules') { throw 'Source dependency install must be absent.' }
+      - name: Qualify ordinary generation launch and strict HTML bytes on Windows
+        shell: pwsh
+        run: npm run consumer:qualify-envelope -- --work "${{ runner.temp }}/ouro-consumer-generation-windows" --browser --install-browser
+      - name: Preserve bounded Windows generation qualification report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: consumer-generation-windows-qualification
+          path: ${{ runner.temp }}/ouro-consumer-generation-windows/qualification-report.json
+          if-no-files-found: ignore
+          retention-days: 7
+
   postgres:
     name: postgres
     runs-on: ubuntu-latest
@@ -35,8 +103,8 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: '.nvmrc'
-          cache: npm
-      - run: npm ci
+      - name: Install the pinned developer workspace
+        run: npm exec --yes --package=pnpm@10.34.9 -- pnpm install --frozen-lockfile --prod=false
       - name: Check operational shell scripts
         run: sh -n deploy/postgres-init.sh && sh -n scripts/backup-hosted.sh && sh -n scripts/restore-hosted-drill.sh
       - name: Create least-privileged application role and separate disposable databases
@@ -85,7 +153,6 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: '.nvmrc'
-          cache: npm
       - name: Check pull request conventions
         if: github.event_name == 'pull_request'
         run: npm run check:conventions
@@ -99,12 +166,30 @@ jobs:
         run: npm run check:conventions -- --all
         env:
           OURO_CONVENTIONS_BRANCH: ${{ github.ref_name }}
-      - name: Install dependencies
-        run: npm ci
+      - name: Install the pinned developer workspace
+        run: npm exec --yes --package=pnpm@10.34.9 -- pnpm install --frozen-lockfile --prod=false
+      - name: Check source quality and finite historical debt
+        run: npm run check:quality
       - name: Run unit and integration tests
         run: npm test
+      - name: Check and build the isolated service runtime
+        run: |
+          npm run service:typecheck
+          npm run service:build
+      - name: Check and build the standalone React web shell
+        run: |
+          npm run web:typecheck
+          npm run web:build
+      - name: Qualify all service routes, lifecycle and built artifact over TCP
+        run: npm --prefix apps/service test
       - name: Check TypeScript
         run: npm run typecheck
+      - name: Check portable architecture boundaries
+        run: npm run check:architecture
+      - name: Check migration compatibility inventory
+        run: npm run migration:check
+      - name: Check owned UI style migration debt
+        run: npm run styles:check
       - name: Verify canonical protocol schemas
         run: npm run protocol:check
       - name: Verify independent protocol installation
@@ -125,20 +210,75 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: '.nvmrc'
-          cache: npm
-      - name: Install dependencies
-        run: npm ci
+      - name: Install the pinned developer workspace
+        run: npm exec --yes --package=pnpm@10.34.9 -- pnpm install --frozen-lockfile --prod=false
       - name: Build production application
         run: npm run build
+      - name: Build standalone React web shell
+        run: npm run web:build
+      - name: Build service for actual same-origin UI qualification
+        run: npm run service:build
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run production browser acceptance
-        run: npm run test:e2e:production
+        run: npm run test:e2e:production -- --project=functional
+      - name: Qualify standalone React navigation against the existing API
+        run: npm run web:test:e2e
+      - name: Qualify built React UI served by the ordinary service on one origin
+        run: npx playwright test --config=apps/web/playwright.service.config.ts
+      - name: Qualify bounded catalog read hooks and context replacement
+        run: npx playwright test --config=apps/web/playwright.catalog.config.ts
+      - name: Qualify client error capture and renderer boundary
+        run: npx playwright test --config=apps/web/playwright.error-policy.config.ts
+      - name: Qualify typed Russian i18n with both development installation trees
+        run: npx playwright test --config=apps/web/playwright.i18n.config.ts
+      - name: Build the same isolated i18n renderer with production resolution
+        run: node apps/web/node_modules/vite/bin/vite.js build --config apps/web/vite.i18n.config.ts
+      - name: Qualify the production i18n context and assignment form retention
+        run: npx playwright test --config=apps/web/playwright.i18n.config.ts
+        env:
+          OURO_I18N_PRODUCTION: '1'
+      - name: Qualify durable HTTP receipt recovery with actual browser loss and exact retry
+        run: npx playwright test --config=playwright.receipt-proof.config.ts
       - name: Preserve browser diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: production-browser-diagnostics
+          path: |
+            test-results/
+            apps/web/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  presentation:
+    name: presentation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: '.nvmrc'
+      - name: Install the pinned developer workspace
+        run: npm exec --yes --package=pnpm@10.34.9 -- pnpm install --frozen-lockfile --prod=false
+      - name: Build production application
+        run: npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Qualify production presentation and controls
+        run: npm run test:e2e:production -- --project=presentation
+      - name: Qualify runtime presentation with its isolated renderer and real API
+        run: npx playwright test --config=playwright.runtime-tailwind.config.ts
+        env:
+          OURO_RUNTIME_VISUAL_DIR: test-results/runtime-presentation
+      - name: Preserve presentation diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: presentation-browser-diagnostics
           path: test-results/
           if-no-files-found: ignore
           retention-days: 7

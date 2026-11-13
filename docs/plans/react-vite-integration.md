@@ -1,0 +1,83 @@
+# React/Vite эпик · интеграционный снимок
+
+## Возобновление по плану C0–C7, 2026-11-05
+
+Владелец отдельно поручил продолжить работу по пересобранному плану. C0 read-only recovery завершён; текущие dispositions, exact heads и ограничения ведутся в [журнале C0–C7](react-vite-completion-progress.md). PR76 после проверки exact-head5CI и независимого review интегрирован в epic как `6bf31d1a8e189bf02e0ee0b7c7bd52d0b4c4a752`. PR74 продолжает ранее отменённую обязательную квалификацию, старый Windows HTML FAIL сохраняется. C1 начинается с трёх installed CLI; Tailwind804/cache, Form и незавершённый Methodology move не возобновляются вне своих зависимостей.
+
+## Остановка и пересобранный план, 2026-11-05
+
+Реализация **PAUSED_BY_OWNER**, epic `6595e2e30e4a3f800e647404c8ac083a1d6892c0`. После ретроспективы по отдельному поручению подготовлен [план завершения C0–C7](react-vite-completion.md): зависимости, exit criteria, конечная visual coverage и профили достаточных проверок. Принятые D01–D16 и полная Tailwind4-конверсия сохраняются. Подготовка документа не запускает код, установку, CI, merge или deployment.
+
+Снимок остановки: PR76/head `6afa3160` имеет5 CI PASS, но не слит; PR74/head `88cbba1` имеет отменённый последний run, предыдущий `f99ca177` — Linux6PASS и Windows13 functionalPASS при отдельном strictHTML672/1161FAIL. Shared-style story не переписала общие112 rules: v2G1 имеет24 before frames PASS, остальные before/after slices не объявлены завершёнными. Есть непроверенные незакоммиченные harness/MethodologyPage изменения и Form SDD; pnpm пока только SDD. Все они остаются отдельно от принятого epic.
+
+Ниже сохранены прежние датированные checkpoints. Их IN_PROGRESS/PENDING и промежуточные failures описывают тот состав и момент; они не означают возобновлённую работу и не заменяют текущий снимок остановки.
+
+## Последний квалифицированный checkpoint
+
+Состояние на `4e826240bde2cce64c6ca4d10a39c3682bf14da4`, 2026-11-05: **IN_PROGRESS**, PR36 остаётся draft в dev. После первого снимка ниже интегрированы PR68–72. Пользовательские profiles/env/DB, исходная dirty main и Meridian не изменялись; эпик ещё не вливался в dev/main.
+
+| Дополнение | Проверенный результат и предел |
+|---|---|
+| Entity public APIs | Work, agent-proposal и specification content интегрированы. Полная physical hFSD ещё не завершена; project-event projection отдельно в PR73. |
+| Client error policy | PR70: safe occurrence/reporting, Query ownership и renderer boundary. Четыре browser cases включают UNKNOWN после render failure. Формы размонтируются в fallback; сохранность всех local drafts и global framework-console redaction не заявлены. |
+| Explicit project runtime | PR72: обязательные source/ports/reporter/connectivity, web composition adapter отдельно. Failing observers не прерывают revoke/accepted read; failed cleanup не сохраняет активный logical owner. Физическое закрытие неисправного транспорта не подтверждено. Локально97/97, types/guards и все5 CI jobs PASS. |
+| Independent source | [Job126890641684/run41920279439](https://github.com/QahNaaRlN/ouro/actions/runs/41920279439/job/126890641684): Node24.19/Linux,249source files, no source dependency install. Все phases PASS, включая browser installation, runner3/navigation6, SQL restart/exact receipt, MCP/SSE/assets и graceful stop. HTML672/672. Это source-build qualification, не full end-user release. |
+| Generation launcher | Draft PR74 на отдельной feature-ветке: focused PORT/TCP/lifecycle/materialization checks PASS, шестой consumer-generation CI job добавлен в этой ветке. Combined full proof, Windows npm/shell teardown и final checks ещё PENDING. |
+| Tailwind остаток | 112 ordinary rules/2 CSS files. Шесть geometry expressions в3 files уже используют custom properties, но production technical policies ещё0: нужна отдельная qualification, а не blanket approval. Shared-native conversion не завершён. |
+
+Первый PR72 consumer run завершился FAIL в общем runner/browser phase при PASS всех предыдущих phases. Причина не установлена по старому отчёту; новый qualifier разделяет browser installation и сохраняет только safe finite tool diagnostics. Новый exact head прошёл все5jobs; старый FAIL не переписан как PASS. Windows strict HTML injection FAIL также сохраняется отдельно.
+
+Shared-native baseline сейчас собирается новым opt-in measurement contract: один PNG, strict DOM/state/geometry и все standard computed properties. Первый4scene smoke PASS; полный G1 остановился после21captured frames из-за общего180s case budget. Это незавершённая instrumentation qualification, не UI acceptance и не21/24PASS. Отделение затрат измерения от прежних UI/domain deadlines требует собственного bounded review. Старые selected-property snapshots и неудачные primer probes не объявляются полным новым evidence.
+
+Открытый остаток: shared Tailwind и geometry policies; physical hFSD/semantic ports/coherent embedded export; реальная typed RU/Form интеграция; Temporal compatibility для новой calendar logic; pnpm и остальные universal rule checks; совместимый generation launch/installed CLI/ZIP/hosted cutover; удаление Next и final combined unit/browser/PG/package/data gates. Наличие нескольких зелёных feature PR не завершает этот эпик.
+
+## Первый снимок
+
+Дата: 2026-11-05. Снимок принятой ветки `codex/react-vite-epic` на `0db3f243a0117dbeeb12f387c2865a9fe09fa249`. Эпик **IN_PROGRESS**, draft PR36 в dev; dev/main ещё не переключались. Принятые D01–D16 не переоткрываются. Этот журнал описывает фактический состав; нормы остаются в [решениях](../proposals/react-vite-migration/decisions.md) и [стеке](../proposals/react-vite-migration/react-stack.md).
+
+## Что интегрировано
+
+| Область | Принятый результат | Граница evidence |
+|---|---|---|
+| HTTP/service | Все47routes/59methods, Hono transport, URI/headers/body/SSE/auth compatibility, resources/runner и явный lifecycle | Built runtime и реальные TCP/SQL/PG/browser проверки; финальный installed/hosted cutover ещё впереди |
+| Project client | Один ProjectSession/snapshot adopter/SSE owner, scoped Query, frozen intents и durable receipt recovery | Смена scope/access, response loss/corruption, stale callbacks и exact retry квалифицированы; cache не является серверной истиной |
+| Read catalogs | Identity/workspace/account reads с полными source/actor/project/access/host scope keys | Typed ports/DTO и cancellation/lease ownership; это не полный набор semantic операций для native host |
+| Physical architecture | Pure ports/DTO, snapshot/subscription boundaries, public `entities/work` и guard против reverse legacy/deep imports | Физическое разбиение остальных UI/features/pages не завершено; selector `entities/agent-proposal` отдельно на CI |
+| Tailwind | Семейства Human View/workspace/graphs/process/runtime/participants/integrations/proposals/agents/history/Impact/Lessons/verification и последние4static preview expressions | Каждый срез имеет собственные before/after/functional evidence и ограничения; общие112 rules ещё ordinary debt |
+| Profile ownership | Committed no-overwrite marker, same-process inode protection, claim-before-validation и bounded native contention | Actual Linux RED→GREEN,200pairs, Windows/Linux cases и mandatory CI; не power-loss/adversarial/noncooperating-old-binary гарантия |
+| Runtime environment | Node24.19 admission, explicit-root/phase env adapter с exact parser versions | Actual differential/rejection witnesses; Next internal cache/HMR не портируется, env files владельца не читались |
+| Independent source build | Один immutable committed tree, same-commit protocol, один frozen npm graph без Next и ancestor dependencies | Отдельный mandatory Linux SOURCE_BUILD job PASS; end-user generation launcher/ZIP ещё не квалифицированы |
+
+Результат последней style inventory: **2ordinary CSS files/112 rules,3inline files/6expressions**, production technicalInline exceptions0. Оставшиеся expressions — Impact meter, три onboarding geometry и две textarea height. Они не объявляются допустимыми автоматически. Общие native/shared defaults переписываются отдельной историей; перенос этих правил и review expressions нужны до styles:final PASS.
+
+## Точные последние integration gates
+
+| История | Qualified head / принятый PR | Обязательные jobs |
+|---|---|---|
+| Runtime presentation | adfe46b / [57](https://github.com/QahNaaRlN/ouro/pull/57) | checks/postgres/browser/presentation PASS |
+| Impact/Lessons | d2d0ef3 / [61](https://github.com/QahNaaRlN/ouro/pull/61) |4PASS |
+| Agent connections | c3987b9 / [59](https://github.com/QahNaaRlN/ouro/pull/59) |4PASS |
+| History/recovery | de542c8 / [60](https://github.com/QahNaaRlN/ouro/pull/60) |4PASS |
+| Verification |0e7e73a / [62](https://github.com/QahNaaRlN/ouro/pull/62) |4PASS; CI-only Git report growth исправлен в fixture без изменения256k command limit |
+| Work entity |135d83f / [63](https://github.com/QahNaaRlN/ouro/pull/63) |4PASS |
+| Profile contention |7397c05 / [64](https://github.com/QahNaaRlN/ouro/pull/64) |4PASS, включая actual Linux SPP16/старые mutex/lifecycle cases |
+| Actual Vite/service |cb51261 / [58](https://github.com/QahNaaRlN/ouro/pull/58) |4PASS |
+| Environment compatibility |c724ca3 / [65](https://github.com/QahNaaRlN/ouro/pull/65) |4PASS |
+| Source delivery |00f206e / [66](https://github.com/QahNaaRlN/ouro/pull/66) |consumer-source/checks/postgres/browser/presentation5PASS |
+| Static preview |76c8f63 / [67](https://github.com/QahNaaRlN/ouro/pull/67) |5PASS |
+
+Source job [126809925511](https://github.com/QahNaaRlN/ouro/actions/runs/41897236221/job/126809925511) зафиксировал Node24.19/Linux,238consumer inputs и `sourceRepositoryInstallAbsent:true`. Materialization, ci при actual NODE_ENV=production/includeDev, foreign-cwd fresh builds, protocol ESM/CJS/types/CLI, JS/CSS/font integrity, negative HTTP matrix, SSE, issued MCP, durable restart/exact receipt, runner3/navigation6 и graceful shutdown — PASS. HTML672/672bytes и GET/HEAD integrity — PASS. Это qualification source tree, не end-user release.
+
+Windows strict HTML transport evidence остаётся отдельным **FAIL**:672expected/1161received с локальной HTML injection. Source handler/Web pipeline и JS/CSS/font bytes прошли свои проверки; окружение/заголовки не менялись ради обхода. Linux PASS не переписывает Windows результат. Исходные fixture failures, intermediate failed fixes, antialiasing-only deltas, исходный narrow overflow и manual test cleanup сохранены в журналах соответствующих историй.
+
+## Открытый остаток
+
+1. Закончить112 ordinary shared/native rules и квалифицировать шесть geometry expressions точными policies; общий final style gate ещё не пройден.
+2. Завершить physical hFSD по ответственности; не переносить целый Home в один widget. Оставшиеся semantic операции и coherent host composition не подменять generic ambient HTTP fallback.
+3. Интегрировать frontend error-policy/boundary/capture с текущими authority/UNKNOWN guarantees. Backend и первые capture points уже существуют; глобальная framework-console очистка, внешний monitoring и все legacy async handlers пока не объявлены готовыми.
+4. Подключить typed Russian i18next/react-i18next и реальный TanStack Form/Zod boundary. Temporal adapter для новой calendar logic требует отдельной compatibility проверки; существующие timestamps не переписывать автоматически.
+5. Завершить generation envelope launch/start/build, stable generation-pinned MCP, documented installed CLI, independent ZIP/foreign-cwd/restart и closed old-profile rehearsal. Directory prototype или SOURCE_BUILD не означают full P5.
+6. Перевести developer graph на pnpm workspaces с одним lockfile; сохранить отдельный npm consumer graph. Turbo только после явных inputs/outputs/env/cache contracts. ESLint/format/naming/JSDoc checks и delivery универсальных правил ещё требуют завершения.
+7. Подготовить explicit embedded export без createRoot/browser router/ambient host authority, затем удалить Next/temporary aliases и выполнить final combined unit/browser/PG/package/data gates. Только после этого PR36 может переходить в dev; main/deployment/native owner acceptance остаются отдельными полномочиями.
+
+Исходная dirty main worktree и реальные пользовательские profiles/env/DB не изменялись. Все перечисленные runtime/SQL/browser проверки использовали собственные изолированные fixtures. Наличие этого снимка не переводит открытые этапы в COMPLETE.

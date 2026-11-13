@@ -6,8 +6,8 @@ import { applyDraftUpdate,base64ToBytes,createDraftDocument,encodeDraftDocument,
 type Connection={query<T=Record<string,unknown>>(sql:string,values?:unknown[]):Promise<{rows:T[]}>};
 type Database=Connection&{transaction<T>(fn:(tx:Connection)=>Promise<T>):Promise<T>};
 type CommandResult={state:ProjectState;events:DomainEvent[];cursor:number;replayed:boolean};
-export type CollaborativeDraft={id:string;projectId:string;specId:string;baseRevisionId:string;createdBy:string;createdAt:string;version:number;stateUpdate:string;stateHash:string;contentHash:string;content:RevisionContent;hasPendingUpdates:boolean;publishedRevisionId?:string;publishedAt?:string};
-export type CollaborativeDraftSummary=Omit<CollaborativeDraft,'stateUpdate'|'content'>&{title:string};
+import type { CollaborativeDraft, CollaborativeDraftSummary } from '../packages/collaboration/src/types';
+export type { CollaborativeDraft, CollaborativeDraftSummary } from '../packages/collaboration/src/types';
 type DraftRow={id:string;project_id:string;spec_id:string;base_revision_id:string;created_by:string;created_at:string|Date;version:string|number;state_update_base64:string;state_hash:string;content_hash:string;published_revision_id:string|null;published_at:string|Date|null};
 type DraftDependencies={projectId?:string;db:Database;serialize:<T>(fn:()=>Promise<T>)=>Promise<T>;lockProject:(tx:Connection,projectId:string)=>Promise<unknown>;assertHuman:(tx:Connection,actor:Actor,projectId:string)=>Promise<void>;assertWrite:(tx:Connection,actor:Actor,projectId:string)=>Promise<void>;state:(tx:Connection,projectId:string)=>Promise<ProjectState>;commit:(tx:Connection,body:unknown,actor:Actor,projectId:string)=>Promise<CommandResult>;hash:(value:unknown)=>string};
 export class CollaborativeDraftError extends Error{constructor(public code:string,message:string){super(message);}}

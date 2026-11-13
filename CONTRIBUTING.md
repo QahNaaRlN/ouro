@@ -18,6 +18,14 @@ Use lowercase English kebab-case for `<name>`, for example `feat/agent-clients` 
 
 After a release or hotfix, bring the accepted `main` changes back into `dev`. Preserve feature branches needed for existing work. Do not force-push or delete `main` or `dev`.
 
+### React and Vite epic
+
+The owner authorized `codex/react-vite-epic` as an integration branch started from current `origin/dev`. Bounded migration stories start from that epic and open pull requests **into the epic**, not directly into `dev` or `main`. This is the explicit epic exception to the ordinary bounded-branch targets above. Keep approved branch names and Conventional Commit subjects, including merge commit subjects.
+
+Each atomic branch has a specification, meaningful checks and an implementation journal. Merge it into the epic only after its exact head passes the applicable checks and review. Preserve the individual story history. The complete epic enters `dev` after the migration compatibility gates; release branches still target `main`. Creating the epic does not authorize production deployment or changing user data.
+
+Current stories: `codex/react-vite-foundation`, `codex/portable-client-contracts`, `codex/service-qualification` and `codex/tailwind-primitives`. The full conversion of ordinary UI CSS to Tailwind CSS 4 is an epic acceptance requirement; a first primitive conversion is only one bounded contribution.
+
 ## Commit and pull request messages
 
 Follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/):
@@ -46,7 +54,7 @@ Preserve append-only history, project scope and exact request receipts. Agent re
 Use Node.js 24, the release's tested runtime. Before opening a PR, run the checks appropriate to the change. The complete release gate is:
 
 ```sh
-npm ci
+npm exec --yes --package=pnpm@10.34.9 -- pnpm install --frozen-lockfile --prod=false
 npm run check:conventions
 npm test
 npm run typecheck
@@ -58,9 +66,11 @@ npm run test:e2e:production
 
 Production browser checks require Playwright's Chromium installation. See the repository's local setup instructions. Do not run a build and dev server in the same checkout at the same time.
 
+The current developer tree has one pnpm10.34.9 workspace lock for root, web, service and protocol; a matching installed pnpm may run `pnpm install --frozen-lockfile --prod=false` directly. Do not perform nested development npm installations. npm task composition remains explicit for standalone npm producers and their integration fixtures. The independent consumer's frozen npm lock and fresh-generation `npm ci --include=dev` contract are separate from development; its actual ZIP acceptance is a later migration gate. [Workspace contract](docs/specs/developer-pnpm-workspace.md).
+
 CI uses the exact Node version in `.nvmrc` (currently24.19.0). The unit command runs files serially to bound PGlite memory. Its test-only `--no-wasm-code-gc` retains Wasm code until each short-lived test process exits, avoiding the teardown signature documented in [nodejs/node#66366](https://github.com/nodejs/node/issues/66366). All assertions remain enabled; production build/start and browser acceptance use the ordinary runtime. Revalidate this setting when upgrading Node after the upstream fix. [Runtime qualification](docs/specs/release-runtime.md).
 
-CI exposes stable required checks named **`checks`** and **`browser`**. Report the commands and actual results in the PR, link the SDD and journal, and state material limits of the verification. A JSON configuration or SDK test does not establish that a user's desktop client or model account is connected.
+CI preserves **`checks`**, **`browser`**, **`presentation`**, **`postgres`**, **`consumer-source`**, **`consumer-generation`** and **`consumer-generation-windows`**. The three consumer jobs do not install source dependencies. Report the commands and actual results in the PR, link the SDD and journal, and state material limits of the verification. A JSON configuration or SDK test does not establish that a user's desktop client or model account is connected.
 
 Do not commit keys, credentials, `.env` files other than `.env.example`, `.ouro`, `node_modules`, `.next` or test/runtime artifacts. Keep users' folders, databases and client settings intact. A release archive must contain an exact committed source tree and pass its private-data audit.
 

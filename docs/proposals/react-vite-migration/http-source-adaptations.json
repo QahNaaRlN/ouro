@@ -1,0 +1,30 @@
+{
+  "contract": "ouro-http-source-adaptations/v1",
+  "phase": "http-receipt-proof/v1",
+  "entries": [
+    {
+      "file": "app/api/commands/route.ts",
+      "originalSha256": "1e6a7da12c5aaf592a22046fe913883df6467f2f9b346d55a5b084746d28e913",
+      "acceptedSha256": "d60b50b916c656c3fe7d7e3b9d5148eebd7d6b31f24fbd13c657136418015785",
+      "owner": "HRP",
+      "spec": "docs/specs/http-receipt-proof.md",
+      "rationale": "Add optional post-COMMIT durable receipt metadata; preserve HTTP paths, methods, current authorization and JSON result."
+    },
+    {
+      "file": "app/api/projects/[projectId]/commands/route.ts",
+      "originalSha256": "aee07712088b5cf33edfbf2215547a5dbda0cc8c0de2248978f49a71a7f99216",
+      "acceptedSha256": "7c4961c9f4ec5447a9152d9f3ebabc01dca19c660a2d580671fcfcdd09eb69a5",
+      "owner": "HRP",
+      "spec": "docs/specs/http-receipt-proof.md",
+      "rationale": "Add optional post-COMMIT durable receipt metadata; preserve HTTP paths, methods, current authorization and JSON result."
+    },
+    {
+      "file": "app/api/projects/[projectId]/tasks/route.ts",
+      "originalSha256": "3ae256f7d1b839c956d032251e5ce66cdbbbc4cbc95038674e3a391c29af9119",
+      "acceptedSha256": "33abe050c058b9ebf8b2771d9c04fd80ceabf335f2c39acedaa31424bfdb30b7",
+      "owner": "HRP",
+      "spec": "docs/specs/http-receipt-proof.md",
+      "rationale": "Add optional post-COMMIT durable receipt metadata; preserve HTTP paths, methods, current authorization and JSON result."
+    }
+  ]
+}

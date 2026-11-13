@@ -66,13 +66,14 @@ const retryDelay=(headers:Headers)=>{
 export function createGitHubClient(options:{fetch?:typeof fetch;token?:string;timeoutMs?:number}={}){
   const fetcher=options.fetch??globalThis.fetch;
   const timeout=Math.max(1,Math.min(10_000,Math.floor(options.timeoutMs??5000)));
-  const requestJson=async(path:string):Promise<Record<string,unknown>>=>{
+  const requestJson=async(path:string,signal?:AbortSignal):Promise<Record<string,unknown>>=>{
     let url=apiUrl(path);
     const headers:Record<string,string>={Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2026-03-10','User-Agent':'ouro-github-evidence'};
     if(options.token)headers.Authorization=`Bearer ${options.token}`;
     try{
       for(let redirects=0;redirects<=4;redirects++){
-        const response=await fetcher(url.href,{headers,redirect:'manual',signal:AbortSignal.timeout(timeout)});
+        const timeoutSignal=AbortSignal.timeout(timeout);
+        const response=await fetcher(url.href,{headers,redirect:'manual',signal:signal?AbortSignal.any([signal,timeoutSignal]):timeoutSignal});
         if([301,302,303,307,308].includes(response.status)){
           const location=response.headers.get('location');
           if(!location||redirects===4)failed('GitHub API не подтвердил адрес репозитория.');
@@ -85,17 +86,17 @@ export function createGitHubClient(options:{fetch?:typeof fetch;token?:string;ti
     }catch(error){if(error instanceof GitHubVerificationError)throw error;throw new GitHubVerificationError('GITHUB_UNAVAILABLE','Не удалось получить подтверждение от GitHub API; проверка будет повторена.',true,60_000);}
     return failed('GitHub API не подтвердил данные.');
   };
-  const resolveRepository=async(value:string):Promise<GitHubRepository>=>{
-    const requested=fullName(value),response=await requestJson(`/repos/${requested}`);
+  const resolveRepository=async(value:string,signal?:AbortSignal):Promise<GitHubRepository>=>{
+    const requested=fullName(value),response=await requestJson(`/repos/${requested}`,signal);
     if(!Number.isSafeInteger(response.id)||Number(response.id)<1)failed('GitHub API вернул неподтверждённый ID репозитория.');
     let canonical:string;try{canonical=fullName(response.full_name);}catch{failed('GitHub API вернул неподтверждённое имя репозитория.');}
     return {id:Number(response.id),fullName:canonical!};
   };
-  return {resolveRepository,async verifyCommit(repository:GitHubRepository,value:string):Promise<GitHubVerifiedCommit>{
+  return {resolveRepository,async verifyCommit(repository:GitHubRepository,value:string,signal?:AbortSignal):Promise<GitHubVerifiedCommit>{
     const sha=fullSha(value);if(!repository||!Number.isSafeInteger(repository.id)||repository.id<1)invalid('Нужен проверенный ID репозитория.');
-    const current=await resolveRepository(repository.fullName);
+    const current=await resolveRepository(repository.fullName,signal);
     if(current.id!==repository.id)failed('GitHub API подтвердил другой репозиторий; привязка не переносится.');
-    const commit=await requestJson(`/repos/${current.fullName}/commits/${sha}`);
+    const commit=await requestJson(`/repos/${current.fullName}/commits/${sha}`,signal);
     if(typeof commit.sha!=='string'||commit.sha.toLowerCase()!==sha)failed('GitHub API не подтвердил точный SHA коммита.');
     return {repositoryId:current.id,repositoryFullName:current.fullName,fullSha:sha,url:`https://github.com/${current.fullName}/commit/${sha}`,verifiedAt:new Date().toISOString(),verificationMethod:'github-api-sha',title:`Коммит ${sha.slice(0,12)}`};
   }};
