@@ -115,3 +115,11 @@ Head `71db15e43fe4ce3779ca3efb4bd7711352a5d370`, CI `42066859697`. Все три
 Отдельный локальный Windows source-прогон на Node 24.19.0 прошёл чистую npm-установку, независимую сборку и runtime phases, затем повторил ранее сохранённый HTML FAIL (672 ожидаемых байта, 1161 получено). Он не выдаётся за чистую CI Windows квалификацию.
 
 Отчёт предыдущего чистого Windows CI подтвердил HTML 672/672 на synthetic source `1d4626c0f3dd516c47a564105ebf05518f88a065` без установки в исходном checkout. В локальном целевом прогоне три CPB fixtures остановились при создании directory symlink с EPERM, до проверок поведения. Точное подтверждение CPB05/06 ожидается в Linux CI.
+
+## Третья попытка CI и интеграция в epic
+
+Head `4bc736a70f57340647f756be30fc37cbc5e32053` исправляет обнаруженное второй попыткой: quality test получил явное расширение `.mts` и входит в полный `test:unit`, root TypeScript и отдельную `test:quality`; CPB05/CPB06 распознают пробелы в той же сигнатуре REC без ослабления assertions. PR #81 влит в `codex/react-vite-epic` 2026-11-05T17:05:25Z merge commit `2905788e4d158793f7ae1b54823d663492409f9b` (родители `aa1871cd2bc01f09bca0e29cae4e7671dff65f30` + head).
+
+На exact merge head обязательная CI run `42071335772` (2026-11-05T17:06:34Z): **7/7 PASS** — checks, browser, postgres, presentation, consumer-source, consumer-generation, consumer-generation-windows. Параллельный дубликат check runs на том же commit отменён как superseded; он не failure и не отдельная попытка. Этим подтверждены в Linux CI CPB05/CPB06 и `.mts` quality test из предыдущего раздела.
+
+Сохраняются без переписывания: локальный Windows HTML672/1161FAIL, EPERM symlink остановка трёх CPB fixtures, первая и вторая CI-попытки. Эта интеграция закрывает ожидание exact-head CI, но не объявляет acceptance владельца, вход epic в dev/main или готовность C2–C7. Закрытие C1 зафиксировано в [completion progress](react-vite-completion-progress.md).

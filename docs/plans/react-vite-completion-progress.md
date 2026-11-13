@@ -7,8 +7,8 @@
 | Этап | Состояние | Фактический результат / следующий выход |
 |---|---|---|
 | C0 | CLOSED | Recovery registry и обновлённый план интегрированы PR77; исходный снимок и dispositions ниже сохранены |
-| C1 | IN_PROGRESS | CLI/generation/protocol producer приняты в epic; pnpm local A3 квалифицирован и ожидает publication CI/review; universal quality checks ещё в работе |
-| C2 | PLANNED | hFSD, semantic ports и реальный Form/RU/error/time stack после C1 |
+| C1 | CLOSED | PR74/76–81 интегрированы в epic; exact merge head `2905788e4d158793f7ae1b54823d663492409f9b` прошёл обязательную CI `42071335772` 7/7 PASS; доказательства и границы — в разделе закрытия C1 ниже |
+| C2 | READY | hFSD, semantic ports и реальный Form/RU/error/time stack. Первая story получает конечный контракт SDD до source edits; применимые C0 dispositions — methodology-page и assign-work-form |
 | C3 | PLANNED | Shared Tailwind и точные geometry policies после стабилизации C2 |
 | C4 | PLANNED | Explicit embedded composition после C2 |
 | C5 | PLANNED | Actual artifact/CLI/hosted/data qualification после C3/C4 |
@@ -78,3 +78,25 @@ Pnpm workspace story: [SDD](../specs/developer-pnpm-workspace.md), [журнал
 Actual A3 local results: fresh Windows frozen install13.7s/exit0/lock byte-unchanged; web production build и font resolution; focused launch/auth/SDK/config27PASS/0FAIL/2Windows platform skips; CPB01 source port1PASS; actual pnpm→npm task standalone protocol1PASS; catalog4/error4/i18n dev2/production2 =12renderer PASS; stale frozen manifest отклонён actual ERR_PNPM_OUTDATED_LOCKFILE без installation. Strict programs/service build/guards A2 переиспользуются только для неизменных relevant source/tuple inputs; final publication CI всё равно проверяет полный exact head. Первое printed-Done-but-stalled installation сохранено STALLED/OWNER_INTERRUPTED; optional notification отключена, natural exit отдельно доказан.
 
 Ни этот local result, ни publication PR не закрывают весь C1 до universal checks/25-rule enforcement и review/CI. C2 ещё не начат; C3 ждёт его стабилизации. Actual consumer ZIP, operator/hosted/data rehearsal, Next removal и epic→dev остаются C5–C7. Dev/main/исходная dirty worktree, user env/profile/DB и Meridian не изменялись.
+
+## C1. Закрытие этапа
+
+Дата записи: **2026-11-13, Asia/Yekaterinburg**. Это документационная фиксация уже выполненной интеграции и CI; источник, lock, конфигурация и поведение продукта этой записью не изменяются. Запись сделана в ветке `codex/c1-qualification-record` от exact epic head и не является новым runtime/установочным прогоном.
+
+Интеграционные merges в `codex/react-vite-epic` (все 2026-11-05, UTC): PR76 `6bf31d1a8e189bf02e0ee0b7c7bd52d0b4c4a752`, PR77 `22ee3f95d24c2e092a2b6cf9bac1ace73bcbbb9d`, PR74 `b957bc95926543e79b4d45f3723f052eaaa04f62`, PR78 `b92b5f6c04dc3933881278e066e42259ed4bc690`, PR79 `19c1f663abb240aed9d78f330c335ba380db334d`, PR80 `aa1871cd2bc01f09bca0e29cae4e7671dff65f30`, PR81 `2905788e4d158793f7ae1b54823d663492409f9b` (head `4bc736a70f57340647f756be30fc37cbc5e32053`).
+
+На точном merge head PR81 `2905788e4d158793f7ae1b54823d663492409f9b` обязательная CI run `42071335772` (2026-11-05T17:06:34Z) дала **7/7 PASS**: checks, browser, postgres, presentation, consumer-source, consumer-generation, consumer-generation-windows. Второй набор check runs на том же commit имеет conclusion cancelled как superseded дубликат; он не считается failure и не выдаётся за отдельный прогон. Этот run подтверждает в Linux CI исправления CPB05/CPB06 (пробелы в сигнатуре REC) и `.mts` quality test в полном tsx runner, ожидавшие подтверждения в [журнале quality](universal-quality-gates.md).
+
+Сопоставление критериям выхода C1 из [плана завершения](react-vite-completion.md):
+
+| Критерий выхода C1 | Фактическое доказательство |
+|---|---|
+| Один dev lock | PR80: один frozen pnpm lock SHA256 `ef5b86a7654f98b034f0d53aecf588913e1751d52461610f860ea16f108392b2`, четыре importers, explicit root task graph; fresh Windows frozen install exit0/13.7s с byte-unchanged lock ([A3 журнал](developer-pnpm-workspace.md)) |
+| Совместимые CLI до frontend build | PR78: `agent:config`/`agent:check`/manual `mcp` на canonical mains; CI PR78 все7 PASS (run42013485414) |
+| Same-commit protocol producer | PR79: committed producer inputs, независимость от developer lock; standalone `.tgz` 1/1 сохранён |
+| Clean install/build | A3 local fresh frozen install exit0; CI consumer-source/consumer-generation/consumer-generation-windows PASS на exact head |
+| Все 25 правил имеют scope/решение и способ контроля | PR81: [таблица владельцев всех 25 правил](../specs/universal-quality-gates.md), исполняемые `check:quality`/`test:quality`/`check:architecture`/`check:conventions`/strict programs в составе job checks; local A2–A5 qualification и fixture RED/GREEN сохранены в журнале |
+
+Эта запись не объявляет: acceptance владельца, вход epic в dev/main, готовность C2–C7, actual consumer ZIP/operator/hosted/data rehearsal (C5), удаление Next (C6) и итоговый допуск (C7). Исторический локальный Windows HTML672/1161FAIL и отменённые CI-попытки сохранены без переписывания. Исходная main worktree с её dirty README/next-env и untracked proposal docs, пользовательские env/profile/DB и Meridian не изменялись.
+
+Следующий выход — первая C2 story: физическая hFSD и semantic ports с конечным контрактом SDD до source edits, по зависимостям [плана](react-vite-completion.md). Не более двух активных implementation stories; локальные heavy запуски по одному.
